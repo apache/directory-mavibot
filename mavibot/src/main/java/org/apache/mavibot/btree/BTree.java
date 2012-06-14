@@ -224,12 +224,13 @@ public class BTree<K, V>
             V modifiedValue = null;
             
             // Try to insert the new value in the tree at the right place,
-            // starting from the root page
+            // starting from the root page. Here, the root page may be either
+            // a Node or a Leaf
             InsertResult<K, V> result = rootPage.insert( revision, key, value );
             
             if ( result instanceof ModifyResult )
             {
-                ModifyResult<K, V> modifyResult = ((ModifyResult)result);
+                ModifyResult<K, V> modifyResult = ((ModifyResult<K, V>)result);
                 
                 // The root has just been modified, we haven't split it
                 // Get it and make it the current root page
@@ -244,7 +245,7 @@ public class BTree<K, V>
             {
                 // We have split the old root, create a new one containing
                 // only the pivotal we got back
-                SplitResult<K, V> splitResult = ((SplitResult)result);
+                SplitResult<K, V> splitResult = ((SplitResult<K, V>)result);
 
                 K pivot = splitResult.getPivot();
                 Page<K, V> leftPage = splitResult.getLeftPage();

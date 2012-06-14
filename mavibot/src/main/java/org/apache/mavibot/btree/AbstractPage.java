@@ -190,4 +190,21 @@ public class AbstractPage<K, V> implements Page<K, V>
         
         return btree.getComparator().compare( key1, key2 );
     }
+    
+    
+    /**
+     * Copy the current page and all its keys, with a new revision.
+     * 
+     * @param revision The new revision
+     * @return The copied page
+     */
+    protected Page<K, V> copy( long revision )
+    {
+        Page<K, V> newPage = new AbstractPage<K, V>( btree, revision, nbElems );
+
+        // Copy the keys
+        System.arraycopy( keys, 0, ((AbstractPage<K, V>)newPage).keys, 0, nbElems );
+
+        return newPage;
+    }
 }

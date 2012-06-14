@@ -45,6 +45,26 @@ public class Node<K, V> extends AbstractPage<K, V>
      * @param leftPage The left page
      * @param rightPage The right page
      */
+    /* No qualifier */ Node( BTree<K, V> btree, long revision, int nbElems )
+    {
+        super( btree, revision, nbElems );
+        
+        // Create the children array, and store the left and right children
+        children = (Page<K, V>[])new Object[btree.getPageSize()];
+    }
+    
+    
+    /**
+     * Create a new Node which will contain only one key, with references to
+     * a left and right page. This is a specific constructor used by the btree
+     * when the root was full when we added a new value.
+     * 
+     * @param btree the parent BTree
+     * @param revision the Node revision
+     * @param key The new key
+     * @param leftPage The left page
+     * @param rightPage The right page
+     */
     /* No qualifier */ Node( BTree<K, V> btree, long revision, K key, Page<K, V> leftPage, Page<K, V> rightPage )
     {
         super( btree, revision, 1 );
@@ -57,5 +77,73 @@ public class Node<K, V> extends AbstractPage<K, V>
         // Create the keys array and store the pivot into it
         keys = (K[])new Object[btree.getPageSize()];
         keys[0] = key;
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public InsertResult<K, V> insert( long revision, K key, V value )
+    {
+        // Find the key into this leaf
+        int index = findKeyInPage( key );
+
+        if ( index < 0 )
+        {
+            // The key has been found in the page. As it's a Node, that means
+            // we must go down in the right child to insert the value
+            index = - ( index++ );
+        }
+            
+        // Get the child page into which we will insert the <K, V> tuple
+        Page<K, V> child = children[index];
+        
+        // and insert the <K, V> into this child
+        InsertResult<K, V> result = child.insert( revision, key, value );
+
+        // Ok, now, we have injected the <K, V> tuple down the tree. Let's check
+        // the result to see if we have to split the current page
+        if ( result instanceof ModifyResult )
+        {
+            // The child has been modified.
+            ModifyResult<K, V> modifyResult = (ModifyResult<K, V>)result;
+            
+            // Just copy the current page and update its revision
+            Page<K, V> newPage = copy( revision );
+            
+            // Last, we update the children table of the newly created page
+            // to point on the modified child
+            ((Node<K, V>)newPage).children[index] = modifyResult.modifiedPage;
+            
+            // We can return the result, where we update the modifiedPage,
+            // to avoid the creation of a new object
+            modifyResult.modifiedPage = newPage;
+            
+            return modifyResult;
+        }
+        else
+        {
+            // The child has been split
+            SplitResult<K, V> modifyResult = (SplitResult<K, V>)result;
+            
+            return null;
+        }
+    }
+    
+    
+    /**
+     * Copy the current page and all its keys, with a new revision.
+     * 
+     * @param revision The new revision
+     * @return The copied page
+     */
+    protected Page<K, V> copy( long revision )
+    {
+        Page<K, V> newPage = new Node<K, V>( btree, revision, nbElems );
+
+        // Copy the children
+        System.arraycopy( children, 0, ((Node<K, V>)newPage).children, 0, nbElems );
+
+        return newPage;
     }
 }
