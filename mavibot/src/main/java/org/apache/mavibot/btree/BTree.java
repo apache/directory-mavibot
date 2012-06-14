@@ -45,7 +45,7 @@ public class BTree<K, V>
     private transient AtomicLong pageRecordIdGenerator;
 
     /** Comparator used to index entries. */
-    Comparator<K> comparator;
+    private Comparator<K> comparator;
 
     /** The current rootPage */
     protected Page<K, V> rootPage;
@@ -214,7 +214,7 @@ public class BTree<K, V>
             throw new IllegalArgumentException( "Value must not be null" );
         }
         
-        // Commented atm, we will have to play around the idea of transactions laer
+        // Commented atm, we will have to play around the idea of transactions later
         //acquireWriteLock();
 
         try
@@ -267,7 +267,25 @@ public class BTree<K, V>
             //releaseWriteLock()
         }
     }
-    
+
+
+    /**
+     * @return the comparator
+     */
+    public Comparator<K> getComparator()
+    {
+        return comparator;
+    }
+
+
+    /**
+     * @param comparator the comparator to set
+     */
+    public void setComparator( Comparator<K> comparator )
+    {
+        this.comparator = comparator;
+    }
+
     
     /**
      * @see Object#toString()
