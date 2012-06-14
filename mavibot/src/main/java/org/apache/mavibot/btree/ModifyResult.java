@@ -33,13 +33,19 @@ package org.apache.mavibot.btree;
     /** The modified page reference */
     protected Page<K, V> modifiedPage;
     
+    /** The modified value if the key was found in the tree*/
+    protected V modifiedValue;
+    
     /**
      * The default constructor for ModifyResult.
-     * @param modifiedPage
+     * 
+     * @param modifiedPage The modified page
+     * @param modifiedvalue The modified value (can be null if the key wasn't present in the tree)
      */
-    public ModifyResult( Page<K, V> modifiedPage )
+    public ModifyResult( Page<K, V> modifiedPage, V modifiedValue )
     {
         this.modifiedPage = modifiedPage;
+        this.modifiedValue = modifiedValue;
     }
     
 
@@ -49,5 +55,14 @@ package org.apache.mavibot.btree;
     public Page<K, V> getModifiedPage()
     {
         return modifiedPage;
+    }
+
+
+    /**
+     * @return the modifiedValue
+     */
+    public V getModifiedValue()
+    {
+        return modifiedValue;
     }
 }

@@ -44,4 +44,20 @@ public class AbstractPage<K, V> implements Page<K, V>
     
     /** The number of current values in the Page */
     protected int nbElems;
+    
+    /**
+     * {@inheritDoc}
+     */
+    public long getNbElems()
+    {
+        return nbElems;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public InsertResult<K, V> insert( long revision, K key, V value )
+    {
+        return null;
+    }
 }

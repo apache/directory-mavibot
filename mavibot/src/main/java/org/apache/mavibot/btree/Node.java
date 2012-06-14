@@ -31,5 +31,34 @@ package org.apache.mavibot.btree;
 public class Node<K, V> extends AbstractPage<K, V>
 {
     /** Children pages associated with keys. */
-    protected AbstractPage<K, V>[] children;
+    protected Page<K, V>[] children;
+    
+    
+    /**
+     * Create a new Node which will contain only one key, with references to
+     * a left and right page. This is a specific constructor used by the btree
+     * when the root was full when we added a new value.
+     * 
+     * @param btree the parent BTree
+     * @param revision the Node revision
+     * @param key The new key
+     * @param leftPage The left page
+     * @param rightPage The right page
+     */
+    /* No qualifier */ Node( BTree<K, V> btree, long revision, K key, Page<K, V> leftPage, Page<K, V> rightPage )
+    {
+        // Store the common values
+        this.btree = btree;
+        this.revision = revision;
+        nbElems = 1;
+        
+        // Create the children array, and store the left and right children
+        children = (Page<K, V>[])new Object[btree.getPageSize()];
+        children[0] = leftPage;
+        children[1] = rightPage;
+        
+        // Create the keys array and store the pivot into it
+        keys = (K[])new Object[btree.getPageSize()];
+        keys[0] = key;
+    }
 }
