@@ -47,10 +47,7 @@ public class Node<K, V> extends AbstractPage<K, V>
      */
     /* No qualifier */ Node( BTree<K, V> btree, long revision, K key, Page<K, V> leftPage, Page<K, V> rightPage )
     {
-        // Store the common values
-        this.btree = btree;
-        this.revision = revision;
-        nbElems = 1;
+        super( btree, revision, 1 );
         
         // Create the children array, and store the left and right children
         children = (Page<K, V>[])new Object[btree.getPageSize()];

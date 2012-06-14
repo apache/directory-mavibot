@@ -38,6 +38,28 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     /** The page that comes previous to this one */
     protected Leaf<K, V> prevPage;
     
+    
+    /**
+     * Empty constructor
+     */
+    public Leaf( BTree<K, V> btree )
+    {
+        super( btree );
+    }
+    
+    
+    /**
+     * Internal constructor used to create Page instance used when a page is being copied or overflow
+     */
+    @SuppressWarnings("unchecked") // Cannot create an array of generic objects
+    private Leaf( BTree<K, V> btree, long revision, int nbElems )
+    {
+        super( btree, revision, nbElems );
+
+        this.values = (V[])new Object[nbElems];
+    }
+    
+    
     /**
      * {@inheritDoc}
      */
@@ -79,6 +101,24 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     
     
     /**
+     * Copy the current page and all of the keys, values and children, if it's not a leaf.
+     * 
+     * @param revision The new revision
+     * @return The copied page
+     */
+    private Page<K, V> copy( long revision, int nbElems )
+    {
+        Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems );
+
+        // Copy the keys and the values
+        System.arraycopy( keys, 0, newLeaf.keys, 0, nbElems );
+        System.arraycopy( values, 0, newLeaf.values, 0, nbElems );
+
+        return newLeaf;
+    }
+
+    
+    /**
      * Copy the current page if needed, and replace the value at the position we have found the key.
      * 
      * @param revision The new page revision
@@ -88,7 +128,22 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      */
     private InsertResult<K, V> replaceValue( long revision, int index, V value )
     {
-        return null;
+        Leaf<K, V> newPage = this;
+        
+        if ( this.revision != revision )
+        {
+            // The page hasn't been modified yet, we need to copy it first
+            newPage = (Leaf<K, V>)copy( revision, nbElems );
+        }
+        
+        // Now we can inject the value and get back the previous one
+        V oldValue = newPage.values[index];
+        newPage.values[index] = value;
+        
+        // Create the result
+        InsertResult<K, V> result = new ModifyResult<K, V>( newPage, oldValue );
+        
+        return result;
     }
     
     

@@ -93,9 +93,9 @@ public class BTree<K, V>
         // Initialize the revision counter
         revision = new AtomicLong(0);
         
-        // Create the first root page, with revision 0L. It wil be empty
+        // Create the first root page, with revision 0L. It will be empty
         // and increment the revision at the same time
-        rootPage = new Leaf<K, V>();
+        rootPage = new Leaf<K, V>( this );
         roots.put( revision.getAndIncrement(), rootPage );
     }
     

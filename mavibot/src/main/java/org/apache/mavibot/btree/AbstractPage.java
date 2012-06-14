@@ -45,6 +45,32 @@ public class AbstractPage<K, V> implements Page<K, V>
     /** The number of current values in the Page */
     protected int nbElems;
     
+    
+    /**
+     * Creates a default empty AbstractPage
+     * 
+     * @param btree The associated BTree
+     */
+    protected AbstractPage( BTree<K, V> btree )
+    {
+        this.btree = btree;
+    }
+    
+    
+    /**
+     * Internal constructor used to create Page instance used when a page is being copied or overflow
+     */
+    @SuppressWarnings("unchecked") // Cannot create an array of generic objects
+    protected AbstractPage( BTree<K, V> btree, long revision, int nbElems )
+    {
+        this.btree = btree;
+        this.revision = revision;
+        this.nbElems = nbElems;
+        this.keys = (K[])new Object[nbElems];
+        recordId = btree.generateRecordId();
+    }
+
+    
     /**
      * {@inheritDoc}
      */
