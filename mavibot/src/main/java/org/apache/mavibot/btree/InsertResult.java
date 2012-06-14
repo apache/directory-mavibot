@@ -20,37 +20,15 @@
 package org.apache.mavibot.btree;
 
 /**
- * A MVCC Page interface.
+ * The result of an insert operation. This is just a container that stores either
+ * the new pivot that has been extracted after a page split, or a modified page if
+ * the child page hasn't been split.
  * 
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
- *
+
  * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
  */
-public interface Page<K, V>
+interface InsertResult<K, V>
 {
-    /**
-     * @return The number of keys present in this page
-     */
-    long getNbElems();
-
-
-    /**
-     * Insert the given key and value into this page. We first find the place were to
-     * inject the <K,V> into the tree, by recursively browsing the pages :<br/>
-     * <ul>
-     * <li>If the index is below zero, the key is present in the Page : we modify the
-     * value and return</li>
-     * <li>If the page is a node, we have to go down to the right child page</li>
-     * <li>If the page is a leaf, we insert the new <K,V> element into the page, and if
-     * the Page is full, we split it and propagate the new pivot up into the tree</li>
-     * </ul>
-     * <p>
-     * 
-     * @param revision The new revision for the modified pages
-     * @param key Inserted key
-     * @param value Inserted value
-     * @return Either a modified Page or an Overflow element if the Page was full
-     */
-    InsertResult<K, V> insert( long revision, K key, V value );
 }

@@ -20,37 +20,34 @@
 package org.apache.mavibot.btree;
 
 /**
- * A MVCC Page interface.
+ * The result of an insert operation, when the child has not been split. It contains the
+ * reference to the modified page.
  * 
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
- *
+
  * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
  */
-public interface Page<K, V>
+/* No qualifier */ class ModifyResult<K, V> implements InsertResult<K, V>
 {
+    /** The modified page reference */
+    protected Page<K, V> modifiedPage;
+    
     /**
-     * @return The number of keys present in this page
+     * The default constructor for ModifyResult.
+     * @param modifiedPage
      */
-    long getNbElems();
-
+    public ModifyResult( Page<K, V> modifiedPage )
+    {
+        this.modifiedPage = modifiedPage;
+    }
+    
 
     /**
-     * Insert the given key and value into this page. We first find the place were to
-     * inject the <K,V> into the tree, by recursively browsing the pages :<br/>
-     * <ul>
-     * <li>If the index is below zero, the key is present in the Page : we modify the
-     * value and return</li>
-     * <li>If the page is a node, we have to go down to the right child page</li>
-     * <li>If the page is a leaf, we insert the new <K,V> element into the page, and if
-     * the Page is full, we split it and propagate the new pivot up into the tree</li>
-     * </ul>
-     * <p>
-     * 
-     * @param revision The new revision for the modified pages
-     * @param key Inserted key
-     * @param value Inserted value
-     * @return Either a modified Page or an Overflow element if the Page was full
+     * @return the modifiedPage
      */
-    InsertResult<K, V> insert( long revision, K key, V value );
+    public Page<K, V> getModifiedPage()
+    {
+        return modifiedPage;
+    }
 }
