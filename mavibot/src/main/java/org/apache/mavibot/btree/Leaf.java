@@ -66,16 +66,16 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     public InsertResult<K, V> insert( long revision, K key, V value )
     {
         // Find the key into this leaf
-        int index = findKeyInPage( key );
+        int pos = findPos( key );
 
-        if ( index < 0 )
+        if ( pos < 0 )
         {
             // We already have the key in the page : replace the value
             // into a copy of this page, unless the page has already be copied
-            index = - ( index++ );
+            int index = - ( pos + 1 );
             
             // Replace the existing value in a copy of the current page
-            InsertResult<K, V> result = replaceValue( revision, index, value );
+            InsertResult<K, V> result = replaceElement( revision, key, value, index );
             
             return result;
         }
@@ -85,7 +85,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         {
             // The current page is not full, it can contain the added element.
             // We insert it into a copied page and return the result
-            InsertResult<K, V> result = addElement( revision, index, key, value );
+            InsertResult<K, V> result = addElement( revision, key, value, pos );
             
             return result;
         }
@@ -93,7 +93,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         {
             // The Page is already full : we split it and return the overflow element,
             // after having created two pages.
-            InsertResult<K, V> result = addAndSplit( revision, key, value, null, null, index );
+            InsertResult<K, V> result = addAndSplit( revision, key, value, pos );
             
             return result;
         }
@@ -122,26 +122,30 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      * Copy the current page if needed, and replace the value at the position we have found the key.
      * 
      * @param revision The new page revision
-     * @param index The position of the key in the page
+     * @param pos The position of the key in the page
      * @param value the new value
      * @return The copied page
      */
-    private InsertResult<K, V> replaceValue( long revision, int index, V value )
+    private InsertResult<K, V> replaceElement( long revision, K key, V value, int pos )
     {
-        Leaf<K, V> newPage = this;
+        Leaf<K, V> newLeaf = this;
         
         if ( this.revision != revision )
         {
             // The page hasn't been modified yet, we need to copy it first
-            newPage = (Leaf<K, V>)copy( revision, nbElems );
+            newLeaf = (Leaf<K, V>)copy( revision, nbElems );
         }
         
-        // Now we can inject the value and get back the previous one
-        V oldValue = newPage.values[index];
-        newPage.values[index] = value;
+        // Now we can inject the value
+        V oldValue = newLeaf.values[pos];
+        newLeaf.values[pos] = value;
+        
+        // and update the prev/next references
+        newLeaf.prevPage = this.prevPage;
+        newLeaf.nextPage = this.nextPage;
         
         // Create the result
-        InsertResult<K, V> result = new ModifyResult<K, V>( newPage, oldValue );
+        InsertResult<K, V> result = new ModifyResult<K, V>( newLeaf, oldValue );
         
         return result;
     }
@@ -152,14 +156,45 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      * modified page. The new page will have one more element than the current page.
      * 
      * @param revision The revision of the modified page
-     * @param index The position into the page
      * @param key The key to insert
      * @param value The value to insert
+     * @param pos The position into the page
      * @return The modified page with the <K,V> element added
      */
-    private InsertResult<K, V> addElement( long revision, int index, K key, V value )
+    private InsertResult<K, V> addElement( long revision, K key, V value, int pos )
     {
-        return null;
+        // First copy the current page, but add one element in the copied page
+        Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems + 1 );
+        
+        // Deal with the special case of an empty page
+        if ( nbElems == 0 )
+        {
+            newLeaf.keys[0] = key;
+            newLeaf.values[0] = value;
+        }
+        else
+        {
+            // Copy the keys and the values up to the insertion position
+            System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
+            System.arraycopy( values, 0, newLeaf.values, 0, pos );
+            
+            // Add the new element
+            newLeaf.keys[pos] = key;
+            newLeaf.values[pos] = value;
+            
+            // And copy the remaining elements
+            System.arraycopy( keys, pos, newLeaf.keys, pos + 1, keys.length - pos );
+            System.arraycopy( values, pos, newLeaf.values, pos + 1, values.length - pos );
+        }
+        
+        // Update the prev/next references
+        newLeaf.prevPage = this.prevPage;
+        newLeaf.nextPage = this.nextPage;
+
+        // Create the result
+        InsertResult<K, V> result = new ModifyResult<K, V>( newLeaf, null );
+        
+        return result;
     }
     
     
@@ -173,15 +208,80 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      * on the left, or the first element in the right page if it's added on the right.
      * 
      * @param revision The new revision for all the created pages
-     * @param index The position of the insertion of the new element
      * @param key The key to add
      * @param value The value to add
-     * @param left The left child of the added element
-     * @param right The right child of the added element
-     * @return An OverflowPage containing the pivor, and the new left and right pages
+     * @param pos The position of the insertion of the new element
+     * @return An OverflowPage containing the pivot, and the new left and right pages
      */
-    private InsertResult<K, V> addAndSplit( long revision, K key, V value, AbstractPage<K, V> left, AbstractPage<K, V> right, int index )
+    private InsertResult<K, V> addAndSplit( long revision, K key, V value, int pos )
     {
-        return null;
+        int middle = btree.pageSize >> 1;
+        Leaf<K, V> leftLeaf = null;
+        Leaf<K, V> rightLeaf = null;
+        
+        // Determinate where to store the new value
+        if ( pos < middle )
+        {
+            // The left page will contain the new value
+            leftLeaf = new Leaf<K, V>( btree, revision, middle + 1 );
+
+            // Copy the keys and the values up to the insertion position
+            System.arraycopy( keys, 0, leftLeaf.keys, 0, pos );
+            System.arraycopy( values, 0, leftLeaf.values, 0, pos );
+            
+            // Add the new element
+            leftLeaf.keys[pos] = key;
+            leftLeaf.values[pos] = value;
+            
+            // And copy the remaining elements
+            System.arraycopy( keys, pos, leftLeaf.keys, pos + 1, middle - pos );
+            System.arraycopy( values, pos, leftLeaf.values, pos + 1, middle -pos );
+
+            // Now, create the right page
+            rightLeaf = new Leaf<K, V>( btree, revision, middle );
+
+            // Copy the keys and the values in the right page
+            System.arraycopy( keys, middle, rightLeaf.keys, 0, middle );
+            System.arraycopy( values, middle, rightLeaf.values, 0, middle );
+        }
+        else
+        {
+            // Create the left page
+            leftLeaf = new Leaf<K, V>( btree, revision, middle + 1 );
+
+            // Copy all the element into the left page
+            System.arraycopy( keys, 0, leftLeaf.keys, 0, middle );
+            System.arraycopy( values, 0, leftLeaf.values, 0, middle );
+
+            // Now, create the right page
+            rightLeaf = new Leaf<K, V>( btree, revision, middle );
+
+            // Copy the keys and the values up to the insertion position
+            System.arraycopy( keys, middle, rightLeaf.keys, 0, pos );
+            System.arraycopy( values, middle, rightLeaf.values, 0, pos );
+            
+            // Add the new element
+            rightLeaf.keys[pos] = key;
+            rightLeaf.values[pos] = value;
+            
+            // And copy the remaining elements
+            System.arraycopy( keys, pos, rightLeaf.keys, pos + 1, nbElems - pos );
+            System.arraycopy( values, pos, rightLeaf.values, pos + 1, nbElems -pos );
+        }
+        
+        // and update the prev/next references
+        leftLeaf.prevPage = this.prevPage;
+        leftLeaf.nextPage = rightLeaf;
+        rightLeaf.prevPage = leftLeaf;
+        rightLeaf.nextPage = this.nextPage;
+        
+        // Get the pivot
+        K pivot = rightLeaf.keys[0];
+        
+        // Prepare the result
+        // Create the result
+        InsertResult<K, V> result = new SplitResult<K, V>( pivot, leftLeaf, rightLeaf );
+        
+        return result;
     }
 }

@@ -237,9 +237,6 @@ public class BTree<K, V>
                 rootPage = modifyResult.getModifiedPage();
                 
                 modifiedValue = modifyResult.getModifiedValue();
-                
-                // Save it into the roots.
-                roots.put( revision, rootPage );
             }
             else
             {

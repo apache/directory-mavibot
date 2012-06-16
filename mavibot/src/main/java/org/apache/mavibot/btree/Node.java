@@ -86,7 +86,7 @@ public class Node<K, V> extends AbstractPage<K, V>
     public InsertResult<K, V> insert( long revision, K key, V value )
     {
         // Find the key into this leaf
-        int index = findKeyInPage( key );
+        int index = findPos( key );
 
         if ( index < 0 )
         {
@@ -123,8 +123,24 @@ public class Node<K, V> extends AbstractPage<K, V>
         }
         else
         {
-            // The child has been split
-            SplitResult<K, V> modifyResult = (SplitResult<K, V>)result;
+            // The child has been split. We have to insert the new pivot in the
+            // current page, and to reference the two new pages
+            SplitResult<K, V> splitResult = (SplitResult<K, V>)result;
+            K pivot = splitResult.getPivot();
+            Page<K, V> leftPage = splitResult.getLeftPage();
+            Page<K, V> rightPage = splitResult.getRightPage();
+            
+            // We have to deal with the two cases :
+            // - the current page is full, we have to split it
+            // - the current page is not full, we insert the new pivot
+            if ( nbElems == btree.getPageSize() )
+            {
+                // The page is full
+            }
+            else
+            {
+                // The page can contain the new pivot
+            }
             
             return null;
         }

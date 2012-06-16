@@ -108,30 +108,31 @@ public class AbstractPage<K, V> implements Page<K, V>
      * @param key The key to find
      * @return The position in the page.
      */
-    protected int findKeyInPage( K key )
+    protected int findPos( K key )
     {
-        int left = 0;
-        int right = nbElems - 1;
+        // Deal with the special key where we have an empty page
+        if ( nbElems == 0 )
+        {
+            return 0;
+        }
+        
+        int min = 0;
+        int max = nbElems - 1;
 
         // binary search
-        while ( left < right )
+        while ( min < max )
         {
-            int middle = ( left + right ) >>> 1;
+            int middle = ( min + max + 1 ) >> 1;
             
             int comp = compare( keys[middle], key );
             
             if ( comp < 0 )
             {
-                left = middle + 1;
+                min = middle + 1;
             }
             else if ( comp > 0 )
             {
-                if ( middle == left )
-                {
-                    return left;
-                }
-                
-                right = middle - 1;
+                max = middle - 1;
             }
             else
             {
@@ -143,21 +144,21 @@ public class AbstractPage<K, V> implements Page<K, V>
         }
         
         // Special case : we don't know if the key is present
-        int comp = compare( keys[left], key );
+        int comp = compare( keys[max], key );
         
         if ( comp == 0 )
         {
-            return - ( left + 1 );
+            return - ( max + 1 );
         }
         else
         {
             if ( comp < 0 )
             {
-                return left + 1;
+                return max + 1;
             }
             else
             {
-                return left;
+                return min;
             }
         }
     }
