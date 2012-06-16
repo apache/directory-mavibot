@@ -162,4 +162,40 @@ public class Node<K, V> extends AbstractPage<K, V>
 
         return newPage;
     }
+
+
+    /**
+     * @see Object#toString()
+     */
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+        
+        sb.append( "Leaf[" );
+        sb.append( super.toString() );
+        sb.append ( "] -> {" );
+        
+        if ( nbElems > 0 )
+        {
+            boolean isFirst = true;
+            
+            for ( int i = 0; i < nbElems; i++ )
+            {
+                if ( isFirst )
+                {
+                    isFirst = false;
+                }
+                else
+                {
+                    sb.append( ", " );
+                }
+                
+                sb.append( "<" ).append( keys[i] ).append( ",r" ).append( children[i].getRevision() ).append( ">" );
+            }
+        }
+        
+        sb.append( "}" );
+        
+        return sb.toString();
+    }
 }

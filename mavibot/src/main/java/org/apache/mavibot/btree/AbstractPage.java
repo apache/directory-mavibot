@@ -208,4 +208,28 @@ public class AbstractPage<K, V> implements Page<K, V>
 
         return newPage;
     }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public long getRevision()
+    {
+        return revision;
+    }
+    
+    
+    /**
+     * @see Object#toString()
+     */
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+        
+        sb.append( "r" ).append( revision );
+        sb.append( ", ID:" ).append( recordId );
+        sb.append( ", nbElems:" ).append( nbElems );
+        
+        return sb.toString();
+    }
 }

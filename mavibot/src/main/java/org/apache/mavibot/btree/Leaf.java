@@ -284,4 +284,62 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         
         return result;
     }
+
+
+    /**
+     * @see Object#toString()
+     */
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+        
+        sb.append( "Leaf[" );
+        sb.append( super.toString() );
+        sb.append( ", prev:" );
+        
+        if ( prevPage == null )
+        {
+            sb.append( "null" );
+        }
+        else
+        {
+            sb.append( prevPage.revision );
+        }
+        
+        sb.append( ", next:" );
+        
+        if ( nextPage == null )
+        {
+            sb.append( "null" );
+        }
+        else
+        {
+            sb.append( nextPage.revision );
+        }
+
+        sb.append ( "] -> {" );
+        
+        if ( nbElems > 0 )
+        {
+            boolean isFirst = true;
+            
+            for ( int i = 0; i < nbElems; i++ )
+            {
+                if ( isFirst )
+                {
+                    isFirst = false;
+                }
+                else
+                {
+                    sb.append( ", " );
+                }
+                
+                sb.append( "<" ).append( keys[i] ).append( "," ).append( values[i] ).append( ">" );
+            }
+        }
+        
+        sb.append( "}" );
+        
+        return sb.toString();
+    }
 }

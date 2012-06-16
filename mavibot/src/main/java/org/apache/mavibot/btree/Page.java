@@ -53,4 +53,10 @@ public interface Page<K, V>
      * @return Either a modified Page or an Overflow element if the Page was full
      */
     InsertResult<K, V> insert( long revision, K key, V value );
+    
+    
+    /**
+     * @return the revision
+     */
+    long getRevision();
 }
