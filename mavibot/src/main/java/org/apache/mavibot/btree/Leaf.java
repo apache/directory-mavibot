@@ -235,7 +235,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             
             // And copy the remaining elements
             System.arraycopy( keys, pos, leftLeaf.keys, pos + 1, middle - pos );
-            System.arraycopy( values, pos, leftLeaf.values, pos + 1, middle -pos );
+            System.arraycopy( values, pos, leftLeaf.values, pos + 1, middle - pos );
 
             // Now, create the right page
             rightLeaf = new Leaf<K, V>( btree, revision, middle );
@@ -247,26 +247,28 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         else
         {
             // Create the left page
-            leftLeaf = new Leaf<K, V>( btree, revision, middle + 1 );
+            leftLeaf = new Leaf<K, V>( btree, revision, middle );
 
             // Copy all the element into the left page
             System.arraycopy( keys, 0, leftLeaf.keys, 0, middle );
             System.arraycopy( values, 0, leftLeaf.values, 0, middle );
 
             // Now, create the right page
-            rightLeaf = new Leaf<K, V>( btree, revision, middle );
+            rightLeaf = new Leaf<K, V>( btree, revision, middle + 1 );
+            
+            int rightPos = pos - middle;
 
             // Copy the keys and the values up to the insertion position
-            System.arraycopy( keys, middle, rightLeaf.keys, 0, pos );
-            System.arraycopy( values, middle, rightLeaf.values, 0, pos );
+            System.arraycopy( keys, middle, rightLeaf.keys, 0, rightPos );
+            System.arraycopy( values, middle, rightLeaf.values, 0, rightPos );
             
             // Add the new element
-            rightLeaf.keys[pos] = key;
-            rightLeaf.values[pos] = value;
+            rightLeaf.keys[rightPos] = key;
+            rightLeaf.values[rightPos] = value;
             
             // And copy the remaining elements
-            System.arraycopy( keys, pos, rightLeaf.keys, pos + 1, nbElems - pos );
-            System.arraycopy( values, pos, rightLeaf.values, pos + 1, nbElems -pos );
+            System.arraycopy( keys, pos, rightLeaf.keys, rightPos + 1, nbElems - pos );
+            System.arraycopy( values, pos, rightLeaf.values, rightPos + 1, nbElems -pos );
         }
         
         // and update the prev/next references
