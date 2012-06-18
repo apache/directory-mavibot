@@ -27,7 +27,7 @@ package org.apache.mavibot.btree;
  *
  * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
  */
-public class Leaf<K, V> extends AbstractPage<K, V>
+public class Leaf<K, V> extends BasePage<K, V>
 {
     /** Values associated with keys */
     private V[] values;
@@ -220,7 +220,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         Leaf<K, V> rightLeaf = null;
         
         // Determinate where to store the new value
-        if ( pos < middle )
+        if ( pos <= middle )
         {
             // The left page will contain the new value
             leftLeaf = new Leaf<K, V>( btree, revision, middle + 1 );
@@ -341,6 +341,19 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         }
         
         sb.append( "}" );
+        
+        return sb.toString();
+    }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    public String dumpPage( String tabs )
+    {
+        StringBuilder sb = new StringBuilder();
+        
+        sb.append( tabs ).append( toString() );
         
         return sb.toString();
     }

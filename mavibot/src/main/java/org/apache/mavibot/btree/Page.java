@@ -65,4 +65,12 @@ public interface Page<K, V>
      * @return the id
      */
     long getId();
+    
+    
+    /**
+     * Pretty-print the tree with tabs
+     * @param tabs The tabs to add in front of each node
+     * @return A pretty-print dump of the tree
+     */
+    String dumpPage( String tabs );
 }

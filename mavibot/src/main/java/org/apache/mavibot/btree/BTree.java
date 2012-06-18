@@ -105,7 +105,7 @@ public class BTree<K, V>
      */
     private int getPowerOf2( int size )
     {
-        int newSize = size--;
+        int newSize = --size;
         newSize |= newSize >> 1;
         newSize |= newSize >> 2;
         newSize |= newSize >> 4;
@@ -315,8 +315,8 @@ public class BTree<K, V>
             sb.append( comparator.getClass().getSimpleName() );
         }
         
-        sb.append( ") : " );
-        sb.append( rootPage );
+        sb.append( ") : \n" );
+        sb.append( rootPage.dumpPage( "" ) );
 
         return sb.toString();
     }

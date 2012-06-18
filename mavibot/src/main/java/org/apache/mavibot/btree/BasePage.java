@@ -28,7 +28,7 @@ package org.apache.mavibot.btree;
  *
  * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
  */
-public class AbstractPage<K, V> implements Page<K, V>
+public class BasePage<K, V> implements Page<K, V>
 {
     /** Parent B+Tree. */
     protected transient BTree<K, V> btree;
@@ -51,7 +51,7 @@ public class AbstractPage<K, V> implements Page<K, V>
      * 
      * @param btree The associated BTree
      */
-    protected AbstractPage( BTree<K, V> btree )
+    protected BasePage( BTree<K, V> btree )
     {
         this.btree = btree;
     }
@@ -61,7 +61,7 @@ public class AbstractPage<K, V> implements Page<K, V>
      * Internal constructor used to create Page instance used when a page is being copied or overflow
      */
     @SuppressWarnings("unchecked") // Cannot create an array of generic objects
-    protected AbstractPage( BTree<K, V> btree, long revision, int nbElems )
+    protected BasePage( BTree<K, V> btree, long revision, int nbElems )
     {
         this.btree = btree;
         this.revision = revision;
@@ -201,10 +201,10 @@ public class AbstractPage<K, V> implements Page<K, V>
      */
     protected Page<K, V> copy( long revision )
     {
-        Page<K, V> newPage = new AbstractPage<K, V>( btree, revision, nbElems );
+        Page<K, V> newPage = new BasePage<K, V>( btree, revision, nbElems );
 
         // Copy the keys
-        System.arraycopy( keys, 0, ((AbstractPage<K, V>)newPage).keys, 0, nbElems );
+        System.arraycopy( keys, 0, ((BasePage<K, V>)newPage).keys, 0, nbElems );
 
         return newPage;
     }
@@ -249,5 +249,14 @@ public class AbstractPage<K, V> implements Page<K, V>
         sb.append( ", nbElems:" ).append( nbElems );
         
         return sb.toString();
+    }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    public String dumpPage( String tabs )
+    {
+        return "";
     }
 }
