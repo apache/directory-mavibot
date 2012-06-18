@@ -59,4 +59,10 @@ public interface Page<K, V>
      * @return the revision
      */
     long getRevision();
+
+
+    /**
+     * @return the id
+     */
+    long getId();
 }

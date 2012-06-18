@@ -293,7 +293,7 @@ public class BTree<K, V>
         StringBuilder sb = new StringBuilder();
         
         sb.append( "BTree" );
-        sb.append( ", pageSize:" ).append( pageSize );
+        sb.append( "( pageSize:" ).append( pageSize );
         
         if ( rootPage != null )
         {

@@ -36,8 +36,8 @@ public class AbstractPage<K, V> implements Page<K, V>
     /** This BPage's revision */
     protected long revision;
     
-    /** This BPage's record ID in the PageManager. */
-    protected long recordId;
+    /** This BPage's ID in the PageManager. */
+    protected long id;
     
     /** Keys of children nodes */
     protected K[] keys;
@@ -67,7 +67,7 @@ public class AbstractPage<K, V> implements Page<K, V>
         this.revision = revision;
         this.nbElems = nbElems;
         this.keys = (K[])new Object[nbElems];
-        recordId = btree.generateRecordId();
+        id = btree.generateRecordId();
     }
 
     
@@ -217,6 +217,24 @@ public class AbstractPage<K, V> implements Page<K, V>
     {
         return revision;
     }
+
+
+    /**
+     * @return the id
+     */
+    public long getId()
+    {
+        return id;
+    }
+
+
+    /**
+     * @param id the id to set
+     */
+    public void setId( long id )
+    {
+        this.id = id;
+    }
     
     
     /**
@@ -227,7 +245,7 @@ public class AbstractPage<K, V> implements Page<K, V>
         StringBuilder sb = new StringBuilder();
         
         sb.append( "r" ).append( revision );
-        sb.append( ", ID:" ).append( recordId );
+        sb.append( ", ID:" ).append( id );
         sb.append( ", nbElems:" ).append( nbElems );
         
         return sb.toString();

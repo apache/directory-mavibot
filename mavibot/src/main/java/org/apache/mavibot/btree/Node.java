@@ -50,7 +50,7 @@ public class Node<K, V> extends AbstractPage<K, V>
         super( btree, revision, nbElems );
         
         // Create the children array, and store the left and right children
-        children = (Page<K, V>[])new Object[btree.getPageSize()];
+        children = new Page[btree.getPageSize()];
     }
     
     
@@ -70,7 +70,7 @@ public class Node<K, V> extends AbstractPage<K, V>
         super( btree, revision, 1 );
         
         // Create the children array, and store the left and right children
-        children = (Page<K, V>[])new Object[btree.getPageSize()];
+        children = new Page[btree.getPageSize()];
         children[0] = leftPage;
         children[1] = rightPage;
         
@@ -171,26 +171,19 @@ public class Node<K, V> extends AbstractPage<K, V>
     {
         StringBuilder sb = new StringBuilder();
         
-        sb.append( "Leaf[" );
+        sb.append( "Node[" );
         sb.append( super.toString() );
         sb.append ( "] -> {" );
         
         if ( nbElems > 0 )
         {
-            boolean isFirst = true;
+            // Start with the first child
+            sb.append( children[0].getId() ).append( "-r" ).append( children[0].getRevision() );
             
             for ( int i = 0; i < nbElems; i++ )
             {
-                if ( isFirst )
-                {
-                    isFirst = false;
-                }
-                else
-                {
-                    sb.append( ", " );
-                }
-                
-                sb.append( "<" ).append( keys[i] ).append( ",r" ).append( children[i].getRevision() ).append( ">" );
+                sb.append( "|<" ).append( keys[i] ).append( ">|" ).
+                    append( children[i + 1].getId() ).append( "-r" ).append( children[i + 1].getRevision() );
             }
         }
         
