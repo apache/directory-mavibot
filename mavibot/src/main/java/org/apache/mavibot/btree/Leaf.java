@@ -353,7 +353,28 @@ public class Leaf<K, V> extends BasePage<K, V>
     {
         StringBuilder sb = new StringBuilder();
         
-        sb.append( tabs ).append( toString() );
+        sb.append( tabs );
+        
+        if ( nbElems > 0 )
+        {
+            boolean isFirst = true;
+            
+            for ( int i = 0; i < nbElems; i++ )
+            {
+                if ( isFirst )
+                {
+                    isFirst = false;
+                }
+                else
+                {
+                    sb.append( ", " );
+                }
+                
+                sb.append( "<" ).append( keys[i] ).append( "," ).append( values[i] ).append( ">" );
+            }
+        }
+        
+        sb.append( "\n" );
         
         return sb.toString();
     }

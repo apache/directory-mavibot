@@ -274,20 +274,20 @@ public class Node<K, V> extends BasePage<K, V>
             System.arraycopy( children, 0, newLeftPage.children, 0, middle + 1 );
             
             // Copy the keys and the values in the right page up to the pos
-            System.arraycopy( keys, middle, newRightPage.keys, 0, pos - middle - 1 );
-            System.arraycopy( children, middle, newRightPage.children, 0, pos - middle - 1 );
+            System.arraycopy( keys, middle + 1, newRightPage.keys, 0, pos - middle - 1 );
+            System.arraycopy( children, middle + 1, newRightPage.children, 0, pos - middle - 1 );
             
             // Add the new element
-            newLeftPage.keys[pos] = pivot;
-            newLeftPage.children[pos] = leftPage;
-            newLeftPage.children[pos+1] = rightPage;
+            newRightPage.keys[pos - middle - 1] = pivot;
+            newRightPage.children[pos - middle - 1] = leftPage;
+            newRightPage.children[pos - middle] = rightPage;
             
             // And copy the remaining elements minus the new pivot
-            System.arraycopy( keys, pos, newLeftPage.keys, pos + 1, nbElems - pos - 1 );
-            System.arraycopy( children, pos, newLeftPage.children, pos + 2, nbElems - pos - 1 );
+            System.arraycopy( keys, pos, newLeftPage.keys, pos - middle, nbElems - pos );
+            System.arraycopy( children, pos, newLeftPage.children, pos + 1 - middle, nbElems - pos );
 
             // Create the result
-            InsertResult<K, V> result = new SplitResult<K, V>( keys[middle - 1], newLeftPage, newRightPage );
+            InsertResult<K, V> result = new SplitResult<K, V>( keys[middle], newLeftPage, newRightPage );
             
             return result;
         }
@@ -355,16 +355,14 @@ public class Node<K, V> extends BasePage<K, V>
         if ( nbElems > 0 )
         {
             // Start with the first child
-            sb.append( children[0].dumpPage( tabs + "    " ) ).append( "\n" );
+            sb.append( children[0].dumpPage( tabs + "    " ) );
             
             for ( int i = 0; i < nbElems; i++ )
             {
                 sb.append( tabs );
-                sb.append( "Node[" );
-                sb.append( super.toString() );
-                sb.append ( "] <" );
+                sb.append ( "<" );
                 sb.append( keys[i] ).append( ">\n" );
-                sb.append( children[i + 1].dumpPage( tabs + "    " ) ).append( "\n" );
+                sb.append( children[i + 1].dumpPage( tabs + "    " ) );
             }
         }
         
