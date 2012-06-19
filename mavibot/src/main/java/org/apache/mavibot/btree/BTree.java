@@ -180,12 +180,27 @@ public class BTree<K, V>
      * @param key Inserted key
      * @param value Inserted value
      * @return Existing value, if any.
+     * @throws IOException TODO
      */
     public V insert( K key, V value ) throws IOException
     {
         long revision = generateRevision();
         
         return insert( key, value, revision );
+    }
+    
+    
+    /**
+     * Find a value in the tree, given its key. if the key is not found,
+     * it will return null.
+     * 
+     * @param key The key we are looking at
+     * @return The found value, or null if the key is not present in the tree
+     * @throws IOException TODO
+     */
+    public V find( K key ) throws IOException
+    {
+        return rootPage.find( key );
     }
 
 

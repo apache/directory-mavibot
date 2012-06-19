@@ -28,7 +28,7 @@ package org.apache.mavibot.btree;
  *
  * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
  */
-public class Node<K, V> extends BasePage<K, V>
+public class Node<K, V> extends AbstractPage<K, V>
 {
     /** Children pages associated with keys. */
     protected Page<K, V>[] children;
@@ -145,6 +145,24 @@ public class Node<K, V> extends BasePage<K, V>
             }
             
             return result;
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public V find( K key )
+    {
+        int pos = findPos( key );
+        
+        if ( pos < 0 )
+        {
+            return children[- ( pos + 1 ) ].find( key );
+        }
+        else
+        {
+            return children[pos].find( key );
         }
     }
     

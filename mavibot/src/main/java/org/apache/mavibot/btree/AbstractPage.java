@@ -28,7 +28,7 @@ package org.apache.mavibot.btree;
  *
  * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
  */
-public class BasePage<K, V> implements Page<K, V>
+public abstract class AbstractPage<K, V> implements Page<K, V>
 {
     /** Parent B+Tree. */
     protected transient BTree<K, V> btree;
@@ -51,7 +51,7 @@ public class BasePage<K, V> implements Page<K, V>
      * 
      * @param btree The associated BTree
      */
-    protected BasePage( BTree<K, V> btree )
+    protected AbstractPage( BTree<K, V> btree )
     {
         this.btree = btree;
     }
@@ -61,7 +61,7 @@ public class BasePage<K, V> implements Page<K, V>
      * Internal constructor used to create Page instance used when a page is being copied or overflow
      */
     @SuppressWarnings("unchecked") // Cannot create an array of generic objects
-    protected BasePage( BTree<K, V> btree, long revision, int nbElems )
+    protected AbstractPage( BTree<K, V> btree, long revision, int nbElems )
     {
         this.btree = btree;
         this.revision = revision;
@@ -79,15 +79,6 @@ public class BasePage<K, V> implements Page<K, V>
         return nbElems;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public InsertResult<K, V> insert( long revision, K key, V value )
-    {
-        return null;
-    }
-    
-    
     /**
      * Find the position of the given key in the page. If we have found the key,
      * we will return its position as a negative value.
@@ -193,23 +184,6 @@ public class BasePage<K, V> implements Page<K, V>
     }
     
     
-    /**
-     * Copy the current page and all its keys, with a new revision.
-     * 
-     * @param revision The new revision
-     * @return The copied page
-     */
-    protected Page<K, V> copy( long revision )
-    {
-        Page<K, V> newPage = new BasePage<K, V>( btree, revision, nbElems );
-
-        // Copy the keys
-        System.arraycopy( keys, 0, ((BasePage<K, V>)newPage).keys, 0, nbElems );
-
-        return newPage;
-    }
-
-
     /**
      * {@inheritDoc}
      */

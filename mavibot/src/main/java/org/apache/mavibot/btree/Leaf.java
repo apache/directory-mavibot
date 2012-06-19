@@ -27,7 +27,7 @@ package org.apache.mavibot.btree;
  *
  * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
  */
-public class Leaf<K, V> extends BasePage<K, V>
+public class Leaf<K, V> extends AbstractPage<K, V>
 {
     /** Values associated with keys */
     private V[] values;
@@ -98,7 +98,25 @@ public class Leaf<K, V> extends BasePage<K, V>
             return result;
         }
     }
-    
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public V find( K key )
+    {
+        int pos = findPos( key );
+        
+        if ( pos < 0 )
+        {
+            return values[- ( pos + 1 ) ];
+        }
+        else
+        {
+            return null;
+        }
+    }
+
     
     /**
      * Copy the current page and all of the keys, values and children, if it's not a leaf.

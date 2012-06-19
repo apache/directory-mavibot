@@ -56,6 +56,15 @@ public interface Page<K, V>
     
     
     /**
+     * Find the value associated with the given key, if any.
+     * 
+     * @param key The key we are looking for
+     * @return The associated value, or null if there is none
+     */
+    V find( K key );
+    
+    
+    /**
      * @return the revision
      */
     long getRevision();
