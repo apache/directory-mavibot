@@ -65,4 +65,18 @@ package org.apache.mavibot.btree;
     {
         return modifiedValue;
     }
+    
+    
+    /**
+     * @see Object#toString()
+     */
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+        
+        sb.append( "ModifyResult, old value = " ).append( modifiedValue );
+        sb.append( ", modifiedPage = " ).append( modifiedPage );
+
+        return sb.toString();
+    }
 }

@@ -76,4 +76,19 @@ package org.apache.mavibot.btree;
     {
         return pivot;
     }
+    
+    
+    /**
+     * @see Object#toString()
+     */
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+        
+        sb.append( "SplitResult, new pivot = " ).append( pivot );
+        sb.append( "\n    leftPage = " ).append( leftPage );
+        sb.append( "\n    rightPage = " ).append( rightPage );
+
+        return sb.toString();
+    }
 }
