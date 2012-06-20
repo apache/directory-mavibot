@@ -149,7 +149,7 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
             }
             else
             {
-                return min;
+                return max;
             }
         }
     }
