@@ -158,7 +158,9 @@ public class Node<K, V> extends AbstractPage<K, V>
         
         if ( pos < 0 )
         {
-            return children[- ( pos + 1 ) ].find( key );
+            // Here, if we have found the key in the node, then we must go down into
+            // the right child, not the left one
+            return children[- pos ].find( key );
         }
         else
         {
