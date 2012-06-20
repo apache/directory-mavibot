@@ -273,13 +273,11 @@ public class Node<K, V> extends AbstractPage<K, V>
             // Copy the keys and the children up to the insertion position
             System.arraycopy( keys, 0, newLeftPage.keys, 0, middle );
             System.arraycopy( children, 0, newLeftPage.children, 0, middle );
+            newLeftPage.children[middle] = leftPage;
             
             // And process the right page now
-            System.arraycopy( keys, middle, newLeftPage.keys, 0, middle );
-            System.arraycopy( children, middle, newLeftPage.children, 1, middle );
-
-            // add the new references
-            newLeftPage.children[middle] = leftPage;
+            System.arraycopy( keys, middle, newRightPage.keys, 0, middle );
+            System.arraycopy( children, middle + 1, newRightPage.children, 1, middle );
             newRightPage.children[0] = rightPage;
             
             // Create the result
@@ -303,8 +301,8 @@ public class Node<K, V> extends AbstractPage<K, V>
             newRightPage.children[pos - middle] = rightPage;
             
             // And copy the remaining elements minus the new pivot
-            System.arraycopy( keys, pos, newLeftPage.keys, pos - middle, nbElems - pos );
-            System.arraycopy( children, pos, newLeftPage.children, pos + 1 - middle, nbElems - pos );
+            System.arraycopy( keys, pos, newRightPage.keys, pos - middle, nbElems - pos );
+            System.arraycopy( children, pos + 1, newRightPage.children, pos + 1 - middle, nbElems - pos );
 
             // Create the result
             InsertResult<K, V> result = new SplitResult<K, V>( keys[middle], newLeftPage, newRightPage );
