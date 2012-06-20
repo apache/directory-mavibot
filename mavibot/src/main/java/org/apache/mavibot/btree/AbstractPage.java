@@ -74,7 +74,7 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
     /**
      * {@inheritDoc}
      */
-    public long getNbElems()
+    public int getNbElems()
     {
         return nbElems;
     }

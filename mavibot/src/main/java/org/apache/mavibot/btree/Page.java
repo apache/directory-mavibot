@@ -32,7 +32,7 @@ public interface Page<K, V>
     /**
      * @return The number of keys present in this page
      */
-    long getNbElems();
+    int getNbElems();
 
 
     /**
