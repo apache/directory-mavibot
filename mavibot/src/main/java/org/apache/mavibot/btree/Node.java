@@ -106,20 +106,7 @@ public class Node<K, V> extends AbstractPage<K, V>
         if ( result instanceof ModifyResult )
         {
             // The child has been modified.
-            ModifyResult<K, V> modifyResult = (ModifyResult<K, V>)result;
-            
-            // Just copy the current page and update its revision
-            Page<K, V> newPage = copy( revision );
-            
-            // Last, we update the children table of the newly created page
-            // to point on the modified child
-            ((Node<K, V>)newPage).children[pos] = modifyResult.modifiedPage;
-            
-            // We can return the result, where we update the modifiedPage,
-            // to avoid the creation of a new object
-            modifyResult.modifiedPage = newPage;
-            
-            return modifyResult;
+            return replaceChild( revision, (ModifyResult<K, V>)result, pos );
         }
         else
         {
@@ -141,7 +128,7 @@ public class Node<K, V> extends AbstractPage<K, V>
             else
             {
                 // The page can contain the new pivot, let's insert it
-                result = addElement( revision, pivot, leftPage, rightPage, pos );
+                result = insertChild( revision, pivot, leftPage, rightPage, pos );
             }
             
             return result;
@@ -170,6 +157,33 @@ public class Node<K, V> extends AbstractPage<K, V>
     
     
     /**
+     * This method is used when we have to replace a child in a page when we have
+     * found the key in the tree (the value will be changed, so we have made
+     * copies of the existing pages).
+     * 
+     * @param revision The current revision
+     * @param result The modified page
+     * @param pos The position of the found key
+     * @return A modified page
+     */
+    private InsertResult<K, V> replaceChild( long revision, ModifyResult<K, V> result, int pos )
+    {
+        // Just copy the current page and update its revision
+        Page<K, V> newPage = copy( revision );
+        
+        // Last, we update the children table of the newly created page
+        // to point on the modified child
+        ((Node<K, V>)newPage).children[pos] = result.modifiedPage;
+        
+        // We can return the result, where we update the modifiedPage,
+        // to avoid the creation of a new object
+        result.modifiedPage = newPage;
+
+        return result;
+    }
+    
+    
+    /**
      * Add a new key into a copy of the current page at a given position. We return the
      * modified page. The new page will have one more key than the current page.
      * 
@@ -180,7 +194,7 @@ public class Node<K, V> extends AbstractPage<K, V>
      * @param pos The position into the page
      * @return The modified page with the <K,V> element added
      */
-    private InsertResult<K, V> addElement( long revision, K key, Page<K, V> leftPage, Page<K, V> rightPage, int pos )
+    private InsertResult<K, V> insertChild( long revision, K key, Page<K, V> leftPage, Page<K, V> rightPage, int pos )
     {
         // First copy the current page, but add one element in the copied page
         Node<K, V> newNode = new Node<K, V>( btree, revision, nbElems + 1 );
@@ -257,7 +271,7 @@ public class Node<K, V> extends AbstractPage<K, V>
             System.arraycopy( keys, pos, newLeftPage.keys, pos + 1, middle - pos - 1 );
             System.arraycopy( children, pos + 1, newLeftPage.children, pos + 2, middle - pos - 1 );
 
-            // Copy the keys and the values in the right page
+            // Copy the keys and the children in the right page
             System.arraycopy( keys, middle, newRightPage.keys, 0, middle );
             System.arraycopy( children, middle, newRightPage.children, 0, middle + 1 );
             
@@ -270,7 +284,7 @@ public class Node<K, V> extends AbstractPage<K, V>
         {
             // A special case : the pivot will be propagated up in the tree
             // The left and right pages will be spread on the two new pages
-            // Copy the keys and the children up to the insertion position
+            // Copy the keys and the children up to the insertion position (here, middle)
             System.arraycopy( keys, 0, newLeftPage.keys, 0, middle );
             System.arraycopy( children, 0, newLeftPage.children, 0, middle );
             newLeftPage.children[middle] = leftPage;
@@ -291,7 +305,7 @@ public class Node<K, V> extends AbstractPage<K, V>
             System.arraycopy( keys, 0, newLeftPage.keys, 0, middle );
             System.arraycopy( children, 0, newLeftPage.children, 0, middle + 1 );
             
-            // Copy the keys and the values in the right page up to the pos
+            // Copy the keys and the children in the right page up to the pos
             System.arraycopy( keys, middle + 1, newRightPage.keys, 0, pos - middle - 1 );
             System.arraycopy( children, middle + 1, newRightPage.children, 0, pos - middle - 1 );
             
