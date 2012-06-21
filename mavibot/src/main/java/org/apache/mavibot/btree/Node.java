@@ -157,6 +157,35 @@ public class Node<K, V> extends AbstractPage<K, V>
     
     
     /**
+     * {@inheritDoc}
+     */
+    public Cursor<K, V> browse( K key, Transaction<K, V> transaction )
+    {
+        int pos = findPos( key );
+        
+        if ( pos < 0 )
+        {
+            // Here, if we have found the key in the node, then we must go down into
+            // the right child, not the left one
+            return children[- pos ].browse( key, transaction );
+        }
+        else
+        {
+            return children[pos].browse( key, transaction );
+        }
+    }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    public Cursor<K, V> browse( Transaction<K, V> transaction )
+    {
+        return children[0].browse( transaction );
+    }
+
+    
+    /**
      * This method is used when we have to replace a child in a page when we have
      * found the key in the tree (the value will be changed, so we have made
      * copies of the existing pages).

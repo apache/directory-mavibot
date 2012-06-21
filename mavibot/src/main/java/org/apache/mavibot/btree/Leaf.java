@@ -30,7 +30,7 @@ package org.apache.mavibot.btree;
 public class Leaf<K, V> extends AbstractPage<K, V>
 {
     /** Values associated with keys */
-    private V[] values;
+    protected V[] values;
     
     /** The page that comes next to this one */
     protected Leaf<K, V> nextPage;
@@ -116,7 +116,67 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             return null;
         }
     }
-
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    public Cursor<K, V> browse( K key, Transaction<K, V> transaction )
+    {
+        int pos = findPos( key );
+        Cursor<K, V> cursor = null;
+        
+        if ( pos < 0 )
+        {
+            // The first element has been found. Create the cursor
+            cursor = new Cursor<K, V>( transaction, this, - ( pos + 1 ) );
+        }
+        else
+        {
+            // The key has not been found. Select the value just above, if we have one
+            if ( pos < nbElems )
+            {
+                cursor = new Cursor<K, V>( transaction, this, pos );
+            }
+            else
+            {
+                if ( nextPage != null )
+                {
+                    cursor = new Cursor<K, V>( transaction, nextPage, 0 );
+                }
+                else
+                {
+                    cursor = new Cursor<K, V>( transaction, null, -1 );
+                }
+            }
+        }
+        
+        return cursor;
+    }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    public Cursor<K, V> browse( Transaction<K, V> transaction )
+    {
+        int pos = 0;
+        Cursor<K, V> cursor = null;
+        
+        if ( nbElems == 0 )
+        {
+            // The tree is empty, we have nothing to return
+            return new Cursor<K, V>( transaction, null, -1 );
+        }
+        else
+        {
+            // Start at the beginning of the page
+            cursor = new Cursor<K, V>( transaction, this, pos );
+        }
+        
+        return cursor;
+    }
+    
     
     /**
      * Copy the current page and all of the keys, values and children, if it's not a leaf.

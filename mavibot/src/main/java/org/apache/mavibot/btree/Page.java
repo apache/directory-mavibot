@@ -65,6 +65,26 @@ public interface Page<K, V>
     
     
     /**
+     * browse the tree, looking for the given key, and create a Cursor on top
+     * of the found result.
+     * 
+     * @param key The key we are looking for.
+     * @param transaction The started transaction for this operation
+     * @return A Cursor to browse the next elements
+     */
+    Cursor<K, V> browse( K key, Transaction<K, V> transaction );
+    
+    
+    /**
+     * browse the whole tree, and create a Cursor on top of it.
+     * 
+     * @param transaction The started transaction for this operation
+     * @return A Cursor to browse the next elements
+     */
+    Cursor<K, V> browse( Transaction<K, V> transaction );
+    
+    
+    /**
      * @return the revision
      */
     long getRevision();

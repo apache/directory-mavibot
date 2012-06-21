@@ -202,6 +202,44 @@ public class BTree<K, V>
     {
         return rootPage.find( key );
     }
+    
+    
+    /**
+     * Creates a cursor starting on the given key
+     * 
+     * @param key The key which is the starting point. If the key is not found,
+     * then the cursor will always return null.
+     * @return A cursor on the btree
+     * @throws IOException
+     */
+    public Cursor<K, V> browse( K key ) throws IOException
+    {
+        Transaction<K, V> transaction = beginReadTransaction();
+        
+        // Fetch the root page for this revision
+        Page<K, V> root = roots.get( transaction.getRevision() );
+        Cursor<K, V> cursor = root.browse( key, transaction );
+        
+        return cursor;
+    }
+    
+    
+    /**
+     * Creates a cursor starting at the beginning of the tree
+     * 
+     * @return A cursor on the btree
+     * @throws IOException
+     */
+    public Cursor<K, V> browse() throws IOException
+    {
+        Transaction<K, V> transaction = beginReadTransaction();
+        
+        // Fetch the root page for this revision
+        Page<K, V> root = roots.get( transaction.getRevision() );
+        Cursor<K, V> cursor = root.browse( transaction );
+        
+        return cursor;
+    }
 
 
     /**
@@ -280,7 +318,20 @@ public class BTree<K, V>
             //releaseWriteLock()
         }
     }
+    
+    
+    public Transaction<K, V> beginReadTransaction()
+    {
+        Transaction<K, V> readTransaction = new Transaction<K, V>( this, revision.get() - 1, System.currentTimeMillis() );
+        
+        return readTransaction;
+    }
 
+    
+    public void commitTransaction( Transaction transaction )
+    {
+        
+    }
 
     /**
      * @return the comparator

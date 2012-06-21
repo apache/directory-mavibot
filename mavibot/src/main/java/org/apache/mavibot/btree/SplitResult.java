@@ -25,8 +25,7 @@ package org.apache.mavibot.btree;
  * 
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
-
- * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
+ * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
  */
 /* No qualifier */ class SplitResult<K, V> implements InsertResult<K, V>
 {
