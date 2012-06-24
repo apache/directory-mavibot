@@ -210,6 +210,64 @@ public class BTreeTest
         
         System.out.println( "Delta : " + ( l2 - l1 ) + ", nbError = " + nbError );
     }
+
+    
+    /**
+     * Test the deletion of elements from a BTree.
+     */
+    @Test
+    public void testPageDelete() throws Exception
+    {
+        Set<Long> expected = new HashSet<Long>();
+        List<Long> added = new ArrayList<Long>();
+        
+        Random random = new Random( System.nanoTime() );
+        
+        BTree<Long, String> btree = new BTree<Long, String>( new LongComparator() );
+        btree.setPageSize( 8 );
+
+        // Insert some values
+        for ( int i = 0; i < 8; i++ )
+        {
+            Long key = (long)random.nextInt( 1024 );
+            String value = "V" + key;
+            added.add( key );
+
+            try
+            {
+                btree.insert( key, value );
+            }
+            catch ( Exception e)
+            {
+                e.printStackTrace();
+                System.out.println( btree );
+                System.out.println( "Error while adding " + value );
+                return;
+            }
+        }
+        
+        assertTrue( checkTree( expected, btree ) );
+        
+        // Now, delete entries
+        for ( long key : added )
+        {
+            System.out.println( "Removing " + key + " from " + btree );
+            try
+            {
+                btree.delete( key );
+            }
+            catch ( Exception e)
+            {
+                e.printStackTrace();
+                System.out.println( btree );
+                System.out.println( "Error while deleting " + key );
+                return;
+            }
+
+            assertTrue( checkTree( expected, btree ) );
+        }
+
+    }
     
     
     /**

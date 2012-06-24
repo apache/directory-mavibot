@@ -53,6 +53,19 @@ public interface Page<K, V>
      * @return Either a modified Page or an Overflow element if the Page was full
      */
     InsertResult<K, V> insert( long revision, K key, V value );
+
+
+    /**
+     * delete an entry with the given key from this page. We first find the place were to
+     * remove the <K,V> into the tree, by recursively browsing the pages :<br/>
+     * <p>
+     * 
+     * @param revision The new revision for the modified pages
+     * @param key The key to delete
+     * @param parent The parent page
+     * @return
+     */
+    DeleteResult<K, V> delete( long revision, K key, Page<K, V> parent );
     
     
     /**
@@ -91,7 +104,7 @@ public interface Page<K, V>
 
 
     /**
-     * @return the id
+     * @return the page ID
      */
     long getId();
     

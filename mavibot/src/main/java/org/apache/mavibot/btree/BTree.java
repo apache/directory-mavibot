@@ -191,6 +191,80 @@ public class BTree<K, V>
     
     
     /**
+     * Delete the entry whch key is given as a parameter. If the entry exists, it will
+     * be removed from the tree, the old tuple will be returned. Otherwise, null is returned.
+     * 
+     * @param key The key for the entry we try to remove
+     * @return A Tuple<K, V> containing the removed entry, or null if it's not found.
+     */
+    public Tuple<K, V> delete( K key ) throws IOException
+    {
+        if ( key == null )
+        {
+            throw new IllegalArgumentException( "Key must not be null" );
+        }
+
+        long revision = generateRevision();
+        
+        return delete( key, revision );
+    }
+    
+    
+    /**
+     * Delete the entry which key is given as a parameter. If the entry exists, it will
+     * be removed from the tree, the old tuple will be returned. Otherwise, null is returned.
+     * 
+     * @param key The key for the entry we try to remove
+     * @return A Tuple<K, V> containing the removed entry, or null if it's not found.
+     */
+    private Tuple<K, V> delete( K key, long revision ) throws IOException
+    {
+        // Commented atm, we will have to play around the idea of transactions later
+        //acquireWriteLock();
+        
+        try
+        {
+            // If the key exists, the existing value will be replaced. We store it
+            // to return it to the caller.
+            Tuple<K, V> tuple = null;
+            
+            // Try to delete the entry starting from the root page. Here, the root
+            // page may be either a Node or a Leaf
+            DeleteResult<K, V> result = rootPage.delete( revision, key, null );
+            
+            if ( result instanceof NotPresentResult )
+            {
+                // Key not found.
+                return null;
+            }
+            
+            if ( result instanceof RemoveResult )
+            {
+                // The element was found, and removed
+                RemoveResult<K, V> removeResult = (RemoveResult<K, V>)result;
+                
+                Page<K, V> newPage = removeResult.modifiedPage;
+                
+                // This is a new root
+                rootPage = newPage;
+                tuple = removeResult.getRemovedElement();
+            }
+
+            // Save the rootPage into the roots with the new revision.
+            roots.put( revision, rootPage );
+            
+            // Return the value we have found if it was modified
+            return tuple;
+        }
+        finally
+        {
+            // See above
+            //releaseWriteLock()
+        }
+    }
+    
+    
+    /**
      * Find a value in the tree, given its key. if the key is not found,
      * it will return null.
      * 

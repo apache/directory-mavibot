@@ -98,6 +98,77 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             return result;
         }
     }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    public DeleteResult<K, V> delete( long revision, K key, Page<K, V> parent )
+    {
+        // Find the key in the page
+        int pos = findPos( key );
+
+        // If the parent is null, then this page is the root page.
+        if ( parent == null )
+        {
+            // Just remove the entry if it's present
+            if ( pos < 0 )
+            {
+                DeleteResult<K, V> result = removeElementFromRoot( revision, -( pos + 1 ) );
+                
+                return result;
+            }
+            else
+            {
+                // Not found : retur the not present result.
+                return NotPresentResult.NOT_PRESENT;
+            }
+        }
+        else
+        {
+            // The current page is not the root
+            return null;
+        }
+    }
+    
+    
+    /**
+     * Remove the element at a given position. The
+     * 
+     * @param revision The revision of the modified page
+     * @param key The key to insert
+     * @param value The value to insert
+     * @param pos The position into the page
+     * @return The modified page with the <K,V> element added
+     */
+    private DeleteResult<K, V> removeElementFromRoot( long revision,int pos )
+    {
+        // First copy the current page, but remove one element in the copied page
+        Leaf<K, V> newRoot = new Leaf<K, V>( btree, revision, nbElems - 1 );
+        
+        // Get the removed element
+        Tuple<K, V> removedElement = new Tuple<K, V>();
+        removedElement.setKey( keys[pos] );
+        removedElement.setValue( values[pos] );
+        
+        // Deal with the special case of an page with only one element by skipping
+        // the copy, as we won't have any remaining  element in the page
+        if ( nbElems > 1 )
+        {
+            // Copy the keys and the values up to the insertion position
+            System.arraycopy( keys, 0, newRoot.keys, 0, pos );
+            System.arraycopy( values, 0, newRoot.values, 0, pos );
+            
+            // And copy the elements after the position
+            System.arraycopy( keys, pos + 1, newRoot.keys, pos, keys.length - pos  - 1 );
+            System.arraycopy( values, pos + 1, newRoot.values, pos, values.length - pos - 1 );
+        }
+        
+        // Create the result
+        DeleteResult<K, V> result = new RemoveResult<K, V>( newRoot, removedElement );
+        
+        return result;
+    }
 
 
     /**

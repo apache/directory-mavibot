@@ -41,9 +41,7 @@ public class Node<K, V> extends AbstractPage<K, V>
      * 
      * @param btree the parent BTree
      * @param revision the Node revision
-     * @param key The new key
-     * @param leftPage The left page
-     * @param rightPage The right page
+     * @param nbElems The number of elements in this Node
      */
     /* No qualifier */ Node( BTree<K, V> btree, long revision, int nbElems )
     {
@@ -133,6 +131,15 @@ public class Node<K, V> extends AbstractPage<K, V>
             
             return result;
         }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public DeleteResult<K, V> delete( long revision, K key, Page<K, V> parent )
+    {
+        return null;
     }
 
 
