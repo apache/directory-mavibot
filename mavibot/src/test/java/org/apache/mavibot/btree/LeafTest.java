@@ -123,4 +123,39 @@ public class LeafTest
         assertNull( newLeaf.find( 3L ) );
         assertEquals( "v4", newLeaf.find( 4L ) );
     }
+
+
+    /**
+     * Test that deleting the first element return the correct result
+     * @throws IOException
+     */
+    @Test
+    public void testDeleteFirstElementFromRootLeaf() throws IOException
+    {
+        Leaf<Long, String> leaf = new Leaf<Long, String>( btree );
+        leaf = insert( leaf, 1L, "v1" );
+        leaf = insert( leaf, 2L, "v2" );
+        leaf = insert( leaf, 3L, "v3" );
+        leaf = insert( leaf, 4L, "v4" );
+        
+        DeleteResult<Long, String> result = leaf.delete( 4L, 1L, null, -1 );
+        
+        assertTrue( result instanceof RemoveResult );
+        
+        RemoveResult<Long, String> removeResult = (RemoveResult<Long, String>)result;
+        
+        Tuple<Long, String> removedElement = removeResult.removedElement;
+        Page<Long, String> newLeaf = removeResult.modifiedPage;
+        Long leftMost = removeResult.newLeftMost;
+        
+        assertEquals( Long.valueOf( 2L), leftMost );
+        assertEquals( Long.valueOf( 1L), removedElement.getKey() );
+        assertEquals( "v1", removedElement.getValue() );
+        assertEquals( 3, newLeaf.getNbElems() );
+
+        assertNull( newLeaf.find( 1L ) );
+        assertEquals( "v2", newLeaf.find( 2L ) );
+        assertEquals( "v3", newLeaf.find( 3L ) );
+        assertEquals( "v4", newLeaf.find( 4L ) );
+    }
 }
