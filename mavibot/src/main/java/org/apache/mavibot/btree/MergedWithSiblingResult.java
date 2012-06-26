@@ -28,7 +28,7 @@ package org.apache.mavibot.btree;
 
  * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
  */
-/* No qualifier */ class RemoveResult<K, V> implements DeleteResult<K, V>
+/* No qualifier */ class MergedWithSiblingResult<K, V> implements DeleteResult<K, V>
 {
     /** The modified page reference */
     protected Page<K, V> modifiedPage;
@@ -43,9 +43,10 @@ package org.apache.mavibot.btree;
      * The default constructor for RemoveResult.
      * 
      * @param modifiedPage The modified page
+     * @param
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
      */
-    public RemoveResult( Page<K, V> modifiedPage, Tuple<K, V> removedElement, K newLeftMost )
+    public MergedWithSiblingResult( Page<K, V> modifiedPage, Tuple<K, V> removedElement, K newLeftMost )
     {
         this.modifiedPage = modifiedPage;
         this.removedElement = removedElement;
@@ -60,6 +61,7 @@ package org.apache.mavibot.btree;
     {
         return modifiedPage;
     }
+    
 
 
     /**
@@ -87,7 +89,7 @@ package org.apache.mavibot.btree;
     {
         StringBuilder sb = new StringBuilder();
         
-        sb.append( "RemoveResult, removed element = " ).append( removedElement );
+        sb.append( "MergedWithSiblingResult, removed element = " ).append( removedElement );
         sb.append( ", modifiedPage = " ).append( modifiedPage );
         sb.append( ", new LeftMost = " ).append( newLeftMost );
 
