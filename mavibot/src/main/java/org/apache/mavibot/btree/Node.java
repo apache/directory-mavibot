@@ -137,7 +137,7 @@ public class Node<K, V> extends AbstractPage<K, V>
     /**
      * {@inheritDoc}
      */
-    public DeleteResult<K, V> delete( long revision, K key, Page<K, V> parent )
+    public DeleteResult<K, V> delete( long revision, K key, Page<K, V> parent, int parentPos )
     {
         return null;
     }

@@ -85,8 +85,10 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         {
             // The current page is not full, it can contain the added element.
             // We insert it into a copied page and return the result
-            InsertResult<K, V> result = addElement( revision, key, value, pos );
+            Page<K, V> modifiedPage = addElement( revision, key, value, pos );
             
+            InsertResult<K, V> result = new ModifyResult<K, V>( modifiedPage, null );
+                
             return result;
         }
         else
@@ -103,31 +105,269 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     /**
      * {@inheritDoc}
      */
-    public DeleteResult<K, V> delete( long revision, K key, Page<K, V> parent )
+    public DeleteResult<K, V> delete( long revision, K key, Page<K, V> parent, int parentPos )
     {
+        // Check that the leaf is not empty
+        if ( nbElems == 0 )
+        {
+            // Empty leaf
+            return NotPresentResult.NOT_PRESENT;
+        }
+        
         // Find the key in the page
         int pos = findPos( key );
+        
+        if ( pos >= 0 )
+        {
+            // Not found : return the not present result.
+            return NotPresentResult.NOT_PRESENT;
+        }
+        
+        int index = -( pos + 1 );
 
         // If the parent is null, then this page is the root page.
         if ( parent == null )
         {
             // Just remove the entry if it's present
-            if ( pos < 0 )
-            {
-                DeleteResult<K, V> result = removeElementFromRoot( revision, -( pos + 1 ) );
-                
-                return result;
-            }
-            else
-            {
-                // Not found : retur the not present result.
-                return NotPresentResult.NOT_PRESENT;
-            }
+            DeleteResult<K, V> result = removeElement( revision, index );
+            
+            return result;
         }
         else
         {
-            // The current page is not the root
-            return null;
+            // The current page is not the root. Check if the leaf has more than N/2
+            // elements
+            int halfSize = btree.pageSize/2;
+            
+            if ( nbElems == halfSize )
+            {
+                // We have to find a sibling now, and either borrow an entry from it
+                // if it has more than N/2 elements, or to merge the two pages.
+                // Check in both next and previous page, if they have the same parent
+                // and select the biggest page with the same parent to borrow an element.
+                Leaf<K,V> sibling = selectSibling( parent, parentPos );
+                
+                if ( sibling.getNbElems() == halfSize )
+                {
+                    // We will merge the current page with its sibling
+                    DeleteResult<K, V> result = mergeWithSibling( revision, sibling, index );
+                    
+                    return result;
+                }
+                else
+                {
+                    // We can borrow the element from the sibling
+                    if ( sibling == prevPage )
+                    {
+                        DeleteResult<K, V> result = borrowFromLeft( revision, sibling, index );
+                        
+                        return result;
+                    }
+                    else
+                    {
+                        // Borrow from the right
+                        DeleteResult<K, V> result = borrowFromRight( revision, sibling, index );
+                        
+                        return result;
+                    }
+                }
+            }
+            else
+            {
+                // The page has more than N/2 elements.
+                // We simply remove the element from the page, and if it was the leftmost,
+                // we return the new pivot (it will replace any instance of the removed
+                // key in its parents)
+                DeleteResult<K, V> result = removeElement( revision, index );
+                
+                return result;
+            }
+        }
+    }
+    
+    
+    /**
+     * Merge the sibling with the current leaf, after having removed the element in the page.
+     * @param revision The new revision
+     * @param sibling The sibling we will merge with
+     * @param pos The position of the removed element
+     * @return The new created leaf containing the sibling and the old page.
+     */
+    private DeleteResult<K, V> mergeWithSibling( long revision, Leaf<K, V> sibling, int pos )
+    {
+        // Create the new page. It will contain N - 1 elements (the maximum number)
+        // as we merge two pages that contain N/2 elements minus the one we remove
+        Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, btree.pageSize - 1 );
+        Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos] );
+        
+        if ( sibling == prevPage )
+        {
+            // The sibling is on the left
+            // Copy all the elements from the sibling first
+            System.arraycopy( sibling.keys, 0, newLeaf.keys, 0, sibling.nbElems );
+            System.arraycopy( sibling.values, 0, newLeaf.values, 0, sibling.nbElems );
+
+            // Copy all the elements from the page up to the deletion position
+            System.arraycopy( keys, 0, newLeaf.keys, sibling.nbElems, pos );
+            System.arraycopy( values, 0, newLeaf.values, sibling.nbElems, pos );
+            
+            // And copy the remaining elements after the deletion point
+            System.arraycopy( keys, pos + 1, newLeaf.keys, sibling.nbElems + pos, nbElems - pos - 1 );
+            System.arraycopy( values, pos + 1, newLeaf.values, sibling.nbElems + pos, nbElems - pos - 1 );
+        }
+        else
+        {
+            // The sibling is on the right
+            // Copy all the elements from the page up to the deletion position
+            System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
+            System.arraycopy( values, 0, newLeaf.values, 0, pos );
+
+            // Then copy the remaining elements after the deletion point
+            System.arraycopy( keys, pos + 1, newLeaf.keys, pos, nbElems - pos - 1 );
+            System.arraycopy( values, pos + 1, newLeaf.values, pos, nbElems - pos - 1 );
+
+            // And copy all the elements from the sibling
+            System.arraycopy( sibling.keys, 0, newLeaf.keys, nbElems - 1, sibling.nbElems );
+            System.arraycopy( sibling.values, 0, newLeaf.values, nbElems - 1, sibling.nbElems );
+        }
+
+        // And create the result
+        DeleteResult<K, V> result = new MergedWithSiblingResult<K, V>( newLeaf, removedElement, newLeaf.keys[0] );
+        
+        return result;
+    }
+    
+    
+    /**
+     * Borrow an element from the left sibling, creating a new sibling with one
+     * less element and creating a new page where the element to remove has been
+     * deleted and the borrowed element added on the left.
+     * 
+     * @param revision The new revision for all the pages
+     * @param sibling The left sibling
+     * @param pos The position of the element to remove
+     * @return The resulting pages
+     */
+    private DeleteResult<K, V> borrowFromLeft( long revision, Leaf<K, V> sibling, int pos )
+    {
+        // The sibling is on the left, borrow the rightmost element
+        K siblingKey = sibling.keys[sibling.getNbElems() - 1];
+        V siblingValue = sibling.values[sibling.getNbElems() - 1 ];
+        
+        // Create the new sibling, with one less element at the end
+        Page<K, V> newSibling = sibling.copy( revision, sibling.getNbElems() - 1 );
+
+        // Create the new page and add the new element at the beginning
+        // First copy the current page, with the same size
+        Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems );
+        
+        // Insert the borrowed element
+        newLeaf.keys[0] = siblingKey;
+        newLeaf.values[0] = siblingValue;
+        
+        // Copy the keys and the values up to the insertion position,
+        System.arraycopy( keys, 0, newLeaf.keys, 1, pos );
+        System.arraycopy( values, 0, newLeaf.values, 1, pos );
+        
+        // And copy the remaining elements
+        System.arraycopy( keys, pos + 1, newLeaf.keys, pos + 1, keys.length - pos - 1 );
+        System.arraycopy( values, pos + 1, newLeaf.values, pos + 1, values.length - pos - 1 );
+        
+        // Update the prev/next references
+        newLeaf.prevPage = this.prevPage;
+        newLeaf.nextPage = this.nextPage;
+
+        // Create the result
+        Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos] );
+
+        DeleteResult<K, V> result = new BorrowedFromSiblingResult<K, V>( newLeaf, newSibling, removedElement, siblingKey );
+        
+        return result;
+    }
+    
+    
+    /**
+     * Borrow an element from the right sibling, creating a new sibling with one
+     * less element and creating a new page where the element to remove has been
+     * deleted and the borrowed element added on the right.
+     * 
+     * @param revision The new revision for all the pages
+     * @param sibling The right sibling
+     * @param pos The position of the element to remove
+     * @return The resulting pages
+     */
+    private DeleteResult<K, V> borrowFromRight( long revision, Leaf<K, V> sibling, int pos )
+    {
+        // The sibling is on the left, borrow the rightmost element
+        K siblingKey = sibling.keys[0];
+        V siblingValue = sibling.values[0];
+        
+        // Create the new sibling
+        Leaf<K, V> newSibling = new Leaf<K, V>( btree, revision, sibling.getNbElems() - 1 );
+
+        // Copy the keys and the values from 1 to N in the new sibling
+        System.arraycopy( keys, 1, newSibling.keys, 0, nbElems - 1 );
+        System.arraycopy( values, 1, newSibling.values, 0, nbElems - 1 );
+
+        // Create the new page and add the new element at the end
+        // First copy the current page, with the same size
+        Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems );
+        
+        // Insert the borrowed element at the end
+        newLeaf.keys[nbElems - 1] = siblingKey;
+        newLeaf.values[nbElems - 1] = siblingValue;
+        
+        // Copy the keys and the values up to the deletion position,
+        System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
+        System.arraycopy( values, 0, newLeaf.values, 0, pos );
+        
+        // And copy the remaining elements
+        System.arraycopy( keys, pos + 1, newLeaf.keys, pos, keys.length - pos - 1 );
+        System.arraycopy( values, pos + 1, newLeaf.values, pos, values.length - pos - 1 );
+        
+        // Update the prev/next references
+        newLeaf.prevPage = this.prevPage;
+        newLeaf.nextPage = this.nextPage;
+
+        // Create the result
+        Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos] );
+
+        DeleteResult<K, V> result = new BorrowedFromSiblingResult<K, V>( newLeaf, newSibling, removedElement, siblingKey );
+        
+        return result;
+    }
+    
+
+    /**
+     * Select the sibling (the prev or next page with the same parent) which has
+     * the more element assuming it's above N/2
+     */
+    private Leaf<K, V> selectSibling( Page<K, V> parent, int parentPos )
+    {
+        if ( parentPos == 0 )
+        {
+            // The current page is referenced on the left of its parent's page :
+            // we will not have a previous page with the same parent
+            return nextPage;
+        }
+        
+        if ( parentPos == parent.getNbElems() )
+        {
+            // The current page is referenced on the right of its parent's page :
+            // we will not have a next page with the same parent
+            return prevPage;
+        }
+
+        int prevPageSize = prevPage.getNbElems();
+        int nextPageSize = nextPage.getNbElems();
+        
+        if ( prevPageSize >= nextPageSize )
+        {
+            return prevPage;
+        }
+        else
+        {
+            return nextPage;
         }
     }
     
@@ -141,31 +381,36 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      * @param pos The position into the page
      * @return The modified page with the <K,V> element added
      */
-    private DeleteResult<K, V> removeElementFromRoot( long revision,int pos )
+    private DeleteResult<K, V> removeElement( long revision,int pos )
     {
         // First copy the current page, but remove one element in the copied page
-        Leaf<K, V> newRoot = new Leaf<K, V>( btree, revision, nbElems - 1 );
+        Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems - 1 );
         
         // Get the removed element
-        Tuple<K, V> removedElement = new Tuple<K, V>();
-        removedElement.setKey( keys[pos] );
-        removedElement.setValue( values[pos] );
+        Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos] );
+        
+        K newLeftMost = null;
         
         // Deal with the special case of an page with only one element by skipping
         // the copy, as we won't have any remaining  element in the page
         if ( nbElems > 1 )
         {
             // Copy the keys and the values up to the insertion position
-            System.arraycopy( keys, 0, newRoot.keys, 0, pos );
-            System.arraycopy( values, 0, newRoot.values, 0, pos );
+            System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
+            System.arraycopy( values, 0, newLeaf.values, 0, pos );
             
             // And copy the elements after the position
-            System.arraycopy( keys, pos + 1, newRoot.keys, pos, keys.length - pos  - 1 );
-            System.arraycopy( values, pos + 1, newRoot.values, pos, values.length - pos - 1 );
+            System.arraycopy( keys, pos + 1, newLeaf.keys, pos, keys.length - pos  - 1 );
+            System.arraycopy( values, pos + 1, newLeaf.values, pos, values.length - pos - 1 );
+            
+            if ( pos == 0 )
+            {
+                newLeftMost = newLeaf.keys[0];
+            }
         }
         
         // Create the result
-        DeleteResult<K, V> result = new RemoveResult<K, V>( newRoot, removedElement );
+        DeleteResult<K, V> result = new RemoveResult<K, V>( newLeaf, removedElement, newLeftMost );
         
         return result;
     }
@@ -310,7 +555,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      * @param pos The position into the page
      * @return The modified page with the <K,V> element added
      */
-    private InsertResult<K, V> addElement( long revision, K key, V value, int pos )
+    private Page<K, V> addElement( long revision, K key, V value, int pos )
     {
         // First copy the current page, but add one element in the copied page
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems + 1 );
@@ -340,10 +585,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         newLeaf.prevPage = this.prevPage;
         newLeaf.nextPage = this.nextPage;
 
-        // Create the result
-        InsertResult<K, V> result = new ModifyResult<K, V>( newLeaf, null );
-        
-        return result;
+        return newLeaf;
     }
     
     

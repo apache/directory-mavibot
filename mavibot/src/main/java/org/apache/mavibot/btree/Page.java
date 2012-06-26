@@ -63,9 +63,10 @@ public interface Page<K, V>
      * @param revision The new revision for the modified pages
      * @param key The key to delete
      * @param parent The parent page
+     * @param parentPos he position of the current page in it's parent
      * @return
      */
-    DeleteResult<K, V> delete( long revision, K key, Page<K, V> parent );
+    DeleteResult<K, V> delete( long revision, K key, Page<K, V> parent, int parentPos );
     
     
     /**

@@ -230,7 +230,7 @@ public class BTree<K, V>
             
             // Try to delete the entry starting from the root page. Here, the root
             // page may be either a Node or a Leaf
-            DeleteResult<K, V> result = rootPage.delete( revision, key, null );
+            DeleteResult<K, V> result = rootPage.delete( revision, key, null, -1 );
             
             if ( result instanceof NotPresentResult )
             {

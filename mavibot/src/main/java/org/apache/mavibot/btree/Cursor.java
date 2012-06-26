@@ -43,7 +43,6 @@ public class Cursor<K, V>
     /** The Tuple used to return the results */
     private Tuple<K, V> tuple = new Tuple<K, V>();
     
-    
     /**
      * Creates a new instance of Cursor, starting on a page at a given position.
      * 
