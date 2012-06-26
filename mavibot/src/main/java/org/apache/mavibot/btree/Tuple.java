@@ -37,12 +37,22 @@ public class Tuple<K, V>
     private V value;
     
     /**
+     * Creates a Tuple with no content
+     */
+    /* No qualifier */ Tuple()
+    {
+    }
+    
+    
+    /**
      * Creates a Tuple containing a key and its associated value.
      * @param key The key
      * @param value The associated value
      */
-    /* No qualifier */ Tuple()
+    /* No qualifier */ Tuple( K key, V value )
     {
+        this.key = key;
+        this.value = value;
     }
 
 
