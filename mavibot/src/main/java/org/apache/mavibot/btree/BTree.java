@@ -20,6 +20,8 @@
 package org.apache.mavibot.btree;
 
 import java.io.IOException;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -55,6 +57,9 @@ public class BTree<K, V>
 
     /** Number of entries in each Page. */
     protected int pageSize;
+    
+    /** The type to use to create the keys */
+    protected Class<?> keyType;
 
 
     /**
@@ -97,6 +102,16 @@ public class BTree<K, V>
         // and increment the revision at the same time
         rootPage = new Leaf<K, V>( this );
         roots.put( revision.getAndIncrement(), rootPage );
+        
+        // We will extract the Type to use for keys, using the comparator for that
+        Class<?> comparatorClass = comparator.getClass();
+        Type[] types = comparatorClass.getGenericInterfaces();
+        Type[] argumentTypes = ((ParameterizedType)types[0]).getActualTypeArguments();
+        
+        if ( ( argumentTypes != null ) && ( argumentTypes.length > 0 ) && ( argumentTypes[0] instanceof Class<?> ) )
+        {
+            keyType = (Class<?>)argumentTypes[0];
+        }
     }
     
     
@@ -422,6 +437,15 @@ public class BTree<K, V>
     public void setComparator( Comparator<K> comparator )
     {
         this.comparator = comparator;
+    }
+
+
+    /**
+     * @return the type for the keys
+     */
+    public Class<?> getKeyType()
+    {
+        return keyType;
     }
 
     

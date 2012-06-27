@@ -19,6 +19,8 @@
  */
 package org.apache.mavibot.btree;
 
+import java.lang.reflect.Array;
+
 /**
  * A MVCC abstract Page. It stores the field and the methods shared by the Node and Leaf
  * classes.
@@ -66,7 +68,10 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
         this.btree = btree;
         this.revision = revision;
         this.nbElems = nbElems;
-        this.keys = (K[])new Object[nbElems];
+        
+        Class<?> keyType = btree.getKeyType();
+        this.keys = (K[])Array.newInstance( keyType, nbElems );
+        
         id = btree.generateRecordId();
     }
 
