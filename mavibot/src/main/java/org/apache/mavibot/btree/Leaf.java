@@ -255,7 +255,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         V siblingValue = sibling.values[sibling.getNbElems() - 1 ];
         
         // Create the new sibling, with one less element at the end
-        Page<K, V> newSibling = sibling.copy( revision, sibling.getNbElems() - 1 );
+        Leaf<K, V> newSibling = (Leaf<K, V>)sibling.copy( revision, sibling.getNbElems() - 1 );
 
         // Create the new page and add the new element at the beginning
         // First copy the current page, with the same size
@@ -274,8 +274,9 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         System.arraycopy( values, pos + 1, newLeaf.values, pos + 1, values.length - pos - 1 );
         
         // Update the prev/next references
-        newLeaf.prevPage = this.prevPage;
+        newLeaf.prevPage = newSibling;
         newLeaf.nextPage = this.nextPage;
+        newSibling.nextPage = newLeaf;
 
         // Create the result
         Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos] );

@@ -158,4 +158,87 @@ public class LeafTest
         assertEquals( "v3", newLeaf.find( 3L ) );
         assertEquals( "v4", newLeaf.find( 4L ) );
     }
+    
+    
+    /**
+     * Check that deleting an element from a leaf with N/2 element works when we borrow
+     * an element in a left page with more than N/2 elements
+     */
+    @Test
+    public void testRemoveBorrowingFromLeftSibling()
+    {
+        Node<Long, String> parent = new Node<Long, String>( btree, 1L, 2 );
+        Leaf<Long, String> left = new Leaf<Long, String>( btree );
+        Leaf<Long, String> target = new Leaf<Long, String>( btree );
+        Leaf<Long, String> right = new Leaf<Long, String>( btree );
+        
+        parent.children[0] = left;
+        parent.children[1] = target;
+        parent.children[2] = right;
+        
+        // Fill the left page
+        left = insert( left, 1L, "v1" );
+        left = insert( left, 2L, "v2" );
+        left = insert( left, 3L, "v3" );
+        left = insert( left, 4L, "v4" );
+        left = insert( left, 5L, "v5" );
+
+        // Fill the target page
+        target = insert( target, 6L, "v6" );
+        target = insert( target, 7L, "v7" );
+        target = insert( target, 8L, "v8" );
+        target = insert( target, 9L, "v9" );
+
+        // Fill the right page
+        right = insert( right, 10L, "v10" );
+        right = insert( right, 11L, "v11" );
+        right = insert( right, 12L, "v12" );
+        right = insert( right, 13L, "v13" );
+
+        // Crate the links between leaves
+        left.prevPage = null;
+        left.nextPage = target;
+
+        target.prevPage = left;
+        target.nextPage = right;
+        
+        right.prevPage = target;
+        right.nextPage = null;
+        
+        // Update the parent
+        parent.keys[0] = 6L;
+        parent.keys[1] = 10L;
+        
+        // Now, delete the element from the target page
+        DeleteResult<Long, String> result = target.delete( 2L, 7L, parent, 1 );
+        
+        assertTrue( result instanceof BorrowedFromSiblingResult );
+        
+        BorrowedFromSiblingResult<Long, String> borrowed = (BorrowedFromSiblingResult<Long, String>)result;
+        assertEquals( Long.valueOf( 5L ), borrowed.newLeftMost );
+        Tuple<Long, String> removedKey = borrowed.getRemovedElement();
+
+        assertEquals( Long.valueOf( 7L ), removedKey.getKey() );
+        
+        // Check the modified leaf
+        Leaf<Long, String> newLeaf = (Leaf<Long, String>)borrowed.getModifiedPage();
+        
+        assertEquals( 4, newLeaf.nbElems );
+        assertEquals( Long.valueOf( 5L ), newLeaf.keys[0] );
+        assertEquals( Long.valueOf( 6L ), newLeaf.keys[1] );
+        assertEquals( Long.valueOf( 8L ), newLeaf.keys[2] );
+        assertEquals( Long.valueOf( 9L ), newLeaf.keys[3] );
+        
+        // Check the sibling
+        Leaf<Long, String> leftSibling = (Leaf<Long, String>)borrowed.getModifiedSibling();
+        
+        assertEquals( 4, leftSibling.nbElems );
+        assertEquals( Long.valueOf( 1L ), leftSibling.keys[0] );
+        assertEquals( Long.valueOf( 2L ), leftSibling.keys[1] );
+        assertEquals( Long.valueOf( 3L ), leftSibling.keys[2] );
+        assertEquals( Long.valueOf( 4L ), leftSibling.keys[3] );
+        
+        assertEquals( leftSibling, newLeaf.prevPage );
+        assertEquals( newLeaf.prevPage, leftSibling );
+    }
 }
