@@ -281,7 +281,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         // Create the result
         Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos] );
 
-        DeleteResult<K, V> result = new BorrowedFromSiblingResult<K, V>( newLeaf, newSibling, removedElement, siblingKey );
+        DeleteResult<K, V> result = new BorrowedFromLeftResult<K, V>( newLeaf, newSibling, removedElement, siblingKey );
         
         return result;
     }
@@ -307,8 +307,8 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         Leaf<K, V> newSibling = new Leaf<K, V>( btree, revision, sibling.getNbElems() - 1 );
 
         // Copy the keys and the values from 1 to N in the new sibling
-        System.arraycopy( keys, 1, newSibling.keys, 0, nbElems - 1 );
-        System.arraycopy( values, 1, newSibling.values, 0, nbElems - 1 );
+        System.arraycopy( sibling.keys, 1, newSibling.keys, 0, sibling.nbElems - 1 );
+        System.arraycopy( sibling.values, 1, newSibling.values, 0, sibling.nbElems - 1 );
 
         // Create the new page and add the new element at the end
         // First copy the current page, with the same size
@@ -328,12 +328,13 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         
         // Update the prev/next references
         newLeaf.prevPage = this.prevPage;
-        newLeaf.nextPage = this.nextPage;
+        newLeaf.nextPage = newSibling;
+        newSibling.prevPage = newLeaf;
 
         // Create the result
         Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos] );
 
-        DeleteResult<K, V> result = new BorrowedFromSiblingResult<K, V>( newLeaf, newSibling, removedElement, siblingKey );
+        DeleteResult<K, V> result = new BorrowedFromRightResult<K, V>( newLeaf, newSibling, removedElement, newSibling.keys[0] );
         
         return result;
     }

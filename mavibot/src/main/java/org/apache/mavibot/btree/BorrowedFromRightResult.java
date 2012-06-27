@@ -28,7 +28,7 @@ package org.apache.mavibot.btree;
 
  * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
  */
-/* No qualifier */ class BorrowedFromSiblingResult<K, V> implements DeleteResult<K, V>
+/* No qualifier */ class BorrowedFromRightResult<K, V> implements DeleteResult<K, V>
 {
     /** The modified page reference */
     protected Page<K, V> modifiedPage;
@@ -49,7 +49,7 @@ package org.apache.mavibot.btree;
      * @param
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
      */
-    public BorrowedFromSiblingResult( Page<K, V> modifiedPage, Page<K, V> modifiedSibling, Tuple<K, V> removedElement, K newLeftMost )
+    public BorrowedFromRightResult( Page<K, V> modifiedPage, Page<K, V> modifiedSibling, Tuple<K, V> removedElement, K newLeftMost )
     {
         this.modifiedPage = modifiedPage;
         this.modifiedSibling = modifiedSibling;

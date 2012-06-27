@@ -195,7 +195,7 @@ public class LeafTest
         right = insert( right, 12L, "v12" );
         right = insert( right, 13L, "v13" );
 
-        // Crate the links between leaves
+        // Create the links between leaves
         left.prevPage = null;
         left.nextPage = target;
 
@@ -212,9 +212,9 @@ public class LeafTest
         // Now, delete the element from the target page
         DeleteResult<Long, String> result = target.delete( 2L, 7L, parent, 1 );
         
-        assertTrue( result instanceof BorrowedFromSiblingResult );
+        assertTrue( result instanceof BorrowedFromLeftResult );
         
-        BorrowedFromSiblingResult<Long, String> borrowed = (BorrowedFromSiblingResult<Long, String>)result;
+        BorrowedFromLeftResult<Long, String> borrowed = (BorrowedFromLeftResult<Long, String>)result;
         assertEquals( Long.valueOf( 5L ), borrowed.newLeftMost );
         Tuple<Long, String> removedKey = borrowed.getRemovedElement();
 
@@ -240,5 +240,88 @@ public class LeafTest
         
         assertEquals( leftSibling, newLeaf.prevPage );
         assertEquals( newLeaf.prevPage, leftSibling );
+    }
+    
+    
+    /**
+     * Check that deleting an element from a leaf with N/2 element works when we borrow
+     * an element in a right page with more than N/2 elements
+     */
+    @Test
+    public void testRemoveBorrowingFromRightSibling()
+    {
+        Node<Long, String> parent = new Node<Long, String>( btree, 1L, 2 );
+        Leaf<Long, String> left = new Leaf<Long, String>( btree );
+        Leaf<Long, String> target = new Leaf<Long, String>( btree );
+        Leaf<Long, String> right = new Leaf<Long, String>( btree );
+        
+        parent.children[0] = left;
+        parent.children[1] = target;
+        parent.children[2] = right;
+        
+        // Fill the left page
+        left = insert( left, 1L, "v1" );
+        left = insert( left, 2L, "v2" );
+        left = insert( left, 3L, "v3" );
+        left = insert( left, 4L, "v4" );
+
+        // Fill the target page
+        target = insert( target, 6L, "v6" );
+        target = insert( target, 7L, "v7" );
+        target = insert( target, 8L, "v8" );
+        target = insert( target, 9L, "v9" );
+
+        // Fill the right page
+        right = insert( right, 10L, "v10" );
+        right = insert( right, 11L, "v11" );
+        right = insert( right, 12L, "v12" );
+        right = insert( right, 13L, "v13" );
+        right = insert( right, 14L, "v14" );
+
+        // Create the links between leaves
+        left.prevPage = null;
+        left.nextPage = target;
+
+        target.prevPage = left;
+        target.nextPage = right;
+        
+        right.prevPage = target;
+        right.nextPage = null;
+        
+        // Update the parent
+        parent.keys[0] = 6L;
+        parent.keys[1] = 10L;
+        
+        // Now, delete the element from the target page
+        DeleteResult<Long, String> result = target.delete( 2L, 7L, parent, 1 );
+        
+        assertTrue( result instanceof BorrowedFromRightResult );
+        
+        BorrowedFromRightResult<Long, String> borrowed = (BorrowedFromRightResult<Long, String>)result;
+        assertEquals( Long.valueOf( 11L ), borrowed.newLeftMost );
+        Tuple<Long, String> removedKey = borrowed.getRemovedElement();
+
+        assertEquals( Long.valueOf( 7L ), removedKey.getKey() );
+        
+        // Check the modified leaf
+        Leaf<Long, String> newLeaf = (Leaf<Long, String>)borrowed.getModifiedPage();
+        
+        assertEquals( 4, newLeaf.nbElems );
+        assertEquals( Long.valueOf( 6L ), newLeaf.keys[0] );
+        assertEquals( Long.valueOf( 8L ), newLeaf.keys[1] );
+        assertEquals( Long.valueOf( 9L ), newLeaf.keys[2] );
+        assertEquals( Long.valueOf( 10L ), newLeaf.keys[3] );
+        
+        // Check the sibling
+        Leaf<Long, String> rightSibling = (Leaf<Long, String>)borrowed.getModifiedSibling();
+        
+        assertEquals( 4, rightSibling.nbElems );
+        assertEquals( Long.valueOf( 11L ), rightSibling.keys[0] );
+        assertEquals( Long.valueOf( 12L ), rightSibling.keys[1] );
+        assertEquals( Long.valueOf( 13L ), rightSibling.keys[2] );
+        assertEquals( Long.valueOf( 14L ), rightSibling.keys[3] );
+        
+        assertEquals( rightSibling, newLeaf.nextPage );
+        assertEquals( newLeaf.nextPage, rightSibling );
     }
 }

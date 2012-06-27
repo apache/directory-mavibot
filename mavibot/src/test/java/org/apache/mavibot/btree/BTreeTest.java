@@ -251,7 +251,7 @@ public class BTreeTest
         // Now, delete entries
         for ( long key : added )
         {
-            System.out.println( "Removing " + key + " from " + btree );
+            //System.out.println( "Removing " + key + " from " + btree );
             try
             {
                 btree.delete( key );
