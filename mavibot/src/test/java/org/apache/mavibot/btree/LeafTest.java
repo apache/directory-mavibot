@@ -324,4 +324,77 @@ public class LeafTest
         assertEquals( rightSibling, newLeaf.nextPage );
         assertEquals( newLeaf.nextPage, rightSibling );
     }
+    
+    
+    /**
+     * Check that deleting an element from a leaf with N/2 element works when we merge
+     * it with one of its sibling, if both has N/2 elements
+     */
+    @Test
+    public void testRemoveMergeWithSibling()
+    {
+        Node<Long, String> parent = new Node<Long, String>( btree, 1L, 2 );
+        Leaf<Long, String> left = new Leaf<Long, String>( btree );
+        Leaf<Long, String> target = new Leaf<Long, String>( btree );
+        Leaf<Long, String> right = new Leaf<Long, String>( btree );
+        
+        parent.children[0] = left;
+        parent.children[1] = target;
+        parent.children[2] = right;
+        
+        // Fill the left page
+        left = insert( left, 1L, "v1" );
+        left = insert( left, 2L, "v2" );
+        left = insert( left, 3L, "v3" );
+        left = insert( left, 4L, "v4" );
+
+        // Fill the target page
+        target = insert( target, 5L, "v5" );
+        target = insert( target, 6L, "v6" );
+        target = insert( target, 7L, "v7" );
+        target = insert( target, 8L, "v8" );
+
+        // Fill the right page
+        right = insert( right, 9L, "v9" );
+        right = insert( right, 10L, "v10" );
+        right = insert( right, 11L, "v11" );
+        right = insert( right, 12L, "v12" );
+
+        // Create the links between leaves
+        left.prevPage = null;
+        left.nextPage = target;
+
+        target.prevPage = left;
+        target.nextPage = right;
+        
+        right.prevPage = target;
+        right.nextPage = null;
+        
+        // Update the parent
+        parent.keys[0] = 5L;
+        parent.keys[1] = 9L;
+        
+        // Now, delete the element from the target page
+        DeleteResult<Long, String> result = target.delete( 2L, 7L, parent, 1 );
+        
+        assertTrue( result instanceof MergedWithSiblingResult );
+        
+        MergedWithSiblingResult<Long, String> merged = (MergedWithSiblingResult<Long, String>)result;
+        assertEquals( Long.valueOf( 1L ), merged.newLeftMost );
+        Tuple<Long, String> removedKey = merged.getRemovedElement();
+
+        assertEquals( Long.valueOf( 7L ), removedKey.getKey() );
+        
+        // Check the modified leaf
+        Leaf<Long, String> newLeaf = (Leaf<Long, String>)merged.getModifiedPage();
+        
+        assertEquals( 7, newLeaf.nbElems );
+        assertEquals( Long.valueOf( 1L ), newLeaf.keys[0] );
+        assertEquals( Long.valueOf( 2L ), newLeaf.keys[1] );
+        assertEquals( Long.valueOf( 3L ), newLeaf.keys[2] );
+        assertEquals( Long.valueOf( 4L ), newLeaf.keys[3] );
+        assertEquals( Long.valueOf( 5L ), newLeaf.keys[4] );
+        assertEquals( Long.valueOf( 6L ), newLeaf.keys[5] );
+        assertEquals( Long.valueOf( 8L ), newLeaf.keys[6] );
+    }
 }
