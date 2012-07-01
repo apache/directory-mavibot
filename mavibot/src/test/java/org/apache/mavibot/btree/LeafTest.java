@@ -172,10 +172,6 @@ public class LeafTest
         Leaf<Long, String> target = new Leaf<Long, String>( btree );
         Leaf<Long, String> right = new Leaf<Long, String>( btree );
         
-        parent.children[0] = left;
-        parent.children[1] = target;
-        parent.children[2] = right;
-        
         // Fill the left page
         left = insert( left, 1L, "v1" );
         left = insert( left, 2L, "v2" );
@@ -195,15 +191,9 @@ public class LeafTest
         right = insert( right, 12L, "v12" );
         right = insert( right, 13L, "v13" );
 
-        // Create the links between leaves
-        left.prevPage = null;
-        left.nextPage = target;
-
-        target.prevPage = left;
-        target.nextPage = right;
-        
-        right.prevPage = target;
-        right.nextPage = null;
+        parent.children[0] = left;
+        parent.children[1] = target;
+        parent.children[2] = right;
         
         // Update the parent
         parent.keys[0] = 6L;
@@ -237,9 +227,6 @@ public class LeafTest
         assertEquals( Long.valueOf( 2L ), leftSibling.keys[1] );
         assertEquals( Long.valueOf( 3L ), leftSibling.keys[2] );
         assertEquals( Long.valueOf( 4L ), leftSibling.keys[3] );
-        
-        assertEquals( leftSibling, newLeaf.prevPage );
-        assertEquals( newLeaf.prevPage, leftSibling );
     }
     
     
@@ -254,10 +241,6 @@ public class LeafTest
         Leaf<Long, String> left = new Leaf<Long, String>( btree );
         Leaf<Long, String> target = new Leaf<Long, String>( btree );
         Leaf<Long, String> right = new Leaf<Long, String>( btree );
-        
-        parent.children[0] = left;
-        parent.children[1] = target;
-        parent.children[2] = right;
         
         // Fill the left page
         left = insert( left, 1L, "v1" );
@@ -278,15 +261,9 @@ public class LeafTest
         right = insert( right, 13L, "v13" );
         right = insert( right, 14L, "v14" );
 
-        // Create the links between leaves
-        left.prevPage = null;
-        left.nextPage = target;
-
-        target.prevPage = left;
-        target.nextPage = right;
-        
-        right.prevPage = target;
-        right.nextPage = null;
+        parent.children[0] = left;
+        parent.children[1] = target;
+        parent.children[2] = right;
         
         // Update the parent
         parent.keys[0] = 6L;
@@ -320,9 +297,6 @@ public class LeafTest
         assertEquals( Long.valueOf( 12L ), rightSibling.keys[1] );
         assertEquals( Long.valueOf( 13L ), rightSibling.keys[2] );
         assertEquals( Long.valueOf( 14L ), rightSibling.keys[3] );
-        
-        assertEquals( rightSibling, newLeaf.nextPage );
-        assertEquals( newLeaf.nextPage, rightSibling );
     }
     
     
@@ -337,10 +311,6 @@ public class LeafTest
         Leaf<Long, String> left = new Leaf<Long, String>( btree );
         Leaf<Long, String> target = new Leaf<Long, String>( btree );
         Leaf<Long, String> right = new Leaf<Long, String>( btree );
-        
-        parent.children[0] = left;
-        parent.children[1] = target;
-        parent.children[2] = right;
         
         // Fill the left page
         left = insert( left, 1L, "v1" );
@@ -359,16 +329,10 @@ public class LeafTest
         right = insert( right, 10L, "v10" );
         right = insert( right, 11L, "v11" );
         right = insert( right, 12L, "v12" );
-
-        // Create the links between leaves
-        left.prevPage = null;
-        left.nextPage = target;
-
-        target.prevPage = left;
-        target.nextPage = right;
         
-        right.prevPage = target;
-        right.nextPage = null;
+        parent.children[0] = left;
+        parent.children[1] = target;
+        parent.children[2] = right;
         
         // Update the parent
         parent.keys[0] = 5L;

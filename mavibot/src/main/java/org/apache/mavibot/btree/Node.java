@@ -19,6 +19,8 @@
  */
 package org.apache.mavibot.btree;
 
+import java.util.LinkedList;
+
 /**
  * A MVCC Node. It stores the keys and references to its children page. It does not
  * contain any value.
@@ -166,7 +168,7 @@ public class Node<K, V> extends AbstractPage<K, V>
     /**
      * {@inheritDoc}
      */
-    public Cursor<K, V> browse( K key, Transaction<K, V> transaction )
+    public Cursor<K, V> browse( K key, Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
     {
         int pos = findPos( key );
         
@@ -174,11 +176,16 @@ public class Node<K, V> extends AbstractPage<K, V>
         {
             // Here, if we have found the key in the node, then we must go down into
             // the right child, not the left one
-            return children[- pos ].browse( key, transaction );
+            
+            stack.push( new ParentPos<K, V>( this, -pos ) );
+            
+            return children[-pos].browse( key, transaction, stack );
         }
         else
         {
-            return children[pos].browse( key, transaction );
+            stack.push( new ParentPos<K, V>( this, pos ) );
+            
+            return children[pos].browse( key, transaction, stack );
         }
     }
     
@@ -186,9 +193,11 @@ public class Node<K, V> extends AbstractPage<K, V>
     /**
      * {@inheritDoc}
      */
-    public Cursor<K, V> browse( Transaction<K, V> transaction )
+    public Cursor<K, V> browse( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
     {
-        return children[0].browse( transaction );
+        stack.push( new ParentPos<K, V>( this, 0 ) );
+        
+        return children[0].browse( transaction, stack );
     }
 
     
@@ -397,13 +406,13 @@ public class Node<K, V> extends AbstractPage<K, V>
         {
             // Start with the first child
             sb.append( children[0].getId() ).append( "-r" ).append( children[0].getRevision() );
-            sb.append( "{" ).append( children[0] ).append( "}" );
+            //sb.append( "{" ).append( children[0] ).append( "}" );
             
             for ( int i = 0; i < nbElems; i++ )
             {
                 sb.append( "|<" ).append( keys[i] ).append( ">|" ).
                     append( children[i + 1].getId() ).append( "-r" ).append( children[i + 1].getRevision() );
-                sb.append( "{" ).append( children[i + 1] ).append( "}" );
+                //sb.append( "{" ).append( children[i + 1] ).append( "}" );
             }
         }
         

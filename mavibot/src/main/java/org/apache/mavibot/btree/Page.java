@@ -19,6 +19,8 @@
  */
 package org.apache.mavibot.btree;
 
+import java.util.LinkedList;
+
 /**
  * A MVCC Page interface.
  * 
@@ -84,18 +86,20 @@ public interface Page<K, V>
      * 
      * @param key The key we are looking for.
      * @param transaction The started transaction for this operation
+     * @param stack The stack of parents we go through to get to this page
      * @return A Cursor to browse the next elements
      */
-    Cursor<K, V> browse( K key, Transaction<K, V> transaction );
+    Cursor<K, V> browse( K key, Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack );
     
     
     /**
      * browse the whole tree, and create a Cursor on top of it.
      * 
      * @param transaction The started transaction for this operation
+     * @param stack The stack of parents we go through to get to this page
      * @return A Cursor to browse the next elements
      */
-    Cursor<K, V> browse( Transaction<K, V> transaction );
+    Cursor<K, V> browse( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack );
     
     
     /**

@@ -35,6 +35,7 @@
 
   <properties>
     <junit.version>4.10</junit.version>
+    <commons.collections.version>3.2.1</commons.collections.version>
   </properties>
 
   <dependencies>
@@ -43,6 +44,12 @@
       <artifactId>junit</artifactId>
       <version>${junit.version}</version>
       <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>commons-collections</groupId>
+      <artifactId>commons-collections</artifactId>
+      <version>${commons.collections.version}</version>
     </dependency>
   </dependencies>
   

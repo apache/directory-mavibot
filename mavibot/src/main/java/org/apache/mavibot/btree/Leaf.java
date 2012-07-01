@@ -19,6 +19,8 @@
  */
 package org.apache.mavibot.btree;
 
+import java.util.LinkedList;
+
 /**
  * A MVCC Leaf. It stores the keys and values. It does not have any children.
  * 
@@ -31,12 +33,6 @@ public class Leaf<K, V> extends AbstractPage<K, V>
 {
     /** Values associated with keys */
     protected V[] values;
-    
-    /** The page that comes next to this one */
-    protected Leaf<K, V> nextPage;
-    
-    /** The page that comes previous to this one */
-    protected Leaf<K, V> prevPage;
     
     
     /**
@@ -145,19 +141,21 @@ public class Leaf<K, V> extends AbstractPage<K, V>
                 // if it has more than N/2 elements, or to merge the two pages.
                 // Check in both next and previous page, if they have the same parent
                 // and select the biggest page with the same parent to borrow an element.
-                Leaf<K,V> sibling = selectSibling( parent, parentPos );
+                int siblingPos = selectSibling( (Node<K, V>)parent, parentPos );
+                
+                Leaf<K, V> sibling = (Leaf<K, V>)((Node<K, V>)parent).children[siblingPos];
                 
                 if ( sibling.getNbElems() == halfSize )
                 {
                     // We will merge the current page with its sibling
-                    DeleteResult<K, V> result = mergeWithSibling( revision, sibling, index );
+                    DeleteResult<K, V> result = mergeWithSibling( revision, sibling, ( siblingPos < index), index );
                     
                     return result;
                 }
                 else
                 {
                     // We can borrow the element from the sibling
-                    if ( sibling == prevPage )
+                    if ( siblingPos < parentPos )
                     {
                         DeleteResult<K, V> result = borrowFromLeft( revision, sibling, index );
                         
@@ -193,14 +191,14 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      * @param pos The position of the removed element
      * @return The new created leaf containing the sibling and the old page.
      */
-    private DeleteResult<K, V> mergeWithSibling( long revision, Leaf<K, V> sibling, int pos )
+    private DeleteResult<K, V> mergeWithSibling( long revision, Leaf<K, V> sibling, boolean isLeft, int pos )
     {
         // Create the new page. It will contain N - 1 elements (the maximum number)
         // as we merge two pages that contain N/2 elements minus the one we remove
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, btree.pageSize - 1 );
         Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos] );
         
-        if ( sibling == prevPage )
+        if ( isLeft )
         {
             // The sibling is on the left
             // Copy all the elements from the sibling first
@@ -273,11 +271,6 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         System.arraycopy( keys, pos + 1, newLeaf.keys, pos + 1, keys.length - pos - 1 );
         System.arraycopy( values, pos + 1, newLeaf.values, pos + 1, values.length - pos - 1 );
         
-        // Update the prev/next references
-        newLeaf.prevPage = newSibling;
-        newLeaf.nextPage = this.nextPage;
-        newSibling.nextPage = newLeaf;
-
         // Create the result
         Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos] );
 
@@ -326,11 +319,6 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         System.arraycopy( keys, pos + 1, newLeaf.keys, pos, keys.length - pos - 1 );
         System.arraycopy( values, pos + 1, newLeaf.values, pos, values.length - pos - 1 );
         
-        // Update the prev/next references
-        newLeaf.prevPage = this.prevPage;
-        newLeaf.nextPage = newSibling;
-        newSibling.prevPage = newLeaf;
-
         // Create the result
         Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos] );
 
@@ -344,32 +332,35 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      * Select the sibling (the prev or next page with the same parent) which has
      * the more element assuming it's above N/2
      */
-    private Leaf<K, V> selectSibling( Page<K, V> parent, int parentPos )
+    private int selectSibling( Node<K, V> parent, int parentPos )
     {
         if ( parentPos == 0 )
         {
             // The current page is referenced on the left of its parent's page :
             // we will not have a previous page with the same parent
-            return nextPage;
+            return 1;
         }
         
         if ( parentPos == parent.getNbElems() )
         {
             // The current page is referenced on the right of its parent's page :
             // we will not have a next page with the same parent
-            return prevPage;
+            return -1;
         }
+        
+        Page<K, V> prevPage = parent.children[parentPos - 1];
+        Page<K, V> nextPage = parent.children[parentPos + 1];
 
         int prevPageSize = prevPage.getNbElems();
         int nextPageSize = nextPage.getNbElems();
         
         if ( prevPageSize >= nextPageSize )
         {
-            return prevPage;
+            return parentPos - 1;
         }
         else
         {
-            return nextPage;
+            return parentPos + 1;
         }
     }
     
@@ -439,33 +430,35 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     /**
      * {@inheritDoc}
      */
-    public Cursor<K, V> browse( K key, Transaction<K, V> transaction )
+    public Cursor<K, V> browse( K key, Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
     {
         int pos = findPos( key );
         Cursor<K, V> cursor = null;
         
         if ( pos < 0 )
         {
+            int index = - ( pos + 1 );
+            
             // The first element has been found. Create the cursor
-            cursor = new Cursor<K, V>( transaction, this, - ( pos + 1 ) );
+            stack.push( new ParentPos<K, V>( this, index ) );
+
+            cursor = new Cursor<K, V>( transaction, stack );
         }
         else
         {
             // The key has not been found. Select the value just above, if we have one
             if ( pos < nbElems )
             {
-                cursor = new Cursor<K, V>( transaction, this, pos );
+                stack.push( new ParentPos<K, V>( this, pos ) );
+
+                cursor = new Cursor<K, V>( transaction, stack );
             }
             else
             {
-                if ( nextPage != null )
-                {
-                    cursor = new Cursor<K, V>( transaction, nextPage, 0 );
-                }
-                else
-                {
-                    cursor = new Cursor<K, V>( transaction, null, -1 );
-                }
+                // Not found : return a null cursor
+                stack.push( new ParentPos<K, V>( this, -1 ) );
+                
+                return new Cursor<K, V>( transaction, stack );
             }
         }
         
@@ -476,20 +469,24 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     /**
      * {@inheritDoc}
      */
-    public Cursor<K, V> browse( Transaction<K, V> transaction )
+    public Cursor<K, V> browse( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack  )
     {
         int pos = 0;
         Cursor<K, V> cursor = null;
         
         if ( nbElems == 0 )
         {
-            // The tree is empty, we have nothing to return
-            return new Cursor<K, V>( transaction, null, -1 );
+            // The tree is empty, it's the root, we have nothing to return
+            stack.push( new ParentPos<K, V>( null, -1 ) );
+            
+            return new Cursor<K, V>( transaction, stack );
         }
         else
         {
             // Start at the beginning of the page
-            cursor = new Cursor<K, V>( transaction, this, pos );
+            stack.push( new ParentPos<K, V>( this, pos ) );
+            
+            cursor = new Cursor<K, V>( transaction, stack );
         }
         
         return cursor;
@@ -536,10 +533,6 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         V oldValue = newLeaf.values[pos];
         newLeaf.values[pos] = value;
         
-        // and update the prev/next references
-        newLeaf.prevPage = this.prevPage;
-        newLeaf.nextPage = this.nextPage;
-        
         // Create the result
         InsertResult<K, V> result = new ModifyResult<K, V>( newLeaf, oldValue );
         
@@ -582,10 +575,6 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             System.arraycopy( keys, pos, newLeaf.keys, pos + 1, keys.length - pos );
             System.arraycopy( values, pos, newLeaf.values, pos + 1, values.length - pos );
         }
-        
-        // Update the prev/next references
-        newLeaf.prevPage = this.prevPage;
-        newLeaf.nextPage = this.nextPage;
 
         return newLeaf;
     }
@@ -664,12 +653,6 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             System.arraycopy( values, pos, rightLeaf.values, rightPos + 1, nbElems -pos );
         }
         
-        // and update the prev/next references
-        leftLeaf.prevPage = this.prevPage;
-        leftLeaf.nextPage = rightLeaf;
-        rightLeaf.prevPage = leftLeaf;
-        rightLeaf.nextPage = this.nextPage;
-        
         // Get the pivot
         K pivot = rightLeaf.keys[0];
         
@@ -690,27 +673,6 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         
         sb.append( "Leaf[" );
         sb.append( super.toString() );
-        sb.append( ", prev:" );
-        
-        if ( prevPage == null )
-        {
-            sb.append( "null" );
-        }
-        else
-        {
-            sb.append( prevPage.revision );
-        }
-        
-        sb.append( ", next:" );
-        
-        if ( nextPage == null )
-        {
-            sb.append( "null" );
-        }
-        else
-        {
-            sb.append( nextPage.revision );
-        }
 
         sb.append ( "] -> {" );
         

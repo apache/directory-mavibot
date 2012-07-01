@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -307,7 +308,7 @@ public class BTree<K, V>
         
         // Fetch the root page for this revision
         Page<K, V> root = roots.get( transaction.getRevision() );
-        Cursor<K, V> cursor = root.browse( key, transaction );
+        Cursor<K, V> cursor = root.browse( key, transaction, new LinkedList<ParentPos<K, V>>() );
         
         return cursor;
     }
@@ -325,7 +326,9 @@ public class BTree<K, V>
         
         // Fetch the root page for this revision
         Page<K, V> root = roots.get( transaction.getRevision() );
-        Cursor<K, V> cursor = root.browse( transaction );
+        LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
+        
+        Cursor<K, V> cursor = root.browse( transaction, stack );
         
         return cursor;
     }

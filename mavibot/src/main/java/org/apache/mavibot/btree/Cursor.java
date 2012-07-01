@@ -19,6 +19,8 @@
  */
 package org.apache.mavibot.btree;
 
+import java.util.LinkedList;
+
 /**
  * A Cursor is used to fetch elements in a BTree and is returned by the
  * @see BTree#browse method. The cursor <strng>must</strong> be closed
@@ -34,14 +36,11 @@ public class Cursor<K, V>
     /** The transaction used for this cursor */
     private Transaction<K, V> transaction;
     
-    /** The current leaf */
-    private Leaf<K, V> leaf;
-    
-    /** The current position in the leaf */
-    private int pos;
-    
     /** The Tuple used to return the results */
     private Tuple<K, V> tuple = new Tuple<K, V>();
+    
+    /** The stack of pages from the root down to the leaf */
+    private LinkedList<ParentPos<K, V>> stack;
     
     /**
      * Creates a new instance of Cursor, starting on a page at a given position.
@@ -50,11 +49,10 @@ public class Cursor<K, V>
      * @param leaf The page in which the first element is present
      * @param pos The position of the first element
      */
-    public Cursor( Transaction<K, V> transaction, Leaf<K, V> leaf, int pos )
+    public Cursor( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack  )
     {
         this.transaction = transaction;
-        this.leaf = leaf;
-        this.pos = pos;
+        this.stack = stack;
     }
     
     
@@ -65,31 +63,109 @@ public class Cursor<K, V>
      */
     public Tuple<K, V> next()
     {
-        if ( leaf == null )
+        ParentPos<K, V> parentPos = stack.getFirst();
+        
+        if ( parentPos.page == null )
         {
             return new Tuple<K, V>();
         }
         
-        if ( pos == leaf.nbElems )
+        if ( parentPos.pos == parentPos.page.getNbElems() )
         {
-            if ( leaf.nextPage == null )
+            // End of the leaf. We have to go back into the stack up to the
+            // parent, and down to the leaf
+            parentPos = findNextLeaf();
+            
+            if ( parentPos.page == null )
             {
                 // This is the end : no more value
                 return null;
             }
-            else
-            {
-                leaf = leaf.nextPage;
-                pos = 0;
-            }
         }
 
-        tuple.setKey( leaf.keys[pos] );
-        tuple.setValue( leaf.values[pos] );
+        Leaf<K, V> leaf = (Leaf<K, V>)(parentPos.page);
+        tuple.setKey( leaf.keys[parentPos.pos] );
+        tuple.setValue( leaf.values[parentPos.pos] );
         
-        pos++;
+        parentPos.pos++;
 
         return tuple;
+    }
+    
+    
+    private ParentPos<K, V> findNextLeaf()
+    {
+        while ( true )
+        {
+            ParentPos<K, V> parentPos = stack.peek();
+            
+            if ( parentPos == null )
+            {
+                return null;
+            }
+            
+            if ( parentPos.pos == parentPos.page.getNbElems() )
+            {
+                stack.pop();
+                continue;
+            }
+            else
+            {
+                int newPos = ++parentPos.pos;
+                ParentPos<K, V> newParentPos = parentPos;
+                
+                while ( newParentPos.page instanceof Node )
+                {
+                    Node<K, V> node = (Node<K, V>)newParentPos.page;
+                    
+                    newParentPos = new ParentPos<K, V>( node.children[newPos], 0 );
+                    
+                    stack.push( newParentPos );
+                    
+                    newPos = 0;
+                }
+                
+                return newParentPos;
+            }
+        }
+    }
+    
+    
+    private ParentPos<K, V> findPreviousLeaf()
+    {
+        while ( true )
+        {
+            ParentPos<K, V> parentPos = stack.peek();
+            
+            if ( parentPos == null )
+            {
+                return null;
+            }
+            
+            if ( parentPos.pos == 0 )
+            {
+                stack.pop();
+                continue;
+            }
+            else
+            {
+                int newPos = --parentPos.pos;
+                ParentPos<K, V> newParentPos = parentPos;
+                
+                while ( newParentPos.page instanceof Node )
+                {
+                    Node<K, V> node = (Node<K, V>)newParentPos.page;
+                    
+                    newParentPos = new ParentPos<K, V>( node.children[newPos], node.children[newPos].getNbElems() );
+                    
+                    stack.push( newParentPos );
+                    
+                    newPos = node.getNbElems();
+                }
+                
+                return newParentPos;
+            }
+        }
     }
     
     
@@ -100,24 +176,32 @@ public class Cursor<K, V>
      */
     public Tuple<K, V> prev()
     {
-        if ( pos == 0 )
+        ParentPos<K, V> parentPos = stack.peek();
+        
+        if ( parentPos.page == null )
         {
-            if ( leaf.prevPage == null )
+            return new Tuple<K, V>();
+        }
+        
+        if ( parentPos.pos == 0 )
+        {
+            // End of the leaf. We have to go back into the stack up to the
+            // parent, and down to the leaf
+            parentPos = findPreviousLeaf();
+            
+            if ( parentPos.page == null )
             {
                 // This is the end : no more value
                 return null;
             }
-            else
-            {
-                leaf = leaf.prevPage;
-                pos = leaf.getNbElems();
-            }
         }
 
-        pos--;
+        Leaf<K, V> leaf = (Leaf<K, V>)(parentPos.page);
+        
+        parentPos.pos--;
 
-        tuple.setKey( leaf.keys[pos] );
-        tuple.setValue( leaf.values[pos] );
+        tuple.setKey( leaf.keys[parentPos.pos] );
+        tuple.setValue( leaf.values[parentPos.pos] );
 
         return tuple;
     }
@@ -129,26 +213,27 @@ public class Cursor<K, V>
      */
     public boolean hasNext()
     {
-        if ( leaf == null )
+        ParentPos<K, V> parentPos = stack.peek();
+        
+        if ( parentPos.page == null )
         {
             return false;
         }
         
-        if ( pos < leaf.nbElems )
+        if ( parentPos.pos == parentPos.page.getNbElems() )
         {
-            return true;
+            // Remove the leaf from the stack
+            stack.pop();
+            
+            // End of the leaf. We have to go back into the stack up to the
+            // parent, and down to the leaf
+            parentPos = findNextLeaf();
+            
+            return ( parentPos != null ) && ( parentPos.page != null );
         }
         else
         {
-            if ( leaf.nextPage == null )
-            {
-                // This is the end : no more value
-                return false;
-            }
-            else
-            {
-                return true;
-            }
+            return true;
         }
     }
     
@@ -159,26 +244,27 @@ public class Cursor<K, V>
      */
     public boolean hasPrev()
     {
-        if ( leaf == null )
+        ParentPos<K, V> parentPos = stack.peek();
+        
+        if ( parentPos.page == null )
         {
             return false;
         }
         
-        if ( pos > 0 )
+        if ( parentPos.pos == 0 )
         {
-            return true;
+            // Remove the leaf from the stack
+            stack.pop();
+            
+            // Start of the leaf. We have to go back into the stack up to the
+            // parent, and down to the leaf
+            parentPos = findPreviousLeaf();
+            
+            return ( parentPos != null ) && ( parentPos.page != null );
         }
         else
         {
-            if ( leaf.prevPage == null )
-            {
-                // This is the end : no more value
-                return false;
-            }
-            else
-            {
-                return true;
-            }
+            return true;
         }
     }
     
