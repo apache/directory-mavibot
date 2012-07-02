@@ -29,7 +29,7 @@ import java.util.LinkedList;
  *
  * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
  */
-public interface Page<K, V>
+/* No qualifier */ interface Page<K, V>
 {
     /**
      * @return The number of keys present in this page
@@ -54,7 +54,7 @@ public interface Page<K, V>
      * @param value Inserted value
      * @return Either a modified Page or an Overflow element if the Page was full
      */
-    InsertResult<K, V> insert( long revision, K key, V value );
+    /* No qualifier */ InsertResult<K, V> insert( long revision, K key, V value );
 
 
     /**

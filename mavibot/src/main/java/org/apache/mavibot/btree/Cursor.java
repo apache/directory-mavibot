@@ -25,13 +25,14 @@ import java.util.LinkedList;
  * A Cursor is used to fetch elements in a BTree and is returned by the
  * @see BTree#browse method. The cursor <strng>must</strong> be closed
  * when the user is done with it.
+ * <p>
  * 
  * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
  *
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
  */
-public class Cursor<K, V>
+/* No qualifier */ class Cursor<K, V>
 {
     /** The transaction used for this cursor */
     private Transaction<K, V> transaction;
@@ -46,10 +47,9 @@ public class Cursor<K, V>
      * Creates a new instance of Cursor, starting on a page at a given position.
      * 
      * @param transaction The transaction this operation is protected by
-     * @param leaf The page in which the first element is present
-     * @param pos The position of the first element
+     * @param stack The stack of parent's from root to this page
      */
-    public Cursor( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack  )
+    /* No qualifier */ Cursor( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack  )
     {
         this.transaction = transaction;
         this.stack = stack;
@@ -61,7 +61,7 @@ public class Cursor<K, V>
      * 
      * @return A Tuple containing the found key and value
      */
-    public Tuple<K, V> next()
+    /* No qualifier */ Tuple<K, V> next()
     {
         ParentPos<K, V> parentPos = stack.getFirst();
         
@@ -74,7 +74,7 @@ public class Cursor<K, V>
         {
             // End of the leaf. We have to go back into the stack up to the
             // parent, and down to the leaf
-            parentPos = findNextLeaf();
+            parentPos = findNextParentPos();
             
             if ( parentPos.page == null )
             {
@@ -93,10 +93,17 @@ public class Cursor<K, V>
     }
     
     
-    private ParentPos<K, V> findNextLeaf()
+    /**
+     * Find the leaf containing the following elements.
+     * 
+     * @return the new ParentPos instance, or null if we have no following leaf
+     */
+    private ParentPos<K, V> findNextParentPos()
     {
         while ( true )
         {
+            // We first go up the tree, until we reach a page which current position
+            // is not the last one
             ParentPos<K, V> parentPos = stack.peek();
             
             if ( parentPos == null )
@@ -111,6 +118,7 @@ public class Cursor<K, V>
             }
             else
             {
+                // Then we go down the tree until we find a leaf which position is not the last one.
                 int newPos = ++parentPos.pos;
                 ParentPos<K, V> newParentPos = parentPos;
                 
@@ -131,10 +139,17 @@ public class Cursor<K, V>
     }
     
     
-    private ParentPos<K, V> findPreviousLeaf()
+    /**
+     * Find the leaf containing the previous elements.
+     * 
+     * @return the new ParentPos instance, or null if we have no previous leaf
+     */
+    private ParentPos<K, V> findPreviousParentPos()
     {
         while ( true )
         {
+            // We first go up the tree, until we reach a page which current position
+            // is not the first one
             ParentPos<K, V> parentPos = stack.peek();
             
             if ( parentPos == null )
@@ -149,6 +164,7 @@ public class Cursor<K, V>
             }
             else
             {
+                // Then we go down the tree until we find a leaf which position is not the first one.
                 int newPos = --parentPos.pos;
                 ParentPos<K, V> newParentPos = parentPos;
                 
@@ -174,7 +190,7 @@ public class Cursor<K, V>
      * 
      * @return A Tuple containing the found key and value
      */
-    public Tuple<K, V> prev()
+    /* No qualifier */ Tuple<K, V> prev()
     {
         ParentPos<K, V> parentPos = stack.peek();
         
@@ -187,7 +203,7 @@ public class Cursor<K, V>
         {
             // End of the leaf. We have to go back into the stack up to the
             // parent, and down to the leaf
-            parentPos = findPreviousLeaf();
+            parentPos = findPreviousParentPos();
             
             if ( parentPos.page == null )
             {
@@ -211,7 +227,7 @@ public class Cursor<K, V>
      * Tells if the cursor can return a next element
      * @return true if there are some more elements
      */
-    public boolean hasNext()
+    /* No qualifier */ boolean hasNext()
     {
         ParentPos<K, V> parentPos = stack.peek();
         
@@ -227,7 +243,7 @@ public class Cursor<K, V>
             
             // End of the leaf. We have to go back into the stack up to the
             // parent, and down to the leaf
-            parentPos = findNextLeaf();
+            parentPos = findNextParentPos();
             
             return ( parentPos != null ) && ( parentPos.page != null );
         }
@@ -242,7 +258,7 @@ public class Cursor<K, V>
      * Tells if the cursor can return a previous element
      * @return true if there are some more elements
      */
-    public boolean hasPrev()
+    /* No qualifier */ boolean hasPrev()
     {
         ParentPos<K, V> parentPos = stack.peek();
         
@@ -258,7 +274,7 @@ public class Cursor<K, V>
             
             // Start of the leaf. We have to go back into the stack up to the
             // parent, and down to the leaf
-            parentPos = findPreviousLeaf();
+            parentPos = findPreviousParentPos();
             
             return ( parentPos != null ) && ( parentPos.page != null );
         }

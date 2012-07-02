@@ -38,7 +38,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     /**
      * Empty constructor
      */
-    public Leaf( BTree<K, V> btree )
+    /* No qualifier */ Leaf( BTree<K, V> btree )
     {
         super( btree );
     }
@@ -101,6 +101,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     /**
      * {@inheritDoc}
      */
+    @SuppressWarnings("unchecked")
     public DeleteResult<K, V> delete( long revision, K key, Page<K, V> parent, int parentPos )
     {
         // Check that the leaf is not empty
@@ -186,8 +187,10 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     
     /**
      * Merge the sibling with the current leaf, after having removed the element in the page.
+     * 
      * @param revision The new revision
      * @param sibling The sibling we will merge with
+     * @param isLeft Tells if the sibling is on the left or on the right
      * @param pos The position of the removed element
      * @return The new created leaf containing the sibling and the old page.
      */
@@ -331,6 +334,10 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     /**
      * Select the sibling (the prev or next page with the same parent) which has
      * the more element assuming it's above N/2
+     * 
+     * @param parent The parent of the current page
+     * @param The position of the current page reference in its parent
+     * @return The position of the sibling, or -1 if we hav'nt found any sibling
      */
     private int selectSibling( Node<K, V> parent, int parentPos )
     {
@@ -369,9 +376,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      * Remove the element at a given position. The
      * 
      * @param revision The revision of the modified page
-     * @param key The key to insert
-     * @param value The value to insert
-     * @param pos The position into the page
+     * @param pos The position into the page of the element to remove
      * @return The modified page with the <K,V> element added
      */
     private DeleteResult<K, V> removeElement( long revision,int pos )
@@ -497,6 +502,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      * Copy the current page and all of the keys, values and children, if it's not a leaf.
      * 
      * @param revision The new revision
+     * @param nbElems The number of elements to copy
      * @return The copied page
      */
     private Page<K, V> copy( long revision, int nbElems )
@@ -515,8 +521,9 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      * Copy the current page if needed, and replace the value at the position we have found the key.
      * 
      * @param revision The new page revision
-     * @param pos The position of the key in the page
+     * @param key The new key
      * @param value the new value
+     * @param pos The position of the key in the page
      * @return The copied page
      */
     private InsertResult<K, V> replaceElement( long revision, K key, V value, int pos )
@@ -656,7 +663,6 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         // Get the pivot
         K pivot = rightLeaf.keys[0];
         
-        // Prepare the result
         // Create the result
         InsertResult<K, V> result = new SplitResult<K, V>( pivot, leftLeaf, rightLeaf );
         
