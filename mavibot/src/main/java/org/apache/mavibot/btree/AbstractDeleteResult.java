@@ -20,40 +20,62 @@
 package org.apache.mavibot.btree;
 
 /**
- * The result of a delete operation, when the child has not been merged. It contains the
- * reference to the modified page, and the removed element.
+ * An abstract class to gather common elements of the DeleteResult
  * 
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
 
  * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
  */
-/* No qualifier */ class RemoveResult<K, V> extends AbstractDeleteResult<K, V>
+/* No qualifier */ abstract class AbstractDeleteResult<K, V> implements DeleteResult<K, V>
 {
+    /** The modified page reference */
+    protected Page<K, V> modifiedPage;
+    
+    /** The removed element if the key was found in the tree*/
+    protected Tuple<K, V> removedElement;
+    
+    /** The new leftmost element if the removed k was on position 0. Null otherwise */
+    protected K newLeftMost;
+    
     /**
-     * The default constructor for RemoveResult.
+     * The default constructor for AbstractDeleteResult.
      * 
      * @param modifiedPage The modified page
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
      * @param newLeftMost The element on the left of he current page
      */
-    /* No qualifier */ RemoveResult( Page<K, V> modifiedPage, Tuple<K, V> removedElement, K newLeftMost )
+    /* No qualifier */ AbstractDeleteResult( Page<K, V> modifiedPage, Tuple<K, V> removedElement, K newLeftMost )
     {
-        super( modifiedPage, removedElement, newLeftMost );
+        this.modifiedPage = modifiedPage;
+        this.removedElement = removedElement;
+        this.newLeftMost = newLeftMost;
     }
     
     
     /**
-     * @see Object#toString()
+     * @return the modifiedPage
      */
-    public String toString()
+    /* No qualifier */ Page<K, V> getModifiedPage()
     {
-        StringBuilder sb = new StringBuilder();
-        
-        sb.append( "RemoveResult, removed element = " ).append( removedElement );
-        sb.append( ", modifiedPage = " ).append( modifiedPage );
-        sb.append( ", new LeftMost = " ).append( newLeftMost );
+        return modifiedPage;
+    }
 
-        return sb.toString();
+
+    /**
+     * @return the removed element
+     */
+    /* No qualifier */ Tuple<K, V> getRemovedElement()
+    {
+        return removedElement;
+    }
+
+
+    /**
+     * @return the newLeftMost
+     */
+    /* No qualifier */ K getNewLeftMost()
+    {
+        return newLeftMost;
     }
 }

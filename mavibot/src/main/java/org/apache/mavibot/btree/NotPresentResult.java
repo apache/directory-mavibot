@@ -27,10 +27,15 @@ package org.apache.mavibot.btree;
 
  * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
  */
-class NotPresentResult<K, V> implements DeleteResult<K, V>
+/* No qualifier */ class NotPresentResult<K, V> implements DeleteResult<K, V>
 {
-    public static final NotPresentResult NOT_PRESENT = new NotPresentResult();
+    /** The unique instance for this class */
+    @SuppressWarnings("rawtypes")
+    /* No qualifier */ static final NotPresentResult NOT_PRESENT = new NotPresentResult();
     
+    /**
+     * A private void constructor, as we won't have any other instance.
+     */
     private NotPresentResult()
     {
         // Do nothing

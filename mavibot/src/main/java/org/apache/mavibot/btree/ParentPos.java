@@ -20,13 +20,15 @@
 package org.apache.mavibot.btree;
 
 /**
+ * This class is used to store the parent page and the position in it during
+ * a browse operation. We have as many ParentPos instance than the depth of the tree.
  * 
  * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
  *
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
  */
-public class ParentPos<K, V>
+/* No qualifier*/ class ParentPos<K, V>
 {
     /** The page we are browsing */
     /* No qualifier*/ Page<K, V> page;
@@ -34,7 +36,12 @@ public class ParentPos<K, V>
     /** The current position in the page */
     /* No qualifier*/ int pos;
     
-    public ParentPos( Page<K, V> page, int pos )
+    /**
+     * Creates a new instance of ParentPos
+     * @param page The current Page
+     * @param pos The current position in the page
+     */
+    /* No qualifier*/ ParentPos( Page<K, V> page, int pos )
     {
         this.page = page;
         this.pos = pos;

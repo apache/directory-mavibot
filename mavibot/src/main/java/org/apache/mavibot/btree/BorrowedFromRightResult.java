@@ -28,19 +28,10 @@ package org.apache.mavibot.btree;
 
  * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
  */
-/* No qualifier */ class BorrowedFromRightResult<K, V> implements DeleteResult<K, V>
+/* No qualifier */ class BorrowedFromRightResult<K, V> extends AbstractDeleteResult<K, V>
 {
-    /** The modified page reference */
-    protected Page<K, V> modifiedPage;
-    
     /** The modified sibling reference */
-    protected Page<K, V> modifiedSibling;
-    
-    /** The removed element if the key was found in the tree*/
-    protected Tuple<K, V> removedElement;
-    
-    /** The new leftmost element if the removed k was on position 0. Null otherwise */
-    protected K newLeftMost;
+    private Page<K, V> modifiedSibling;
     
     /**
      * The default constructor for RemoveResult.
@@ -49,48 +40,19 @@ package org.apache.mavibot.btree;
      * @param
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
      */
-    public BorrowedFromRightResult( Page<K, V> modifiedPage, Page<K, V> modifiedSibling, Tuple<K, V> removedElement, K newLeftMost )
+    /* No qualifier */ BorrowedFromRightResult( Page<K, V> modifiedPage, Page<K, V> modifiedSibling, Tuple<K, V> removedElement, K newLeftMost )
     {
-        this.modifiedPage = modifiedPage;
+        super( modifiedPage, removedElement, newLeftMost );
         this.modifiedSibling = modifiedSibling;
-        this.removedElement = removedElement;
-        this.newLeftMost = newLeftMost;
-    }
-    
-
-    /**
-     * @return the modifiedPage
-     */
-    public Page<K, V> getModifiedPage()
-    {
-        return modifiedPage;
     }
     
 
     /**
      * @return the modifiedSibling
      */
-    public Page<K, V> getModifiedSibling()
+    /* No qualifier */ Page<K, V> getModifiedSibling()
     {
         return modifiedSibling;
-    }
-
-
-    /**
-     * @return the removed element
-     */
-    public Tuple<K, V> getRemovedElement()
-    {
-        return removedElement;
-    }
-
-
-    /**
-     * @return the newLeftMost
-     */
-    public K getNewLeftMost()
-    {
-        return newLeftMost;
     }
     
     

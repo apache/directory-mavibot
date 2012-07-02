@@ -69,6 +69,8 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
         this.revision = revision;
         this.nbElems = nbElems;
         
+        // We get the type of array to create from the btree
+        // Yes, this is an hack...
         Class<?> keyType = btree.getKeyType();
         this.keys = (K[])Array.newInstance( keyType, nbElems );
         
@@ -83,6 +85,7 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
     {
         return nbElems;
     }
+    
 
     /**
      * Find the position of the given key in the page. If we have found the key,
