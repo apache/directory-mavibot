@@ -28,57 +28,18 @@ package org.apache.mavibot.btree;
 
  * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
  */
-/* No qualifier */ class MergedWithSiblingResult<K, V> implements DeleteResult<K, V>
+/* No qualifier */ class MergedWithSiblingResult<K, V> extends AbstractDeleteResult<K, V>
 {
-    /** The modified page reference */
-    protected Page<K, V> modifiedPage;
-    
-    /** The removed element if the key was found in the tree*/
-    protected Tuple<K, V> removedElement;
-    
-    /** The new leftmost element if the removed k was on position 0. Null otherwise */
-    protected K newLeftMost;
-    
     /**
      * The default constructor for RemoveResult.
      * 
      * @param modifiedPage The modified page
-     * @param
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
+     * @param newLeftMost The element on the left of he current page
      */
-    public MergedWithSiblingResult( Page<K, V> modifiedPage, Tuple<K, V> removedElement, K newLeftMost )
+    /* No qualifier */ MergedWithSiblingResult( Page<K, V> modifiedPage, Tuple<K, V> removedElement, K newLeftMost )
     {
-        this.modifiedPage = modifiedPage;
-        this.removedElement = removedElement;
-        this.newLeftMost = newLeftMost;
-    }
-    
-
-    /**
-     * @return the modifiedPage
-     */
-    public Page<K, V> getModifiedPage()
-    {
-        return modifiedPage;
-    }
-    
-
-
-    /**
-     * @return the removed element
-     */
-    public Tuple<K, V> getRemovedElement()
-    {
-        return removedElement;
-    }
-
-
-    /**
-     * @return the newLeftMost
-     */
-    public K getNewLeftMost()
-    {
-        return newLeftMost;
+        super( modifiedPage, removedElement, newLeftMost );
     }
     
     
