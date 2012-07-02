@@ -19,6 +19,7 @@
  */
 package org.apache.mavibot.btree;
 
+import java.lang.reflect.Array;
 import java.util.LinkedList;
 
 /**
@@ -30,7 +31,7 @@ import java.util.LinkedList;
  *
  * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
  */
-public class Node<K, V> extends AbstractPage<K, V>
+/* No qualifier */ class Node<K, V> extends AbstractPage<K, V>
 {
     /** Children pages associated with keys. */
     protected Page<K, V>[] children;
@@ -45,6 +46,7 @@ public class Node<K, V> extends AbstractPage<K, V>
      * @param revision the Node revision
      * @param nbElems The number of elements in this Node
      */
+    @SuppressWarnings("unchecked")
     /* No qualifier */ Node( BTree<K, V> btree, long revision, int nbElems )
     {
         super( btree, revision, nbElems );
@@ -65,6 +67,7 @@ public class Node<K, V> extends AbstractPage<K, V>
      * @param leftPage The left page
      * @param rightPage The right page
      */
+    @SuppressWarnings("unchecked")
     /* No qualifier */ Node( BTree<K, V> btree, long revision, K key, Page<K, V> leftPage, Page<K, V> rightPage )
     {
         super( btree, revision, 1 );
@@ -75,7 +78,11 @@ public class Node<K, V> extends AbstractPage<K, V>
         children[1] = rightPage;
         
         // Create the keys array and store the pivot into it
-        keys = (K[])new Object[btree.getPageSize()];
+        // We get the type of array to create from the btree
+        // Yes, this is an hack...
+        Class<?> keyType = btree.getKeyType();
+        keys = (K[])Array.newInstance( keyType, btree.getPageSize() );
+
         keys[0] = key;
     }
 
@@ -174,19 +181,13 @@ public class Node<K, V> extends AbstractPage<K, V>
         
         if ( pos < 0 )
         {
-            // Here, if we have found the key in the node, then we must go down into
-            // the right child, not the left one
-            
-            stack.push( new ParentPos<K, V>( this, -pos ) );
-            
-            return children[-pos].browse( key, transaction, stack );
+            pos = -pos;
         }
-        else
-        {
-            stack.push( new ParentPos<K, V>( this, pos ) );
-            
-            return children[pos].browse( key, transaction, stack );
-        }
+        
+        // We first stack the current page
+        stack.push( new ParentPos<K, V>( this, pos ) );
+        
+        return children[pos].browse( key, transaction, stack );
     }
     
     

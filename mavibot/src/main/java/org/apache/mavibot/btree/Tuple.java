@@ -59,7 +59,7 @@ public class Tuple<K, V>
     /**
      * @return the key
      */
-    public K getKey()
+    /* No qualifier */ K getKey()
     {
         return key;
     }
@@ -77,7 +77,7 @@ public class Tuple<K, V>
     /**
      * @return the value
      */
-    public V getValue()
+    /* No qualifier */ V getValue()
     {
         return value;
     }

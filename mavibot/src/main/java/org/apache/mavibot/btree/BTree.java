@@ -207,7 +207,7 @@ public class BTree<K, V>
     
     
     /**
-     * Delete the entry whch key is given as a parameter. If the entry exists, it will
+     * Delete the entry which key is given as a parameter. If the entry exists, it will
      * be removed from the tree, the old tuple will be returned. Otherwise, null is returned.
      * 
      * @param key The key for the entry we try to remove

@@ -42,7 +42,7 @@ package org.apache.mavibot.btree;
      * @param modifiedPage The modified page
      * @param modifiedvalue The modified value (can be null if the key wasn't present in the tree)
      */
-    public ModifyResult( Page<K, V> modifiedPage, V modifiedValue )
+    /* No qualifier */ ModifyResult( Page<K, V> modifiedPage, V modifiedValue )
     {
         this.modifiedPage = modifiedPage;
         this.modifiedValue = modifiedValue;
@@ -52,7 +52,7 @@ package org.apache.mavibot.btree;
     /**
      * @return the modifiedPage
      */
-    public Page<K, V> getModifiedPage()
+    /* No qualifier */ Page<K, V> getModifiedPage()
     {
         return modifiedPage;
     }
@@ -61,7 +61,7 @@ package org.apache.mavibot.btree;
     /**
      * @return the modifiedValue
      */
-    public V getModifiedValue()
+    /* No qualifier */ V getModifiedValue()
     {
         return modifiedValue;
     }

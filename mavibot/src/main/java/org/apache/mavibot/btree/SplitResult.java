@@ -40,9 +40,11 @@ package org.apache.mavibot.btree;
     
     /**
      * The default constructor for SplitResult.
-     * @param modifiedPage
+     * @param pivot The new key to insert into the parent
+     * @param leftPage The new left page
+     * @param rightPage The new right page
      */
-    public SplitResult( K pivot, Page<K, V> leftPage, Page<K, V> rightPage )
+    /* No qualifier */ SplitResult( K pivot, Page<K, V> leftPage, Page<K, V> rightPage )
     {
         this.pivot = pivot;
         this.leftPage = leftPage;
@@ -53,7 +55,7 @@ package org.apache.mavibot.btree;
     /**
      * @return the leftPage
      */
-    public Page<K, V> getLeftPage()
+    /* No qualifier */ Page<K, V> getLeftPage()
     {
         return leftPage;
     }
@@ -62,7 +64,7 @@ package org.apache.mavibot.btree;
     /**
      * @return the rightPage
      */
-    public Page<K, V> getRightPage()
+    /* No qualifier */ Page<K, V> getRightPage()
     {
         return rightPage;
     }
@@ -71,7 +73,7 @@ package org.apache.mavibot.btree;
     /**
      * @return the pivot
      */
-    public K getPivot()
+    /* No qualifier */ K getPivot()
     {
         return pivot;
     }
