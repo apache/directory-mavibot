@@ -56,7 +56,7 @@ public class LeafTest
     {
         InsertResult<Long, String> result = leaf.insert( 1L, key, value );
         
-        return (Leaf<Long, String>)((ModifyResult)result).modifiedPage;
+        return (Leaf<Long, String>)((ModifyResult<Long, String>)result).getModifiedPage();
     }
     
 
@@ -111,8 +111,8 @@ public class LeafTest
         
         assertTrue( result instanceof RemoveResult );
         
-        Tuple<Long, String> removedElement = ((RemoveResult)result).removedElement;
-        Page<Long, String> newLeaf = ((RemoveResult)result).modifiedPage;
+        Tuple<Long, String> removedElement = ((RemoveResult<Long, String>)result).getRemovedElement();
+        Page<Long, String> newLeaf = ((RemoveResult<Long, String>)result).getModifiedPage();
         
         assertEquals( Long.valueOf( 3L), removedElement.getKey() );
         assertEquals( "v3", removedElement.getValue() );
@@ -144,9 +144,9 @@ public class LeafTest
         
         RemoveResult<Long, String> removeResult = (RemoveResult<Long, String>)result;
         
-        Tuple<Long, String> removedElement = removeResult.removedElement;
-        Page<Long, String> newLeaf = removeResult.modifiedPage;
-        Long leftMost = removeResult.newLeftMost;
+        Tuple<Long, String> removedElement = removeResult.getRemovedElement();
+        Page<Long, String> newLeaf = removeResult.getModifiedPage();
+        Long leftMost = removeResult.getNewLeftMost();
         
         assertEquals( Long.valueOf( 2L), leftMost );
         assertEquals( Long.valueOf( 1L), removedElement.getKey() );
@@ -165,7 +165,7 @@ public class LeafTest
      * an element in a left page with more than N/2 elements
      */
     @Test
-    public void testRemoveBorrowingFromLeftSibling()
+    public void testDeleteBorrowingFromLeftSibling()
     {
         Node<Long, String> parent = new Node<Long, String>( btree, 1L, 2 );
         Leaf<Long, String> left = new Leaf<Long, String>( btree );
@@ -205,7 +205,7 @@ public class LeafTest
         assertTrue( result instanceof BorrowedFromLeftResult );
         
         BorrowedFromLeftResult<Long, String> borrowed = (BorrowedFromLeftResult<Long, String>)result;
-        assertEquals( Long.valueOf( 5L ), borrowed.newLeftMost );
+        assertEquals( Long.valueOf( 5L ), borrowed.getNewLeftMost() );
         Tuple<Long, String> removedKey = borrowed.getRemovedElement();
 
         assertEquals( Long.valueOf( 7L ), removedKey.getKey() );
@@ -235,7 +235,7 @@ public class LeafTest
      * an element in a right page with more than N/2 elements
      */
     @Test
-    public void testRemoveBorrowingFromRightSibling()
+    public void testDeleteBorrowingFromRightSibling()
     {
         Node<Long, String> parent = new Node<Long, String>( btree, 1L, 2 );
         Leaf<Long, String> left = new Leaf<Long, String>( btree );
@@ -275,7 +275,7 @@ public class LeafTest
         assertTrue( result instanceof BorrowedFromRightResult );
         
         BorrowedFromRightResult<Long, String> borrowed = (BorrowedFromRightResult<Long, String>)result;
-        assertEquals( Long.valueOf( 11L ), borrowed.newLeftMost );
+        assertEquals( Long.valueOf( 11L ), borrowed.getNewLeftMost() );
         Tuple<Long, String> removedKey = borrowed.getRemovedElement();
 
         assertEquals( Long.valueOf( 7L ), removedKey.getKey() );
@@ -305,7 +305,7 @@ public class LeafTest
      * it with one of its sibling, if both has N/2 elements
      */
     @Test
-    public void testRemoveMergeWithSibling()
+    public void testDeleteMergeWithSibling()
     {
         Node<Long, String> parent = new Node<Long, String>( btree, 1L, 2 );
         Leaf<Long, String> left = new Leaf<Long, String>( btree );
@@ -344,7 +344,7 @@ public class LeafTest
         assertTrue( result instanceof MergedWithSiblingResult );
         
         MergedWithSiblingResult<Long, String> merged = (MergedWithSiblingResult<Long, String>)result;
-        assertEquals( Long.valueOf( 1L ), merged.newLeftMost );
+        assertEquals( Long.valueOf( 1L ), merged.getNewLeftMost() );
         Tuple<Long, String> removedKey = merged.getRemovedElement();
 
         assertEquals( Long.valueOf( 7L ), removedKey.getKey() );

@@ -157,7 +157,7 @@ import java.util.LinkedList;
             // The key is present in the page
             pos = - ( pos + 1 );
             
-            DeleteResult<K, V> deleteResult = children[pos].delete( revision, key, this, pos );
+            DeleteResult<K, V> deleteResult = children[pos + 1].delete( revision, key, this, pos );
             
             if ( deleteResult instanceof NotPresentResult )
             {
@@ -172,7 +172,7 @@ import java.util.LinkedList;
                 // we just have to copy the current page an modify the reference to link to
                 // the modified page.
                 Node<K, V> newPage = copy( revision );
-                newPage.children[pos] = removeResult.getModifiedPage();
+                newPage.children[pos + 1] = removeResult.getModifiedPage();
                 
                 if ( removeResult.getNewLeftMost() != key )
                 {
@@ -180,7 +180,7 @@ import java.util.LinkedList;
                 }
                 
                 // Modify the result and return
-                removeResult.setModifiedPage( this );
+                removeResult.setModifiedPage( newPage );
                 removeResult.setNewLeftMost( newPage.keys[0] );
                 
                 return removeResult;
@@ -192,8 +192,8 @@ import java.util.LinkedList;
                 // The child has borrowed an element from its left sibling. We have to copy
                 // the current page and modify the references
                 Node<K, V> newPage = copy( revision );
-                newPage.children[pos - 1] = borrowedResult.getModifiedSibling();
-                newPage.children[pos] = borrowedResult.getModifiedPage();
+                newPage.children[pos] = borrowedResult.getModifiedSibling();
+                newPage.children[pos + 1] = borrowedResult.getModifiedPage();
                 newPage.keys[pos] = borrowedResult.getNewLeftMost();
                 
                 // Modify the result and return
@@ -209,8 +209,8 @@ import java.util.LinkedList;
                 // The child has borrowed an element from its left sibling. We have to copy
                 // the current page and modify the references
                 Node<K, V> newPage = copy( revision );
-                newPage.children[pos] = borrowedResult.getModifiedPage();
-                newPage.children[pos + 1] = borrowedResult.getModifiedSibling();
+                newPage.children[pos + 1] = borrowedResult.getModifiedPage();
+                newPage.children[pos + 2] = borrowedResult.getModifiedSibling();
                 
                 // Modify the result and return
                 RemoveResult<K, V> removeResult = new RemoveResult<K, V>( this,

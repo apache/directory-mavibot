@@ -624,8 +624,13 @@ public class BTreeTest
             btree.insert( key, value );
         }
         
-        // Now delete one element in the middle of a leaf
+        // Delete one element in the middle of a leaf
         btree.delete( 10 );
         assertNull( btree.find( 10 ) );
+        
+        // Delete one element at the beginning of a leaf
+        btree.delete( 13 );
+        assertNull( btree.find( 13 ) );
+        assertEquals( Integer.valueOf( 14 ), ((Node<Integer, String>)btree.rootPage).keys[2] );
     }
 }
