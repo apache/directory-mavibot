@@ -330,50 +330,9 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         return result;
     }
     
-
-    /**
-     * Select the sibling (the prev or next page with the same parent) which has
-     * the more element assuming it's above N/2
-     * 
-     * @param parent The parent of the current page
-     * @param The position of the current page reference in its parent
-     * @return The position of the sibling, or -1 if we hav'nt found any sibling
-     */
-    private int selectSibling( Node<K, V> parent, int parentPos )
-    {
-        if ( parentPos == 0 )
-        {
-            // The current page is referenced on the left of its parent's page :
-            // we will not have a previous page with the same parent
-            return 1;
-        }
-        
-        if ( parentPos == parent.getNbElems() )
-        {
-            // The current page is referenced on the right of its parent's page :
-            // we will not have a next page with the same parent
-            return -1;
-        }
-        
-        Page<K, V> prevPage = parent.children[parentPos - 1];
-        Page<K, V> nextPage = parent.children[parentPos + 1];
-
-        int prevPageSize = prevPage.getNbElems();
-        int nextPageSize = nextPage.getNbElems();
-        
-        if ( prevPageSize >= nextPageSize )
-        {
-            return parentPos - 1;
-        }
-        else
-        {
-            return parentPos + 1;
-        }
-    }
-    
     
     /**
-     * Remove the element at a given position. The
+     * Remove the element at a given position.
      * 
      * @param revision The revision of the modified page
      * @param pos The position into the page of the element to remove

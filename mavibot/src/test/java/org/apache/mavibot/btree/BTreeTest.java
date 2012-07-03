@@ -33,6 +33,7 @@ import org.junit.Test;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertEquals;
 
 
@@ -604,5 +605,27 @@ public class BTreeTest
         assertEquals( 7, cursor.prev().getKey().intValue() );
         
         cursor.close();
+    }
+    
+    
+    @Test
+    public void testDelete() throws Exception
+    {
+        // Create a BTree with pages containing 4 elements
+        BTree<Integer, String> btree = new BTree<Integer, String>( new IntComparator() );
+        btree.setPageSize( 4 );
+        
+        // Create a tree with 5 children containing 4 elements each. The tree is full.
+        int[] keys = new int[] {1, 2, 5, 6, 3, 4, 9, 10, 7, 8, 9, 10, 7, 8, 13, 14, 11, 12, 17, 18, 15, 16, 19, 20 };
+
+        for ( int key : keys )
+        {
+            String value = "V" + key;
+            btree.insert( key, value );
+        }
+        
+        // Now delete one element in the middle of a leaf
+        btree.delete( 10 );
+        assertNull( btree.find( 10 ) );
     }
 }

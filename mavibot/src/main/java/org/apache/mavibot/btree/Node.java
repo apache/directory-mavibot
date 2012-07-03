@@ -148,7 +148,230 @@ import java.util.LinkedList;
      */
     public DeleteResult<K, V> delete( long revision, K key, Page<K, V> parent, int parentPos )
     {
+        // We first try to delete the element from the child it belongs to
+        // Find the key in the page
+        int pos = findPos( key );
+        
+        if ( pos < 0 )
+        {
+            // The key is present in the page
+            pos = - ( pos + 1 );
+            
+            DeleteResult<K, V> deleteResult = children[pos].delete( revision, key, this, pos );
+            
+            if ( deleteResult instanceof NotPresentResult )
+            {
+                // Nothing to do...
+                return deleteResult;
+            }
+            else if ( deleteResult instanceof RemoveResult )
+            {
+                RemoveResult<K, V> removeResult = (RemoveResult<K, V>)deleteResult;
+                
+                // Simplest case : the element has been removed from the underlying page,
+                // we just have to copy the current page an modify the reference to link to
+                // the modified page.
+                Node<K, V> newPage = copy( revision );
+                newPage.children[pos] = removeResult.getModifiedPage();
+                
+                if ( removeResult.getNewLeftMost() != key )
+                {
+                    newPage.keys[pos] = removeResult.getNewLeftMost();
+                }
+                
+                // Modify the result and return
+                removeResult.setModifiedPage( this );
+                removeResult.setNewLeftMost( newPage.keys[0] );
+                
+                return removeResult;
+            }
+            else if ( deleteResult instanceof BorrowedFromLeftResult )
+            {
+                BorrowedFromLeftResult<K, V> borrowedResult = (BorrowedFromLeftResult<K, V>)deleteResult;
+
+                // The child has borrowed an element from its left sibling. We have to copy
+                // the current page and modify the references
+                Node<K, V> newPage = copy( revision );
+                newPage.children[pos - 1] = borrowedResult.getModifiedSibling();
+                newPage.children[pos] = borrowedResult.getModifiedPage();
+                newPage.keys[pos] = borrowedResult.getNewLeftMost();
+                
+                // Modify the result and return
+                RemoveResult<K, V> removeResult = new RemoveResult<K, V>( this,
+                    borrowedResult.getRemovedElement(), this.keys[0] );
+                
+                return removeResult;
+            }
+            else if ( deleteResult instanceof BorrowedFromLeftResult )
+            {
+                BorrowedFromRightResult<K, V> borrowedResult = (BorrowedFromRightResult<K, V>)deleteResult;
+
+                // The child has borrowed an element from its left sibling. We have to copy
+                // the current page and modify the references
+                Node<K, V> newPage = copy( revision );
+                newPage.children[pos] = borrowedResult.getModifiedPage();
+                newPage.children[pos + 1] = borrowedResult.getModifiedSibling();
+                
+                // Modify the result and return
+                RemoveResult<K, V> removeResult = new RemoveResult<K, V>( this,
+                    borrowedResult.getRemovedElement(), this.keys[0] );
+                
+                return removeResult;
+            }
+            else if ( deleteResult instanceof MergedWithSiblingResult )
+            {
+                MergedWithSiblingResult<K, V> mergedResult = (MergedWithSiblingResult<K, V>)deleteResult;
+                
+                // Here, we have to delete an element from the current page, and if the resulting
+                // page does not contain enough elements (ie below N/2), then we have to borrow
+                // one element from a sibling or merge the page with a sibling.
+                
+                // If the parent is null, then this page is the root page.
+                if ( parent == null )
+                {
+                    // If the current node contains only one key, then the merged result will be
+                    // the new root. Deal with this case
+                    if ( nbElems == 1 )
+                    {
+                        RemoveResult<K, V> removeResult = new RemoveResult<K, V>( mergedResult.getModifiedPage(),
+                            mergedResult.getRemovedElement(), mergedResult.getNewLeftMost() );
+                        
+                        return removeResult;
+                    }
+                    else
+                    {
+                        // Just remove the entry if it's present
+                        int index = findPos( mergedResult.getRemovedElement().getKey() );
+                        
+                        DeleteResult<K, V> result = removeKey( revision, index );
+                        
+                        return result;
+                    }
+                }
+                else
+                {
+                    // The current page is not the root. Check if the leaf has more than N/2
+                    // elements
+                    int halfSize = btree.pageSize/2;
+                    
+                    if ( nbElems == halfSize )
+                    {
+                        // We have to find a sibling now, and either borrow an entry from it
+                        // if it has more than N/2 elements, or to merge the two pages.
+                        // Check in both next and previous page, if they have the same parent
+                        // and select the biggest page with the same parent to borrow an element.
+                        int siblingPos = selectSibling( (Node<K, V>)parent, parentPos );
+                        
+                        Leaf<K, V> sibling = (Leaf<K, V>)((Node<K, V>)parent).children[siblingPos];
+                        
+                        if ( sibling.getNbElems() == halfSize )
+                        {
+                            // We will merge the current page with its sibling
+                            //DeleteResult<K, V> result = mergeWithSibling( revision, sibling, ( siblingPos < pos), pos );
+                            
+                            return null; //result;
+                        }
+                        else
+                        {
+                            // We can borrow the element from the sibling
+                            if ( siblingPos < parentPos )
+                            {
+                                //DeleteResult<K, V> result = borrowFromLeft( revision, sibling, pos );
+                                
+                                return null; //result;
+                            }
+                            else
+                            {
+                                // Borrow from the right
+                                //DeleteResult<K, V> result = borrowFromRight( revision, sibling, pos );
+                                
+                                return null; //result;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // The page has more than N/2 elements.
+                        // We simply remove the element from the page, and if it was the leftmost,
+                        // we return the new pivot (it will replace any instance of the removed
+                        // key in its parents)
+                        DeleteResult<K, V> result = removeKey( revision, pos );
+                        
+                        return result;
+                    }
+                }
+            }
+        }
+        else
+        {
+            // The key is not present in the node. Copy the node, update the references, and return
+            // the result
+            DeleteResult<K, V> deleteResult = children[pos].delete( revision, key, this, pos );
+            
+            if ( deleteResult instanceof RemoveResult )
+            {
+                RemoveResult<K, V> removeResult = (RemoveResult<K, V>)deleteResult;
+                
+                // Simplest case : the element has been removed from the underlying page,
+                // we just have to copy the current page an modify the reference to link to
+                // the modified page.
+                Node<K, V> newPage = copy( revision );
+                newPage.children[pos] = removeResult.getModifiedPage();
+                
+                if ( removeResult.getNewLeftMost() != null )
+                {
+                    newPage.keys[pos] = removeResult.getNewLeftMost();
+                }
+                
+                // Modify the result and return
+                removeResult.setModifiedPage( newPage );
+                removeResult.setNewLeftMost( newPage.keys[0] );
+                
+                return removeResult;
+            }
+        }
+
+            
         return null;
+    }
+    
+    
+    /**
+     * Remove the key at a given position.
+     * 
+     * @param revision The revision of the modified page
+     * @param pos The position into the page of the element to remove
+     * @return The modified page with the <K,V> element added
+     */
+    private DeleteResult<K, V> removeKey( long revision,int pos )
+    {
+        // Get the removed element
+        Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], null );
+
+        // First copy the current page, but remove one element in the copied page
+        Node<K, V> newNode = new Node<K, V>( btree, revision, nbElems - 1 );
+        
+        K newLeftMost = null;
+        
+        // Deal with the special case of a node with only one element by skipping
+        // the copy, as we won't have any remaining  element in the page
+        // Copy the keys and the children up to the insertion position
+        System.arraycopy( keys, 0, newNode.keys, 0, pos );
+        System.arraycopy( children, 0, newNode.children, 0, pos );
+        
+        // And copy the elements after the position
+        System.arraycopy( keys, pos + 1, newNode.keys, pos, keys.length - pos  - 1 );
+        System.arraycopy( children, pos + 1, newNode.children, pos, children.length - pos - 1 );
+        
+        if ( pos == 0 )
+        {
+            newLeftMost = newNode.keys[0];
+        }
+        
+        // Create the result
+        DeleteResult<K, V> result = new RemoveResult<K, V>( newNode, removedElement, newLeftMost );
+        
+        return result;
     }
 
 
@@ -378,15 +601,15 @@ import java.util.LinkedList;
      * @param revision The new revision
      * @return The copied page
      */
-    protected Page<K, V> copy( long revision )
+    protected Node<K, V> copy( long revision )
     {
-        Page<K, V> newPage = new Node<K, V>( btree, revision, nbElems );
+        Node<K, V> newPage = new Node<K, V>( btree, revision, nbElems );
 
         // Copy the keys
-        System.arraycopy( keys, 0, ((Node<K, V>)newPage).keys, 0, nbElems );
+        System.arraycopy( keys, 0, newPage.keys, 0, nbElems );
 
         // Copy the children
-        System.arraycopy( children, 0, ((Node<K, V>)newPage).children, 0, nbElems + 1);
+        System.arraycopy( children, 0, newPage.children, 0, nbElems + 1);
 
         return newPage;
     }

@@ -259,7 +259,7 @@ public class BTree<K, V>
                 // The element was found, and removed
                 RemoveResult<K, V> removeResult = (RemoveResult<K, V>)result;
                 
-                Page<K, V> newPage = removeResult.modifiedPage;
+                Page<K, V> newPage = removeResult.getModifiedPage();
                 
                 // This is a new root
                 rootPage = newPage;

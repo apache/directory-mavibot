@@ -30,13 +30,13 @@ package org.apache.mavibot.btree;
 /* No qualifier */ abstract class AbstractDeleteResult<K, V> implements DeleteResult<K, V>
 {
     /** The modified page reference */
-    protected Page<K, V> modifiedPage;
+    private Page<K, V> modifiedPage;
     
     /** The removed element if the key was found in the tree*/
-    protected Tuple<K, V> removedElement;
+    private Tuple<K, V> removedElement;
     
     /** The new leftmost element if the removed k was on position 0. Null otherwise */
-    protected K newLeftMost;
+    private K newLeftMost;
     
     /**
      * The default constructor for AbstractDeleteResult.
@@ -77,5 +77,23 @@ package org.apache.mavibot.btree;
     /* No qualifier */ K getNewLeftMost()
     {
         return newLeftMost;
+    }
+
+
+    /**
+     * @param modifiedPage the modifiedPage to set
+     */
+    /* No qualifier */ void setModifiedPage( Page<K, V> modifiedPage )
+    {
+        this.modifiedPage = modifiedPage;
+    }
+
+
+    /**
+     * @param newLeftMost the newLeftMost to set
+     */
+    /* No qualifier */ void setNewLeftMost( K newLeftMost )
+    {
+        this.newLeftMost = newLeftMost;
     }
 }
