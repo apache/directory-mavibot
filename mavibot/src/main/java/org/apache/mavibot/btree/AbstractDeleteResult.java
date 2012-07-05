@@ -54,18 +54,18 @@ package org.apache.mavibot.btree;
     
     
     /**
-     * @return the modifiedPage
+     * {@inheritDoc}
      */
-    /* No qualifier */ Page<K, V> getModifiedPage()
+    public Page<K, V> getModifiedPage()
     {
         return modifiedPage;
     }
 
 
     /**
-     * @return the removed element
+     * {@inheritDoc}
      */
-    /* No qualifier */ Tuple<K, V> getRemovedElement()
+    public Tuple<K, V> getRemovedElement()
     {
         return removedElement;
     }

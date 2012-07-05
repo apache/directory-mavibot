@@ -115,6 +115,14 @@ import java.util.LinkedList;
     
     
     /**
+     * Return the key at a given position
+     * @param pos The position of the key we want to retrieve
+     * @return The key found at the given position
+     */
+    K getKey( int pos );
+    
+    
+    /**
      * Pretty-print the tree with tabs
      * @param tabs The tabs to add in front of each node
      * @return A pretty-print dump of the tree

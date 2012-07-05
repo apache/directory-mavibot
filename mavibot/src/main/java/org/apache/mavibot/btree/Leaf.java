@@ -155,7 +155,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
                 }
                 else
                 {
-                    // We can borrow the element from the sibling
+                    // We can borrow the element from the left sibling
                     if ( siblingPos < parentPos )
                     {
                         DeleteResult<K, V> result = borrowFromLeft( revision, sibling, index );
@@ -164,7 +164,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
                     }
                     else
                     {
-                        // Borrow from the right
+                        // Borrow from the right sibling
                         DeleteResult<K, V> result = borrowFromRight( revision, sibling, index );
                         
                         return result;

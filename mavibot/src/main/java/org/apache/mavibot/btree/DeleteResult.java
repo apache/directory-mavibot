@@ -29,4 +29,14 @@ package org.apache.mavibot.btree;
  */
 interface DeleteResult<K, V>
 {
+    /**
+     * @return the modifiedPage
+     */
+    Page<K, V> getModifiedPage();
+
+
+    /**
+     * @return the removed element
+     */
+    Tuple<K, V> getRemovedElement();
 }

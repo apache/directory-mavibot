@@ -138,12 +138,28 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
      * So for the following table of keys : <br/>
      * <pre>
      * +---+---+---+---+
-     * | a | b | c | d |
+     * | b | d | f | h |
      * +---+---+---+---+
      *   0   1   2   3
      * </pre>
-     * looking for 'a' will return -1 (-(0+1)) and looking for 'c' will return -3 (-(2+1)).<br/>
+     * looking for 'b' will return -1 (-(0+1)) and looking for 'f' will return -3 (-(2+1)).<br/>
      * Computing the real position is just a matter to get -(position++).
+     * <p/>
+     * If we don't find the key in the table, we will return the position of the key
+     * immediately above the key we are looking for. <br/>
+     * For instance, looking for :
+     * <ul>
+     * <li>'a' will return 0</li>
+     * <li>'b' will return -1</li>
+     * <li>'c' will return 1</li>
+     * <li>'d' will return -2</li>
+     * <li>'e' will return 2</li>
+     * <li>'f' will return -3</li>
+     * <li>'g' will return 3</li>
+     * <li>'h' will return -4</li>
+     * <li>'i' will return 4</li>
+     * </ul>
+     * 
      * 
      * @param key The key to find
      * @return The position in the page.
@@ -258,7 +274,23 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
     {
         this.id = id;
     }
+
     
+    /**
+     * {@inheritDoc}
+     */
+    public K getKey( int pos )
+    {
+        if ( pos < nbElems )
+        {
+            return keys[pos];
+        }
+        else
+        {
+            return null;
+        }
+    }
+
     
     /**
      * @see Object#toString()

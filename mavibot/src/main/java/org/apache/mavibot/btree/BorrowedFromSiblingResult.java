@@ -20,42 +20,33 @@
 package org.apache.mavibot.btree;
 
 /**
- * The result of an delete operation, when the key to delete is not present in the tree.
+ * The result of an delete operation, when we have borrowed some element from a sibling.
  * 
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
 
  * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
  */
-/* No qualifier */ class NotPresentResult<K, V> implements DeleteResult<K, V>
+interface BorrowedFromSiblingResult<K, V> extends DeleteResult<K, V>
 {
-    /** The unique instance for this class */
-    @SuppressWarnings("rawtypes")
-    /* No qualifier */ static final NotPresentResult NOT_PRESENT = new NotPresentResult();
-    
     /**
-     * A private void constructor, as we won't have any other instance.
+     * @return the modifiedSibling
      */
-    private NotPresentResult()
-    {
-        // Do nothing
-    }
+    Page<K, V> getModifiedSibling();
     
-    
-    /**
-     * {@inheritDoc}
-     */
-    public Page<K, V> getModifiedPage()
-    {
-        return null;
-    }
-
 
     /**
-     * {@inheritDoc}
+     * Tells if the sibling is on the left
+     * 
+     * @return True if the sibling is on the left
      */
-    public Tuple<K, V> getRemovedElement()
-    {
-        return null;
-    }
+    boolean isFromLeft();
+    
+    
+    /**
+     * Tells if the sibling is on the right
+     * 
+     * @return True if the sibling is on the right
+     */
+    boolean isFromRight();
 }

@@ -28,31 +28,19 @@ package org.apache.mavibot.btree;
 
  * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
  */
-/* No qualifier */ class BorrowedFromRightResult<K, V> extends AbstractDeleteResult<K, V>
+/* No qualifier */ class BorrowedFromRightResult<K, V> extends AbstractBorrowedFromSiblingResult<K, V>
 {
-    /** The modified sibling reference */
-    private Page<K, V> modifiedSibling;
-    
     /**
-     * The default constructor for RemoveResult.
+     * The default constructor for BorrowedFromRightResult.
      * 
      * @param modifiedPage The modified page
-     * @param
+     * @param modifiedSibling The modified sibling
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
+     * @param newLeftMost The element on the left of he current page
      */
     /* No qualifier */ BorrowedFromRightResult( Page<K, V> modifiedPage, Page<K, V> modifiedSibling, Tuple<K, V> removedElement, K newLeftMost )
     {
-        super( modifiedPage, removedElement, newLeftMost );
-        this.modifiedSibling = modifiedSibling;
-    }
-    
-
-    /**
-     * @return the modifiedSibling
-     */
-    /* No qualifier */ Page<K, V> getModifiedSibling()
-    {
-        return modifiedSibling;
+        super( modifiedPage, modifiedSibling, removedElement, newLeftMost, AbstractBorrowedFromSiblingResult.SiblingPosition.RIGHT );
     }
     
     
@@ -63,9 +51,8 @@ package org.apache.mavibot.btree;
     {
         StringBuilder sb = new StringBuilder();
         
-        sb.append( "RemoveResult, removed element = " ).append( getRemovedElement() );
-        sb.append( ", modifiedPage = " ).append( getModifiedPage() );
-        sb.append( ", new LeftMost = " ).append( getNewLeftMost() );
+        sb.append( "Borrowed from right" );
+        sb.append( super.toString() );
 
         return sb.toString();
     }
