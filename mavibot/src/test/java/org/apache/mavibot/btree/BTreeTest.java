@@ -632,5 +632,24 @@ public class BTreeTest
         btree.delete( 13 );
         assertNull( btree.find( 13 ) );
         assertEquals( Integer.valueOf( 14 ), ((Node<Integer, String>)btree.rootPage).keys[2] );
+        
+        // Delete two more values so that we have a leaf borrowing some element from a sibling
+        btree.delete( 15 );
+        assertNull( btree.find( 15 ) );
+        
+        btree.delete( 14 );
+        assertNull( btree.find( 14 ) );
+        
+        // Borrow from left now, removing an element which is not the leftmost
+        btree.delete( 17 );
+        assertNull( btree.find( 17 ) );
+        
+        // Delete a key not at the first place, this will borrow an element from right
+        btree.delete( 16 );
+        assertNull( btree.find( 16 ) );
+        
+        // Delete a key at the first place, borrow from left
+        btree.delete( 9 );
+        assertNull( btree.find( 9 ) );
     }
 }
