@@ -361,4 +361,35 @@ public class LeafTest
         assertEquals( Long.valueOf( 6L ), newLeaf.keys[5] );
         assertEquals( Long.valueOf( 8L ), newLeaf.keys[6] );
     }
+    
+    
+    /**
+     * Test the findPos() method
+     * @throws Exception
+     */
+    @Test
+    public void testFindPos() throws Exception
+    {
+        Leaf<Long, String> leaf = new Leaf<Long, String>( btree );
+        
+        // Inject the values
+        for ( long i = 0; i < 8; i++ )
+        {
+            long value = i + i + 1;
+            leaf = (Leaf<Long, String>)((ModifyResult<Long, String>)leaf.insert( 0L, value, "V" + value )).getModifiedPage();
+        }
+        
+        // Check the findPos() method now
+        for ( long i = 0; i < 17; i++ )
+        {
+            if ( i % 2 == 1 )
+            {
+                assertEquals( - ( i/2 + 1 ), leaf.findPos( i ) );
+            }
+            else
+            {
+                assertEquals( i/2, leaf.findPos( i ) );
+            }
+        }
+    }
 }
