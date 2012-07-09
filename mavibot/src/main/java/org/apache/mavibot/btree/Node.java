@@ -211,10 +211,8 @@ import java.util.LinkedList;
                     }
                     else
                     {
-                        // Just remove the entry if it's present
-                        int newIndex = findPos( mergedResult.getRemovedElement().getKey() );
-                        
-                        DeleteResult<K, V> result = removeKey( revision, newIndex );
+                        // Remove the element and update the reference to the changed pages
+                        RemoveResult<K, V> result = removeKey( mergedResult, revision, index );
                         
                         return result;
                     }
@@ -266,7 +264,7 @@ import java.util.LinkedList;
                         // We simply remove the element from the page, and if it was the leftmost,
                         // we return the new pivot (it will replace any instance of the removed
                         // key in its parents)
-                        DeleteResult<K, V> result = removeKey( revision, index );
+                        DeleteResult<K, V> result = removeKey( mergedResult, revision, index );
                         
                         return result;
                     }
@@ -303,6 +301,35 @@ import java.util.LinkedList;
             else if ( deleteResult instanceof AbstractBorrowedFromSiblingResult )
             {
                 return borrowedResult( deleteResult, pos );
+            }
+            else
+            {
+                MergedWithSiblingResult<K, V> mergedResult = (MergedWithSiblingResult<K, V>)deleteResult;
+                
+                // Here, we have to delete an element from the current page, and if the resulting
+                // page does not contain enough elements (ie below N/2), then we have to borrow
+                // one element from a sibling or merge the page with a sibling.
+                
+                // If the parent is null, then this page is the root page.
+                if ( parent == null )
+                {
+                    // If the current node contains only one key, then the merged result will be
+                    // the new root. Deal with this case
+                    if ( nbElems == 1 )
+                    {
+                        RemoveResult<K, V> removeResult = new RemoveResult<K, V>( mergedResult.getModifiedPage(),
+                            mergedResult.getRemovedElement(), mergedResult.getNewLeftMost() );
+                        
+                        return removeResult;
+                    }
+                    else
+                    {
+                        // Remove the element and update the reference to the changed pages
+                        RemoveResult<K, V> result = removeKey( mergedResult, revision, pos - 1 );
+                        
+                        return result;
+                    }
+                }
             }
         }
 
@@ -388,7 +415,7 @@ import java.util.LinkedList;
      * @param pos The position into the page of the element to remove
      * @return The modified page with the <K,V> element added
      */
-    private DeleteResult<K, V> removeKey( long revision,int pos )
+    private RemoveResult<K, V> removeKey( MergedWithSiblingResult<K, V> mergedResult, long revision, int pos )
     {
         // Get the removed element
         Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], null );
@@ -398,15 +425,17 @@ import java.util.LinkedList;
         
         K newLeftMost = null;
         
-        // Deal with the special case of a node with only one element by skipping
-        // the copy, as we won't have any remaining  element in the page
         // Copy the keys and the children up to the insertion position
-        System.arraycopy( keys, 0, newNode.keys, 0, pos );
+        System.arraycopy( keys, 0, newNode.keys, 0, pos - 1 );
         System.arraycopy( children, 0, newNode.children, 0, pos );
+        
+        // Insert the new elements
+        newNode.keys[pos - 1] = mergedResult.getModifiedPage().getKey( 0 );
+        newNode.children[pos] = mergedResult.getModifiedPage();
         
         // And copy the elements after the position
         System.arraycopy( keys, pos + 1, newNode.keys, pos, keys.length - pos  - 1 );
-        System.arraycopy( children, pos + 1, newNode.children, pos, children.length - pos - 1 );
+        System.arraycopy( children, pos + 2, newNode.children, pos, children.length - pos - 2 );
         
         if ( pos == 0 )
         {
@@ -414,7 +443,7 @@ import java.util.LinkedList;
         }
         
         // Create the result
-        DeleteResult<K, V> result = new RemoveResult<K, V>( newNode, removedElement, newLeftMost );
+        RemoveResult<K, V> result = new RemoveResult<K, V>( newNode, removedElement, newLeftMost );
         
         return result;
     }

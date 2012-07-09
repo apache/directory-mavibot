@@ -651,5 +651,16 @@ public class BTreeTest
         // Delete a key at the first place, borrow from left
         btree.delete( 9 );
         assertNull( btree.find( 9 ) );
+        
+        // Delete a key on first position that will generate a merge between two pages
+        btree.delete( 19 );
+        assertNull( btree.find( 19 ) );
+        
+        // Delete one element and another one, so that we have another merge, but removed the second key of the right page
+        btree.delete( 20 );
+        assertNull( btree.find( 20 ) );
+        
+        btree.delete( 18 );
+        assertNull( btree.find( 18 ) );
     }
 }
