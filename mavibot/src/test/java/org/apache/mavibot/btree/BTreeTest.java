@@ -662,5 +662,23 @@ public class BTreeTest
         
         btree.delete( 18 );
         assertNull( btree.find( 18 ) );
+        
+        // Delete two more elements to have two leaves with N/2 elements
+        btree.delete( 7 );
+        assertNull( btree.find( 7 ) );
+        
+        btree.delete( 12 );
+        assertNull( btree.find( 12 ) );
+        
+        // Delete the extra elements in the first leaf
+        btree.delete( 1 );
+        assertNull( btree.find( 1 ) );
+
+        btree.delete( 2 );
+        assertNull( btree.find( 2 ) );
+        
+        // Delete an element on first position from a leaf containing N/2 elements
+        //btree.delete( 5 );
+        //assertNull( btree.find( 5 ) );
     }
 }

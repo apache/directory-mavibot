@@ -50,9 +50,10 @@ package org.apache.mavibot.btree;
     {
         StringBuilder sb = new StringBuilder();
         
-        sb.append( "RemoveResult, removed element = " ).append( getRemovedElement() );
-        sb.append( ", modifiedPage = " ).append( getModifiedPage() );
-        sb.append( ", new LeftMost = " ).append( getNewLeftMost() );
+        sb.append( "RemoveResult :" );
+        sb.append( "\n    removed element = " ).append( getRemovedElement() );
+        sb.append( "\n    modifiedPage = " ).append( getModifiedPage() );
+        sb.append( "\n    new LeftMost = " ).append( getNewLeftMost() );
 
         return sb.toString();
     }

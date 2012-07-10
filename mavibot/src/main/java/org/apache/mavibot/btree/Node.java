@@ -287,7 +287,7 @@ import java.util.LinkedList;
                 Node<K, V> newPage = copy( revision );
                 newPage.children[pos] = removeResult.getModifiedPage();
                 
-                if ( removeResult.getNewLeftMost() != null )
+                if ( ( removeResult.getNewLeftMost() != null ) && ( pos != 0 ) )
                 {
                     newPage.keys[pos] = removeResult.getNewLeftMost();
                 }
