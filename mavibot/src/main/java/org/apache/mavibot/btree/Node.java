@@ -687,6 +687,24 @@ import java.util.LinkedList;
 
         return newPage;
     }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    public Tuple<K, V> findLeftMost()
+    {
+        return children[0].findLeftMost();
+    }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    public Tuple<K, V> findRightMost()
+    {
+        return children[nbElems].findRightMost();
+    }
 
 
     /**

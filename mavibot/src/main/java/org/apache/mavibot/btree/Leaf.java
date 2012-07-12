@@ -635,6 +635,24 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         
         return result;
     }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    public Tuple<K, V> findLeftMost()
+    {
+        return new Tuple<K, V>( keys[0], values[0] );
+    }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    public Tuple<K, V> findRightMost()
+    {
+        return new Tuple<K, V>( keys[nbElems - 1], values[nbElems - 1] );
+    }
 
 
     /**

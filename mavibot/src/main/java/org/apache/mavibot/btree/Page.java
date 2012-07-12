@@ -123,6 +123,24 @@ import java.util.LinkedList;
     
     
     /**
+     * Find the leftmost element in this page. If the page is a node, it will go
+     * down in the leftmost children to recursively find the leftmost element.
+     * 
+     * @return The leftmost element in the tree
+     */
+    Tuple<K, V> findLeftMost();
+    
+    
+    /**
+     * Find the rightmost element in this page. If the page is a node, it will go
+     * down in the rightmost children to recursively find the rightmost element.
+     * 
+     * @return The rightmost element in the tree
+     */
+    Tuple<K, V> findRightMost();
+    
+    
+    /**
      * Pretty-print the tree with tabs
      * @param tabs The tabs to add in front of each node
      * @return A pretty-print dump of the tree

@@ -154,6 +154,19 @@ public class BTree<K, V>
         
         this.pageSize = getPowerOf2( pageSize );
     }
+    
+    
+    /**
+     * Set the new root page for this tree. Used for debug purpose only. The revision
+     * will always be 0;
+     * 
+     * @param root the new root page.
+     */
+    /* No qualifier */ void setRoot( Page<K, V> root )
+    {
+        rootPage = root;
+        roots.put( revision.getAndIncrement(), rootPage );
+    }
 
 
     /**
