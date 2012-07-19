@@ -608,22 +608,120 @@ public class BTreeTest
     }
     
     
+    /**
+     * Test various deletions in a tree, when we have full leaves
+     */
     @Test
-    public void testDelete() throws Exception
+    public void testDeleteFromFullLeaves() throws Exception
     {
         // Create a BTree with pages containing 4 elements
-        BTree<Integer, String> btree = new BTree<Integer, String>( new IntComparator() );
-        btree.setPageSize( 4 );
-        
-        // Create a tree with 5 children containing 4 elements each. The tree is full.
-        int[] keys = new int[] {1, 2, 5, 6, 3, 4, 9, 10, 7, 8, 9, 10, 7, 8, 13, 14, 11, 12, 17, 18, 15, 16, 19, 20 };
+        BTree<Integer, String> btree = createTwoLevelBTreeFullLeaves();
 
-        for ( int key : keys )
-        {
-            String value = "V" + key;
-            btree.insert( key, value );
-        }
+        // Test removals leadings to various RemoveResult.
+        // The tree remains the same after the deletion
+        // First, no borrow nor merge
+        btree.delete( 1 );
+        assertNull( btree.find( 1 ) );
+        btree.insert( 1, "V1" );
+
+        btree.delete( 3 );
+        assertNull( btree.find( 3 ) );
+        btree.insert( 3, "V3" );
+
+        btree.delete( 4 );
+        assertNull( btree.find( 4 ) );
+        btree.insert( 4, "V4" );
         
+        btree.delete( 11 );
+        assertNull( btree.find( 11 ) );
+        btree.insert( 11, "V11" );
+        
+        btree.delete( 20 );
+        assertNull( btree.find( 20 ) );
+        btree.insert( 20, "V20" );
+        
+        btree.delete( 0 );
+        assertNull( btree.find( 0 ) );
+        
+        btree.delete( 5 );
+        assertNull( btree.find( 5 ) );
+        
+        btree.delete( 9 );
+        assertNull( btree.find( 9 ) );
+    }
+    
+    
+    /**
+     * Test various deletions in a tree, leadings to borrowFromSibling
+     */
+    @Test
+    public void testDeleteBorrowFromSibling() throws Exception
+    {
+        // Create a BTree with pages containing 4 elements
+        BTree<Integer, String> btree = createTwoLevelBTreeFullLeaves();
+        
+        // Delete some useless elements to simulate the tree we want to test
+        // Get the left leaf to contain N/2 elements
+        btree.delete( 3 );
+        btree.delete( 4 );
+        
+        // Get the right leaf to contain N/2 elements
+        btree.delete( 19 );
+        btree.delete( 20 );
+        
+        // Get the middle leaf to contain N/2 elements
+        btree.delete( 11 );
+        btree.delete( 12 );
+        
+        // Delete the leftmost key
+        btree.delete( 1 );
+        assertNull( btree.find( 1 ) );
+        
+        // Delete the rightmost key
+        btree.delete( 18 );
+        assertNull( btree.find( 18 ) );
+
+        // Delete one element in the left page, but not the first one
+        btree.delete( 5 );
+        assertNull( btree.find( 5 ) );
+
+        // Delete the one element in the right page, but the first one
+        btree.delete( 16 );
+        assertNull( btree.find( 16 ) );
+        
+        // Now do that with a deeper btree
+        btree = createMultiLevelBTreeHalfFull();
+        
+        // Add some more elements on the second leaf before deleting some elements in the first leaf
+        btree.insert( 8, "V8" );
+        btree.insert( 9, "V9" );
+        
+        // and delete some
+        btree.delete( 2 );
+        assertNull( btree.find( 2 ) );
+        
+        btree.delete( 6 );
+        assertNull( btree.find( 6 ) );
+        
+        // Add some more elements on the pre-last leaf before deleting some elements in the last leaf
+        btree.insert( 96, "V96" );
+        btree.insert( 97, "V97" );
+        
+        // and delete some
+        btree.delete( 98 );
+        assertNull( btree.find( 98 ) );
+        
+        btree.delete( 99 );
+        assertNull( btree.find( 99 ) );
+        
+        // Now try to delete elements in the middle
+        btree.insert( 48, "V48" );
+        
+        btree.delete( 42 );
+        assertNull( btree.find( 42 ) );
+    }
+
+    /*
         // Delete one element in the middle of a leaf
         btree.delete( 10 );
         assertNull( btree.find( 10 ) );
@@ -680,5 +778,119 @@ public class BTreeTest
         // Delete an element on first position from a leaf containing N/2 elements
         //btree.delete( 5 );
         //assertNull( btree.find( 5 ) );
+    }
+    */
+    
+    
+    private Page<Integer, String> createLeaf( BTree<Integer, String> btree, long revision, Tuple<Integer, String>... tuples )
+    {
+        Leaf<Integer, String> leaf = new Leaf<Integer, String>( btree );
+        int pos = 0;
+        leaf.revision = revision;
+        leaf.id = revision;
+        leaf.nbElems = tuples.length;
+        leaf.keys = new Integer[leaf.nbElems];
+        leaf.values = new String[leaf.nbElems];
+        
+        for ( Tuple<Integer, String> tuple : tuples )
+        {
+            leaf.keys[pos] = tuple.getKey();
+            leaf.values[pos] = tuple.getValue();
+            pos++;
+        }
+        
+        return leaf;
+    }
+    
+    
+    private void addPage( Node<Integer, String> node, Page<Integer, String> page, int pos )
+    {
+        Tuple<Integer, String> leftmost = page.findLeftMost();
+        
+        if ( pos > 0 )
+        {
+            node.keys[pos - 1] = leftmost.getKey();
+        }
+        
+        node.children[pos] = page;
+    }
+    
+    
+    /**
+     * Creates a 2 level depth tree of full pages
+     */
+    private BTree<Integer, String> createTwoLevelBTreeFullLeaves() throws IOException
+    {
+        BTree<Integer, String> btree = new BTree<Integer, String>( new IntComparator() );
+        btree.setPageSize( 4 );
+        
+        // Create a tree with 5 children containing 4 elements each. The tree is full.
+        int[] keys = new int[] {1, 2, 5, 6, 3, 4, 9, 10, 7, 8, 9, 10, 7, 8, 13, 14, 11, 12, 17, 18, 15, 16, 19, 20 };
+
+        for ( int key : keys )
+        {
+            String value = "V" + key;
+            btree.insert( key, value );
+        }
+
+        return btree;
+    }
+    
+    /**
+     * Creates a 3 level depth tree, with each page containing only N/2 elements
+     */
+    private BTree<Integer, String> createMultiLevelBTreeHalfFull() throws IOException
+    {
+        // Create a BTree with pages containing 4 elements
+        int pageSize = 4;
+
+        BTree<Integer, String> btree = new BTree<Integer, String>( new IntComparator(), pageSize );
+        
+        Node<Integer, String> root = new Node<Integer, String>( btree, 1L, pageSize );
+
+        // Create the tree with 3 levels, all the leaves containing only N/2 elements
+        int counter = 1;
+        for ( int i = 0; i < pageSize + 1; i++ )
+        {
+            Node<Integer, String> node = new Node<Integer, String>( btree, 1L, pageSize );
+
+            for ( int j = 0; j < pageSize + 1; j++ )
+            {
+                int even = counter * 2;
+                
+                @SuppressWarnings("unchecked")
+                Page<Integer, String> leaf = createLeaf(
+                    btree,
+                    1L,
+                    new Tuple<Integer, String>( even, "v" + even ),
+                    new Tuple<Integer, String>( even + 1, "v" + ( even + 1 ) )
+                    );
+                
+                counter+= 2;
+                
+                addPage( node, leaf, j );
+            }
+
+            addPage( root, node, i );
+        }
+        
+        btree.setRoot( root );
+
+        return btree;
+    }
+    
+    
+    /**
+     * Test various deletions in a tree with more than one level
+     */
+    @Test
+    public void testDeleteMultiLevels() throws Exception
+    {
+        BTree<Integer, String> btree = createMultiLevelBTreeHalfFull();
+
+        // Case 1 : delete an element in the btree in the leftmost leaf
+        //btree.delete( 1 );
+        
+        System.out.println( btree );
     }
 }
