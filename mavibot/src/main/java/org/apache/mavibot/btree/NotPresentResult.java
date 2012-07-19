@@ -58,4 +58,13 @@ package org.apache.mavibot.btree;
     {
         return null;
     }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public K getNewLeftMost()
+    {
+        return null;
+    }
 }

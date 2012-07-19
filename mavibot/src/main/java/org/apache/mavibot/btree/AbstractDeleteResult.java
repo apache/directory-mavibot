@@ -74,7 +74,7 @@ package org.apache.mavibot.btree;
     /**
      * @return the newLeftMost
      */
-    /* No qualifier */ K getNewLeftMost()
+    public K getNewLeftMost()
     {
         return newLeftMost;
     }

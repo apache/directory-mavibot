@@ -172,7 +172,7 @@ import java.util.LinkedList;
         
         // Modify the result and return
         removeResult.setModifiedPage( newPage );
-        removeResult.setNewLeftMost( newPage.keys[0] );
+        //removeResult.setNewLeftMost( newPage.keys[0] );
 
         return removeResult;
     }
@@ -193,9 +193,9 @@ import java.util.LinkedList;
         
         if ( found )
         {
-            child = children[-pos];
-            deleteResult = child.delete( revision, key, this, -pos );
             index = -( pos + 1 );
+            child = children[index + 1];
+            deleteResult = child.delete( revision, key, this, index + 1 );
         }
         else
         {
@@ -376,7 +376,7 @@ import java.util.LinkedList;
         
         // Modify the result and return
         RemoveResult<K, V> removeResult = new RemoveResult<K, V>( newPage,
-            borrowedResult.getRemovedElement(), newPage.keys[0] );
+            borrowedResult.getRemovedElement(), borrowedResult.getNewLeftMost() );
         
         return removeResult;
     }

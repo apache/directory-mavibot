@@ -333,7 +333,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         // Create the result
         Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos] );
 
-        DeleteResult<K, V> result = new BorrowedFromRightResult<K, V>( newLeaf, newSibling, removedElement, newSibling.keys[0] );
+        DeleteResult<K, V> result = new BorrowedFromRightResult<K, V>( newLeaf, newSibling, removedElement, newLeaf.keys[0] );
         
         return result;
     }
