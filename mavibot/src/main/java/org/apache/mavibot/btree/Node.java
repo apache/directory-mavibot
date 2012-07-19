@@ -143,7 +143,11 @@ import java.util.LinkedList;
     }
     
     
-    private RemoveResult<K, V> remove( RemoveResult<K, V> removeResult, int index, int pos, boolean found )
+    /**
+     * Modify the current node after a remove has been done in one of its children.
+     * The node won't be merged with another node.
+     */
+    private RemoveResult<K, V> handleRemoveResult( RemoveResult<K, V> removeResult, int index, int pos, boolean found )
     {
         // Simplest case : the element has been removed from the underlying page,
         // we just have to copy the current page an modify the reference to link to
@@ -161,7 +165,7 @@ import java.util.LinkedList;
         
         K newLeftMost = removeResult.getNewLeftMost();
         
-        if ( ( newLeftMost != null ) && ( pos != 0 ) )
+        if ( ( newLeftMost != null ) && ( pos < 0 ) )
         {
             newPage.keys[index] = newLeftMost;
         }
@@ -209,7 +213,7 @@ import java.util.LinkedList;
         // If we just modified the child, return a modified page
         if ( deleteResult instanceof RemoveResult )
         {
-            RemoveResult<K, V> removeResult = remove( (RemoveResult<K, V>)deleteResult, index, pos, found );
+            RemoveResult<K, V> removeResult = handleRemoveResult( (RemoveResult<K, V>)deleteResult, index, pos, found );
             
             return removeResult;
         }
@@ -218,7 +222,7 @@ import java.util.LinkedList;
         // the current page
         if ( deleteResult instanceof BorrowedFromSiblingResult )
         {
-            return borrowedResult( deleteResult, pos );
+            return handleBorrowedResult( deleteResult, pos );
         }
 
         // Last, not least, we have merged two child pages. We now have to remove
@@ -315,7 +319,7 @@ import java.util.LinkedList;
      * @param pos The position the key was found in the current node
      * @return
      */
-    private DeleteResult<K, V> borrowedResult( DeleteResult<K, V> deleteResult, int pos )
+    private DeleteResult<K, V> handleBorrowedResult( DeleteResult<K, V> deleteResult, int pos )
     {
         BorrowedFromSiblingResult<K, V> borrowedResult = (BorrowedFromSiblingResult<K, V>)deleteResult;
         
