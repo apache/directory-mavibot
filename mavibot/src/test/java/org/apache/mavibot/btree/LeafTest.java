@@ -275,7 +275,7 @@ public class LeafTest
         assertTrue( result instanceof BorrowedFromRightResult );
         
         BorrowedFromRightResult<Long, String> borrowed = (BorrowedFromRightResult<Long, String>)result;
-        assertEquals( Long.valueOf( 11L ), borrowed.getNewLeftMost() );
+        assertEquals( Long.valueOf( 11L ), borrowed.getModifiedSibling().getKey( 0 ) );
         Tuple<Long, String> removedKey = borrowed.getRemovedElement();
 
         assertEquals( Long.valueOf( 7L ), removedKey.getKey() );
