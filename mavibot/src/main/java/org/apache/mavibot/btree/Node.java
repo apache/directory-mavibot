@@ -172,7 +172,6 @@ import java.util.LinkedList;
         
         // Modify the result and return
         removeResult.setModifiedPage( newPage );
-        //removeResult.setNewLeftMost( newPage.keys[0] );
 
         return removeResult;
     }
@@ -222,7 +221,9 @@ import java.util.LinkedList;
         // the current page
         if ( deleteResult instanceof BorrowedFromSiblingResult )
         {
-            return handleBorrowedResult( deleteResult, pos );
+            RemoveResult<K, V> removeResult = handleBorrowedResult( (BorrowedFromSiblingResult<K, V>)deleteResult, pos );
+            
+            return removeResult;
         }
 
         // Last, not least, we have merged two child pages. We now have to remove
@@ -315,14 +316,12 @@ import java.util.LinkedList;
     /**
      * The deletion in a children has moved an element from one of its sibling. The key
      * is present in the current node.
-     * @param deleteResult The result of the deletion from the children
+     * @param borrowedResult The result of the deletion from the children
      * @param pos The position the key was found in the current node
-     * @return
+     * @return The result
      */
-    private DeleteResult<K, V> handleBorrowedResult( DeleteResult<K, V> deleteResult, int pos )
+    private RemoveResult<K, V> handleBorrowedResult( BorrowedFromSiblingResult<K, V> borrowedResult, int pos )
     {
-        BorrowedFromSiblingResult<K, V> borrowedResult = (BorrowedFromSiblingResult<K, V>)deleteResult;
-        
         Page<K, V> modifiedPage = borrowedResult.getModifiedPage();
         Page<K, V> modifiedSibling = borrowedResult.getModifiedSibling();
 
