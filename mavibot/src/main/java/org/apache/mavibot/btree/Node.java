@@ -175,6 +175,43 @@ import java.util.LinkedList;
 
         return removeResult;
     }
+    
+    
+    /**
+     * Handle the removal of an element from the root page, when two of its children
+     * have been merged.
+     * 
+     * @param mergedResult The merge result
+     * @param pos The position in the current root
+     * @param found Tells if the removed key is present in the root page
+     * @return The resulting root page
+     */
+    private RemoveResult<K, V> handleRootRemove( MergedWithSiblingResult<K, V> mergedResult, int pos, boolean found )
+    {
+        RemoveResult<K, V> removeResult = null;
+        
+        // If the current node contains only one key, then the merged result will be
+        // the new root. Deal with this case
+        if ( nbElems == 1 )
+        {
+            removeResult = new RemoveResult<K, V>( mergedResult.getModifiedPage(),
+                mergedResult.getRemovedElement(), mergedResult.getNewLeftMost() );
+        }
+        else
+        {
+            // Remove the element and update the reference to the changed pages
+            if ( found )
+            {
+                removeResult = removeKey( mergedResult, revision, pos );
+            }
+            else
+            {
+                removeResult = removeKey( mergedResult, revision, pos - 1 );
+            }
+        }
+
+        return removeResult;
+    }
 
 
     /**
@@ -235,27 +272,7 @@ import java.util.LinkedList;
             // If the parent is null, then this page is the root page.
             if ( parent == null )
             {
-                RemoveResult<K, V> result = null;
-                
-                // If the current node contains only one key, then the merged result will be
-                // the new root. Deal with this case
-                if ( nbElems == 1 )
-                {
-                    result = new RemoveResult<K, V>( mergedResult.getModifiedPage(),
-                        mergedResult.getRemovedElement(), mergedResult.getNewLeftMost() );
-                }
-                else
-                {
-                    // Remove the element and update the reference to the changed pages
-                    if ( found )
-                    {
-                        result = removeKey( mergedResult, revision, index );
-                    }
-                    else
-                    {
-                        result = removeKey( mergedResult, revision, index - 1 );
-                    }
-                }
+                RemoveResult<K, V> result = handleRootRemove( mergedResult, index, found );
                 
                 return result;
             }
@@ -269,7 +286,7 @@ import java.util.LinkedList;
                 // We simply remove the element from the page, and if it was the leftmost,
                 // we return the new pivot (it will replace any instance of the removed
                 // key in its parents)
-                DeleteResult<K, V> result = removeKey( mergedResult, revision, - (pos + 1 ) );
+                RemoveResult<K, V> result = removeKey( mergedResult, revision, - (pos + 1 ) );
                 
                 return result;
             }
@@ -399,7 +416,7 @@ import java.util.LinkedList;
         K newLeftMost = null;
         
         // Copy the keys and the children up to the insertion position
-        System.arraycopy( keys, 0, newNode.keys, 0, pos - 1 );
+        System.arraycopy( keys, 0, newNode.keys, 0, pos - 1);
         System.arraycopy( children, 0, newNode.children, 0, pos );
         
         // Insert the new elements
@@ -408,7 +425,7 @@ import java.util.LinkedList;
         
         // And copy the elements after the position
         System.arraycopy( keys, pos + 1, newNode.keys, pos, keys.length - pos  - 1 );
-        System.arraycopy( children, pos + 2, newNode.children, pos, children.length - pos - 2 );
+        System.arraycopy( children, pos + 2, newNode.children, pos + 1, children.length - pos - 2 );
         
         if ( pos == 0 )
         {
@@ -694,14 +711,27 @@ import java.util.LinkedList;
         if ( nbElems > 0 )
         {
             // Start with the first child
-            sb.append( children[0].getId() ).append( "-r" ).append( children[0].getRevision() );
-            //sb.append( "{" ).append( children[0] ).append( "}" );
+            if ( children[0] == null )
+            {
+                sb.append( "null" );
+            }
+            else
+            {
+                sb.append( children[0].getId() ).append( "-r" ).append( children[0].getRevision() );
+            }
             
             for ( int i = 0; i < nbElems; i++ )
             {
-                sb.append( "|<" ).append( keys[i] ).append( ">|" ).
-                    append( children[i + 1].getId() ).append( "-r" ).append( children[i + 1].getRevision() );
-                //sb.append( "{" ).append( children[i + 1] ).append( "}" );
+                sb.append( "|<" ).append( keys[i] ).append( ">|" );
+                
+                if ( children[i + 1] == null )
+                {
+                    sb.append( "null" );
+                }
+                else
+                {
+                    sb.append( children[i + 1].getId() ).append( "-r" ).append( children[i + 1].getRevision() );
+                }
             }
         }
         

@@ -84,7 +84,7 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
      * 
      * @param parent The parent of the current page
      * @param The position of the current page reference in its parent
-     * @return The position of the sibling, or -1 if we hav'nt found any sibling
+     * @return The position of the sibling, or -1 if we have'nt found any sibling
      */
     protected int selectSibling( Node<K, V> parent, int parentPos )
     {
@@ -99,7 +99,7 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
         {
             // The current page is referenced on the right of its parent's page :
             // we will not have a next page with the same parent
-            return -1;
+            return parentPos - 1;
         }
         
         Page<K, V> prevPage = parent.children[parentPos - 1];

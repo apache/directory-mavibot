@@ -143,21 +143,12 @@ public class Leaf<K, V> extends AbstractPage<K, V>
                 // Check in both next and previous page, if they have the same parent
                 // and select the biggest page with the same parent to borrow an element.
                 int siblingPos = selectSibling( (Node<K, V>)parent, parentPos );
-                Leaf<K, V> sibling = null;
-                    
-                if ( siblingPos == -1 )
-                {
-                    sibling = (Leaf<K, V>)((Node<K, V>)parent).children[parentPos - 1];
-                }
-                else
-                {
-                    sibling = (Leaf<K, V>)((Node<K, V>)parent).children[siblingPos];
-                }
+                Leaf<K, V> sibling = (Leaf<K, V>)((Node<K, V>)parent).children[siblingPos];
                 
                 if ( sibling.getNbElems() == halfSize )
                 {
                     // We will merge the current page with its sibling
-                    DeleteResult<K, V> result = mergeWithSibling( revision, sibling, ( siblingPos < index), index );
+                    DeleteResult<K, V> result = mergeWithSibling( revision, sibling, ( siblingPos < parentPos), index );
                     
                     return result;
                 }
