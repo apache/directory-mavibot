@@ -661,15 +661,15 @@ public class BTreeTest
         BTree<Integer, String> btree = createTwoLevelBTreeFullLeaves();
         
         // Delete some useless elements to simulate the tree we want to test
-        // Get the left leaf to contain N/2 elements
+        // Make the left leaf to contain N/2 elements
         btree.delete( 3 );
         btree.delete( 4 );
         
-        // Get the right leaf to contain N/2 elements
+        // Make the right leaf to contain N/2 elements
         btree.delete( 19 );
         btree.delete( 20 );
         
-        // Get the middle leaf to contain N/2 elements
+        // Make the middle leaf to contain N/2 elements
         btree.delete( 11 );
         btree.delete( 12 );
         
@@ -719,6 +719,11 @@ public class BTreeTest
         
         btree.delete( 42 );
         assertNull( btree.find( 42 ) );
+        
+        btree.insert( 72, "V72" );
+
+        btree.delete( 67 );
+        assertNull( btree.find( 67 ) );
     }
 
     /*
@@ -836,6 +841,30 @@ public class BTreeTest
         return btree;
     }
     
+    
+    /**
+     * Creates a 2 level depth tree of half full pages
+     */
+    private BTree<Integer, String> createTwoLevelBTreeHalfFullLeaves() throws IOException
+    {
+        BTree<Integer, String> btree = new BTree<Integer, String>( new IntComparator() );
+        btree.setPageSize( 4 );
+        
+        // Create a tree with 5 children containing 4 elements each. The tree is full.
+        int[] keys = new int[] {1, 2, 17, 18, 13, 14, 9, 10, 5, 6, 3 };
+
+        for ( int key : keys )
+        {
+            String value = "V" + key;
+            btree.insert( key, value );
+        }
+        
+        // Regulate the tree by removing the last value added, so that all the leaves have only 2 elements
+        btree.delete( 3 );
+
+        return btree;
+    }
+    
     /**
      * Creates a 3 level depth tree, with each page containing only N/2 elements
      */
@@ -892,5 +921,46 @@ public class BTreeTest
         //btree.delete( 1 );
         
         System.out.println( btree );
+    }
+    
+    
+    /**
+     * Test various deletions in a two level high tree, when we have leaves
+     * containing N/2 elements (thus each deletion leads to a merge)
+     */
+    @Test
+    public void testDelete2LevelsTreeWithHalfFullLeaves() throws Exception
+    {
+        // Create a BTree with pages containing 4 elements
+        BTree<Integer, String> btree = createTwoLevelBTreeHalfFullLeaves();
+
+        // Test removals leadings to various merges.
+        // Delete from the middle, not the leftmost value of the leaf
+        btree.delete( 10 );
+        assertNull( btree.find( 10 ) );
+        
+        // Delete the extraneous value
+        btree.delete( 9 );
+        assertNull( btree.find( 9 ) );
+        
+        // Delete the leftmost element in the middle
+        btree.delete( 13 );
+        assertNull( btree.find( 13 ) );
+        
+        // Delete the extraneous value
+        btree.delete( 14 );
+        assertNull( btree.find( 14 ) );
+        
+        // Delete the rightmost value
+        btree.delete( 18 );
+        assertNull( btree.find( 18 ) );
+        
+        // Delete the extraneous value
+        btree.delete( 5 );
+        assertNull( btree.find( 5 ) );
+        
+        // Delete the leftmost value of the right leaf
+        btree.delete( 6 );
+        assertNull( btree.find( 6 ) );
     }
 }
