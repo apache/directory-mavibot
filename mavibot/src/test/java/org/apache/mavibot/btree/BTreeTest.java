@@ -918,7 +918,10 @@ public class BTreeTest
         BTree<Integer, String> btree = createMultiLevelBTreeHalfFull();
 
         // Case 1 : delete an element in the btree in the leftmost leaf
-        //btree.delete( 1 );
+        Tuple<Integer, String> removed = btree.delete( 2 );
+        assertEquals( 2, removed.getKey().intValue() );
+        assertEquals( "v2", removed.getValue() );
+        assertNull( btree.find( 2 ) );
         
         System.out.println( btree );
     }
