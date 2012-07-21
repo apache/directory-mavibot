@@ -200,14 +200,7 @@ import java.util.LinkedList;
         else
         {
             // Remove the element and update the reference to the changed pages
-            if ( found )
-            {
-                removeResult = removeKey( mergedResult, revision, pos );
-            }
-            else
-            {
-                removeResult = removeKey( mergedResult, revision, pos - 1 );
-            }
+            removeResult = removeKey( mergedResult, revision, pos );
         }
 
         return removeResult;
@@ -230,8 +223,8 @@ import java.util.LinkedList;
         if ( found )
         {
             index = -( pos + 1 );
-            child = children[index + 1];
-            deleteResult = child.delete( revision, key, this, index + 1 );
+            child = children[-pos];
+            deleteResult = child.delete( revision, key, this, -pos );
         }
         else
         {
@@ -272,7 +265,7 @@ import java.util.LinkedList;
             // If the parent is null, then this page is the root page.
             if ( parent == null )
             {
-                RemoveResult<K, V> result = handleRootRemove( mergedResult, index, found );
+                RemoveResult<K, V> result = handleRootRemove( mergedResult, pos, found );
                 
                 return result;
             }
@@ -286,7 +279,7 @@ import java.util.LinkedList;
                 // We simply remove the element from the page, and if it was the leftmost,
                 // we return the new pivot (it will replace any instance of the removed
                 // key in its parents)
-                RemoveResult<K, V> result = removeKey( mergedResult, revision, - (pos + 1 ) );
+                RemoveResult<K, V> result = removeKey( mergedResult, revision, pos );
                 
                 return result;
             }
@@ -407,33 +400,51 @@ import java.util.LinkedList;
      */
     private RemoveResult<K, V> removeKey( MergedWithSiblingResult<K, V> mergedResult, long revision, int pos )
     {
-        // Get the removed element
-        Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], null );
-
         // First copy the current page, but remove one element in the copied page
         Node<K, V> newNode = new Node<K, V>( btree, revision, nbElems - 1 );
         
         K newLeftMost = null;
+
+        int index = Math.abs( pos ) - 2;
         
-        // Copy the keys and the children up to the insertion position
-        System.arraycopy( keys, 0, newNode.keys, 0, pos - 1);
-        System.arraycopy( children, 0, newNode.children, 0, pos );
-        
-        // Insert the new elements
-        newNode.keys[pos - 1] = mergedResult.getModifiedPage().getKey( 0 );
-        newNode.children[pos] = mergedResult.getModifiedPage();
-        
-        // And copy the elements after the position
-        System.arraycopy( keys, pos + 1, newNode.keys, pos, keys.length - pos  - 1 );
-        System.arraycopy( children, pos + 2, newNode.children, pos + 1, children.length - pos - 2 );
-        
-        if ( pos == 0 )
+        //
+        if ( index < 0 )
         {
-            newLeftMost = newNode.keys[0];
+            // Copy the keys and the children
+            System.arraycopy( keys, 1, newNode.keys, 0, newNode.nbElems );
+            newNode.children[0] = mergedResult.getModifiedPage();
+            System.arraycopy( children, 2, newNode.children, 1, nbElems - 1 );
+        }
+        else
+        {
+            // Copy the keys
+            if ( index > 0 )
+            {
+                System.arraycopy( keys, 0, newNode.keys, 0, index );
+            }
+            
+            newNode.keys[index] = mergedResult.getModifiedPage().getKey( 0 );
+            
+            if ( index < nbElems - 2 )
+            {
+                System.arraycopy( keys, index + 2, newNode.keys, index + 1, nbElems - index - 2 );
+            }
+            
+            // Copy the children
+            System.arraycopy( children, 0, newNode.children, 0, index + 1 );
+            
+            newNode.children[index + 1] = mergedResult.getModifiedPage();
+            
+            if ( index < nbElems - 2 )
+            {
+                System.arraycopy( children, index + 3, newNode.children, index + 2, nbElems - index - 2 );
+            }
         }
         
+        newLeftMost = newNode.keys[0];
+        
         // Create the result
-        RemoveResult<K, V> result = new RemoveResult<K, V>( newNode, removedElement, newLeftMost );
+        RemoveResult<K, V> result = new RemoveResult<K, V>( newNode, mergedResult.getRemovedElement(), newLeftMost );
         
         return result;
     }
