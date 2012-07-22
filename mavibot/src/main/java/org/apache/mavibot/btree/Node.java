@@ -441,7 +441,14 @@ import java.util.LinkedList;
             }
         }
         
-        newLeftMost = newNode.keys[0];
+        if ( newNode.keys[0] == mergedResult.getRemovedElement().getKey() )
+        {
+            newLeftMost = newNode.keys[0];
+        }
+        else
+        {
+            newLeftMost = mergedResult.getNewLeftMost();
+        }
         
         // Create the result
         RemoveResult<K, V> result = new RemoveResult<K, V>( newNode, mergedResult.getRemovedElement(), newLeftMost );

@@ -917,12 +917,66 @@ public class BTreeTest
     {
         BTree<Integer, String> btree = createMultiLevelBTreeHalfFull();
 
-        // Case 1 : delete an element in the btree in the leftmost leaf
+        // Case 1 : delete the leftmost element in the btree in the leftmost leaf
         Tuple<Integer, String> removed = btree.delete( 2 );
         assertEquals( 2, removed.getKey().intValue() );
         assertEquals( "v2", removed.getValue() );
         assertNull( btree.find( 2 ) );
         
+        // delete the third element in the first leaf
+        removed = btree.delete( 7 );
+        assertEquals( 7, removed.getKey().intValue() );
+        assertEquals( "v7", removed.getValue() );
+        assertNull( btree.find( 7 ) );
+        
+        // Case 2 : Delete the second element in the leftmost leaf
+        removed = btree.delete( 6 );
+        assertEquals( 6, removed.getKey().intValue() );
+        assertEquals( "v6", removed.getValue() );
+        assertNull( btree.find( 6 ) );
+
+        // delete the third element in the first leaf
+        removed = btree.delete( 11 );
+        assertEquals( 11, removed.getKey().intValue() );
+        assertEquals( "v11", removed.getValue() );
+        assertNull( btree.find( 11 ) );
+        
+        // Case 3 : delete the rightmost element in the btree in the rightmost leaf
+        removed = btree.delete( 99 );
+        assertEquals( 99, removed.getKey().intValue() );
+        assertEquals( "v99", removed.getValue() );
+        assertNull( btree.find( 99 ) );
+        
+        // delete the third element in the last leaf
+        removed = btree.delete( 98 );
+        assertEquals( 98, removed.getKey().intValue() );
+        assertEquals( "v98", removed.getValue() );
+        assertNull( btree.find( 98 ) );
+        
+        // Case 2 : Delete the first element in the rightmost leaf
+        removed = btree.delete( 94 );
+        assertEquals( 94, removed.getKey().intValue() );
+        assertEquals( "v94", removed.getValue() );
+        assertNull( btree.find( 94 ) );
+
+        // delete the third element in the last leaf
+        removed = btree.delete( 95 );
+        assertEquals( 95, removed.getKey().intValue() );
+        assertEquals( "v95", removed.getValue() );
+        assertNull( btree.find( 95 ) );
+
+        // Case 5 : delete the leftmost element which is refered in the root node
+        removed = btree.delete( 22 );
+        assertEquals( 22, removed.getKey().intValue() );
+        assertEquals( "v22", removed.getValue() );
+        assertNull( btree.find( 22 ) );
+
+        // delete the third element in the last leaf
+        removed = btree.delete( 27 );
+        assertEquals( 27, removed.getKey().intValue() );
+        assertEquals( "v27", removed.getValue() );
+        assertNull( btree.find( 27 ) );
+
         System.out.println( btree );
     }
     
