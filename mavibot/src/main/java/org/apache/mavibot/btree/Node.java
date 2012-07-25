@@ -280,6 +280,72 @@ import java.util.LinkedList;
 
 
     /**
+     * Borrow an element from the left sibling, creating a new sibling with one
+     * less element and creating a new page where the element to remove has been
+     * deleted and the borrowed element added on the left.
+     * 
+     * @param revision The new revision for all the pages
+     * @param sibling The left sibling
+     * @param pos The position of the element to remove
+     * @return The resulting pages
+     */
+    private DeleteResult<K, V> borrowFromLeft( long revision, MergedWithSiblingResult<K, V> mergedResult,
+        Node<K, V> sibling, int pos )
+    {
+        // The sibling is on the left, borrow the rightmost element
+        Page<K, V> siblingChild = sibling.children[sibling.nbElems];
+
+        // Create the new sibling, with one less element at the end
+        Node<K, V> newSibling = new Node<K, V>( btree, revision, sibling.getNbElems() - 1 );
+
+        // Copy the keys and children of the old sibling in the new sibling
+        System.arraycopy( sibling.keys, 0, newSibling.keys, 0, newSibling.getNbElems() );
+        System.arraycopy( sibling.children, 0, newSibling.children, 0, sibling.getNbElems() );
+
+        // Create the new page and add the new element at the beginning
+        // First copy the current node, with the same size
+        Node<K, V> newNode = new Node<K, V>( btree, revision, nbElems );
+
+        // Copy the keys and the values up to the insertion position
+        newNode.children[0] = siblingChild;
+
+        int index = Math.abs( pos );
+
+        if ( index == 0 )
+        {
+            newNode.keys[0] = mergedResult.getModifiedPage().getKey( 0 );
+            System.arraycopy( keys, 1, newNode.keys, 1, nbElems - 1 );
+
+            newNode.children[1] = mergedResult.getModifiedPage();
+            System.arraycopy( children, 2, newNode.children, 2, nbElems - 1 );
+        }
+        else
+        {
+            if ( index > 1 )
+            {
+                System.arraycopy( keys, 0, newNode.keys, 0, index - 1 );
+                System.arraycopy( children, 0, newNode.children, 1, index - 1 );
+            }
+
+            newNode.keys[index - 1] = mergedResult.getModifiedPage().getKey( 0 );
+            newNode.children[index] = mergedResult.getModifiedPage();
+
+            if ( index < nbElems )
+            {
+                System.arraycopy( keys, index, newNode.keys, index, nbElems - index );
+                System.arraycopy( children, index + 1, newNode.children, index + 1, nbElems - index );
+            }
+        }
+
+        // Create the result
+        DeleteResult<K, V> result = new BorrowedFromLeftResult<K, V>( newNode, newSibling,
+            mergedResult.getRemovedElement(), newNode.findLeftMost().getKey() );
+
+        return result;
+    }
+
+
+    /**
      * {@inheritDoc}
      */
     public DeleteResult<K, V> delete( long revision, K key, Page<K, V> parent, int parentPos )
@@ -372,9 +438,9 @@ import java.util.LinkedList;
                     // We can borrow the element from the sibling
                     if ( siblingPos < parentPos )
                     {
-                        //DeleteResult<K, V> result = borrowFromLeft( revision, sibling, pos );
+                        DeleteResult<K, V> result = borrowFromLeft( revision, mergedResult, sibling, pos );
 
-                        return null;
+                        return result;
                     }
                     else
                     {
@@ -428,7 +494,7 @@ import java.util.LinkedList;
             else
             {
                 // Update the keys
-                newPage.keys[pos] = modifiedPage.getKey( 0 );
+                newPage.keys[pos] = modifiedPage.findLeftMost().getKey();
 
                 // Update the children
                 newPage.children[pos] = modifiedSibling;
@@ -449,7 +515,7 @@ import java.util.LinkedList;
             else
             {
                 // Update the keys
-                newPage.keys[pos - 1] = modifiedPage.getKey( 0 );
+                newPage.keys[pos - 1] = modifiedPage.findLeftMost().getKey();
 
                 // Update the children
                 newPage.children[pos - 1] = modifiedSibling;

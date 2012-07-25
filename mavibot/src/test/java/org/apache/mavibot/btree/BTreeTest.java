@@ -1254,7 +1254,6 @@ public class BTreeTest
      * 6: remove the first element of a leaf in the middle of the tree
      */
     @Test
-    @Ignore
     public void testDeleteMultiLevelsLeadingToNodeBorrowLeft6() throws Exception
     {
         BTree<Integer, String> btree = createMultiLevelBTreeLeavesHalfFull();
@@ -1274,7 +1273,6 @@ public class BTreeTest
      * 7: remove the second element of a leaf in the middle of the tree
      */
     @Test
-    @Ignore
     public void testDeleteMultiLevelsLeadingToNodeBorrowLeft7() throws Exception
     {
         BTree<Integer, String> btree = createMultiLevelBTreeLeavesHalfFull();
@@ -1294,7 +1292,6 @@ public class BTreeTest
      * 8: remove the last element of a leaf in the middle of the tree
      */
     @Test
-    @Ignore
     public void testDeleteMultiLevelsLeadingToNodeBorrowLeft8() throws Exception
     {
         BTree<Integer, String> btree = createMultiLevelBTreeLeavesHalfFull();
@@ -1314,7 +1311,6 @@ public class BTreeTest
      * 9: remove the element before the last one of a leaf in the middle of the tree
      */
     @Test
-    @Ignore
     public void testDeleteMultiLevelsLeadingToNodeBorrowLeft9() throws Exception
     {
         BTree<Integer, String> btree = createMultiLevelBTreeLeavesHalfFull();
@@ -1334,7 +1330,6 @@ public class BTreeTest
      * 10: remove the mid element of a leaf in the middle of the tree
      */
     @Test
-    @Ignore
     public void testDeleteMultiLevelsLeadingToNodeBorrowLeft10() throws Exception
     {
         BTree<Integer, String> btree = createMultiLevelBTreeLeavesHalfFull();
@@ -1354,7 +1349,6 @@ public class BTreeTest
      * 11: remove the mid+1 element of a leaf in the middle of the tree
      */
     @Test
-    @Ignore
     public void testDeleteMultiLevelsLeadingToNodeBorrowLeft11() throws Exception
     {
         BTree<Integer, String> btree = createMultiLevelBTreeLeavesHalfFull();
