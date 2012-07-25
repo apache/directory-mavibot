@@ -1251,6 +1251,82 @@ public class BTreeTest
      * Test deletions in a tree with more than one level. We are specifically testing
      * the deletions that will make a node borrowing some element from a sibling.
      * 
+     * 1: remove the rightmost element
+     */
+    @Test
+    public void testDeleteMultiLevelsLeadingToNodeBorrowLeft1() throws Exception
+    {
+        BTree<Integer, String> btree = createMultiLevelBTreeLeavesHalfFull();
+
+        // deleting as many elements as necessary to get the node ready for a merge
+        delete( btree, EXPECTED1, 94, 95, 98, 99 );
+
+        // delete the element
+        checkRemoval( btree, 91, EXPECTED1 );
+    }
+
+
+    /**
+     * Test deletions in a tree with more than one level. We are specifically testing
+     * the deletions that will make a node borrowing some element from a sibling.
+     * 
+     * 1: remove the element before the rightmost element
+     */
+    @Test
+    public void testDeleteMultiLevelsLeadingToNodeBorrowLeft2() throws Exception
+    {
+        BTree<Integer, String> btree = createMultiLevelBTreeLeavesHalfFull();
+
+        // deleting as many elements as necessary to get the node ready for a merge
+        delete( btree, EXPECTED1, 94, 95, 98, 99 );
+
+        // delete the element
+        checkRemoval( btree, 90, EXPECTED1 );
+    }
+
+
+    /**
+     * Test deletions in a tree with more than one level. We are specifically testing
+     * the deletions that will make a node borrowing some element from a sibling.
+     * 
+     * 1: remove the leftmost element  of the rightmost leaf
+     */
+    @Test
+    public void testDeleteMultiLevelsLeadingToNodeBorrowLeft3() throws Exception
+    {
+        BTree<Integer, String> btree = createMultiLevelBTreeLeavesHalfFull();
+
+        // deleting as many elements as necessary to get the node ready for a merge
+        delete( btree, EXPECTED1, 94, 95, 98, 99 );
+
+        // delete the element
+        checkRemoval( btree, 82, EXPECTED1 );
+    }
+
+
+    /**
+     * Test deletions in a tree with more than one level. We are specifically testing
+     * the deletions that will make a node borrowing some element from a sibling.
+     * 
+     * 1: remove the second elemnt of the leftmost page on the rightmost second level node
+     */
+    @Test
+    public void testDeleteMultiLevelsLeadingToNodeBorrowLeft4() throws Exception
+    {
+        BTree<Integer, String> btree = createMultiLevelBTreeLeavesHalfFull();
+
+        // deleting as many elements as necessary to get the node ready for a merge
+        delete( btree, EXPECTED1, 94, 95, 98, 99 );
+
+        // delete the element
+        checkRemoval( btree, 83, EXPECTED1 );
+    }
+
+
+    /**
+     * Test deletions in a tree with more than one level. We are specifically testing
+     * the deletions that will make a node borrowing some element from a sibling.
+     * 
      * 6: remove the first element of a leaf in the middle of the tree
      */
     @Test
