@@ -346,6 +346,129 @@ import java.util.LinkedList;
 
 
     /**
+     * We have to merge the node with its sibling, both have N/2 elements before the element
+     * removal.
+     * 
+     * @param revision
+     * @param mergedResult
+     * @param pos
+     * @return
+     */
+    public DeleteResult<K, V> mergeWithSibling( long revision, MergedWithSiblingResult<K, V> mergedResult,
+        Node<K, V> sibling, boolean isLeft, int pos )
+    {
+        // Create the new node. It will contain N - 1 elements (the maximum number)
+        // as we merge two nodes that contain N/2 elements minus the one we remove
+        Node<K, V> newNode = new Node<K, V>( btree, revision, btree.pageSize - 1 );
+        Tuple<K, V> removedElement = mergedResult.getRemovedElement();
+        int half = btree.pageSize / 2;
+        int index = Math.abs( pos );
+
+        if ( isLeft )
+        {
+            // The sibling is on the left. Copy all of its elements in the new node first
+            System.arraycopy( sibling.keys, 0, newNode, 0, half ); //1
+            System.arraycopy( sibling.children, 0, newNode, 0, half + 1 ); //2
+
+            // Then copy all the elements up to the deletion point
+            if ( index < 2 )
+            {
+                newNode.keys[half] = mergedResult.getModifiedPage().findLeftMost().getKey();
+                System.arraycopy( keys, 1, newNode.keys, half + 1, half - 1 );
+
+                newNode.children[half + 1] = mergedResult.getModifiedPage();
+                System.arraycopy( children, 2, newNode.children, half + 2, half - 1 );
+            }
+            else
+            {
+                // Copy the left part of the node keys up to the deletion point
+                // Insert the new key
+                newNode.keys[half] = children[0].findLeftMost().getKey(); // 3
+
+                if ( index > 2 )
+                {
+                    System.arraycopy( keys, 0, newNode.keys, half + 1, index - 2 ); //4
+                }
+
+                // Inject the new merged key
+                newNode.keys[half + index - 1] = mergedResult.getModifiedPage().findLeftMost().getKey(); //5
+
+                if ( index < half )
+                {
+                    System.arraycopy( keys, index, newNode.keys, half + index, half - index ); //6
+                    System.arraycopy( children, index + 1, newNode.children, half + index + 1, half - index ); //9
+                }
+
+                // Copy the children before the deletion point
+                System.arraycopy( children, 0, newNode.children, half + 1, index - 1 ); // 7
+
+                // Inject the new merged child
+                newNode.children[half + index] = mergedResult.getModifiedPage(); //8
+            }
+        }
+        else
+        {
+            // The sibling is on the right.
+            if ( index < 2 )
+            {
+                // Copy the keys
+                System.arraycopy( keys, 1, newNode.keys, 0, half - 1 );
+
+                // Insert the first child
+                newNode.children[0] = mergedResult.getModifiedPage();
+
+                // Copy the node children
+                System.arraycopy( children, 1, newNode.children, 1, half - 1 );
+            }
+            else
+            {
+                // Copy the keys and children before the deletion point
+                if ( index > 2 )
+                {
+                    // Copy the first keys
+                    System.arraycopy( keys, 0, newNode.keys, 0, index - 2 ); //1
+
+                    // Copy the first children
+                    System.arraycopy( keys, 0, newNode.keys, 0, index - 1 ); //6
+                }
+
+                // Inject the modified key
+                newNode.keys[index - 2] = mergedResult.getModifiedPage().findLeftMost().getKey(); //2
+
+                // Inject the modified children
+                newNode.children[index - 1] = mergedResult.getModifiedPage(); // 7
+
+                // Add the remaining node's key if needed
+                if ( index < half )
+                {
+                    System.arraycopy( keys, index, newNode.keys, index - 1, half - index ); //5
+                }
+
+                // Add the remining children if below half
+                if ( index < half )
+                {
+                    System.arraycopy( children, index + 1, newNode.children, index, half - index ); // 8
+                }
+
+                // Inject the new key from sibling
+                keys[half - 1] = sibling.findLeftMost().getKey(); //3
+            }
+
+            // Copy the sibling keys
+            System.arraycopy( sibling.keys, 0, newNode.keys, half, half );
+
+            // Add the sibling children
+            System.arraycopy( sibling.children, 0, newNode.children, half, half + 1 ); // 9
+        }
+
+        // And create the result
+        DeleteResult<K, V> result = new MergedWithSiblingResult<K, V>( newNode, removedElement, newNode.keys[0] );
+
+        return result;
+    }
+
+
+    /**
      * {@inheritDoc}
      */
     public DeleteResult<K, V> delete( long revision, K key, Page<K, V> parent, int parentPos )
@@ -453,7 +576,10 @@ import java.util.LinkedList;
                 else
                 {
                     // We need to merge the sibling with the current page
-                    return null;
+                    DeleteResult<K, V> result = mergeWithSibling( revision, mergedResult, sibling,
+                        ( siblingPos < parentPos ), pos );
+
+                    return result;
                 }
             }
         }
