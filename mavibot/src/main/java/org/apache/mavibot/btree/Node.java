@@ -224,14 +224,15 @@ import java.util.LinkedList;
     {
         // The sibling is on the right, borrow the leftmost element
         Page<K, V> siblingChild = sibling.children[0];
-        K siblingKey = siblingChild.getKey( 0 );
 
         // Create the new sibling, with one less element at the beginning
         Node<K, V> newSibling = new Node<K, V>( btree, revision, sibling.getNbElems() - 1 );
 
+        K siblingKey = sibling.children[0].findLeftMost().getKey();
+
         // Copy the keys and children of the old sibling in the new sibling
         System.arraycopy( sibling.keys, 1, newSibling.keys, 0, newSibling.getNbElems() );
-        System.arraycopy( sibling.children, 1, newSibling.children, 0, sibling.getNbElems() );
+        System.arraycopy( sibling.children, 1, newSibling.children, 0, newSibling.getNbElems() + 1 );
 
         // Create the new page and add the new element at the end
         // First copy the current node, with the same size
@@ -240,35 +241,46 @@ import java.util.LinkedList;
         // Copy the keys and the values up to the insertion position
         int index = Math.abs( pos );
 
+        // Copy the key and children from sibling
+        newNode.keys[nbElems - 1] = siblingKey; // 1
+        newNode.children[nbElems] = sibling.children[0]; // 8
+
         if ( index < 2 )
         {
+            // Copy the keys
             System.arraycopy( keys, 1, newNode.keys, 0, nbElems - 1 );
-            newNode.keys[nbElems - 1] = siblingKey;
 
-            System.arraycopy( children, 2, newNode.children, 1, nbElems - 1 );
+            // Inject the modified page
             newNode.children[0] = mergedResult.getModifiedPage();
-            newNode.children[nbElems] = siblingChild;
+
+            // Copy the children
+            System.arraycopy( children, 2, newNode.children, 1, nbElems - 1 );
         }
         else
         {
-            System.arraycopy( keys, 0, newNode.keys, 0, index - 1 );
+            if ( index > 2 )
+            {
+                // Copy the keys before the deletion point
+                System.arraycopy( keys, 0, newNode.keys, 0, index - 2 ); // 4
+            }
+
+            // Inject the new modified page key
+            newNode.keys[index - 2] = mergedResult.getModifiedPage().findLeftMost().getKey(); // 2
 
             if ( index < nbElems )
             {
-                System.arraycopy( keys, index + 1, newNode.keys, index, nbElems - 1 - index );
+                // Copy the remaining keys after the deletion point
+                System.arraycopy( keys, index, newNode.keys, index - 1, nbElems - index ); // 3
+
+                // Copy the remaining children after the deletion point
+                System.arraycopy( children, index + 1, newNode.children, index, nbElems - index ); // 7
             }
 
-            newNode.keys[newNode.nbElems - 1] = siblingKey;
+            // Copy the children before the deletion point
+            System.arraycopy( children, 0, newNode.children, 0, index - 1 ); // 5
 
-            System.arraycopy( children, 0, newNode.children, 0, index - 1 );
-            newNode.children[index - 1] = mergedResult.getModifiedPage();
-
-            if ( index < nbElems )
-            {
-                System.arraycopy( children, index + 1, newNode.children, index, nbElems - 1 - index );
-            }
-
-            newNode.children[index] = siblingChild;
+            // Inject the modified page
+            newNode.children[index - 1] = mergedResult.getModifiedPage(); // 6
         }
 
         // Create the result
@@ -300,20 +312,20 @@ import java.util.LinkedList;
 
         // Copy the keys and children of the old sibling in the new sibling
         System.arraycopy( sibling.keys, 0, newSibling.keys, 0, newSibling.getNbElems() );
-        System.arraycopy( sibling.children, 0, newSibling.children, 0, sibling.getNbElems() );
+        System.arraycopy( sibling.children, 0, newSibling.children, 0, newSibling.getNbElems() + 1 );
 
         // Create the new page and add the new element at the beginning
         // First copy the current node, with the same size
         Node<K, V> newNode = new Node<K, V>( btree, revision, nbElems );
 
-        // Copy the keys and the values up to the insertion position
-        newNode.children[0] = siblingChild;
+        // Sets the first children
+        newNode.children[0] = siblingChild; //1
 
         int index = Math.abs( pos );
 
-        if ( index == 0 )
+        if ( index < 2 )
         {
-            newNode.keys[0] = mergedResult.getModifiedPage().getKey( 0 );
+            newNode.keys[0] = mergedResult.getModifiedPage().findLeftMost().getKey();
             System.arraycopy( keys, 1, newNode.keys, 1, nbElems - 1 );
 
             newNode.children[1] = mergedResult.getModifiedPage();
@@ -321,20 +333,32 @@ import java.util.LinkedList;
         }
         else
         {
-            if ( index > 1 )
+            // Set the first key
+            newNode.keys[0] = children[0].findLeftMost().getKey(); //2
+
+            if ( index > 2 )
             {
-                System.arraycopy( keys, 0, newNode.keys, 0, index - 1 );
-                System.arraycopy( children, 0, newNode.children, 1, index - 1 );
+                // Copy the keys before the deletion point
+                System.arraycopy( keys, 0, newNode.keys, 1, index - 2 ); // 4
             }
 
-            newNode.keys[index - 1] = mergedResult.getModifiedPage().getKey( 0 );
-            newNode.children[index] = mergedResult.getModifiedPage();
+            // Inject the modified key
+            newNode.keys[index - 1] = mergedResult.getModifiedPage().findLeftMost().getKey(); // 3
 
             if ( index < nbElems )
             {
-                System.arraycopy( keys, index, newNode.keys, index, nbElems - index );
-                System.arraycopy( children, index + 1, newNode.children, index + 1, nbElems - index );
+                // Add copy the remaining keys after the deletion point
+                System.arraycopy( keys, index, newNode.keys, index, nbElems - index ); // 5
+
+                // Copy the remaining children after the insertion point
+                System.arraycopy( children, index + 1, newNode.children, index + 1, nbElems - index ); // 8
             }
+
+            // Copy the children before the insertion point
+            System.arraycopy( children, 0, newNode.children, 1, index - 1 ); // 6
+
+            // Insert the modified page
+            newNode.children[index] = mergedResult.getModifiedPage(); // 7
         }
 
         // Create the result
@@ -359,7 +383,7 @@ import java.util.LinkedList;
     {
         // Create the new node. It will contain N - 1 elements (the maximum number)
         // as we merge two nodes that contain N/2 elements minus the one we remove
-        Node<K, V> newNode = new Node<K, V>( btree, revision, btree.pageSize - 1 );
+        Node<K, V> newNode = new Node<K, V>( btree, revision, btree.pageSize );
         Tuple<K, V> removedElement = mergedResult.getRemovedElement();
         int half = btree.pageSize / 2;
         int index = Math.abs( pos );
@@ -367,8 +391,8 @@ import java.util.LinkedList;
         if ( isLeft )
         {
             // The sibling is on the left. Copy all of its elements in the new node first
-            System.arraycopy( sibling.keys, 0, newNode, 0, half ); //1
-            System.arraycopy( sibling.children, 0, newNode, 0, half + 1 ); //2
+            System.arraycopy( sibling.keys, 0, newNode.keys, 0, half ); //1
+            System.arraycopy( sibling.children, 0, newNode.children, 0, half + 1 ); //2
 
             // Then copy all the elements up to the deletion point
             if ( index < 2 )
@@ -418,7 +442,7 @@ import java.util.LinkedList;
                 newNode.children[0] = mergedResult.getModifiedPage();
 
                 // Copy the node children
-                System.arraycopy( children, 1, newNode.children, 1, half - 1 );
+                System.arraycopy( children, 2, newNode.children, 1, half - 1 );
             }
             else
             {
@@ -427,10 +451,10 @@ import java.util.LinkedList;
                 {
                     // Copy the first keys
                     System.arraycopy( keys, 0, newNode.keys, 0, index - 2 ); //1
-
-                    // Copy the first children
-                    System.arraycopy( keys, 0, newNode.keys, 0, index - 1 ); //6
                 }
+
+                // Copy the first children
+                System.arraycopy( children, 0, newNode.children, 0, index - 1 ); //6
 
                 // Inject the modified key
                 newNode.keys[index - 2] = mergedResult.getModifiedPage().findLeftMost().getKey(); //2
@@ -442,17 +466,14 @@ import java.util.LinkedList;
                 if ( index < half )
                 {
                     System.arraycopy( keys, index, newNode.keys, index - 1, half - index ); //5
-                }
 
-                // Add the remining children if below half
-                if ( index < half )
-                {
+                    // Add the remining children if below half
                     System.arraycopy( children, index + 1, newNode.children, index, half - index ); // 8
                 }
-
-                // Inject the new key from sibling
-                keys[half - 1] = sibling.findLeftMost().getKey(); //3
             }
+
+            // Inject the new key from sibling
+            newNode.keys[half - 1] = sibling.findLeftMost().getKey(); //3
 
             // Copy the sibling keys
             System.arraycopy( sibling.keys, 0, newNode.keys, half, half );
@@ -610,7 +631,7 @@ import java.util.LinkedList;
             if ( borrowedResult.isFromRight() )
             {
                 // Update the keys
-                newPage.keys[pos] = modifiedPage.getKey( 0 );
+                newPage.keys[pos] = modifiedPage.findLeftMost().getKey();
                 newPage.keys[pos + 1] = modifiedSibling.findLeftMost().getKey();
 
                 // Update the children
@@ -689,7 +710,7 @@ import java.util.LinkedList;
                 System.arraycopy( keys, 0, newNode.keys, 0, index );
             }
 
-            newNode.keys[index] = mergedResult.getModifiedPage().getKey( 0 );
+            newNode.keys[index] = mergedResult.getModifiedPage().findLeftMost().getKey();
 
             if ( index < nbElems - 2 )
             {
