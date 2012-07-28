@@ -236,6 +236,195 @@ public class BTreeTest
 
 
     /**
+     * Test the deletion of elements in a BTree. We will try 1000 times to delete 1000
+     * random elements in [0..1024], and check every tree to see if all the removed elements
+     * are absent. This pretty much validate the the deletion operation is valid, assuming 
+     * that due to the randomization of the deleted values, we will statically meet all the 
+     * use cases.
+     * @throws Exception
+     */
+    @Test
+    public void testPageDeleteRandom() throws Exception
+    {
+        Set<Long> expected = new HashSet<Long>();
+        List<Long> added = new ArrayList<Long>();
+
+        Random random = new Random( System.nanoTime() );
+
+        int nbError = 0;
+
+        long l1 = System.currentTimeMillis();
+        int n = 0;
+        long delta = l1;
+        int nbTrees = 1000;
+        int nbElems = 1000;
+
+        for ( int j = 0; j < nbTrees; j++ )
+        {
+            BTree<Long, String> btree = new BTree<Long, String>( new LongComparator() );
+            btree.setPageSize( 8 );
+
+            for ( int i = 0; i < nbElems; i++ )
+            {
+                Long key = ( long ) random.nextInt( 1024 );
+                String value = "V" + key;
+                expected.add( key );
+                added.add( key );
+
+                //System.out.println( "Adding " + i + "th : " + key );
+
+                try
+                {
+                    btree.insert( key, value );
+                }
+                catch ( Exception e )
+                {
+                    e.printStackTrace();
+                    System.out.println( btree );
+                    System.out.println( "Error while adding " + value );
+                    nbError++;
+                    return;
+                }
+            }
+
+            assertTrue( checkTreeLong( expected, btree ) );
+
+            // Now, delete the elements
+            /*
+            boolean isFirst = true;
+
+            for ( long element : added )
+            {
+                if ( isFirst )
+                {
+                    isFirst = false;
+                }
+                else
+                {
+                    System.out.print( ", " );
+                }
+
+                System.out.print( element );
+            }
+
+            //System.out.println( "\n--------------------" );
+             */
+
+            //int i = 0;
+
+            for ( long element : expected )
+            {
+                //System.out.println( "Deleting #" + i + " : " + element );
+                //i++;
+                //System.out.println( btree );
+                Tuple<Long, String> tuple = btree.delete( element );
+
+                if ( tuple == null )
+                {
+                    System.out.println( btree );
+                }
+
+                assertEquals( Long.valueOf( element ), tuple.getKey() );
+                assertNull( btree.find( element ) );
+
+                //System.out.println( "" );
+            }
+
+            if ( j % 10000 == 0 )
+            {
+                if ( n > 0 )
+                {
+                    long t0 = System.currentTimeMillis();
+                    System.out.println( "Delta" + n + ": " + ( t0 - delta ) );
+                    delta = t0;
+                }
+
+                n++;
+
+            }
+
+            expected.clear();
+            added.clear();
+        }
+
+        long l2 = System.currentTimeMillis();
+
+        System.out.println( "Delta : " + ( l2 - l1 ) + ", nbError = " + nbError
+            + ", Nb deletion per second : " + ( nbTrees * nbElems ) / ( ( l2 - l1 ) / 1000 ) );
+    }
+
+
+    @Test
+    public void testDeleteDebug() throws IOException
+    {
+        long[] values = new long[]
+            {
+                148, 746, 525, 327, 1, 705, 171, 1023, 769, 1021,
+                128, 772, 744, 771, 925, 884, 346, 519, 989, 350,
+                649, 895, 464, 164, 190, 298, 203, 69, 483, 38,
+                266, 83, 88, 285, 879, 342, 231, 432, 722, 432,
+                258, 307, 237, 151, 43, 36, 135, 166, 325, 886,
+                878, 307, 925, 835, 800, 895, 519, 947, 703, 27,
+                324, 668, 40, 943, 804, 230, 223, 584, 828, 575,
+                69, 955, 344, 325, 896, 423, 855, 783, 225, 447,
+                28, 23, 262, 679, 782, 517, 412, 878, 641, 940,
+                368, 245, 1005, 226, 939, 320, 396, 437, 373, 61
+        };
+
+        BTree<Long, String> btree = new BTree<Long, String>( new LongComparator() );
+        btree.setPageSize( 8 );
+
+        for ( long value : values )
+        {
+            String strValue = "V" + value;
+
+            try
+            {
+                btree.insert( value, strValue );
+            }
+            catch ( Exception e )
+            {
+                e.printStackTrace();
+                System.out.println( btree );
+                System.out.println( "Error while adding " + value );
+                return;
+            }
+        }
+
+        System.out.println( btree );
+
+        int i = 0;
+
+        long[] deletes = new long[]
+            {
+                1,
+                828,
+                285,
+                804,
+                258,
+                262,
+        };
+
+        for ( long value : deletes )
+        {
+            System.out.println( "Deleting #" + i + " : " + value );
+            i++;
+            System.out.println( btree );
+            Tuple<Long, String> tuple = btree.delete( value );
+
+            if ( tuple != null )
+            {
+                assertEquals( Long.valueOf( value ), tuple.getKey() );
+            }
+
+            assertNull( btree.find( value ) );
+
+            System.out.println( "" );
+        }
+    }
+
+
+    /**
      * Test the deletion of elements from a BTree.
      */
     @Test
