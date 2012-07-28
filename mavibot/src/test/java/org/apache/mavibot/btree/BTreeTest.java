@@ -43,7 +43,7 @@ import org.junit.Test;
 /**
  * A unit test class for BTree
  * 
- * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
 public class BTreeTest
 {

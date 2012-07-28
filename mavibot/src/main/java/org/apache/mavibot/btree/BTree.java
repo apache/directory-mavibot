@@ -19,6 +19,7 @@
  */
 package org.apache.mavibot.btree;
 
+
 import java.io.IOException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -28,21 +29,22 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+
 /**
  * The B+Tree MVCC data structure.
  * 
  * @param <K> The type for the keys
  * @param <V> The type for the stored values
  *
- * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
 public class BTree<K, V>
 {
     /** Default page size (number of entries per node) */
     public static final int DEFAULT_PAGE_SIZE = 16;
-    
+
     /** A field used to generate new revisions in a thread safe way */
-    private AtomicLong revision = new AtomicLong(0);
+    private AtomicLong revision = new AtomicLong( 0 );
 
     /** A field used to generate new recordId in a thread safe way */
     private transient AtomicLong pageRecordIdGenerator;
@@ -52,13 +54,13 @@ public class BTree<K, V>
 
     /** The current rootPage */
     protected Page<K, V> rootPage;
-    
+
     /** A map containing all the existing revisions */
     private Map<Long, Page<K, V>> roots = new ConcurrentHashMap<Long, Page<K, V>>();
 
     /** Number of entries in each Page. */
     protected int pageSize;
-    
+
     /** The type to use to create the keys */
     protected Class<?> keyType;
 
@@ -72,8 +74,8 @@ public class BTree<K, V>
     {
         this( comparator, DEFAULT_PAGE_SIZE );
     }
-    
-    
+
+
     /**
      * Creates a new BTree with a specific page size and a comparator.
      * 
@@ -89,33 +91,33 @@ public class BTree<K, V>
 
         this.comparator = comparator;
         setPageSize( pageSize );
-        
+
         // Create the map contaning all the revisions
-        roots = new ConcurrentHashMap<Long, Page<K,V>>();
-        
+        roots = new ConcurrentHashMap<Long, Page<K, V>>();
+
         // Initialize the PageId counter
-        pageRecordIdGenerator = new AtomicLong(0);
-        
+        pageRecordIdGenerator = new AtomicLong( 0 );
+
         // Initialize the revision counter
-        revision = new AtomicLong(0);
-        
+        revision = new AtomicLong( 0 );
+
         // Create the first root page, with revision 0L. It will be empty
         // and increment the revision at the same time
         rootPage = new Leaf<K, V>( this );
         roots.put( revision.getAndIncrement(), rootPage );
-        
+
         // We will extract the Type to use for keys, using the comparator for that
         Class<?> comparatorClass = comparator.getClass();
         Type[] types = comparatorClass.getGenericInterfaces();
-        Type[] argumentTypes = ((ParameterizedType)types[0]).getActualTypeArguments();
-        
+        Type[] argumentTypes = ( ( ParameterizedType ) types[0] ).getActualTypeArguments();
+
         if ( ( argumentTypes != null ) && ( argumentTypes.length > 0 ) && ( argumentTypes[0] instanceof Class<?> ) )
         {
-            keyType = (Class<?>)argumentTypes[0];
+            keyType = ( Class<?> ) argumentTypes[0];
         }
     }
-    
-    
+
+
     /**
      * Gets the number which is a power of 2 immediately above the given positive number.
      */
@@ -128,11 +130,11 @@ public class BTree<K, V>
         newSize |= newSize >> 8;
         newSize |= newSize >> 16;
         newSize++;
-        
+
         return newSize;
     }
-    
-    
+
+
     /**
      * Set the maximum number of elements we can store in a page. This must be a
      * number greater than 1, and a power of 2. The default page size is 16.
@@ -151,18 +153,18 @@ public class BTree<K, V>
         {
             this.pageSize = DEFAULT_PAGE_SIZE;
         }
-        
+
         this.pageSize = getPowerOf2( pageSize );
     }
-    
-    
+
+
     /**
      * Set the new root page for this tree. Used for debug purpose only. The revision
      * will always be 0;
      * 
      * @param root the new root page.
      */
-    /* No qualifier */ void setRoot( Page<K, V> root )
+    /* No qualifier */void setRoot( Page<K, V> root )
     {
         rootPage = root;
         roots.put( revision.getAndIncrement(), rootPage );
@@ -177,24 +179,26 @@ public class BTree<K, V>
         return pageSize;
     }
 
-    
+
     /**
      * Generates a new RecordId. It's only used by the Page instances.
      * 
      * @return a new incremental recordId
      */
-    /** No qualifier */ long generateRecordId()
+    /** No qualifier */
+    long generateRecordId()
     {
         return pageRecordIdGenerator.getAndIncrement();
     }
-    
-    
+
+
     /**
      * Generates a new revision number. It's only used by the Page instances.
      * 
      * @return a new incremental revision number
      */
-    /** No qualifier */ long generateRevision()
+    /** No qualifier */
+    long generateRevision()
     {
         return revision.getAndIncrement();
     }
@@ -214,11 +218,11 @@ public class BTree<K, V>
     public V insert( K key, V value ) throws IOException
     {
         long revision = generateRevision();
-        
+
         return insert( key, value, revision );
     }
-    
-    
+
+
     /**
      * Delete the entry which key is given as a parameter. If the entry exists, it will
      * be removed from the tree, the old tuple will be returned. Otherwise, null is returned.
@@ -234,11 +238,11 @@ public class BTree<K, V>
         }
 
         long revision = generateRevision();
-        
+
         return delete( key, revision );
     }
-    
-    
+
+
     /**
      * Delete the entry which key is given as a parameter. If the entry exists, it will
      * be removed from the tree, the old tuple will be returned. Otherwise, null is returned.
@@ -250,30 +254,30 @@ public class BTree<K, V>
     {
         // Commented atm, we will have to play around the idea of transactions later
         //acquireWriteLock();
-        
+
         try
         {
             // If the key exists, the existing value will be replaced. We store it
             // to return it to the caller.
             Tuple<K, V> tuple = null;
-            
+
             // Try to delete the entry starting from the root page. Here, the root
             // page may be either a Node or a Leaf
             DeleteResult<K, V> result = rootPage.delete( revision, key, null, -1 );
-            
+
             if ( result instanceof NotPresentResult )
             {
                 // Key not found.
                 return null;
             }
-            
+
             if ( result instanceof RemoveResult )
             {
                 // The element was found, and removed
-                RemoveResult<K, V> removeResult = (RemoveResult<K, V>)result;
-                
+                RemoveResult<K, V> removeResult = ( RemoveResult<K, V> ) result;
+
                 Page<K, V> newPage = removeResult.getModifiedPage();
-                
+
                 // This is a new root
                 rootPage = newPage;
                 tuple = removeResult.getRemovedElement();
@@ -281,7 +285,7 @@ public class BTree<K, V>
 
             // Save the rootPage into the roots with the new revision.
             roots.put( revision, rootPage );
-            
+
             // Return the value we have found if it was modified
             return tuple;
         }
@@ -291,8 +295,8 @@ public class BTree<K, V>
             //releaseWriteLock()
         }
     }
-    
-    
+
+
     /**
      * Find a value in the tree, given its key. if the key is not found,
      * it will return null.
@@ -305,8 +309,8 @@ public class BTree<K, V>
     {
         return rootPage.find( key );
     }
-    
-    
+
+
     /**
      * Creates a cursor starting on the given key
      * 
@@ -318,15 +322,15 @@ public class BTree<K, V>
     public Cursor<K, V> browse( K key ) throws IOException
     {
         Transaction<K, V> transaction = beginReadTransaction();
-        
+
         // Fetch the root page for this revision
         Page<K, V> root = roots.get( transaction.getRevision() );
         Cursor<K, V> cursor = root.browse( key, transaction, new LinkedList<ParentPos<K, V>>() );
-        
+
         return cursor;
     }
-    
-    
+
+
     /**
      * Creates a cursor starting at the beginning of the tree
      * 
@@ -336,13 +340,13 @@ public class BTree<K, V>
     public Cursor<K, V> browse() throws IOException
     {
         Transaction<K, V> transaction = beginReadTransaction();
-        
+
         // Fetch the root page for this revision
         Page<K, V> root = roots.get( transaction.getRevision() );
         LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
-        
+
         Cursor<K, V> cursor = root.browse( transaction, stack );
-        
+
         return cursor;
     }
 
@@ -366,12 +370,12 @@ public class BTree<K, V>
         {
             throw new IllegalArgumentException( "Key must not be null" );
         }
-        
+
         if ( value == null )
         {
             throw new IllegalArgumentException( "Value must not be null" );
         }
-        
+
         // Commented atm, we will have to play around the idea of transactions later
         //acquireWriteLock();
 
@@ -380,40 +384,39 @@ public class BTree<K, V>
             // If the key exists, the existing value will be replaced. We store it
             // to return it to the caller.
             V modifiedValue = null;
-            
+
             // Try to insert the new value in the tree at the right place,
             // starting from the root page. Here, the root page may be either
             // a Node or a Leaf
             InsertResult<K, V> result = rootPage.insert( revision, key, value );
-            
+
             if ( result instanceof ModifyResult )
             {
-                ModifyResult<K, V> modifyResult = ((ModifyResult<K, V>)result);
-                
+                ModifyResult<K, V> modifyResult = ( ( ModifyResult<K, V> ) result );
+
                 // The root has just been modified, we haven't split it
                 // Get it and make it the current root page
                 rootPage = modifyResult.getModifiedPage();
-                
+
                 modifiedValue = modifyResult.getModifiedValue();
             }
             else
             {
                 // We have split the old root, create a new one containing
                 // only the pivotal we got back
-                SplitResult<K, V> splitResult = ((SplitResult<K, V>)result);
+                SplitResult<K, V> splitResult = ( ( SplitResult<K, V> ) result );
 
                 K pivot = splitResult.getPivot();
                 Page<K, V> leftPage = splitResult.getLeftPage();
                 Page<K, V> rightPage = splitResult.getRightPage();
-                
+
                 // Create the new rootPage
                 rootPage = new Node<K, V>( this, revision, pivot, leftPage, rightPage );
             }
 
-            
             // Save the rootPage into the roots with the new revision.
             roots.put( revision, rootPage );
-            
+
             // Return the value we have found if it was modified
             return modifiedValue;
         }
@@ -423,20 +426,21 @@ public class BTree<K, V>
             //releaseWriteLock()
         }
     }
-    
-    
+
+
     public Transaction<K, V> beginReadTransaction()
     {
         Transaction<K, V> readTransaction = new Transaction<K, V>( this, revision.get() - 1, System.currentTimeMillis() );
-        
+
         return readTransaction;
     }
 
-    
+
     public void commitTransaction( Transaction transaction )
     {
-        
+
     }
+
 
     /**
      * @return the comparator
@@ -464,17 +468,17 @@ public class BTree<K, V>
         return keyType;
     }
 
-    
+
     /**
      * @see Object#toString()
      */
     public String toString()
     {
         StringBuilder sb = new StringBuilder();
-        
+
         sb.append( "BTree" );
         sb.append( "( pageSize:" ).append( pageSize );
-        
+
         if ( rootPage != null )
         {
             sb.append( ", nbEntries:" ).append( rootPage.getNbElems() );
@@ -483,9 +487,9 @@ public class BTree<K, V>
         {
             sb.append( ", nbEntries:" ).append( 0 );
         }
-        
+
         sb.append( ", comparator:" );
-        
+
         if ( comparator == null )
         {
             sb.append( "null" );
@@ -494,7 +498,7 @@ public class BTree<K, V>
         {
             sb.append( comparator.getClass().getSimpleName() );
         }
-        
+
         sb.append( ") : \n" );
         sb.append( rootPage.dumpPage( "" ) );
 

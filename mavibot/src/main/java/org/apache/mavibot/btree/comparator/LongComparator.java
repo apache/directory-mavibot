@@ -22,10 +22,11 @@ package org.apache.mavibot.btree.comparator;
 
 import java.util.Comparator;
 
+
 /**
  * Compares Longs
  * 
- * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
 public class LongComparator implements Comparator<Long>
 {

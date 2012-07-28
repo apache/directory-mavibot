@@ -19,7 +19,9 @@
  */
 package org.apache.mavibot.btree;
 
+
 import java.util.LinkedList;
+
 
 /**
  * A MVCC Page interface.
@@ -27,9 +29,9 @@ import java.util.LinkedList;
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
  *
- * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-/* No qualifier */ interface Page<K, V>
+/* No qualifier */interface Page<K, V>
 {
     /**
      * @return The number of keys present in this page
@@ -69,8 +71,8 @@ import java.util.LinkedList;
      * @return
      */
     DeleteResult<K, V> delete( long revision, K key, Page<K, V> parent, int parentPos );
-    
-    
+
+
     /**
      * Find the value associated with the given key, if any.
      * 
@@ -78,8 +80,8 @@ import java.util.LinkedList;
      * @return The associated value, or null if there is none
      */
     V find( K key );
-    
-    
+
+
     /**
      * browse the tree, looking for the given key, and create a Cursor on top
      * of the found result.
@@ -90,8 +92,8 @@ import java.util.LinkedList;
      * @return A Cursor to browse the next elements
      */
     Cursor<K, V> browse( K key, Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack );
-    
-    
+
+
     /**
      * browse the whole tree, and create a Cursor on top of it.
      * 
@@ -100,8 +102,8 @@ import java.util.LinkedList;
      * @return A Cursor to browse the next elements
      */
     Cursor<K, V> browse( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack );
-    
-    
+
+
     /**
      * @return the revision
      */
@@ -112,16 +114,16 @@ import java.util.LinkedList;
      * @return the page ID
      */
     long getId();
-    
-    
+
+
     /**
      * Return the key at a given position
      * @param pos The position of the key we want to retrieve
      * @return The key found at the given position
      */
     K getKey( int pos );
-    
-    
+
+
     /**
      * Find the leftmost element in this page. If the page is a node, it will go
      * down in the leftmost children to recursively find the leftmost element.
@@ -129,8 +131,8 @@ import java.util.LinkedList;
      * @return The leftmost element in the tree
      */
     Tuple<K, V> findLeftMost();
-    
-    
+
+
     /**
      * Find the rightmost element in this page. If the page is a node, it will go
      * down in the rightmost children to recursively find the rightmost element.
@@ -138,8 +140,8 @@ import java.util.LinkedList;
      * @return The rightmost element in the tree
      */
     Tuple<K, V> findRightMost();
-    
-    
+
+
     /**
      * Pretty-print the tree with tabs
      * @param tabs The tabs to add in front of each node

@@ -19,7 +19,9 @@
  */
 package org.apache.mavibot.btree;
 
+
 import java.util.Date;
+
 
 /**
  * The Transaction is used to protect the BTree against concurrent modifcation,
@@ -34,7 +36,7 @@ import java.util.Date;
  * a browse against a big BTree. At some point, transactions which are pending
  * for too long will be closed by the transaction manager.
  * 
- * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  *
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
@@ -43,13 +45,14 @@ public class Transaction<K, V>
 {
     /** The associated revision */
     private long revision;
-    
+
     /** The date of creation */
     private long creationDate;
-    
+
     /** The BTree on which we are having a transaction */
     private BTree<K, V> btree;
-    
+
+
     /**
      * Creates a new transaction instance
      * @param revision The revision this transaction is using
@@ -79,8 +82,8 @@ public class Transaction<K, V>
     {
         return creationDate;
     }
-    
-    
+
+
     /**
      * Close the transaction, releasing the revision it was using.
      */
@@ -88,8 +91,8 @@ public class Transaction<K, V>
     {
         btree.commitTransaction( this );
     }
-    
-    
+
+
     /**
      * @see Object#toString()
      */

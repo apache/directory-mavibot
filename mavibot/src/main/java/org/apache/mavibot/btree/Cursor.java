@@ -19,7 +19,9 @@
  */
 package org.apache.mavibot.btree;
 
+
 import java.util.LinkedList;
+
 
 /**
  * A Cursor is used to fetch elements in a BTree and is returned by the
@@ -27,55 +29,56 @@ import java.util.LinkedList;
  * when the user is done with it.
  * <p>
  * 
- * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  *
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
  */
-/* No qualifier */ class Cursor<K, V>
+/* No qualifier */class Cursor<K, V>
 {
     /** The transaction used for this cursor */
     private Transaction<K, V> transaction;
-    
+
     /** The Tuple used to return the results */
     private Tuple<K, V> tuple = new Tuple<K, V>();
-    
+
     /** The stack of pages from the root down to the leaf */
     private LinkedList<ParentPos<K, V>> stack;
-    
+
+
     /**
      * Creates a new instance of Cursor, starting on a page at a given position.
      * 
      * @param transaction The transaction this operation is protected by
      * @param stack The stack of parent's from root to this page
      */
-    /* No qualifier */ Cursor( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack  )
+    /* No qualifier */Cursor( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
     {
         this.transaction = transaction;
         this.stack = stack;
     }
-    
-    
+
+
     /**
      * Find the next key/value
      * 
      * @return A Tuple containing the found key and value
      */
-    /* No qualifier */ Tuple<K, V> next()
+    /* No qualifier */Tuple<K, V> next()
     {
         ParentPos<K, V> parentPos = stack.getFirst();
-        
+
         if ( parentPos.page == null )
         {
             return new Tuple<K, V>();
         }
-        
+
         if ( parentPos.pos == parentPos.page.getNbElems() )
         {
             // End of the leaf. We have to go back into the stack up to the
             // parent, and down to the leaf
             parentPos = findNextParentPos();
-            
+
             if ( parentPos.page == null )
             {
                 // This is the end : no more value
@@ -83,16 +86,16 @@ import java.util.LinkedList;
             }
         }
 
-        Leaf<K, V> leaf = (Leaf<K, V>)(parentPos.page);
+        Leaf<K, V> leaf = ( Leaf<K, V> ) ( parentPos.page );
         tuple.setKey( leaf.keys[parentPos.pos] );
         tuple.setValue( leaf.values[parentPos.pos] );
-        
+
         parentPos.pos++;
 
         return tuple;
     }
-    
-    
+
+
     /**
      * Find the leaf containing the following elements.
      * 
@@ -105,12 +108,12 @@ import java.util.LinkedList;
             // We first go up the tree, until we reach a page which current position
             // is not the last one
             ParentPos<K, V> parentPos = stack.peek();
-            
+
             if ( parentPos == null )
             {
                 return null;
             }
-            
+
             if ( parentPos.pos == parentPos.page.getNbElems() )
             {
                 stack.pop();
@@ -121,24 +124,24 @@ import java.util.LinkedList;
                 // Then we go down the tree until we find a leaf which position is not the last one.
                 int newPos = ++parentPos.pos;
                 ParentPos<K, V> newParentPos = parentPos;
-                
+
                 while ( newParentPos.page instanceof Node )
                 {
-                    Node<K, V> node = (Node<K, V>)newParentPos.page;
-                    
+                    Node<K, V> node = ( Node<K, V> ) newParentPos.page;
+
                     newParentPos = new ParentPos<K, V>( node.children[newPos], 0 );
-                    
+
                     stack.push( newParentPos );
-                    
+
                     newPos = 0;
                 }
-                
+
                 return newParentPos;
             }
         }
     }
-    
-    
+
+
     /**
      * Find the leaf containing the previous elements.
      * 
@@ -151,12 +154,12 @@ import java.util.LinkedList;
             // We first go up the tree, until we reach a page which current position
             // is not the first one
             ParentPos<K, V> parentPos = stack.peek();
-            
+
             if ( parentPos == null )
             {
                 return null;
             }
-            
+
             if ( parentPos.pos == 0 )
             {
                 stack.pop();
@@ -167,44 +170,44 @@ import java.util.LinkedList;
                 // Then we go down the tree until we find a leaf which position is not the first one.
                 int newPos = --parentPos.pos;
                 ParentPos<K, V> newParentPos = parentPos;
-                
+
                 while ( newParentPos.page instanceof Node )
                 {
-                    Node<K, V> node = (Node<K, V>)newParentPos.page;
-                    
+                    Node<K, V> node = ( Node<K, V> ) newParentPos.page;
+
                     newParentPos = new ParentPos<K, V>( node.children[newPos], node.children[newPos].getNbElems() );
-                    
+
                     stack.push( newParentPos );
-                    
+
                     newPos = node.getNbElems();
                 }
-                
+
                 return newParentPos;
             }
         }
     }
-    
-    
+
+
     /**
      * Find the previous key/value
      * 
      * @return A Tuple containing the found key and value
      */
-    /* No qualifier */ Tuple<K, V> prev()
+    /* No qualifier */Tuple<K, V> prev()
     {
         ParentPos<K, V> parentPos = stack.peek();
-        
+
         if ( parentPos.page == null )
         {
             return new Tuple<K, V>();
         }
-        
+
         if ( parentPos.pos == 0 )
         {
             // End of the leaf. We have to go back into the stack up to the
             // parent, and down to the leaf
             parentPos = findPreviousParentPos();
-            
+
             if ( parentPos.page == null )
             {
                 // This is the end : no more value
@@ -212,8 +215,8 @@ import java.util.LinkedList;
             }
         }
 
-        Leaf<K, V> leaf = (Leaf<K, V>)(parentPos.page);
-        
+        Leaf<K, V> leaf = ( Leaf<K, V> ) ( parentPos.page );
+
         parentPos.pos--;
 
         tuple.setKey( leaf.keys[parentPos.pos] );
@@ -221,30 +224,30 @@ import java.util.LinkedList;
 
         return tuple;
     }
-    
-    
+
+
     /**
      * Tells if the cursor can return a next element
      * @return true if there are some more elements
      */
-    /* No qualifier */ boolean hasNext()
+    /* No qualifier */boolean hasNext()
     {
         ParentPos<K, V> parentPos = stack.peek();
-        
+
         if ( parentPos.page == null )
         {
             return false;
         }
-        
+
         if ( parentPos.pos == parentPos.page.getNbElems() )
         {
             // Remove the leaf from the stack
             stack.pop();
-            
+
             // End of the leaf. We have to go back into the stack up to the
             // parent, and down to the leaf
             parentPos = findNextParentPos();
-            
+
             return ( parentPos != null ) && ( parentPos.page != null );
         }
         else
@@ -252,30 +255,30 @@ import java.util.LinkedList;
             return true;
         }
     }
-    
-    
+
+
     /**
      * Tells if the cursor can return a previous element
      * @return true if there are some more elements
      */
-    /* No qualifier */ boolean hasPrev()
+    /* No qualifier */boolean hasPrev()
     {
         ParentPos<K, V> parentPos = stack.peek();
-        
+
         if ( parentPos.page == null )
         {
             return false;
         }
-        
+
         if ( parentPos.pos == 0 )
         {
             // Remove the leaf from the stack
             stack.pop();
-            
+
             // Start of the leaf. We have to go back into the stack up to the
             // parent, and down to the leaf
             parentPos = findPreviousParentPos();
-            
+
             return ( parentPos != null ) && ( parentPos.page != null );
         }
         else
@@ -283,8 +286,8 @@ import java.util.LinkedList;
             return true;
         }
     }
-    
-    
+
+
     /**
      * Closes the cursor, thus releases the associated transaction
      */

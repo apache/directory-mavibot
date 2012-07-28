@@ -19,6 +19,7 @@
  */
 package org.apache.mavibot.btree;
 
+
 /**
  * The result of an insert operation, when the child has not been split. It contains the
  * reference to the modified page.
@@ -26,33 +27,34 @@ package org.apache.mavibot.btree;
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
 
- * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-/* No qualifier */ class ModifyResult<K, V> implements InsertResult<K, V>
+/* No qualifier */class ModifyResult<K, V> implements InsertResult<K, V>
 {
     /** The modified page reference */
     protected Page<K, V> modifiedPage;
-    
+
     /** The modified value if the key was found in the tree*/
     protected V modifiedValue;
-    
+
+
     /**
      * The default constructor for ModifyResult.
      * 
      * @param modifiedPage The modified page
      * @param modifiedvalue The modified value (can be null if the key wasn't present in the tree)
      */
-    /* No qualifier */ ModifyResult( Page<K, V> modifiedPage, V modifiedValue )
+    /* No qualifier */ModifyResult( Page<K, V> modifiedPage, V modifiedValue )
     {
         this.modifiedPage = modifiedPage;
         this.modifiedValue = modifiedValue;
     }
-    
+
 
     /**
      * @return the modifiedPage
      */
-    /* No qualifier */ Page<K, V> getModifiedPage()
+    /* No qualifier */Page<K, V> getModifiedPage()
     {
         return modifiedPage;
     }
@@ -61,19 +63,19 @@ package org.apache.mavibot.btree;
     /**
      * @return the modifiedValue
      */
-    /* No qualifier */ V getModifiedValue()
+    /* No qualifier */V getModifiedValue()
     {
         return modifiedValue;
     }
-    
-    
+
+
     /**
      * @see Object#toString()
      */
     public String toString()
     {
         StringBuilder sb = new StringBuilder();
-        
+
         sb.append( "ModifyResult, old value = " ).append( modifiedValue );
         sb.append( ", modifiedPage = " ).append( modifiedPage );
 

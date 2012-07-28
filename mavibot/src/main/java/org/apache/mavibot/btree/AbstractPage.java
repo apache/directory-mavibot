@@ -19,7 +19,9 @@
  */
 package org.apache.mavibot.btree;
 
+
 import java.lang.reflect.Array;
+
 
 /**
  * A MVCC abstract Page. It stores the field and the methods shared by the Node and Leaf
@@ -28,7 +30,7 @@ import java.lang.reflect.Array;
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
  *
- * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
 public abstract class AbstractPage<K, V> implements Page<K, V>
 {
@@ -37,17 +39,17 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
 
     /** This BPage's revision */
     protected long revision;
-    
+
     /** This BPage's ID in the PageManager. */
     protected long id;
-    
+
     /** Keys of children nodes */
     protected K[] keys;
-    
+
     /** The number of current values in the Page */
     protected int nbElems;
-    
-    
+
+
     /**
      * Creates a default empty AbstractPage
      * 
@@ -57,26 +59,27 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
     {
         this.btree = btree;
     }
-    
-    
+
+
     /**
      * Internal constructor used to create Page instance used when a page is being copied or overflow
      */
-    @SuppressWarnings("unchecked") // Cannot create an array of generic objects
+    @SuppressWarnings("unchecked")
+    // Cannot create an array of generic objects
     protected AbstractPage( BTree<K, V> btree, long revision, int nbElems )
     {
         this.btree = btree;
         this.revision = revision;
         this.nbElems = nbElems;
-        
+
         // We get the type of array to create from the btree
         // Yes, this is an hack...
         Class<?> keyType = btree.getKeyType();
-        this.keys = (K[])Array.newInstance( keyType, nbElems );
-        
+        this.keys = ( K[] ) Array.newInstance( keyType, nbElems );
+
         id = btree.generateRecordId();
     }
-    
+
 
     /**
      * Select the sibling (the prev or next page with the same parent) which has
@@ -94,20 +97,20 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
             // we will not have a previous page with the same parent
             return 1;
         }
-        
+
         if ( parentPos == parent.getNbElems() )
         {
             // The current page is referenced on the right of its parent's page :
             // we will not have a next page with the same parent
             return parentPos - 1;
         }
-        
+
         Page<K, V> prevPage = parent.children[parentPos - 1];
         Page<K, V> nextPage = parent.children[parentPos + 1];
 
         int prevPageSize = prevPage.getNbElems();
         int nextPageSize = nextPage.getNbElems();
-        
+
         if ( prevPageSize >= nextPageSize )
         {
             return parentPos - 1;
@@ -118,7 +121,7 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
         }
     }
 
-    
+
     /**
      * {@inheritDoc}
      */
@@ -126,7 +129,7 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
     {
         return nbElems;
     }
-    
+
 
     /**
      * Find the position of the given key in the page. If we have found the key,
@@ -171,7 +174,7 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
         {
             return 0;
         }
-        
+
         int min = 0;
         int max = nbElems - 1;
 
@@ -179,9 +182,9 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
         while ( min < max )
         {
             int middle = ( min + max + 1 ) >> 1;
-            
+
             int comp = compare( keys[middle], key );
-            
+
             if ( comp < 0 )
             {
                 min = middle + 1;
@@ -195,16 +198,16 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
                 // Special case : the key already exists,
                 // we can return immediately. The value will be
                 // negative, and as the index may be 0, we subtract 1
-                return - ( middle + 1 );
+                return -( middle + 1 );
             }
         }
-        
+
         // Special case : we don't know if the key is present
         int comp = compare( keys[max], key );
-        
+
         if ( comp == 0 )
         {
-            return - ( max + 1 );
+            return -( max + 1 );
         }
         else
         {
@@ -234,21 +237,21 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
         {
             return 0;
         }
-        
+
         if ( key1 == null )
         {
             return 1;
         }
-        
+
         if ( key2 == null )
         {
             return -1;
         }
-        
+
         return btree.getComparator().compare( key1, key2 );
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
@@ -275,7 +278,7 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
         this.id = id;
     }
 
-    
+
     /**
      * {@inheritDoc}
      */
@@ -291,22 +294,22 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
         }
     }
 
-    
+
     /**
      * @see Object#toString()
      */
     public String toString()
     {
         StringBuilder sb = new StringBuilder();
-        
+
         sb.append( "r" ).append( revision );
         sb.append( ", ID:" ).append( id );
         sb.append( ", nbElems:" ).append( nbElems );
-        
+
         return sb.toString();
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */

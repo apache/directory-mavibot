@@ -19,13 +19,14 @@
  */
 package org.apache.mavibot.btree;
 
+
 /**
  * The result of an delete operation, when we have borrowed some element from a sibling.
  * 
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
 
- * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
 interface BorrowedFromSiblingResult<K, V> extends DeleteResult<K, V>
 {
@@ -33,7 +34,7 @@ interface BorrowedFromSiblingResult<K, V> extends DeleteResult<K, V>
      * @return the modifiedSibling
      */
     Page<K, V> getModifiedSibling();
-    
+
 
     /**
      * Tells if the sibling is on the left
@@ -41,8 +42,8 @@ interface BorrowedFromSiblingResult<K, V> extends DeleteResult<K, V>
      * @return True if the sibling is on the left
      */
     boolean isFromLeft();
-    
-    
+
+
     /**
      * Tells if the sibling is on the right
      * 

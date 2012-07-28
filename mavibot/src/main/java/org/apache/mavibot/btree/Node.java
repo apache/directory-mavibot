@@ -31,7 +31,7 @@ import java.util.LinkedList;
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
  *
- * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
 /* No qualifier */class Node<K, V> extends AbstractPage<K, V>
 {

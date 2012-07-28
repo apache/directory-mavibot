@@ -19,11 +19,12 @@
  */
 package org.apache.mavibot.btree;
 
+
 /**
  * The Tuple class is used when we browse a btree, it will contain the results
  * fetched from the btree.
  * 
- * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  *
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
@@ -32,24 +33,25 @@ public class Tuple<K, V>
 {
     /** The key */
     private K key;
-    
+
     /** The value */
     private V value;
-    
+
+
     /**
      * Creates a Tuple with no content
      */
-    /* No qualifier */ Tuple()
+    /* No qualifier */Tuple()
     {
     }
-    
-    
+
+
     /**
      * Creates a Tuple containing a key and its associated value.
      * @param key The key
      * @param value The associated value
      */
-    /* No qualifier */ Tuple( K key, V value )
+    /* No qualifier */Tuple( K key, V value )
     {
         this.key = key;
         this.value = value;
@@ -59,7 +61,7 @@ public class Tuple<K, V>
     /**
      * @return the key
      */
-    /* No qualifier */ K getKey()
+    /* No qualifier */K getKey()
     {
         return key;
     }
@@ -68,7 +70,7 @@ public class Tuple<K, V>
     /**
      * @param key the key to set
      */
-    /* No qualifier*/ void setKey( K key )
+    /* No qualifier*/void setKey( K key )
     {
         this.key = key;
     }
@@ -77,7 +79,7 @@ public class Tuple<K, V>
     /**
      * @return the value
      */
-    /* No qualifier */ V getValue()
+    /* No qualifier */V getValue()
     {
         return value;
     }
@@ -86,12 +88,12 @@ public class Tuple<K, V>
     /**
      * @param value the value to set
      */
-    /* No qualifier*/ void setValue( V value )
+    /* No qualifier*/void setValue( V value )
     {
         this.value = value;
     }
 
-    
+
     /**
      * @see Object#toString()
      */

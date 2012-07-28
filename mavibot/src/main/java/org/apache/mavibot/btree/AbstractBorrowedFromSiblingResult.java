@@ -28,7 +28,7 @@ package org.apache.mavibot.btree;
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
 
- * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
 /* No qualifier */abstract class AbstractBorrowedFromSiblingResult<K, V> extends AbstractDeleteResult<K, V> implements
     BorrowedFromSiblingResult<K, V>

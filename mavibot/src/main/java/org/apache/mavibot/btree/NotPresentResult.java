@@ -19,20 +19,22 @@
  */
 package org.apache.mavibot.btree;
 
+
 /**
  * The result of an delete operation, when the key to delete is not present in the tree.
  * 
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
 
- * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-/* No qualifier */ class NotPresentResult<K, V> implements DeleteResult<K, V>
+/* No qualifier */class NotPresentResult<K, V> implements DeleteResult<K, V>
 {
     /** The unique instance for this class */
     @SuppressWarnings("rawtypes")
-    /* No qualifier */ static final NotPresentResult NOT_PRESENT = new NotPresentResult();
-    
+    /* No qualifier */static final NotPresentResult NOT_PRESENT = new NotPresentResult();
+
+
     /**
      * A private void constructor, as we won't have any other instance.
      */
@@ -40,8 +42,8 @@ package org.apache.mavibot.btree;
     {
         // Do nothing
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
