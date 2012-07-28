@@ -19,6 +19,7 @@
  */
 package org.apache.mavibot.btree;
 
+
 /**
  * The result of an delete operation.
  * 
@@ -39,11 +40,4 @@ interface DeleteResult<K, V>
      * @return the removed element
      */
     Tuple<K, V> getRemovedElement();
-    
-    
-    /**
-     * @return the leftmost element for this btree
-     * @return
-     */
-    K getNewLeftMost();
 }

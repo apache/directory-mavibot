@@ -19,7 +19,9 @@
  */
 package org.apache.mavibot.btree;
 
+
 import java.util.LinkedList;
+
 
 /**
  * A MVCC Leaf. It stores the keys and values. It does not have any children.
@@ -33,29 +35,30 @@ public class Leaf<K, V> extends AbstractPage<K, V>
 {
     /** Values associated with keys */
     protected V[] values;
-    
-    
+
+
     /**
      * Empty constructor
      */
-    /* No qualifier */ Leaf( BTree<K, V> btree )
+    /* No qualifier */Leaf( BTree<K, V> btree )
     {
         super( btree );
     }
-    
-    
+
+
     /**
      * Internal constructor used to create Page instance used when a page is being copied or overflow
      */
-    @SuppressWarnings("unchecked") // Cannot create an array of generic objects
+    @SuppressWarnings("unchecked")
+    // Cannot create an array of generic objects
     private Leaf( BTree<K, V> btree, long revision, int nbElems )
     {
         super( btree, revision, nbElems );
 
-        this.values = (V[])new Object[nbElems];
+        this.values = ( V[] ) new Object[nbElems];
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
@@ -68,23 +71,23 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         {
             // We already have the key in the page : replace the value
             // into a copy of this page, unless the page has already be copied
-            int index = - ( pos + 1 );
-            
+            int index = -( pos + 1 );
+
             // Replace the existing value in a copy of the current page
             InsertResult<K, V> result = replaceElement( revision, key, value, index );
-            
+
             return result;
         }
-        
+
         // The key is not present in the leaf. We have to add it in the page
         if ( nbElems < btree.pageSize )
         {
             // The current page is not full, it can contain the added element.
             // We insert it into a copied page and return the result
             Page<K, V> modifiedPage = addElement( revision, key, value, pos );
-            
+
             InsertResult<K, V> result = new ModifyResult<K, V>( modifiedPage, null );
-                
+
             return result;
         }
         else
@@ -92,12 +95,12 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             // The Page is already full : we split it and return the overflow element,
             // after having created two pages.
             InsertResult<K, V> result = addAndSplit( revision, key, value, pos );
-            
+
             return result;
         }
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
@@ -110,16 +113,16 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             // Empty leaf
             return NotPresentResult.NOT_PRESENT;
         }
-        
+
         // Find the key in the page
         int pos = findPos( key );
-        
+
         if ( pos >= 0 )
         {
             // Not found : return the not present result.
             return NotPresentResult.NOT_PRESENT;
         }
-        
+
         int index = -( pos + 1 );
 
         // If the parent is null, then this page is the root page.
@@ -127,29 +130,29 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         {
             // Just remove the entry if it's present
             DeleteResult<K, V> result = removeElement( revision, index );
-            
+
             return result;
         }
         else
         {
             // The current page is not the root. Check if the leaf has more than N/2
             // elements
-            int halfSize = btree.pageSize/2;
-            
+            int halfSize = btree.pageSize / 2;
+
             if ( nbElems == halfSize )
             {
                 // We have to find a sibling now, and either borrow an entry from it
                 // if it has more than N/2 elements, or to merge the two pages.
                 // Check in both next and previous page, if they have the same parent
                 // and select the biggest page with the same parent to borrow an element.
-                int siblingPos = selectSibling( (Node<K, V>)parent, parentPos );
-                Leaf<K, V> sibling = (Leaf<K, V>)((Node<K, V>)parent).children[siblingPos];
-                
+                int siblingPos = selectSibling( ( Node<K, V> ) parent, parentPos );
+                Leaf<K, V> sibling = ( Leaf<K, V> ) ( ( Node<K, V> ) parent ).children[siblingPos];
+
                 if ( sibling.getNbElems() == halfSize )
                 {
                     // We will merge the current page with its sibling
-                    DeleteResult<K, V> result = mergeWithSibling( revision, sibling, ( siblingPos < parentPos), index );
-                    
+                    DeleteResult<K, V> result = mergeWithSibling( revision, sibling, ( siblingPos < parentPos ), index );
+
                     return result;
                 }
                 else
@@ -158,14 +161,14 @@ public class Leaf<K, V> extends AbstractPage<K, V>
                     if ( siblingPos < parentPos )
                     {
                         DeleteResult<K, V> result = borrowFromLeft( revision, sibling, index );
-                        
+
                         return result;
                     }
                     else
                     {
                         // Borrow from the right sibling
                         DeleteResult<K, V> result = borrowFromRight( revision, sibling, index );
-                        
+
                         return result;
                     }
                 }
@@ -177,13 +180,13 @@ public class Leaf<K, V> extends AbstractPage<K, V>
                 // we return the new pivot (it will replace any instance of the removed
                 // key in its parents)
                 DeleteResult<K, V> result = removeElement( revision, index );
-                
+
                 return result;
             }
         }
     }
-    
-    
+
+
     /**
      * Merge the sibling with the current leaf, after having removed the element in the page.
      * 
@@ -199,7 +202,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         // as we merge two pages that contain N/2 elements minus the one we remove
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, btree.pageSize - 1 );
         Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos] );
-        
+
         if ( isLeft )
         {
             // The sibling is on the left
@@ -210,7 +213,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             // Copy all the elements from the page up to the deletion position
             System.arraycopy( keys, 0, newLeaf.keys, sibling.nbElems, pos );
             System.arraycopy( values, 0, newLeaf.values, sibling.nbElems, pos );
-            
+
             // And copy the remaining elements after the deletion point
             System.arraycopy( keys, pos + 1, newLeaf.keys, sibling.nbElems + pos, nbElems - pos - 1 );
             System.arraycopy( values, pos + 1, newLeaf.values, sibling.nbElems + pos, nbElems - pos - 1 );
@@ -232,12 +235,12 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         }
 
         // And create the result
-        DeleteResult<K, V> result = new MergedWithSiblingResult<K, V>( newLeaf, removedElement, newLeaf.keys[0] );
-        
+        DeleteResult<K, V> result = new MergedWithSiblingResult<K, V>( newLeaf, removedElement );
+
         return result;
     }
-    
-    
+
+
     /**
      * Borrow an element from the left sibling, creating a new sibling with one
      * less element and creating a new page where the element to remove has been
@@ -252,36 +255,36 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     {
         // The sibling is on the left, borrow the rightmost element
         K siblingKey = sibling.keys[sibling.getNbElems() - 1];
-        V siblingValue = sibling.values[sibling.getNbElems() - 1 ];
-        
+        V siblingValue = sibling.values[sibling.getNbElems() - 1];
+
         // Create the new sibling, with one less element at the end
-        Leaf<K, V> newSibling = (Leaf<K, V>)sibling.copy( revision, sibling.getNbElems() - 1 );
+        Leaf<K, V> newSibling = ( Leaf<K, V> ) sibling.copy( revision, sibling.getNbElems() - 1 );
 
         // Create the new page and add the new element at the beginning
         // First copy the current page, with the same size
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems );
-        
+
         // Insert the borrowed element
         newLeaf.keys[0] = siblingKey;
         newLeaf.values[0] = siblingValue;
-        
+
         // Copy the keys and the values up to the insertion position,
         System.arraycopy( keys, 0, newLeaf.keys, 1, pos );
         System.arraycopy( values, 0, newLeaf.values, 1, pos );
-        
+
         // And copy the remaining elements
         System.arraycopy( keys, pos + 1, newLeaf.keys, pos + 1, keys.length - pos - 1 );
         System.arraycopy( values, pos + 1, newLeaf.values, pos + 1, values.length - pos - 1 );
-        
+
         // Create the result
         Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos] );
 
-        DeleteResult<K, V> result = new BorrowedFromLeftResult<K, V>( newLeaf, newSibling, removedElement, siblingKey );
-        
+        DeleteResult<K, V> result = new BorrowedFromLeftResult<K, V>( newLeaf, newSibling, removedElement );
+
         return result;
     }
-    
-    
+
+
     /**
      * Borrow an element from the right sibling, creating a new sibling with one
      * less element and creating a new page where the element to remove has been
@@ -297,7 +300,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         // The sibling is on the left, borrow the rightmost element
         K siblingKey = sibling.keys[0];
         V siblingValue = sibling.values[0];
-        
+
         // Create the new sibling
         Leaf<K, V> newSibling = new Leaf<K, V>( btree, revision, sibling.getNbElems() - 1 );
 
@@ -308,28 +311,28 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         // Create the new page and add the new element at the end
         // First copy the current page, with the same size
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems );
-        
+
         // Insert the borrowed element at the end
         newLeaf.keys[nbElems - 1] = siblingKey;
         newLeaf.values[nbElems - 1] = siblingValue;
-        
+
         // Copy the keys and the values up to the deletion position,
         System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
         System.arraycopy( values, 0, newLeaf.values, 0, pos );
-        
+
         // And copy the remaining elements
         System.arraycopy( keys, pos + 1, newLeaf.keys, pos, keys.length - pos - 1 );
         System.arraycopy( values, pos + 1, newLeaf.values, pos, values.length - pos - 1 );
-        
+
         // Create the result
         Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos] );
 
-        DeleteResult<K, V> result = new BorrowedFromRightResult<K, V>( newLeaf, newSibling, removedElement, newLeaf.keys[0] );
-        
+        DeleteResult<K, V> result = new BorrowedFromRightResult<K, V>( newLeaf, newSibling, removedElement );
+
         return result;
     }
-    
-    
+
+
     /**
      * Remove the element at a given position.
      * 
@@ -337,16 +340,14 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      * @param pos The position into the page of the element to remove
      * @return The modified page with the <K,V> element added
      */
-    private DeleteResult<K, V> removeElement( long revision,int pos )
+    private DeleteResult<K, V> removeElement( long revision, int pos )
     {
         // First copy the current page, but remove one element in the copied page
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems - 1 );
-        
+
         // Get the removed element
         Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos] );
-        
-        K newLeftMost = null;
-        
+
         // Deal with the special case of an page with only one element by skipping
         // the copy, as we won't have any remaining  element in the page
         if ( nbElems > 1 )
@@ -354,20 +355,15 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             // Copy the keys and the values up to the insertion position
             System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
             System.arraycopy( values, 0, newLeaf.values, 0, pos );
-            
+
             // And copy the elements after the position
-            System.arraycopy( keys, pos + 1, newLeaf.keys, pos, keys.length - pos  - 1 );
+            System.arraycopy( keys, pos + 1, newLeaf.keys, pos, keys.length - pos - 1 );
             System.arraycopy( values, pos + 1, newLeaf.values, pos, values.length - pos - 1 );
-            
-            if ( pos == 0 )
-            {
-                newLeftMost = newLeaf.keys[0];
-            }
         }
-        
+
         // Create the result
-        DeleteResult<K, V> result = new RemoveResult<K, V>( newLeaf, removedElement, newLeftMost );
-        
+        DeleteResult<K, V> result = new RemoveResult<K, V>( newLeaf, removedElement );
+
         return result;
     }
 
@@ -378,18 +374,18 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     public V find( K key )
     {
         int pos = findPos( key );
-        
+
         if ( pos < 0 )
         {
-            return values[- ( pos + 1 ) ];
+            return values[-( pos + 1 )];
         }
         else
         {
             return null;
         }
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
@@ -397,11 +393,11 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     {
         int pos = findPos( key );
         Cursor<K, V> cursor = null;
-        
+
         if ( pos < 0 )
         {
-            int index = - ( pos + 1 );
-            
+            int index = -( pos + 1 );
+
             // The first element has been found. Create the cursor
             stack.push( new ParentPos<K, V>( this, index ) );
 
@@ -420,42 +416,42 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             {
                 // Not found : return a null cursor
                 stack.push( new ParentPos<K, V>( this, -1 ) );
-                
+
                 return new Cursor<K, V>( transaction, stack );
             }
         }
-        
+
         return cursor;
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
-    public Cursor<K, V> browse( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack  )
+    public Cursor<K, V> browse( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
     {
         int pos = 0;
         Cursor<K, V> cursor = null;
-        
+
         if ( nbElems == 0 )
         {
             // The tree is empty, it's the root, we have nothing to return
             stack.push( new ParentPos<K, V>( null, -1 ) );
-            
+
             return new Cursor<K, V>( transaction, stack );
         }
         else
         {
             // Start at the beginning of the page
             stack.push( new ParentPos<K, V>( this, pos ) );
-            
+
             cursor = new Cursor<K, V>( transaction, stack );
         }
-        
+
         return cursor;
     }
-    
-    
+
+
     /**
      * Copy the current page and all of the keys, values and children, if it's not a leaf.
      * 
@@ -474,7 +470,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         return newLeaf;
     }
 
-    
+
     /**
      * Copy the current page if needed, and replace the value at the position we have found the key.
      * 
@@ -487,24 +483,24 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     private InsertResult<K, V> replaceElement( long revision, K key, V value, int pos )
     {
         Leaf<K, V> newLeaf = this;
-        
+
         if ( this.revision != revision )
         {
             // The page hasn't been modified yet, we need to copy it first
-            newLeaf = (Leaf<K, V>)copy( revision, nbElems );
+            newLeaf = ( Leaf<K, V> ) copy( revision, nbElems );
         }
-        
+
         // Now we can inject the value
         V oldValue = newLeaf.values[pos];
         newLeaf.values[pos] = value;
-        
+
         // Create the result
         InsertResult<K, V> result = new ModifyResult<K, V>( newLeaf, oldValue );
-        
+
         return result;
     }
-    
-    
+
+
     /**
      * Add a new <K, V> into a copy of the current page at a given position. We return the
      * modified page. The new page will have one more element than the current page.
@@ -519,7 +515,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     {
         // First copy the current page, but add one element in the copied page
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems + 1 );
-        
+
         // Deal with the special case of an empty page
         if ( nbElems == 0 )
         {
@@ -531,11 +527,11 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             // Copy the keys and the values up to the insertion position
             System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
             System.arraycopy( values, 0, newLeaf.values, 0, pos );
-            
+
             // Add the new element
             newLeaf.keys[pos] = key;
             newLeaf.values[pos] = value;
-            
+
             // And copy the remaining elements
             System.arraycopy( keys, pos, newLeaf.keys, pos + 1, keys.length - pos );
             System.arraycopy( values, pos, newLeaf.values, pos + 1, values.length - pos );
@@ -543,8 +539,8 @@ public class Leaf<K, V> extends AbstractPage<K, V>
 
         return newLeaf;
     }
-    
-    
+
+
     /**
      * Split a full page into two new pages, a left, a right and a pivot element. The new pages will
      * each contains half of the original elements. <br/>
@@ -565,7 +561,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         int middle = btree.pageSize >> 1;
         Leaf<K, V> leftLeaf = null;
         Leaf<K, V> rightLeaf = null;
-        
+
         // Determinate where to store the new value
         if ( pos <= middle )
         {
@@ -575,11 +571,11 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             // Copy the keys and the values up to the insertion position
             System.arraycopy( keys, 0, leftLeaf.keys, 0, pos );
             System.arraycopy( values, 0, leftLeaf.values, 0, pos );
-            
+
             // Add the new element
             leftLeaf.keys[pos] = key;
             leftLeaf.values[pos] = value;
-            
+
             // And copy the remaining elements
             System.arraycopy( keys, pos, leftLeaf.keys, pos + 1, middle - pos );
             System.arraycopy( values, pos, leftLeaf.values, pos + 1, middle - pos );
@@ -602,32 +598,32 @@ public class Leaf<K, V> extends AbstractPage<K, V>
 
             // Now, create the right page
             rightLeaf = new Leaf<K, V>( btree, revision, middle + 1 );
-            
+
             int rightPos = pos - middle;
 
             // Copy the keys and the values up to the insertion position
             System.arraycopy( keys, middle, rightLeaf.keys, 0, rightPos );
             System.arraycopy( values, middle, rightLeaf.values, 0, rightPos );
-            
+
             // Add the new element
             rightLeaf.keys[rightPos] = key;
             rightLeaf.values[rightPos] = value;
-            
+
             // And copy the remaining elements
             System.arraycopy( keys, pos, rightLeaf.keys, rightPos + 1, nbElems - pos );
-            System.arraycopy( values, pos, rightLeaf.values, rightPos + 1, nbElems -pos );
+            System.arraycopy( values, pos, rightLeaf.values, rightPos + 1, nbElems - pos );
         }
-        
+
         // Get the pivot
         K pivot = rightLeaf.keys[0];
-        
+
         // Create the result
         InsertResult<K, V> result = new SplitResult<K, V>( pivot, leftLeaf, rightLeaf );
-        
+
         return result;
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
@@ -635,8 +631,8 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     {
         return new Tuple<K, V>( keys[0], values[0] );
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
@@ -652,16 +648,16 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     public String toString()
     {
         StringBuilder sb = new StringBuilder();
-        
+
         sb.append( "Leaf[" );
         sb.append( super.toString() );
 
-        sb.append ( "] -> {" );
-        
+        sb.append( "] -> {" );
+
         if ( nbElems > 0 )
         {
             boolean isFirst = true;
-            
+
             for ( int i = 0; i < nbElems; i++ )
             {
                 if ( isFirst )
@@ -672,30 +668,30 @@ public class Leaf<K, V> extends AbstractPage<K, V>
                 {
                     sb.append( ", " );
                 }
-                
+
                 sb.append( "<" ).append( keys[i] ).append( "," ).append( values[i] ).append( ">" );
             }
         }
-        
+
         sb.append( "}" );
-        
+
         return sb.toString();
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
     public String dumpPage( String tabs )
     {
         StringBuilder sb = new StringBuilder();
-        
+
         sb.append( tabs );
-        
+
         if ( nbElems > 0 )
         {
             boolean isFirst = true;
-            
+
             for ( int i = 0; i < nbElems; i++ )
             {
                 if ( isFirst )
@@ -706,13 +702,13 @@ public class Leaf<K, V> extends AbstractPage<K, V>
                 {
                     sb.append( ", " );
                 }
-                
+
                 sb.append( "<" ).append( keys[i] ).append( "," ).append( values[i] ).append( ">" );
             }
         }
-        
+
         sb.append( "\n" );
-        
+
         return sb.toString();
     }
 }

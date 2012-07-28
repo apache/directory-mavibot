@@ -19,15 +19,17 @@
  */
 package org.apache.mavibot.btree;
 
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 
 import org.apache.mavibot.btree.comparator.LongComparator;
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertNull;
 
 /**
  * A unit test class for Leaf
@@ -37,7 +39,8 @@ import static org.junit.Assert.assertNull;
 public class LeafTest
 {
     private BTree<Long, String> btree = null;
-    
+
+
     /**
      * Create a btree
      */
@@ -48,17 +51,17 @@ public class LeafTest
         btree.setPageSize( 8 );
     }
 
-    
+
     /**
      * A helper method to insert elements in a Leaf
      */
     private Leaf<Long, String> insert( Leaf<Long, String> leaf, long key, String value )
     {
         InsertResult<Long, String> result = leaf.insert( 1L, key, value );
-        
-        return (Leaf<Long, String>)((ModifyResult<Long, String>)result).getModifiedPage();
+
+        return ( Leaf<Long, String> ) ( ( ModifyResult<Long, String> ) result ).getModifiedPage();
     }
-    
+
 
     /**
      * Test that deleting an entry from an empty page returns a NOT_PRESENT result
@@ -68,9 +71,9 @@ public class LeafTest
     public void testDeleteFromEmptyLeaf() throws IOException
     {
         Leaf<Long, String> leaf = new Leaf<Long, String>( btree );
-        
+
         DeleteResult<Long, String> result = leaf.delete( 1L, 1L, null, -1 );
-        
+
         assertEquals( NotPresentResult.NOT_PRESENT, result );
     }
 
@@ -87,9 +90,9 @@ public class LeafTest
         leaf = insert( leaf, 2L, "v2" );
         leaf = insert( leaf, 3L, "v3" );
         leaf = insert( leaf, 4L, "v4" );
-        
+
         DeleteResult<Long, String> result = leaf.delete( 2L, 5L, null, -1 );
-        
+
         assertEquals( NotPresentResult.NOT_PRESENT, result );
     }
 
@@ -106,18 +109,18 @@ public class LeafTest
         leaf = insert( leaf, 2L, "v2" );
         leaf = insert( leaf, 3L, "v3" );
         leaf = insert( leaf, 4L, "v4" );
-        
+
         DeleteResult<Long, String> result = leaf.delete( 4L, 3L, null, -1 );
-        
+
         assertTrue( result instanceof RemoveResult );
-        
-        Tuple<Long, String> removedElement = ((RemoveResult<Long, String>)result).getRemovedElement();
-        Page<Long, String> newLeaf = ((RemoveResult<Long, String>)result).getModifiedPage();
-        
-        assertEquals( Long.valueOf( 3L), removedElement.getKey() );
+
+        Tuple<Long, String> removedElement = ( ( RemoveResult<Long, String> ) result ).getRemovedElement();
+        Page<Long, String> newLeaf = ( ( RemoveResult<Long, String> ) result ).getModifiedPage();
+
+        assertEquals( Long.valueOf( 3L ), removedElement.getKey() );
         assertEquals( "v3", removedElement.getValue() );
         assertEquals( 3, newLeaf.getNbElems() );
-        
+
         assertEquals( "v1", newLeaf.find( 1L ) );
         assertEquals( "v2", newLeaf.find( 2L ) );
         assertNull( newLeaf.find( 3L ) );
@@ -137,19 +140,17 @@ public class LeafTest
         leaf = insert( leaf, 2L, "v2" );
         leaf = insert( leaf, 3L, "v3" );
         leaf = insert( leaf, 4L, "v4" );
-        
+
         DeleteResult<Long, String> result = leaf.delete( 4L, 1L, null, -1 );
-        
+
         assertTrue( result instanceof RemoveResult );
-        
-        RemoveResult<Long, String> removeResult = (RemoveResult<Long, String>)result;
-        
+
+        RemoveResult<Long, String> removeResult = ( RemoveResult<Long, String> ) result;
+
         Tuple<Long, String> removedElement = removeResult.getRemovedElement();
         Page<Long, String> newLeaf = removeResult.getModifiedPage();
-        Long leftMost = removeResult.getNewLeftMost();
-        
-        assertEquals( Long.valueOf( 2L), leftMost );
-        assertEquals( Long.valueOf( 1L), removedElement.getKey() );
+
+        assertEquals( Long.valueOf( 1L ), removedElement.getKey() );
         assertEquals( "v1", removedElement.getValue() );
         assertEquals( 3, newLeaf.getNbElems() );
 
@@ -158,8 +159,8 @@ public class LeafTest
         assertEquals( "v3", newLeaf.find( 3L ) );
         assertEquals( "v4", newLeaf.find( 4L ) );
     }
-    
-    
+
+
     /**
      * Check that deleting an element from a leaf with N/2 element works when we borrow
      * an element in a left page with more than N/2 elements
@@ -171,7 +172,7 @@ public class LeafTest
         Leaf<Long, String> left = new Leaf<Long, String>( btree );
         Leaf<Long, String> target = new Leaf<Long, String>( btree );
         Leaf<Long, String> right = new Leaf<Long, String>( btree );
-        
+
         // Fill the left page
         left = insert( left, 1L, "v1" );
         left = insert( left, 2L, "v2" );
@@ -194,42 +195,41 @@ public class LeafTest
         parent.children[0] = left;
         parent.children[1] = target;
         parent.children[2] = right;
-        
+
         // Update the parent
         parent.keys[0] = 6L;
         parent.keys[1] = 10L;
-        
+
         // Now, delete the element from the target page
         DeleteResult<Long, String> result = target.delete( 2L, 7L, parent, 1 );
-        
+
         assertTrue( result instanceof BorrowedFromLeftResult );
-        
-        BorrowedFromLeftResult<Long, String> borrowed = (BorrowedFromLeftResult<Long, String>)result;
-        assertEquals( Long.valueOf( 5L ), borrowed.getNewLeftMost() );
+
+        BorrowedFromLeftResult<Long, String> borrowed = ( BorrowedFromLeftResult<Long, String> ) result;
         Tuple<Long, String> removedKey = borrowed.getRemovedElement();
 
         assertEquals( Long.valueOf( 7L ), removedKey.getKey() );
-        
+
         // Check the modified leaf
-        Leaf<Long, String> newLeaf = (Leaf<Long, String>)borrowed.getModifiedPage();
-        
+        Leaf<Long, String> newLeaf = ( Leaf<Long, String> ) borrowed.getModifiedPage();
+
         assertEquals( 4, newLeaf.nbElems );
         assertEquals( Long.valueOf( 5L ), newLeaf.keys[0] );
         assertEquals( Long.valueOf( 6L ), newLeaf.keys[1] );
         assertEquals( Long.valueOf( 8L ), newLeaf.keys[2] );
         assertEquals( Long.valueOf( 9L ), newLeaf.keys[3] );
-        
+
         // Check the sibling
-        Leaf<Long, String> leftSibling = (Leaf<Long, String>)borrowed.getModifiedSibling();
-        
+        Leaf<Long, String> leftSibling = ( Leaf<Long, String> ) borrowed.getModifiedSibling();
+
         assertEquals( 4, leftSibling.nbElems );
         assertEquals( Long.valueOf( 1L ), leftSibling.keys[0] );
         assertEquals( Long.valueOf( 2L ), leftSibling.keys[1] );
         assertEquals( Long.valueOf( 3L ), leftSibling.keys[2] );
         assertEquals( Long.valueOf( 4L ), leftSibling.keys[3] );
     }
-    
-    
+
+
     /**
      * Check that deleting an element from a leaf with N/2 element works when we borrow
      * an element in a right page with more than N/2 elements
@@ -241,7 +241,7 @@ public class LeafTest
         Leaf<Long, String> left = new Leaf<Long, String>( btree );
         Leaf<Long, String> target = new Leaf<Long, String>( btree );
         Leaf<Long, String> right = new Leaf<Long, String>( btree );
-        
+
         // Fill the left page
         left = insert( left, 1L, "v1" );
         left = insert( left, 2L, "v2" );
@@ -264,42 +264,42 @@ public class LeafTest
         parent.children[0] = left;
         parent.children[1] = target;
         parent.children[2] = right;
-        
+
         // Update the parent
         parent.keys[0] = 6L;
         parent.keys[1] = 10L;
-        
+
         // Now, delete the element from the target page
         DeleteResult<Long, String> result = target.delete( 2L, 7L, parent, 1 );
-        
+
         assertTrue( result instanceof BorrowedFromRightResult );
-        
-        BorrowedFromRightResult<Long, String> borrowed = (BorrowedFromRightResult<Long, String>)result;
+
+        BorrowedFromRightResult<Long, String> borrowed = ( BorrowedFromRightResult<Long, String> ) result;
         assertEquals( Long.valueOf( 11L ), borrowed.getModifiedSibling().getKey( 0 ) );
         Tuple<Long, String> removedKey = borrowed.getRemovedElement();
 
         assertEquals( Long.valueOf( 7L ), removedKey.getKey() );
-        
+
         // Check the modified leaf
-        Leaf<Long, String> newLeaf = (Leaf<Long, String>)borrowed.getModifiedPage();
-        
+        Leaf<Long, String> newLeaf = ( Leaf<Long, String> ) borrowed.getModifiedPage();
+
         assertEquals( 4, newLeaf.nbElems );
         assertEquals( Long.valueOf( 6L ), newLeaf.keys[0] );
         assertEquals( Long.valueOf( 8L ), newLeaf.keys[1] );
         assertEquals( Long.valueOf( 9L ), newLeaf.keys[2] );
         assertEquals( Long.valueOf( 10L ), newLeaf.keys[3] );
-        
+
         // Check the sibling
-        Leaf<Long, String> rightSibling = (Leaf<Long, String>)borrowed.getModifiedSibling();
-        
+        Leaf<Long, String> rightSibling = ( Leaf<Long, String> ) borrowed.getModifiedSibling();
+
         assertEquals( 4, rightSibling.nbElems );
         assertEquals( Long.valueOf( 11L ), rightSibling.keys[0] );
         assertEquals( Long.valueOf( 12L ), rightSibling.keys[1] );
         assertEquals( Long.valueOf( 13L ), rightSibling.keys[2] );
         assertEquals( Long.valueOf( 14L ), rightSibling.keys[3] );
     }
-    
-    
+
+
     /**
      * Check that deleting an element from a leaf with N/2 element works when we merge
      * it with one of its sibling, if both has N/2 elements
@@ -311,7 +311,7 @@ public class LeafTest
         Leaf<Long, String> left = new Leaf<Long, String>( btree );
         Leaf<Long, String> target = new Leaf<Long, String>( btree );
         Leaf<Long, String> right = new Leaf<Long, String>( btree );
-        
+
         // Fill the left page
         left = insert( left, 1L, "v1" );
         left = insert( left, 2L, "v2" );
@@ -329,29 +329,28 @@ public class LeafTest
         right = insert( right, 10L, "v10" );
         right = insert( right, 11L, "v11" );
         right = insert( right, 12L, "v12" );
-        
+
         parent.children[0] = left;
         parent.children[1] = target;
         parent.children[2] = right;
-        
+
         // Update the parent
         parent.keys[0] = 5L;
         parent.keys[1] = 9L;
-        
+
         // Now, delete the element from the target page
         DeleteResult<Long, String> result = target.delete( 2L, 7L, parent, 1 );
-        
+
         assertTrue( result instanceof MergedWithSiblingResult );
-        
-        MergedWithSiblingResult<Long, String> merged = (MergedWithSiblingResult<Long, String>)result;
-        assertEquals( Long.valueOf( 1L ), merged.getNewLeftMost() );
+
+        MergedWithSiblingResult<Long, String> merged = ( MergedWithSiblingResult<Long, String> ) result;
         Tuple<Long, String> removedKey = merged.getRemovedElement();
 
         assertEquals( Long.valueOf( 7L ), removedKey.getKey() );
-        
+
         // Check the modified leaf
-        Leaf<Long, String> newLeaf = (Leaf<Long, String>)merged.getModifiedPage();
-        
+        Leaf<Long, String> newLeaf = ( Leaf<Long, String> ) merged.getModifiedPage();
+
         assertEquals( 7, newLeaf.nbElems );
         assertEquals( Long.valueOf( 1L ), newLeaf.keys[0] );
         assertEquals( Long.valueOf( 2L ), newLeaf.keys[1] );
@@ -361,8 +360,8 @@ public class LeafTest
         assertEquals( Long.valueOf( 6L ), newLeaf.keys[5] );
         assertEquals( Long.valueOf( 8L ), newLeaf.keys[6] );
     }
-    
-    
+
+
     /**
      * Test the findPos() method
      * @throws Exception
@@ -371,24 +370,25 @@ public class LeafTest
     public void testFindPos() throws Exception
     {
         Leaf<Long, String> leaf = new Leaf<Long, String>( btree );
-        
+
         // Inject the values
         for ( long i = 0; i < 8; i++ )
         {
             long value = i + i + 1;
-            leaf = (Leaf<Long, String>)((ModifyResult<Long, String>)leaf.insert( 0L, value, "V" + value )).getModifiedPage();
+            leaf = ( Leaf<Long, String> ) ( ( ModifyResult<Long, String> ) leaf.insert( 0L, value, "V" + value ) )
+                .getModifiedPage();
         }
-        
+
         // Check the findPos() method now
         for ( long i = 0; i < 17; i++ )
         {
             if ( i % 2 == 1 )
             {
-                assertEquals( - ( i/2 + 1 ), leaf.findPos( i ) );
+                assertEquals( -( i / 2 + 1 ), leaf.findPos( i ) );
             }
             else
             {
-                assertEquals( i/2, leaf.findPos( i ) );
+                assertEquals( i / 2, leaf.findPos( i ) );
             }
         }
     }

@@ -165,11 +165,9 @@ import java.util.LinkedList;
             newPage.children[index] = removeResult.getModifiedPage();
         }
 
-        K newLeftMost = removeResult.getNewLeftMost();
-
-        if ( ( newLeftMost != null ) && ( pos < 0 ) )
+        if ( pos < 0 )
         {
-            newPage.keys[index] = newLeftMost;
+            newPage.keys[index] = removeResult.getModifiedPage().findLeftMost().getKey();
         }
 
         // Modify the result and return
@@ -197,7 +195,7 @@ import java.util.LinkedList;
         if ( nbElems == 1 )
         {
             removeResult = new RemoveResult<K, V>( mergedResult.getModifiedPage(),
-                mergedResult.getRemovedElement(), mergedResult.getNewLeftMost() );
+                mergedResult.getRemovedElement() );
         }
         else
         {
@@ -285,7 +283,7 @@ import java.util.LinkedList;
 
         // Create the result
         DeleteResult<K, V> result = new BorrowedFromRightResult<K, V>( newNode, newSibling,
-            mergedResult.getRemovedElement(), siblingKey );
+            mergedResult.getRemovedElement() );
 
         return result;
     }
@@ -363,7 +361,7 @@ import java.util.LinkedList;
 
         // Create the result
         DeleteResult<K, V> result = new BorrowedFromLeftResult<K, V>( newNode, newSibling,
-            mergedResult.getRemovedElement(), newNode.findLeftMost().getKey() );
+            mergedResult.getRemovedElement() );
 
         return result;
     }
@@ -483,7 +481,7 @@ import java.util.LinkedList;
         }
 
         // And create the result
-        DeleteResult<K, V> result = new MergedWithSiblingResult<K, V>( newNode, removedElement, newNode.keys[0] );
+        DeleteResult<K, V> result = new MergedWithSiblingResult<K, V>( newNode, removedElement );
 
         return result;
     }
@@ -672,7 +670,7 @@ import java.util.LinkedList;
 
         // Modify the result and return
         RemoveResult<K, V> removeResult = new RemoveResult<K, V>( newPage,
-            borrowedResult.getRemovedElement(), borrowedResult.getNewLeftMost() );
+            borrowedResult.getRemovedElement() );
 
         return removeResult;
     }
@@ -689,8 +687,6 @@ import java.util.LinkedList;
     {
         // First copy the current page, but remove one element in the copied page
         Node<K, V> newNode = new Node<K, V>( btree, revision, nbElems - 1 );
-
-        K newLeftMost = null;
 
         int index = Math.abs( pos ) - 2;
 
@@ -728,11 +724,8 @@ import java.util.LinkedList;
             }
         }
 
-        // Propagate the new leftmost
-        newLeftMost = mergedResult.getNewLeftMost();
-
         // Create the result
-        RemoveResult<K, V> result = new RemoveResult<K, V>( newNode, mergedResult.getRemovedElement(), newLeftMost );
+        RemoveResult<K, V> result = new RemoveResult<K, V>( newNode, mergedResult.getRemovedElement() );
 
         return result;
     }

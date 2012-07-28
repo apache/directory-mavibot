@@ -19,6 +19,7 @@
  */
 package org.apache.mavibot.btree;
 
+
 /**
  * The result of a delete operation, when the child has not been merged. It contains the
  * reference to the modified page, and the removed element.
@@ -26,9 +27,9 @@ package org.apache.mavibot.btree;
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
 
- * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-/* No qualifier */ class BorrowedFromRightResult<K, V> extends AbstractBorrowedFromSiblingResult<K, V>
+/* No qualifier */class BorrowedFromRightResult<K, V> extends AbstractBorrowedFromSiblingResult<K, V>
 {
     /**
      * The default constructor for BorrowedFromRightResult.
@@ -36,21 +37,21 @@ package org.apache.mavibot.btree;
      * @param modifiedPage The modified page
      * @param modifiedSibling The modified sibling
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
-     * @param newLeftMost The element on the left of he current page
      */
-    /* No qualifier */ BorrowedFromRightResult( Page<K, V> modifiedPage, Page<K, V> modifiedSibling, Tuple<K, V> removedElement, K newLeftMost )
+    /* No qualifier */BorrowedFromRightResult( Page<K, V> modifiedPage, Page<K, V> modifiedSibling,
+        Tuple<K, V> removedElement )
     {
-        super( modifiedPage, modifiedSibling, removedElement, newLeftMost, AbstractBorrowedFromSiblingResult.SiblingPosition.RIGHT );
+        super( modifiedPage, modifiedSibling, removedElement, AbstractBorrowedFromSiblingResult.SiblingPosition.RIGHT );
     }
-    
-    
+
+
     /**
      * @see Object#toString()
      */
     public String toString()
     {
         StringBuilder sb = new StringBuilder();
-        
+
         sb.append( "Borrowed from right" );
         sb.append( super.toString() );
 

@@ -19,6 +19,7 @@
  */
 package org.apache.mavibot.btree;
 
+
 /**
  * The result of a delete operation, when the child has not been merged, and when
  * we have borrowed an element from the left sibling. It contains the
@@ -29,11 +30,12 @@ package org.apache.mavibot.btree;
 
  * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
  */
-/* No qualifier */ abstract class AbstractBorrowedFromSiblingResult<K, V> extends AbstractDeleteResult<K, V> implements BorrowedFromSiblingResult<K, V>
+/* No qualifier */abstract class AbstractBorrowedFromSiblingResult<K, V> extends AbstractDeleteResult<K, V> implements
+    BorrowedFromSiblingResult<K, V>
 {
     /** The modified sibling reference */
     private Page<K, V> modifiedSibling;
-    
+
     /** Tells if the sibling is the left or right one */
     protected SiblingPosition position;
 
@@ -43,23 +45,24 @@ package org.apache.mavibot.btree;
         LEFT,
         RIGHT
     }
-    
+
+
     /**
      * The default constructor for RemoveResult.
      * 
      * @param modifiedPage The modified page
      * @param modifiedSibling The modified sibling
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
-     * @param newLeftMost The element on the left of he current page
      */
-    /* No qualifier */ AbstractBorrowedFromSiblingResult( Page<K, V> modifiedPage, Page<K, V> modifiedSibling, Tuple<K, V> removedElement, K newLeftMost, SiblingPosition  position )
+    /* No qualifier */AbstractBorrowedFromSiblingResult( Page<K, V> modifiedPage, Page<K, V> modifiedSibling,
+        Tuple<K, V> removedElement, SiblingPosition position )
     {
-        super( modifiedPage, removedElement, newLeftMost );
+        super( modifiedPage, removedElement );
         this.modifiedSibling = modifiedSibling;
         this.position = position;
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
@@ -67,8 +70,8 @@ package org.apache.mavibot.btree;
     {
         return modifiedSibling;
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
@@ -76,8 +79,8 @@ package org.apache.mavibot.btree;
     {
         return position == SiblingPosition.LEFT;
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
@@ -85,19 +88,18 @@ package org.apache.mavibot.btree;
     {
         return position == SiblingPosition.RIGHT;
     }
-    
-    
+
+
     /**
      * @see Object#toString()
      */
     public String toString()
     {
         StringBuilder sb = new StringBuilder();
-        
+
         sb.append( "\n    removed element : " ).append( getRemovedElement() );
         sb.append( "\n    modifiedPage : " ).append( getModifiedPage() );
         sb.append( "\n    modifiedSibling : " ).append( getModifiedSibling() );
-        sb.append( "\n    new LeftMost : " ).append( getNewLeftMost() );
 
         return sb.toString();
     }

@@ -19,40 +19,37 @@
  */
 package org.apache.mavibot.btree;
 
+
 /**
  * An abstract class to gather common elements of the DeleteResult
  * 
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
 
- * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-/* No qualifier */ abstract class AbstractDeleteResult<K, V> implements DeleteResult<K, V>
+/* No qualifier */abstract class AbstractDeleteResult<K, V> implements DeleteResult<K, V>
 {
     /** The modified page reference */
     private Page<K, V> modifiedPage;
-    
+
     /** The removed element if the key was found in the tree*/
     private Tuple<K, V> removedElement;
-    
-    /** The new leftmost element if the removed k was on position 0. Null otherwise */
-    private K newLeftMost;
-    
+
+
     /**
      * The default constructor for AbstractDeleteResult.
      * 
      * @param modifiedPage The modified page
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
-     * @param newLeftMost The element on the left of he current page
      */
-    /* No qualifier */ AbstractDeleteResult( Page<K, V> modifiedPage, Tuple<K, V> removedElement, K newLeftMost )
+    /* No qualifier */AbstractDeleteResult( Page<K, V> modifiedPage, Tuple<K, V> removedElement )
     {
         this.modifiedPage = modifiedPage;
         this.removedElement = removedElement;
-        this.newLeftMost = newLeftMost;
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
@@ -72,28 +69,10 @@ package org.apache.mavibot.btree;
 
 
     /**
-     * @return the newLeftMost
-     */
-    public K getNewLeftMost()
-    {
-        return newLeftMost;
-    }
-
-
-    /**
      * @param modifiedPage the modifiedPage to set
      */
-    /* No qualifier */ void setModifiedPage( Page<K, V> modifiedPage )
+    /* No qualifier */void setModifiedPage( Page<K, V> modifiedPage )
     {
         this.modifiedPage = modifiedPage;
-    }
-
-
-    /**
-     * @param newLeftMost the newLeftMost to set
-     */
-    /* No qualifier */ void setNewLeftMost( K newLeftMost )
-    {
-        this.newLeftMost = newLeftMost;
     }
 }

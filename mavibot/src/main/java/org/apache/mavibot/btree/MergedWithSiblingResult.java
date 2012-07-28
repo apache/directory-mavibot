@@ -19,6 +19,7 @@
  */
 package org.apache.mavibot.btree;
 
+
 /**
  * The result of a delete operation, when the child has not been merged. It contains the
  * reference to the modified page, and the removed element.
@@ -28,32 +29,30 @@ package org.apache.mavibot.btree;
 
  * @author <a href="mailto:labs@laps.apache.org">Mavibot labs Project</a>
  */
-/* No qualifier */ class MergedWithSiblingResult<K, V> extends AbstractDeleteResult<K, V>
+/* No qualifier */class MergedWithSiblingResult<K, V> extends AbstractDeleteResult<K, V>
 {
     /**
      * The default constructor for RemoveResult.
      * 
      * @param modifiedPage The modified page
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
-     * @param newLeftMost The element on the left of he current page
      */
-    /* No qualifier */ MergedWithSiblingResult( Page<K, V> modifiedPage, Tuple<K, V> removedElement, K newLeftMost )
+    /* No qualifier */MergedWithSiblingResult( Page<K, V> modifiedPage, Tuple<K, V> removedElement )
     {
-        super( modifiedPage, removedElement, newLeftMost );
+        super( modifiedPage, removedElement );
     }
-    
-    
+
+
     /**
      * @see Object#toString()
      */
     public String toString()
     {
         StringBuilder sb = new StringBuilder();
-        
+
         sb.append( "MergedWithSiblingResult" );
         sb.append( "\n    removed element : " ).append( getRemovedElement() );
         sb.append( "\n    modifiedPage : " ).append( getModifiedPage() );
-        sb.append( "\n    new LeftMost : " ).append( getNewLeftMost() );
 
         return sb.toString();
     }
