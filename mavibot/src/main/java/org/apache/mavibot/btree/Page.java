@@ -125,6 +125,15 @@ import java.util.LinkedList;
 
 
     /**
+     * Find the leftmost key in this page. If the page is a node, it will go
+     * down in the leftmost children to recursively find the leftmost key.
+     * 
+     * @return The leftmost key in the tree
+     */
+    K getLeftMostKey();
+
+
+    /**
      * Find the leftmost element in this page. If the page is a node, it will go
      * down in the leftmost children to recursively find the leftmost element.
      * 

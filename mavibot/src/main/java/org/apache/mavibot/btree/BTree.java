@@ -428,6 +428,11 @@ public class BTree<K, V>
     }
 
 
+    /**
+     * Starts a Read Only transaction. If the transaction is not closed, it will be 
+     * automatically closed after the timeout
+     * @return
+     */
     public Transaction<K, V> beginReadTransaction()
     {
         Transaction<K, V> readTransaction = new Transaction<K, V>( this, revision.get() - 1, System.currentTimeMillis() );
@@ -436,7 +441,12 @@ public class BTree<K, V>
     }
 
 
-    public void commitTransaction( Transaction transaction )
+    /**
+     * Validate the transaction. 
+     *  
+     * @param transaction The transaction to commit
+     */
+    public void commitTransaction( Transaction<K, V> transaction )
     {
 
     }

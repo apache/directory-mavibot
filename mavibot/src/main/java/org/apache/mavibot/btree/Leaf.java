@@ -627,6 +627,15 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     /**
      * {@inheritDoc}
      */
+    public K getLeftMostKey()
+    {
+        return keys[0];
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
     public Tuple<K, V> findLeftMost()
     {
         return new Tuple<K, V>( keys[0], values[0] );

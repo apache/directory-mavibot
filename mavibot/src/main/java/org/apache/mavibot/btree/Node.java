@@ -167,7 +167,7 @@ import java.util.LinkedList;
 
         if ( pos < 0 )
         {
-            newPage.keys[index] = removeResult.getModifiedPage().findLeftMost().getKey();
+            newPage.keys[index] = removeResult.getModifiedPage().getLeftMostKey();
         }
 
         // Modify the result and return
@@ -226,7 +226,7 @@ import java.util.LinkedList;
         // Create the new sibling, with one less element at the beginning
         Node<K, V> newSibling = new Node<K, V>( btree, revision, sibling.getNbElems() - 1 );
 
-        K siblingKey = sibling.children[0].findLeftMost().getKey();
+        K siblingKey = sibling.children[0].getLeftMostKey();
 
         // Copy the keys and children of the old sibling in the new sibling
         System.arraycopy( sibling.keys, 1, newSibling.keys, 0, newSibling.getNbElems() );
@@ -263,7 +263,7 @@ import java.util.LinkedList;
             }
 
             // Inject the new modified page key
-            newNode.keys[index - 2] = mergedResult.getModifiedPage().findLeftMost().getKey(); // 2
+            newNode.keys[index - 2] = mergedResult.getModifiedPage().getLeftMostKey(); // 2
 
             if ( index < nbElems )
             {
@@ -323,7 +323,7 @@ import java.util.LinkedList;
 
         if ( index < 2 )
         {
-            newNode.keys[0] = mergedResult.getModifiedPage().findLeftMost().getKey();
+            newNode.keys[0] = mergedResult.getModifiedPage().getLeftMostKey();
             System.arraycopy( keys, 1, newNode.keys, 1, nbElems - 1 );
 
             newNode.children[1] = mergedResult.getModifiedPage();
@@ -332,7 +332,7 @@ import java.util.LinkedList;
         else
         {
             // Set the first key
-            newNode.keys[0] = children[0].findLeftMost().getKey(); //2
+            newNode.keys[0] = children[0].getLeftMostKey(); //2
 
             if ( index > 2 )
             {
@@ -341,7 +341,7 @@ import java.util.LinkedList;
             }
 
             // Inject the modified key
-            newNode.keys[index - 1] = mergedResult.getModifiedPage().findLeftMost().getKey(); // 3
+            newNode.keys[index - 1] = mergedResult.getModifiedPage().getLeftMostKey(); // 3
 
             if ( index < nbElems )
             {
@@ -395,7 +395,7 @@ import java.util.LinkedList;
             // Then copy all the elements up to the deletion point
             if ( index < 2 )
             {
-                newNode.keys[half] = mergedResult.getModifiedPage().findLeftMost().getKey();
+                newNode.keys[half] = mergedResult.getModifiedPage().getLeftMostKey();
                 System.arraycopy( keys, 1, newNode.keys, half + 1, half - 1 );
 
                 newNode.children[half + 1] = mergedResult.getModifiedPage();
@@ -405,7 +405,7 @@ import java.util.LinkedList;
             {
                 // Copy the left part of the node keys up to the deletion point
                 // Insert the new key
-                newNode.keys[half] = children[0].findLeftMost().getKey(); // 3
+                newNode.keys[half] = children[0].getLeftMostKey(); // 3
 
                 if ( index > 2 )
                 {
@@ -413,7 +413,7 @@ import java.util.LinkedList;
                 }
 
                 // Inject the new merged key
-                newNode.keys[half + index - 1] = mergedResult.getModifiedPage().findLeftMost().getKey(); //5
+                newNode.keys[half + index - 1] = mergedResult.getModifiedPage().getLeftMostKey(); //5
 
                 if ( index < half )
                 {
@@ -455,7 +455,7 @@ import java.util.LinkedList;
                 System.arraycopy( children, 0, newNode.children, 0, index - 1 ); //6
 
                 // Inject the modified key
-                newNode.keys[index - 2] = mergedResult.getModifiedPage().findLeftMost().getKey(); //2
+                newNode.keys[index - 2] = mergedResult.getModifiedPage().getLeftMostKey(); //2
 
                 // Inject the modified children
                 newNode.children[index - 1] = mergedResult.getModifiedPage(); // 7
@@ -968,6 +968,15 @@ import java.util.LinkedList;
         System.arraycopy( children, 0, newPage.children, 0, nbElems + 1 );
 
         return newPage;
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public K getLeftMostKey()
+    {
+        return children[0].getLeftMostKey();
     }
 
 
