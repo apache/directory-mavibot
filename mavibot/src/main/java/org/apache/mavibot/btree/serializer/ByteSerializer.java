@@ -20,8 +20,6 @@
 package org.apache.mavibot.btree.serializer;
 
 
-
-
 /**
  * The Byte serializer.
  * 
