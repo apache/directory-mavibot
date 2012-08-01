@@ -20,7 +20,9 @@
 package org.apache.mavibot.btree;
 
 
+import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Comparator;
@@ -28,6 +30,8 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+
+import org.apache.mavibot.btree.serializer.Serializer;
 
 
 /**
@@ -64,25 +68,114 @@ public class BTree<K, V>
     /** The type to use to create the keys */
     protected Class<?> keyType;
 
+    /** The Key and Value serializer used for this tree. If none is provided, 
+     * the BTree will deduce the serializer to use from the generic type, and
+     * use the default Java serialization  */
+    private Serializer<K, V> serializer;
+
+    /** The associated file. If null, this is an in-memory btree  */
+    private File file;
+
+    /** The number of elements in the current revision */
+    private AtomicLong nbElems = new AtomicLong( 0 );
+
 
     /**
-     * Creates a new BTree with a default page size and a comparator.
+     * Creates a new in-memory BTree with a default page size and a comparator.
      * 
      * @param comparator The comparator to use
      */
     public BTree( Comparator<K> comparator ) throws IOException
     {
-        this( comparator, DEFAULT_PAGE_SIZE );
+        this( null, comparator, null, DEFAULT_PAGE_SIZE );
     }
 
 
     /**
-     * Creates a new BTree with a specific page size and a comparator.
+     * Creates a new in-memory BTree with a default page size and a comparator.
+     * 
+     * @param comparator The comparator to use
+     * @param serializer The serializer to use
+     */
+    public BTree( Comparator<K> comparator, Serializer<K, V> serializer ) throws IOException
+    {
+        this( null, comparator, serializer, DEFAULT_PAGE_SIZE );
+    }
+
+
+    /**
+     * Creates a new BTree with a default page size and a comparator, with an associated file.
+     * 
+     * @param file The file storing the BTree data
+     * @param comparator The comparator to use
+     */
+    public BTree( File file, Comparator<K> comparator ) throws IOException
+    {
+        this( file, comparator, null, DEFAULT_PAGE_SIZE );
+    }
+
+
+    /**
+     * Creates a new BTree with a default page size and a comparator, with an associated file.
+     * 
+     * @param file The file storing the BTree data
+     * @param comparator The comparator to use
+     * @param serializer The serializer to use
+     */
+    public BTree( File file, Comparator<K> comparator, Serializer<K, V> serializer ) throws IOException
+    {
+        this( file, comparator, serializer, DEFAULT_PAGE_SIZE );
+    }
+
+
+    /**
+     * Creates a new in-memory BTree with a specific page size and a comparator.
      * 
      * @param comparator The comparator to use
      * @param pageSize The number of elements we can store in a page
      */
     public BTree( Comparator<K> comparator, int pageSize ) throws IOException
+    {
+        this( null, comparator, null, pageSize );
+    }
+
+
+    /**
+     * Creates a new in-memory BTree with a specific page size and a comparator.
+     * 
+     * @param comparator The comparator to use
+     * @param serializer The serializer to use
+     * @param pageSize The number of elements we can store in a page
+     */
+    public BTree( Comparator<K> comparator, Serializer<K, V> serializer, int pageSize ) throws IOException
+    {
+        this( null, comparator, serializer, pageSize );
+    }
+
+
+    /**
+     * Creates a new in-memory BTree with a specific page size and a comparator.
+     * 
+     * @param file The file storing the BTree data
+     * @param comparator The comparator to use
+     * @param pageSize The number of elements we can store in a page
+     */
+    public BTree( File file, Comparator<K> comparator, int pageSize ) throws IOException
+    {
+        this( file, comparator, null, pageSize );
+    }
+
+
+    /**
+     * Creates a new BTree with a specific page size and a comparator, with an associated file.
+     * 
+     * @param file The file storing the BTree data
+     * @param comparator The comparator to use
+     * @param serializer The serializer to use
+     * @param pageSize The number of elements we can store in a page
+     */
+    public BTree( File file, Comparator<K> comparator, Serializer<K, V> serializer, int pageSize )
+        throws IOException
     {
         if ( comparator == null )
         {
@@ -90,7 +183,9 @@ public class BTree<K, V>
         }
 
         this.comparator = comparator;
+        this.file = file;
         setPageSize( pageSize );
+        this.serializer = serializer;
 
         // Create the map contaning all the revisions
         roots = new ConcurrentHashMap<Long, Page<K, V>>();
@@ -219,7 +314,16 @@ public class BTree<K, V>
     {
         long revision = generateRevision();
 
-        return insert( key, value, revision );
+        V existingValue = insert( key, value, revision );
+
+        // Increase the number of element in the current tree if the insertion is successful
+        // and does not replace an element
+        if ( existingValue == null )
+        {
+            nbElems.getAndIncrement();
+        }
+
+        return existingValue;
     }
 
 
@@ -239,7 +343,15 @@ public class BTree<K, V>
 
         long revision = generateRevision();
 
-        return delete( key, revision );
+        Tuple<K, V> deleted = delete( key, revision );
+
+        // Decrease the number of element in the current tree if the delete is successful
+        if ( deleted != null )
+        {
+            nbElems.getAndDecrement();
+        }
+
+        return deleted;
     }
 
 
@@ -471,11 +583,96 @@ public class BTree<K, V>
 
 
     /**
+     * @param serializer the serializer to set
+     */
+    public void setSerializer( Serializer<K, V> serializer )
+    {
+        this.serializer = serializer;
+    }
+
+
+    /**
      * @return the type for the keys
      */
     public Class<?> getKeyType()
     {
         return keyType;
+    }
+
+
+    /**
+     * Flush the latest revision to disk
+     * @param file The file into which the data will be written
+     */
+    public void flush( File file )
+    {
+
+    }
+
+
+    /**
+     * Flush the latest revision to disk. We will replace the current file by the new one, as
+     * we flush in a temporaty file.
+     */
+    public void flush() throws IOException
+    {
+        File tmpFileFD = File.createTempFile( "mavibot", null );
+        RandomAccessFile tempFile = new RandomAccessFile(
+            tmpFileFD.getCanonicalPath(), "rw" );
+
+        Cursor<K, V> cursor = browse();
+
+        if ( serializer == null )
+        {
+            serializer = new Serializer<K, V>()
+            {
+                public byte[] serializeKey( K key )
+                {
+                    return null;
+                }
+
+
+                public K deserializeKey( byte[] in )
+                {
+                    return null;
+                }
+
+
+                public byte[] serializeValue( V value )
+                {
+                    return null;
+                }
+
+
+                public V deserializeValue( byte[] in )
+                {
+                    return null;
+                }
+            };
+        }
+
+        // Write the number of elements first
+        tempFile.writeLong( nbElems.get() );
+
+        while ( cursor.hasNext() )
+        {
+            Tuple<K, V> tuple = cursor.next();
+
+            byte[] keyBuffer = serializer.serializeKey( tuple.getKey() );
+            tempFile.write( keyBuffer );
+
+            byte[] valueBuffer = serializer.serializeValue( tuple.getValue() );
+            tempFile.write( valueBuffer );
+        }
+
+        tempFile.close();
+        tempFile.getFD().sync();
+
+        // Rename the current file to save a backup
+        file.renameTo( new File( file.getName() + ".bak" ) );
+
+        // And rename the temporary file
+        tmpFileFD.renameTo( file.getCanonicalFile() );
     }
 
 
