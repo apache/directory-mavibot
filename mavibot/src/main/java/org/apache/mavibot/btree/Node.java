@@ -220,9 +220,6 @@ import java.util.LinkedList;
     private DeleteResult<K, V> borrowFromRight( long revision, MergedWithSiblingResult<K, V> mergedResult,
         Node<K, V> sibling, int pos )
     {
-        // The sibling is on the right, borrow the leftmost element
-        Page<K, V> siblingChild = sibling.children[0];
-
         // Create the new sibling, with one less element at the beginning
         Node<K, V> newSibling = new Node<K, V>( btree, revision, sibling.getNbElems() - 1 );
 
