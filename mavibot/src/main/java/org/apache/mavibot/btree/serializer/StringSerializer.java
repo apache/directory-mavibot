@@ -117,7 +117,7 @@ public class StringSerializer implements ElementSerializer<String>
                 {
                     in = bufferHandler.read( len );
 
-                    return new String( in, 4, len, "UTF-8" );
+                    return new String( in, 0, len, "UTF-8" );
                 }
                 catch ( UnsupportedEncodingException uee )
                 {

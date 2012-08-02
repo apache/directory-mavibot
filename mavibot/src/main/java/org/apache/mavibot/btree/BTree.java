@@ -35,6 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.mavibot.btree.serializer.BufferHandler;
+import org.apache.mavibot.btree.serializer.LongSerializer;
 import org.apache.mavibot.btree.serializer.Serializer;
 
 
@@ -721,7 +722,7 @@ public class BTree<K, V>
 
         BufferHandler bufferHandler = new BufferHandler( channel, buffer );
 
-        long nbElems = buffer.getLong();
+        long nbElems = LongSerializer.deserialize( bufferHandler.read( 8 ) );
 
         // Prepare a list of keys and values rad from the disk
         //List<K> keys = new ArrayList<K>();

@@ -60,6 +60,17 @@ public class BufferHandler
     {
         this.channel = channel;
         this.buffer = buffer;
+
+        try
+        {
+            // Initial read
+            channel.read( buffer );
+            buffer.flip();
+        }
+        catch ( IOException ioe )
+        {
+
+        }
     }
 
 
@@ -74,7 +85,9 @@ public class BufferHandler
 
         if ( len <= buffer.remaining() )
         {
-            return buffer.get( result ).array();
+            buffer.get( result );
+
+            return result;
         }
 
         int requested = len;
@@ -90,6 +103,7 @@ public class BufferHandler
             if ( channel != null )
             {
                 channel.read( buffer );
+                buffer.flip();
             }
             else
             {

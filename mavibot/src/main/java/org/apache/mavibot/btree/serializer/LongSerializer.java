@@ -52,11 +52,16 @@ public class LongSerializer implements ElementSerializer<Long>
 
 
     /**
-     * {@inheritDoc}
+     * A static method used to deserialize a Long from a byte array.
+     * @param in The byte array containing the long
+     * @return A long
      */
-    public Long deserialize( BufferHandler bufferHandler ) throws IOException
+    public static Long deserialize( byte[] in )
     {
-        byte[] in = bufferHandler.read( 8 );
+        if ( ( in == null ) || ( in.length < 8 ) )
+        {
+            throw new RuntimeException( "Cannot extract a Long from a buffer with not enough bytes" );
+        }
 
         long result = ( ( long ) in[0] << 56 ) +
             ( ( in[1] & 0xFFL ) << 48 ) +
@@ -68,5 +73,16 @@ public class LongSerializer implements ElementSerializer<Long>
             ( in[7] & 0xFFL );
 
         return result;
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public Long deserialize( BufferHandler bufferHandler ) throws IOException
+    {
+        byte[] in = bufferHandler.read( 8 );
+
+        return deserialize( in );
     }
 }
