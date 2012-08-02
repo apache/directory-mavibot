@@ -20,6 +20,9 @@
 package org.apache.mavibot.btree.serializer;
 
 
+import java.io.IOException;
+
+
 /**
  * This interface is used by implementations elements serializers.
  * 
@@ -41,8 +44,9 @@ public interface ElementSerializer<T>
     /**
      * Deserialize an element from a byte[]
      * 
-     * @param in The incoming byte[]
+     * @param in The incoming bufferHandler
      * @return The deserialized element
+     * @throws IOException If the deserialization failed
      */
-    T deserialize( byte[] in );
+    T deserialize( BufferHandler bufferHandler ) throws IOException;
 }

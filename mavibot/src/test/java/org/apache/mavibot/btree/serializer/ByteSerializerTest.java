@@ -22,6 +22,8 @@ package org.apache.mavibot.btree.serializer;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.IOException;
+
 import org.junit.Test;
 
 
@@ -36,14 +38,14 @@ public class ByteSerializerTest
 
 
     @Test
-    public void testByteSerializer()
+    public void testByteSerializer() throws IOException
     {
         byte value = 0x00;
         byte[] result = serializer.serialize( value );
 
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).byteValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).byteValue() );
 
         // ------------------------------------------------------------------
         value = 0x01;
@@ -51,7 +53,7 @@ public class ByteSerializerTest
 
         assertEquals( ( byte ) 0x01, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).byteValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).byteValue() );
 
         // ------------------------------------------------------------------
         value = 0x7F;
@@ -59,7 +61,7 @@ public class ByteSerializerTest
 
         assertEquals( ( byte ) 0x7F, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).byteValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).byteValue() );
 
         // ------------------------------------------------------------------
         value = ( byte ) 0x80;
@@ -67,7 +69,7 @@ public class ByteSerializerTest
 
         assertEquals( ( byte ) 0x80, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).byteValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).byteValue() );
 
         // ------------------------------------------------------------------
         value = ( byte ) 0xFF;
@@ -75,6 +77,6 @@ public class ByteSerializerTest
 
         assertEquals( ( byte ) 0xFF, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).byteValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).byteValue() );
     }
 }

@@ -22,6 +22,8 @@ package org.apache.mavibot.btree.serializer;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.IOException;
+
 import org.junit.Test;
 
 
@@ -33,7 +35,7 @@ import org.junit.Test;
 public class DefaultSerializerTest
 {
     @Test
-    public void testDefaultSerializerIntegerString()
+    public void testDefaultSerializerIntegerString() throws IOException
     {
         DefaultSerializer<Integer, String> serializer = new DefaultSerializer<Integer, String>( Integer.class,
             String.class );
@@ -56,11 +58,11 @@ public class DefaultSerializerTest
         assertEquals( 's', valueBytes[6] );
         assertEquals( 't', valueBytes[7] );
 
-        int key = serializer.deserializeKey( keyBytes );
+        int key = serializer.deserializeKey( new BufferHandler( keyBytes ) );
 
         assertEquals( 25, key );
 
-        String value = serializer.deserializeValue( valueBytes );
+        String value = serializer.deserializeValue( new BufferHandler( valueBytes ) );
 
         assertEquals( "test", value );
     }

@@ -22,6 +22,8 @@ package org.apache.mavibot.btree.serializer;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.IOException;
+
 import org.junit.Test;
 
 
@@ -36,14 +38,14 @@ public class BooleanSerializerTest
 
 
     @Test
-    public void testBooleanSerializer()
+    public void testBooleanSerializer() throws IOException
     {
         boolean value = true;
         byte[] result = serializer.serialize( value );
 
         assertEquals( ( byte ) 0x01, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).booleanValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).booleanValue() );
 
         // ------------------------------------------------------------------
         value = false;
@@ -51,6 +53,6 @@ public class BooleanSerializerTest
 
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).booleanValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).booleanValue() );
     }
 }

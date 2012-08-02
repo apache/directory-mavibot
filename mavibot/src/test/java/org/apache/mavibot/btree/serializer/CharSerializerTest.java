@@ -22,6 +22,8 @@ package org.apache.mavibot.btree.serializer;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.IOException;
+
 import org.junit.Test;
 
 
@@ -36,7 +38,7 @@ public class CharSerializerTest
 
 
     @Test
-    public void testCharSerializer()
+    public void testCharSerializer() throws IOException
     {
         char value = 0x0000;
         byte[] result = serializer.serialize( value );
@@ -44,7 +46,7 @@ public class CharSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).charValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).charValue() );
 
         // ------------------------------------------------------------------
         value = 0x0001;
@@ -53,7 +55,7 @@ public class CharSerializerTest
         assertEquals( ( byte ) 0x01, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).charValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).charValue() );
 
         // ------------------------------------------------------------------
         value = 0x00FF;
@@ -62,7 +64,7 @@ public class CharSerializerTest
         assertEquals( ( byte ) 0xFF, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).charValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).charValue() );
 
         // ------------------------------------------------------------------
         value = 0x0100;
@@ -71,7 +73,7 @@ public class CharSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x01, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).charValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).charValue() );
 
         // ------------------------------------------------------------------
         value = 0x7FFF;
@@ -80,7 +82,7 @@ public class CharSerializerTest
         assertEquals( ( byte ) 0xFF, result[1] );
         assertEquals( ( byte ) 0x7F, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).charValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).charValue() );
 
         // ------------------------------------------------------------------
         value = 0x8000;
@@ -89,7 +91,7 @@ public class CharSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x80, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).charValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).charValue() );
 
         // ------------------------------------------------------------------
         value = 0xFFFF;
@@ -98,6 +100,6 @@ public class CharSerializerTest
         assertEquals( ( byte ) 0xFF, result[1] );
         assertEquals( ( byte ) 0xFF, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).charValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).charValue() );
     }
 }

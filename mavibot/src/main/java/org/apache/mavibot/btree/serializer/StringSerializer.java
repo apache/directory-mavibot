@@ -20,6 +20,7 @@
 package org.apache.mavibot.btree.serializer;
 
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 
 
@@ -94,8 +95,10 @@ public class StringSerializer implements ElementSerializer<String>
     /**
      * {@inheritDoc}
      */
-    public String deserialize( byte[] in )
+    public String deserialize( BufferHandler bufferHandler ) throws IOException
     {
+        byte[] in = bufferHandler.read( 4 );
+
         int len = ( in[0] << 24 ) +
             ( ( in[1] & 0xFF ) << 16 ) +
             ( ( in[2] & 0xFF ) << 8 ) +
@@ -112,6 +115,8 @@ public class StringSerializer implements ElementSerializer<String>
             default:
                 try
                 {
+                    in = bufferHandler.read( len );
+
                     return new String( in, 4, len, "UTF-8" );
                 }
                 catch ( UnsupportedEncodingException uee )

@@ -22,6 +22,8 @@ package org.apache.mavibot.btree.serializer;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.IOException;
+
 import org.junit.Test;
 
 
@@ -36,7 +38,7 @@ public class IntSerializerTest
 
 
     @Test
-    public void testIntSerializer()
+    public void testIntSerializer() throws IOException
     {
         int value = 0x00000000;
         byte[] result = serializer.serialize( value );
@@ -46,7 +48,7 @@ public class IntSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).intValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).intValue() );
 
         // ------------------------------------------------------------------
         value = 0x00000001;
@@ -57,7 +59,7 @@ public class IntSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).intValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).intValue() );
 
         // ------------------------------------------------------------------
         value = 0x000000FF;
@@ -68,7 +70,7 @@ public class IntSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).intValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).intValue() );
 
         // ------------------------------------------------------------------
         value = 0x00000100;
@@ -79,7 +81,7 @@ public class IntSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).intValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).intValue() );
 
         // ------------------------------------------------------------------
         value = 0x0000FFFF;
@@ -90,7 +92,7 @@ public class IntSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).intValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).intValue() );
 
         // ------------------------------------------------------------------
         value = 0x00010000;
@@ -101,7 +103,7 @@ public class IntSerializerTest
         assertEquals( ( byte ) 0x01, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).intValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).intValue() );
 
         // ------------------------------------------------------------------
         value = 0x00FFFFFF;
@@ -112,7 +114,7 @@ public class IntSerializerTest
         assertEquals( ( byte ) 0xFF, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).intValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).intValue() );
 
         // ------------------------------------------------------------------
         value = 0x01000000;
@@ -123,7 +125,7 @@ public class IntSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x01, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).intValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).intValue() );
 
         // ------------------------------------------------------------------
         value = 0x7FFFFFFF;
@@ -134,7 +136,7 @@ public class IntSerializerTest
         assertEquals( ( byte ) 0x00FF, result[1] );
         assertEquals( ( byte ) 0x7F, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).intValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).intValue() );
 
         // ------------------------------------------------------------------
         value = 0x80000000;
@@ -145,7 +147,7 @@ public class IntSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x80, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).intValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).intValue() );
 
         // ------------------------------------------------------------------
         value = 0xFFFFFFFF;
@@ -156,6 +158,6 @@ public class IntSerializerTest
         assertEquals( ( byte ) 0xFF, result[1] );
         assertEquals( ( byte ) 0xFF, result[0] );
 
-        assertEquals( value, serializer.deserialize( result ).intValue() );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).intValue() );
     }
 }

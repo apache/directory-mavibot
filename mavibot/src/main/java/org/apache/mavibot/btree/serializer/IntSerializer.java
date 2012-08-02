@@ -20,6 +20,9 @@
 package org.apache.mavibot.btree.serializer;
 
 
+import java.io.IOException;
+
+
 /**
  * The Integer serializer.
  * 
@@ -47,8 +50,10 @@ public class IntSerializer implements ElementSerializer<Integer>
     /**
      * {@inheritDoc}
      */
-    public Integer deserialize( byte[] in )
+    public Integer deserialize( BufferHandler bufferHandler ) throws IOException
     {
+        byte[] in = bufferHandler.read( 4 );
+
         return ( in[0] << 24 ) +
             ( ( in[1] & 0xFF ) << 16 ) +
             ( ( in[2] & 0xFF ) << 8 ) +

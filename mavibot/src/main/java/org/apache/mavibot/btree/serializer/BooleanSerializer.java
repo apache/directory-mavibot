@@ -20,6 +20,9 @@
 package org.apache.mavibot.btree.serializer;
 
 
+import java.io.IOException;
+
+
 /**
  * The Boolean serializer.
  * 
@@ -42,8 +45,10 @@ public class BooleanSerializer implements ElementSerializer<Boolean>
     /**
      * {@inheritDoc}
      */
-    public Boolean deserialize( byte[] in )
+    public Boolean deserialize( BufferHandler bufferHandler ) throws IOException
     {
+        byte[] in = bufferHandler.read( 1 );
+
         return in[0] == 0x01;
     }
 }

@@ -20,6 +20,9 @@
 package org.apache.mavibot.btree.serializer;
 
 
+import java.io.IOException;
+
+
 /**
  * The Byte serializer.
  * 
@@ -42,8 +45,10 @@ public class ByteSerializer implements ElementSerializer<Byte>
     /**
      * {@inheritDoc}
      */
-    public Byte deserialize( byte[] in )
+    public Byte deserialize( BufferHandler bufferHandler ) throws IOException
     {
+        byte[] in = bufferHandler.read( 1 );
+
         return in[0];
     }
 }

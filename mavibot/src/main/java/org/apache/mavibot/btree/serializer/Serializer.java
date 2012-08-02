@@ -20,6 +20,9 @@
 package org.apache.mavibot.btree.serializer;
 
 
+import java.io.IOException;
+
+
 /**
  * This interface is used by implementations of the key and value serializers.
  * 
@@ -42,10 +45,11 @@ public interface Serializer<K, V>
     /**
      * Deserialize a key from a byte[]
      * 
-     * @param in The incoming byte[]
+     * @param bufferHandler The incoming BufferHandler
      * @return The deserialized key
+     * @throws IOException If the deserialization failed
      */
-    K deserializeKey( byte[] in );
+    K deserializeKey( BufferHandler bufferHandler ) throws IOException;
 
 
     /**
@@ -60,8 +64,9 @@ public interface Serializer<K, V>
     /**
      * Deserialize a value from a byte[]
      * 
-     * @param in The incoming byte[]
+     * @param bufferHandler The incoming BufferHandler
      * @return The deserialized value
+     * @throws IOException If the deserialization failed
      */
-    V deserializeValue( byte[] in );
+    V deserializeValue( BufferHandler bufferHandler ) throws IOException;
 }

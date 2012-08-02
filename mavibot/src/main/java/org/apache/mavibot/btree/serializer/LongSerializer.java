@@ -20,6 +20,9 @@
 package org.apache.mavibot.btree.serializer;
 
 
+import java.io.IOException;
+
+
 /**
  * The Long serializer.
  * 
@@ -51,8 +54,10 @@ public class LongSerializer implements ElementSerializer<Long>
     /**
      * {@inheritDoc}
      */
-    public Long deserialize( byte[] in )
+    public Long deserialize( BufferHandler bufferHandler ) throws IOException
     {
+        byte[] in = bufferHandler.read( 8 );
+
         long result = ( ( long ) in[0] << 56 ) +
             ( ( in[1] & 0xFFL ) << 48 ) +
             ( ( in[2] & 0xFFL ) << 40 ) +

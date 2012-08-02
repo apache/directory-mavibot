@@ -22,6 +22,8 @@ package org.apache.mavibot.btree.serializer;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.IOException;
+
 import org.junit.Test;
 
 
@@ -36,7 +38,7 @@ public class StringSerializerTest
 
 
     @Test
-    public void testStringSerializer()
+    public void testStringSerializer() throws IOException
     {
         String value = null;
         byte[] result = serializer.serialize( value );
@@ -47,7 +49,7 @@ public class StringSerializerTest
         assertEquals( ( byte ) 0xFF, result[2] );
         assertEquals( ( byte ) 0xFF, result[3] );
 
-        assertEquals( value, serializer.deserialize( result ) );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ) );
 
         // ------------------------------------------------------------------
         value = "";
@@ -59,7 +61,7 @@ public class StringSerializerTest
         assertEquals( ( byte ) 0x00, result[2] );
         assertEquals( ( byte ) 0x00, result[3] );
 
-        assertEquals( value, serializer.deserialize( result ) );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ) );
 
         // ------------------------------------------------------------------
         value = "test";
@@ -75,7 +77,7 @@ public class StringSerializerTest
         assertEquals( 's', result[6] );
         assertEquals( 't', result[7] );
 
-        assertEquals( value, serializer.deserialize( result ) );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ) );
 
         // ------------------------------------------------------------------
         value = "Lécharny";
@@ -96,6 +98,6 @@ public class StringSerializerTest
         assertEquals( 'n', result[11] );
         assertEquals( 'y', result[12] );
 
-        assertEquals( value, serializer.deserialize( result ) );
+        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ) );
     }
 }

@@ -1,6 +1,7 @@
 package org.apache.mavibot.btree.serializer;
 
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -65,13 +66,13 @@ public class DefaultSerializer<K, V> implements Serializer<K, V>
     /**
      * {@inheritDoc}
      */
-    public K deserializeKey( byte[] in )
+    public K deserializeKey( BufferHandler bufferHandler ) throws IOException
     {
         ElementSerializer<K> serializer = ( ElementSerializer<K> ) typeClass.get( keyType );
 
         if ( serializer != null )
         {
-            K key = serializer.deserialize( in );
+            K key = serializer.deserialize( bufferHandler );
 
             return key;
         }
@@ -105,13 +106,13 @@ public class DefaultSerializer<K, V> implements Serializer<K, V>
     /**
      * {@inheritDoc}
      */
-    public V deserializeValue( byte[] in )
+    public V deserializeValue( BufferHandler bufferHandler ) throws IOException
     {
         ElementSerializer<V> serializer = ( ElementSerializer<V> ) typeClass.get( valueType );
 
         if ( serializer != null )
         {
-            V value = serializer.deserialize( in );
+            V value = serializer.deserialize( bufferHandler );
 
             return value;
         }

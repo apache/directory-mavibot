@@ -20,6 +20,9 @@
 package org.apache.mavibot.btree.serializer;
 
 
+import java.io.IOException;
+
+
 /**
  * The Short serializer.
  * 
@@ -45,8 +48,10 @@ public class ShortSerializer implements ElementSerializer<Short>
     /**
      * {@inheritDoc}
      */
-    public Short deserialize( byte[] in )
+    public Short deserialize( BufferHandler bufferHandler ) throws IOException
     {
+        byte[] in = bufferHandler.read( 2 );
+
         return ( short ) ( ( in[0] << 8 ) + ( in[1] & 0xFF ) );
     }
 }
