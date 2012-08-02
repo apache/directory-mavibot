@@ -21,16 +21,20 @@ package org.apache.mavibot.btree;
 
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.mavibot.btree.serializer.BufferHandler;
 import org.apache.mavibot.btree.serializer.Serializer;
 
 
@@ -601,78 +605,157 @@ public class BTree<K, V>
 
 
     /**
-     * Flush the latest revision to disk
-     * @param file The file into which the data will be written
+     * Write the data in the ByteBuffer, and eventually on disk if needed.
+     * 
+     * @param channel The channel we want to write to
+     * @param bb The ByteBuffer we wat to feed
+     * @param buffer The data to inject
+     * @throws IOException If the write failed
      */
-    public void flush( File file )
+    private void writeBuffer( FileChannel channel, ByteBuffer bb, byte[] buffer ) throws IOException
     {
+        int size = buffer.length;
 
+        // Loop until we have written all the data
+        do
+        {
+            if ( bb.remaining() >= size )
+            {
+                // No flush, as the ByteBuffer is big enough
+                bb.put( buffer );
+                size = 0;
+            }
+            else
+            {
+                // Flush the data on disk, reinitialize the ByteBuffer
+                int len = bb.limit() - bb.position();
+                size -= len;
+                bb.put( buffer, bb.position(), len );
+
+                bb.flip();
+                channel.write( bb );
+                bb.clear();
+            }
+        }
+        while ( size > 0 );
     }
 
 
     /**
-     * Flush the latest revision to disk. We will replace the current file by the new one, as
-     * we flush in a temporaty file.
+     * Flush the latest revision to disk
+     * @param file The file into which the data will be written
      */
-    public void flush() throws IOException
+    public void flush( File file ) throws IOException
     {
-        File tmpFileFD = File.createTempFile( "mavibot", null );
-        RandomAccessFile tempFile = new RandomAccessFile(
-            tmpFileFD.getCanonicalPath(), "rw" );
+        File baseDirectory = new File( file.getParentFile().getAbsolutePath() );
+
+        // Create a temporary file in the same directory to flush the current btree
+        File tmpFileFD = File.createTempFile( "mavibot", null, baseDirectory );
+        FileOutputStream stream = new FileOutputStream( tmpFileFD );
+        FileChannel ch = stream.getChannel();
+        ByteBuffer bb = ByteBuffer.allocateDirect( 65536 );
 
         Cursor<K, V> cursor = browse();
 
         if ( serializer == null )
         {
-            serializer = new Serializer<K, V>()
-            {
-                public byte[] serializeKey( K key )
-                {
-                    return null;
-                }
-
-
-                public K deserializeKey( byte[] in )
-                {
-                    return null;
-                }
-
-
-                public byte[] serializeValue( V value )
-                {
-                    return null;
-                }
-
-
-                public V deserializeValue( byte[] in )
-                {
-                    return null;
-                }
-            };
+            throw new RuntimeException( "Cannot flush the btree without a serializer" );
         }
 
         // Write the number of elements first
-        tempFile.writeLong( nbElems.get() );
+        bb.putLong( nbElems.get() );
 
         while ( cursor.hasNext() )
         {
             Tuple<K, V> tuple = cursor.next();
 
             byte[] keyBuffer = serializer.serializeKey( tuple.getKey() );
-            tempFile.write( keyBuffer );
+
+            writeBuffer( ch, bb, keyBuffer );
 
             byte[] valueBuffer = serializer.serializeValue( tuple.getValue() );
-            tempFile.write( valueBuffer );
+            writeBuffer( ch, bb, valueBuffer );
         }
 
-        tempFile.close();
-        tempFile.getFD().sync();
+        // Write the buffer if needed
+        if ( bb.position() > 0 )
+        {
+            bb.flip();
+            ch.write( bb );
+        }
+
+        // Flush to the disk for real
+        ch.force( true );
+        ch.close();
 
         // Rename the current file to save a backup
-        file.renameTo( new File( file.getName() + ".bak" ) );
+        File backupFile = File.createTempFile( "mavibot", null, baseDirectory );
+        file.renameTo( backupFile );
 
-        // And rename the temporary file
-        tmpFileFD.renameTo( file.getCanonicalFile() );
+        // Rename the temporary file to the initial file
+        tmpFileFD.renameTo( file );
+
+        // We can now delete the backup file
+        backupFile.delete();
+    }
+
+
+    /**
+     * Read the data from the disk into this BTree. All the existing data in the 
+     * BTree are kept, the read data will be associated with a new revision.
+     * @param file
+     * @throws IOException
+     */
+    public void read( File file ) throws IOException
+    {
+        long revision = generateRevision();
+
+        if ( !file.exists() )
+        {
+            throw new IOException( "The file does not exist" );
+        }
+
+        FileChannel channel =
+            new RandomAccessFile( file, "rw" ).getChannel();
+        ByteBuffer buffer = ByteBuffer.allocate( 65536 );
+
+        BufferHandler bufferHandler = new BufferHandler( channel, buffer );
+
+        long nbElems = buffer.getLong();
+
+        // Prepare a list of keys and values rad from the disk
+        //List<K> keys = new ArrayList<K>();
+        //List<V> values = new ArrayList<V>();
+
+        // Loop on all the elements, store them in lists atm
+        for ( long i = 0; i < nbElems; i++ )
+        {
+            // Read the key
+            K key = serializer.deserializeKey( bufferHandler );
+
+            //keys.add( key );
+
+            // Read the value
+            V value = serializer.deserializeValue( bufferHandler );
+
+            //values.add( value );
+
+            // Inject the data in the tree. (to be replaced by a bulk load)
+            insert( key, value, revision );
+        }
+
+        // Now, process the lists to create the btree
+        // TODO... BulkLoad
+    }
+
+
+    /**
+     * Flush the latest revision to disk. We will replace the current file by the new one, as
+     * we flush in a temporary file.
+     */
+    public void flush() throws IOException
+    {
+        flush( file );
     }
 
 
