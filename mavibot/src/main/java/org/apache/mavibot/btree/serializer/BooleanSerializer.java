@@ -43,12 +43,28 @@ public class BooleanSerializer implements ElementSerializer<Boolean>
 
 
     /**
+     * A static method used to deserialize a Boolean from a byte array.
+     * @param in The byte array containing the boolean
+     * @return A boolean
+     */
+    public static Boolean deserialize( byte[] in )
+    {
+        if ( ( in == null ) || ( in.length < 1 ) )
+        {
+            throw new RuntimeException( "Cannot extract a Boolean from a buffer with not enough bytes" );
+        }
+
+        return in[0] == 0x01;
+    }
+
+
+    /**
      * {@inheritDoc}
      */
     public Boolean deserialize( BufferHandler bufferHandler ) throws IOException
     {
         byte[] in = bufferHandler.read( 1 );
 
-        return in[0] == 0x01;
+        return deserialize( in );
     }
 }

@@ -53,8 +53,8 @@ public class LongSerializer implements ElementSerializer<Long>
 
     /**
      * A static method used to deserialize a Long from a byte array.
-     * @param in The byte array containing the long
-     * @return A long
+     * @param in The byte array containing the Long
+     * @return A Long
      */
     public static Long deserialize( byte[] in )
     {

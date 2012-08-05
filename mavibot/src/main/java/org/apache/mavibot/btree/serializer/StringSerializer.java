@@ -99,10 +99,7 @@ public class StringSerializer implements ElementSerializer<String>
     {
         byte[] in = bufferHandler.read( 4 );
 
-        int len = ( in[0] << 24 ) +
-            ( ( in[1] & 0xFF ) << 16 ) +
-            ( ( in[2] & 0xFF ) << 8 ) +
-            ( in[3] & 0xFF );
+        int len = IntSerializer.deserialize( in );
 
         switch ( len )
         {

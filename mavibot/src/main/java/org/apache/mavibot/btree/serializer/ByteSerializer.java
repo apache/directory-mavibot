@@ -43,12 +43,28 @@ public class ByteSerializer implements ElementSerializer<Byte>
 
 
     /**
+     * A static method used to deserialize a Byte from a byte array.
+     * @param in The byte array containing the Byte
+     * @return A Byte
+     */
+    public static Byte deserialize( byte[] in )
+    {
+        if ( ( in == null ) || ( in.length < 8 ) )
+        {
+            throw new RuntimeException( "Cannot extract a Byte from a buffer with not enough bytes" );
+        }
+
+        return in[0];
+    }
+
+
+    /**
      * {@inheritDoc}
      */
     public Byte deserialize( BufferHandler bufferHandler ) throws IOException
     {
         byte[] in = bufferHandler.read( 1 );
 
-        return in[0];
+        return deserialize( in );
     }
 }

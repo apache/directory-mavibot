@@ -48,15 +48,31 @@ public class IntSerializer implements ElementSerializer<Integer>
 
 
     /**
+     * A static method used to deserialize an Integer from a byte array.
+     * @param in The byte array containing the Integer
+     * @return An Integer
+     */
+    public static Integer deserialize( byte[] in )
+    {
+        if ( ( in == null ) || ( in.length < 8 ) )
+        {
+            throw new RuntimeException( "Cannot extract a Integer from a buffer with not enough bytes" );
+        }
+
+        return ( in[0] << 24 ) +
+            ( ( in[1] & 0xFF ) << 16 ) +
+            ( ( in[2] & 0xFF ) << 8 ) +
+            ( in[3] & 0xFF );
+    }
+
+
+    /**
      * {@inheritDoc}
      */
     public Integer deserialize( BufferHandler bufferHandler ) throws IOException
     {
         byte[] in = bufferHandler.read( 4 );
 
-        return ( in[0] << 24 ) +
-            ( ( in[1] & 0xFF ) << 16 ) +
-            ( ( in[2] & 0xFF ) << 8 ) +
-            ( in[3] & 0xFF );
+        return deserialize( in );
     }
 }

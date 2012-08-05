@@ -46,12 +46,28 @@ public class ShortSerializer implements ElementSerializer<Short>
 
 
     /**
+     * A static method used to deserialize a Short from a byte array.
+     * @param in The byte array containing the Short
+     * @return A Short
+     */
+    public static Short deserialize( byte[] in )
+    {
+        if ( ( in == null ) || ( in.length < 8 ) )
+        {
+            throw new RuntimeException( "Cannot extract a Short from a buffer with not enough bytes" );
+        }
+
+        return ( short ) ( ( in[0] << 8 ) + ( in[1] & 0xFF ) );
+    }
+
+
+    /**
      * {@inheritDoc}
      */
     public Short deserialize( BufferHandler bufferHandler ) throws IOException
     {
         byte[] in = bufferHandler.read( 2 );
 
-        return ( short ) ( ( in[0] << 8 ) + ( in[1] & 0xFF ) );
+        return deserialize( in );
     }
 }

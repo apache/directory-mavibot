@@ -46,13 +46,29 @@ public class CharSerializer implements ElementSerializer<Character>
 
 
     /**
+     * A static method used to deserialize a Character from a byte array.
+     * @param in The byte array containing the Character
+     * @return A Character
+     */
+    public static Character deserialize( byte[] in )
+    {
+        if ( ( in == null ) || ( in.length < 8 ) )
+        {
+            throw new RuntimeException( "Cannot extract a Character from a buffer with not enough bytes" );
+        }
+
+        return Character.valueOf( ( char ) ( ( in[0] << 8 ) +
+            ( in[1] & 0xFF ) ) );
+    }
+
+
+    /**
      * {@inheritDoc}
      */
     public Character deserialize( BufferHandler bufferHandler ) throws IOException
     {
         byte[] in = bufferHandler.read( 2 );
 
-        return Character.valueOf( ( char ) ( ( in[0] << 8 ) +
-            ( in[1] & 0xFF ) ) );
+        return deserialize( in );
     }
 }
