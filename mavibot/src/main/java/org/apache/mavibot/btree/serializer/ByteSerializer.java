@@ -49,7 +49,7 @@ public class ByteSerializer implements ElementSerializer<Byte>
      */
     public static Byte deserialize( byte[] in )
     {
-        if ( ( in == null ) || ( in.length < 8 ) )
+        if ( ( in == null ) || ( in.length < 1 ) )
         {
             throw new RuntimeException( "Cannot extract a Byte from a buffer with not enough bytes" );
         }

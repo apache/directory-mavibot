@@ -52,7 +52,7 @@ public class CharSerializer implements ElementSerializer<Character>
      */
     public static Character deserialize( byte[] in )
     {
-        if ( ( in == null ) || ( in.length < 8 ) )
+        if ( ( in == null ) || ( in.length < 2 ) )
         {
             throw new RuntimeException( "Cannot extract a Character from a buffer with not enough bytes" );
         }

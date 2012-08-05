@@ -52,7 +52,7 @@ public class ShortSerializer implements ElementSerializer<Short>
      */
     public static Short deserialize( byte[] in )
     {
-        if ( ( in == null ) || ( in.length < 8 ) )
+        if ( ( in == null ) || ( in.length < 2 ) )
         {
             throw new RuntimeException( "Cannot extract a Short from a buffer with not enough bytes" );
         }

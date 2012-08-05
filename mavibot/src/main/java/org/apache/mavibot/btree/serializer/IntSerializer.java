@@ -54,7 +54,7 @@ public class IntSerializer implements ElementSerializer<Integer>
      */
     public static Integer deserialize( byte[] in )
     {
-        if ( ( in == null ) || ( in.length < 8 ) )
+        if ( ( in == null ) || ( in.length < 4 ) )
         {
             throw new RuntimeException( "Cannot extract a Integer from a buffer with not enough bytes" );
         }
