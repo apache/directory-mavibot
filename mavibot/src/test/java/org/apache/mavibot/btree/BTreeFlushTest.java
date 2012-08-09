@@ -163,7 +163,7 @@ public class BTreeFlushTest
         BTree<Integer, String> btreeLoaded = new BTree<Integer, String>( file, new IntComparator(), serializer );
         btree.setPageSize( 8 );
 
-        btreeLoaded.read( file );
+        btreeLoaded.load( file );
 
         Cursor<Integer, String> cursor1 = btree.browse();
         Cursor<Integer, String> cursor2 = btree.browse();

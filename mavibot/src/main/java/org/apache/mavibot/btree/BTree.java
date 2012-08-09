@@ -86,6 +86,45 @@ public class BTree<K, V>
 
 
     /**
+     * Creates a new in-memory BTree using the BTreeConfiguration to initialize the 
+     * BTree
+     * 
+     * @param comparator The comparator to use
+     */
+    public BTree( BTreeConfiguration<K, V> configuration ) throws IOException
+    {
+        String fileName = configuration.getFilePrefix() + "." + configuration.getFileSuffix();
+
+        File btreeFile = new File( configuration.getFilePath(), fileName );
+
+        pageSize = configuration.getPageSize();
+        comparator = configuration.getComparator();
+        serializer = configuration.getSerializer();
+
+        if ( comparator == null )
+        {
+            throw new IllegalArgumentException( "Comparator should not be null" );
+        }
+
+        // Now, initialize the BTree
+        init();
+
+        // Last, we load the data from the file, if it exists.
+        if ( btreeFile.exists() )
+        {
+            // The file already exists, load it.
+            file = btreeFile;
+            load( file );
+        }
+        else
+        {
+            // We will create the new file
+            file = btreeFile;
+        }
+    }
+
+
+    /**
      * Creates a new in-memory BTree with a default page size and a comparator.
      * 
      * @param comparator The comparator to use
@@ -192,7 +231,20 @@ public class BTree<K, V>
         setPageSize( pageSize );
         this.serializer = serializer;
 
-        // Create the map contaning all the revisions
+        // Now, call the init() method
+        init();
+    }
+
+
+    /**
+     * Initialize the BTree.
+     * 
+     * @throws IOException If we get some exceptio while initializing the BTree
+     */
+    public void init() throws IOException
+    {
+
+        // Create the map containing all the revisions
         roots = new ConcurrentHashMap<Long, Page<K, V>>();
 
         // Initialize the PageId counter
@@ -707,7 +759,7 @@ public class BTree<K, V>
      * @param file
      * @throws IOException
      */
-    public void read( File file ) throws IOException
+    public void load( File file ) throws IOException
     {
         long revision = generateRevision();
 
