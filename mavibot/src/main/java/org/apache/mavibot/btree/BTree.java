@@ -62,7 +62,7 @@ public class BTree<K, V>
     private Comparator<K> comparator;
 
     /** The current rootPage */
-    protected Page<K, V> rootPage;
+    protected volatile Page<K, V> rootPage;
 
     /** A map containing all the existing revisions */
     private Map<Long, Page<K, V>> roots = new ConcurrentHashMap<Long, Page<K, V>>();
@@ -600,24 +600,14 @@ public class BTree<K, V>
     /**
      * Starts a Read Only transaction. If the transaction is not closed, it will be 
      * automatically closed after the timeout
-     * @return
+     * @return The created transaction
      */
     public Transaction<K, V> beginReadTransaction()
     {
-        Transaction<K, V> readTransaction = new Transaction<K, V>( this, revision.get() - 1, System.currentTimeMillis() );
+        Transaction<K, V> readTransaction = new Transaction<K, V>( rootPage, revision.get() - 1,
+            System.currentTimeMillis() );
 
         return readTransaction;
-    }
-
-
-    /**
-     * Validate the transaction. 
-     *  
-     * @param transaction The transaction to commit
-     */
-    public void commitTransaction( Transaction<K, V> transaction )
-    {
-
     }
 
 
