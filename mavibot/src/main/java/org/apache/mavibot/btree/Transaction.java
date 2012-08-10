@@ -49,8 +49,8 @@ public class Transaction<K, V>
     /** The date of creation */
     private long creationDate;
 
-    /** The BTree on which we are having a transaction */
-    private BTree<K, V> btree;
+    /** The revision on which we are having a transaction */
+    private Page<K, V> page;
 
 
     /**
@@ -58,11 +58,11 @@ public class Transaction<K, V>
      * @param revision The revision this transaction is using
      * @param creationDate The creation date for this transaction
      */
-    public Transaction( BTree<K, V> btree, long revision, long creationDate )
+    public Transaction( Page<K, V> page, long revision, long creationDate )
     {
         this.revision = revision;
         this.creationDate = creationDate;
-        this.btree = btree;
+        this.page = page;
     }
 
 
@@ -89,7 +89,7 @@ public class Transaction<K, V>
      */
     public void close()
     {
-        btree.commitTransaction( this );
+        page = null;
     }
 
 
