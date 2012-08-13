@@ -27,6 +27,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -36,6 +37,7 @@ import java.util.Set;
 
 import org.apache.mavibot.btree.comparator.IntComparator;
 import org.apache.mavibot.btree.comparator.LongComparator;
+import org.apache.mavibot.btree.serializer.DefaultSerializer;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -1627,7 +1629,8 @@ public class BTreeTest
         long delta = l1;
         int nbElems = 5000000;
 
-        BTree<Long, String> btree = new BTree<Long, String>( new LongComparator() );
+        BTree<Long, String> btree = new BTree<Long, String>( new LongComparator(), new DefaultSerializer<Long, String>(
+            Long.class, String.class ) );
         btree.setPageSize( 32 );
 
         for ( int i = 0; i < nbElems; i++ )
@@ -1653,7 +1656,7 @@ public class BTreeTest
                 if ( n > 0 )
                 {
                     long t0 = System.currentTimeMillis();
-                    System.out.println( "Delta" + n + ": " + ( t0 - delta ) );
+                    System.out.println( "Written " + i + " elements in : " + ( t0 - delta ) + "ms" );
                     delta = t0;
                 }
 
@@ -1661,12 +1664,24 @@ public class BTreeTest
             }
         }
 
-        btree.close();
-
         long l2 = System.currentTimeMillis();
 
         System.out.println( "Delta : " + ( l2 - l1 ) + ", nbError = " + nbError
             + ", Nb insertion per second : " + ( nbElems ) / ( ( l2 - l1 ) / 1000 ) );
+
+        // Now, flush the btree
+
+        File tempFile = File.createTempFile( "mavibot", "tmp" );
+        tempFile.deleteOnExit();
+
+        long t0 = System.currentTimeMillis();
+
+        btree.flush( tempFile );
+
+        long t1 = System.currentTimeMillis();
+
+        System.out.println( "Time to flush 5 million elements : " + ( t1 - t0 ) );
+        btree.close();
     }
 
 
