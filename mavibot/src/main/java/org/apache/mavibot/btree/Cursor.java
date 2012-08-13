@@ -295,4 +295,22 @@ import java.util.LinkedList;
     {
         transaction.close();
     }
+
+
+    /**
+     * @return The revision this cursor is based on
+     */
+    public long getRevision()
+    {
+        return transaction.getRevision();
+    }
+
+
+    /**
+     * @return The creation date for this cursor
+     */
+    public long getCreationDate()
+    {
+        return transaction.getCreationDate();
+    }
 }
