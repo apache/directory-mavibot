@@ -157,13 +157,13 @@ public class BTreeTest
         long l1 = System.currentTimeMillis();
         int n = 0;
         long delta = l1;
-        int nbTrees = 1000;
+        int nbTrees = 100000;
         int nbElems = 1000;
 
         for ( int j = 0; j < nbTrees; j++ )
         {
             BTree<Long, String> btree = new BTree<Long, String>( new LongComparator() );
-            btree.setPageSize( 8 );
+            btree.setPageSize( 32 );
 
             for ( int i = 0; i < nbElems; i++ )
             {
@@ -1608,5 +1608,145 @@ public class BTreeTest
         checkRemoval( btree, 55, EXPECTED1 );
 
         btree.close();
+    }
+
+
+    /**
+     * Test the insertion of 5 million elements in a BTree
+     * @throws Exception
+     */
+    @Test
+    public void testPageInsert5M() throws Exception
+    {
+        Random random = new Random( System.nanoTime() );
+
+        int nbError = 0;
+
+        long l1 = System.currentTimeMillis();
+        int n = 0;
+        long delta = l1;
+        int nbElems = 5000000;
+
+        BTree<Long, String> btree = new BTree<Long, String>( new LongComparator() );
+        btree.setPageSize( 32 );
+
+        for ( int i = 0; i < nbElems; i++ )
+        {
+            Long key = ( long ) random.nextLong();
+            String value = Long.toString( key );
+
+            try
+            {
+                btree.insert( key, value );
+            }
+            catch ( Exception e )
+            {
+                e.printStackTrace();
+                System.out.println( btree );
+                System.out.println( "Error while adding " + value );
+                nbError++;
+                return;
+            }
+
+            if ( i % 100000 == 0 )
+            {
+                if ( n > 0 )
+                {
+                    long t0 = System.currentTimeMillis();
+                    System.out.println( "Delta" + n + ": " + ( t0 - delta ) );
+                    delta = t0;
+                }
+
+                n++;
+            }
+        }
+
+        btree.close();
+
+        long l2 = System.currentTimeMillis();
+
+        System.out.println( "Delta : " + ( l2 - l1 ) + ", nbError = " + nbError
+            + ", Nb insertion per second : " + ( nbElems ) / ( ( l2 - l1 ) / 1000 ) );
+    }
+
+
+    /**
+     * Test the insertion of 5 million elements in a BTree
+     * @throws Exception
+     */
+    @Test
+    public void testBrowse5M() throws Exception
+    {
+        Random random = new Random( System.nanoTime() );
+
+        int nbError = 0;
+
+        int n = 0;
+        int nbElems = 5000000;
+        long delta = System.currentTimeMillis();
+
+        // Create a BTree with 5 million entries
+        BTree<Long, String> btree = new BTree<Long, String>( new LongComparator() );
+        btree.setPageSize( 32 );
+
+        for ( int i = 0; i < nbElems; i++ )
+        {
+            Long key = ( long ) random.nextLong();
+            String value = Long.toString( key );
+
+            try
+            {
+                btree.insert( key, value );
+            }
+            catch ( Exception e )
+            {
+                e.printStackTrace();
+                System.out.println( btree );
+                System.out.println( "Error while adding " + value );
+                nbError++;
+                return;
+            }
+
+            if ( i % 100000 == 0 )
+            {
+                if ( n > 0 )
+                {
+                    long t0 = System.currentTimeMillis();
+                    System.out.println( "Delta" + n + ": " + ( t0 - delta ) );
+                    delta = t0;
+                }
+
+                n++;
+            }
+        }
+
+        // Now browse them
+        long l1 = System.currentTimeMillis();
+
+        Cursor<Long, String> cursor = btree.browse();
+
+        int nb = 0;
+        long elem = Long.MIN_VALUE;
+
+        while ( cursor.hasNext() )
+        {
+            Tuple<Long, String> res = cursor.next();
+
+            if ( res.getKey() > elem )
+            {
+                elem = res.getKey();
+                nb++;
+            }
+        }
+
+        System.out.println( "Nb elements read : " + nb );
+
+        cursor.close();
+        btree.close();
+
+        long l2 = System.currentTimeMillis();
+
+        System.out.println( "Delta : " + ( l2 - l1 ) + ", nbError = " + nbError
+            + ", Nb searches per second : " + ( ( nbElems ) / ( l2 - l1 ) ) * 1000 );
     }
 }
