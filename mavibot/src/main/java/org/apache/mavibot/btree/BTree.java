@@ -729,6 +729,7 @@ public class BTree<K, V>
     private void writeBuffer( FileChannel channel, ByteBuffer bb, byte[] buffer ) throws IOException
     {
         int size = buffer.length;
+        int pos = 0;
 
         // Loop until we have written all the data
         do
@@ -736,15 +737,16 @@ public class BTree<K, V>
             if ( bb.remaining() >= size )
             {
                 // No flush, as the ByteBuffer is big enough
-                bb.put( buffer );
+                bb.put( buffer, pos, size );
                 size = 0;
             }
             else
             {
                 // Flush the data on disk, reinitialize the ByteBuffer
-                int len = bb.limit() - bb.position();
+                int len = bb.remaining();
                 size -= len;
-                bb.put( buffer, bb.position(), len );
+                bb.put( buffer, pos, len );
+                pos += len;
 
                 bb.flip();
                 channel.write( bb );
@@ -783,11 +785,17 @@ public class BTree<K, V>
         {
             Tuple<K, V> tuple = cursor.next();
 
+            if ( bb.remaining() == 0 )
+            {
+
+            }
+
             byte[] keyBuffer = serializer.serializeKey( tuple.getKey() );
 
             writeBuffer( ch, bb, keyBuffer );
 
             byte[] valueBuffer = serializer.serializeValue( tuple.getValue() );
+
             writeBuffer( ch, bb, valueBuffer );
         }
 
