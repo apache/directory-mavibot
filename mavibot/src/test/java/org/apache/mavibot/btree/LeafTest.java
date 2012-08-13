@@ -27,6 +27,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 
 import org.apache.mavibot.btree.comparator.LongComparator;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -49,6 +50,13 @@ public class LeafTest
     {
         btree = new BTree<Long, String>( new LongComparator() );
         btree.setPageSize( 8 );
+    }
+
+
+    @After
+    public void shutdown()
+    {
+        btree.close();
     }
 
 

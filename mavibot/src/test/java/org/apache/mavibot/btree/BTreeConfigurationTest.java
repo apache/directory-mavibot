@@ -135,6 +135,8 @@ public class BTreeConfigurationTest
 
             assertNotNull( value );
         }
+
+        btree.close();
     }
 
 
@@ -181,6 +183,8 @@ public class BTreeConfigurationTest
             // Flush the data
             btree.flush();
 
+            btree.close();
+
             // Now, create a new BTree using the same configuration
             BTree<Integer, String> btreeCopy = new BTree<Integer, String>( config );
 
@@ -191,6 +195,8 @@ public class BTreeConfigurationTest
 
                 assertNotNull( value );
             }
+
+            btree.close();
         }
         finally
         {

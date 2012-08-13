@@ -221,11 +221,12 @@ public class BTreeTest
                 }
 
                 n++;
-
             }
 
             expected.clear();
             added.clear();
+
+            btree.close();
         }
 
         long l2 = System.currentTimeMillis();
@@ -345,6 +346,8 @@ public class BTreeTest
 
             expected.clear();
             added.clear();
+
+            btree.close();
         }
 
         long l2 = System.currentTimeMillis();
@@ -391,8 +394,6 @@ public class BTreeTest
             }
         }
 
-        System.out.println( btree );
-
         int i = 0;
 
         long[] deletes = new long[]
@@ -407,9 +408,8 @@ public class BTreeTest
 
         for ( long value : deletes )
         {
-            System.out.println( "Deleting #" + i + " : " + value );
+            //System.out.println( "Deleting #" + i + " : " + value );
             i++;
-            System.out.println( btree );
             Tuple<Long, String> tuple = btree.delete( value );
 
             if ( tuple != null )
@@ -418,9 +418,9 @@ public class BTreeTest
             }
 
             assertNull( btree.find( value ) );
-
-            System.out.println( "" );
         }
+
+        btree.close();
     }
 
 
@@ -479,6 +479,7 @@ public class BTreeTest
             assertTrue( checkTreeLong( expected, btree ) );
         }
 
+        btree.close();
     }
 
 
@@ -534,9 +535,9 @@ public class BTreeTest
             //System.out.println( "added " + elem + ":\n" + btree );
         }
 
-        //btree.insert( 115L, "V115" );
-
         //System.out.println( btree );
+
+        btree.close();
     }
 
 
@@ -579,6 +580,8 @@ public class BTreeTest
         System.out.println( btree );
         btree.remove( 21L );
         System.out.println( btree );
+        
+        btree.close();
     }
     */
 
@@ -662,6 +665,7 @@ public class BTreeTest
         }
 
         cursor.close();
+        btree.close();
     }
 
 
@@ -672,7 +676,6 @@ public class BTreeTest
     @Test
     public void testBrowseBackward() throws Exception
     {
-
         // Create a BTree with pages containing 8 elements
         BTree<Integer, String> btree = new BTree<Integer, String>( new IntComparator() );
         btree.setPageSize( 8 );
@@ -738,6 +741,7 @@ public class BTreeTest
         assertFalse( cursor.hasPrev() );
 
         cursor.close();
+        btree.close();
     }
 
 
@@ -757,6 +761,7 @@ public class BTreeTest
         assertFalse( cursor.hasPrev() );
 
         cursor.close();
+        btree.close();
     }
 
 
@@ -815,6 +820,7 @@ public class BTreeTest
         assertEquals( 7, cursor.prev().getKey().intValue() );
 
         cursor.close();
+        btree.close();
     }
 
 
@@ -858,6 +864,7 @@ public class BTreeTest
 
         btree.delete( 9 );
         assertNull( btree.find( 9 ) );
+        btree.close();
     }
 
 
@@ -899,6 +906,8 @@ public class BTreeTest
         btree.delete( 16 );
         assertNull( btree.find( 16 ) );
 
+        btree.close();
+
         // Now do that with a deeper btree
         btree = createMultiLevelBTreeLeavesHalfFull();
 
@@ -934,68 +943,10 @@ public class BTreeTest
 
         btree.delete( 67 );
         assertNull( btree.find( 67 ) );
+
+        btree.close();
     }
 
-
-    /*
-        // Delete one element in the middle of a leaf
-        btree.delete( 10 );
-        assertNull( btree.find( 10 ) );
-        
-        // Delete one element at the beginning of a leaf
-        btree.delete( 13 );
-        assertNull( btree.find( 13 ) );
-        assertEquals( Integer.valueOf( 14 ), ((Node<Integer, String>)btree.rootPage).keys[2] );
-        
-        // Delete two more values so that we have a leaf borrowing some element from a sibling
-        btree.delete( 15 );
-        assertNull( btree.find( 15 ) );
-        
-        btree.delete( 14 );
-        assertNull( btree.find( 14 ) );
-        
-        // Borrow from left now, removing an element which is not the leftmost
-        btree.delete( 17 );
-        assertNull( btree.find( 17 ) );
-        
-        // Delete a key not at the first place, this will borrow an element from right
-        btree.delete( 16 );
-        assertNull( btree.find( 16 ) );
-        
-        // Delete a key at the first place, borrow from left
-        btree.delete( 9 );
-        assertNull( btree.find( 9 ) );
-        
-        // Delete a key on first position that will generate a merge between two pages
-        btree.delete( 19 );
-        assertNull( btree.find( 19 ) );
-        
-        // Delete one element and another one, so that we have another merge, but removed the second key of the right page
-        btree.delete( 20 );
-        assertNull( btree.find( 20 ) );
-        
-        btree.delete( 18 );
-        assertNull( btree.find( 18 ) );
-        
-        // Delete two more elements to have two leaves with N/2 elements
-        btree.delete( 7 );
-        assertNull( btree.find( 7 ) );
-        
-        btree.delete( 12 );
-        assertNull( btree.find( 12 ) );
-        
-        // Delete the extra elements in the first leaf
-        btree.delete( 1 );
-        assertNull( btree.find( 1 ) );
-
-        btree.delete( 2 );
-        assertNull( btree.find( 2 ) );
-        
-        // Delete an element on first position from a leaf containing N/2 elements
-        //btree.delete( 5 );
-        //assertNull( btree.find( 5 ) );
-    }
-    */
 
     private Page<Integer, String> createLeaf( BTree<Integer, String> btree, long revision,
         Tuple<Integer, String>... tuples )
@@ -1297,6 +1248,8 @@ public class BTreeTest
         assertEquals( 50, removed.getKey().intValue() );
         assertEquals( "v50", removed.getValue() );
         assertNull( btree.find( 50 ) );
+
+        btree.close();
     }
 
 
@@ -1338,6 +1291,8 @@ public class BTreeTest
         // Delete the leftmost value of the right leaf
         btree.delete( 6 );
         assertNull( btree.find( 6 ) );
+
+        btree.close();
     }
 
 
@@ -1357,6 +1312,8 @@ public class BTreeTest
 
         // delete the element
         checkRemoval( btree, 10, EXPECTED1 );
+
+        btree.close();
     }
 
 
@@ -1376,6 +1333,8 @@ public class BTreeTest
 
         // delete the element
         checkRemoval( btree, 11, EXPECTED1 );
+
+        btree.close();
     }
 
 
@@ -1395,6 +1354,8 @@ public class BTreeTest
 
         // delete the element
         checkRemoval( btree, 19, EXPECTED1 );
+
+        btree.close();
     }
 
 
@@ -1414,6 +1375,8 @@ public class BTreeTest
 
         // delete the element
         checkRemoval( btree, 14, EXPECTED1 );
+
+        btree.close();
     }
 
 
@@ -1433,6 +1396,8 @@ public class BTreeTest
 
         // delete the element
         checkRemoval( btree, 15, EXPECTED1 );
+
+        btree.close();
     }
 
 
@@ -1452,6 +1417,8 @@ public class BTreeTest
 
         // delete the element
         checkRemoval( btree, 91, EXPECTED1 );
+
+        btree.close();
     }
 
 
@@ -1471,6 +1438,8 @@ public class BTreeTest
 
         // delete the element
         checkRemoval( btree, 90, EXPECTED1 );
+
+        btree.close();
     }
 
 
@@ -1490,6 +1459,8 @@ public class BTreeTest
 
         // delete the element
         checkRemoval( btree, 82, EXPECTED1 );
+
+        btree.close();
     }
 
 
@@ -1509,6 +1480,8 @@ public class BTreeTest
 
         // delete the element
         checkRemoval( btree, 83, EXPECTED1 );
+
+        btree.close();
     }
 
 
@@ -1528,6 +1501,8 @@ public class BTreeTest
 
         // delete 
         checkRemoval( btree, 50, EXPECTED1 );
+
+        btree.close();
     }
 
 
@@ -1547,6 +1522,8 @@ public class BTreeTest
 
         // delete 
         checkRemoval( btree, 51, EXPECTED1 );
+
+        btree.close();
     }
 
 
@@ -1566,6 +1543,8 @@ public class BTreeTest
 
         // delete 
         checkRemoval( btree, 59, EXPECTED1 );
+
+        btree.close();
     }
 
 
@@ -1585,6 +1564,8 @@ public class BTreeTest
 
         // delete 
         checkRemoval( btree, 58, EXPECTED1 );
+
+        btree.close();
     }
 
 
@@ -1604,6 +1585,8 @@ public class BTreeTest
 
         // delete 
         checkRemoval( btree, 54, EXPECTED1 );
+
+        btree.close();
     }
 
 
@@ -1623,5 +1606,7 @@ public class BTreeTest
 
         // delete 
         checkRemoval( btree, 55, EXPECTED1 );
+
+        btree.close();
     }
 }

@@ -180,5 +180,8 @@ public class BTreeFlushTest
         }
 
         assertFalse( cursor2.hasNext() );
+
+        btree.close();
+        btreeLoaded.close();
     }
 }
