@@ -50,28 +50,43 @@ public class Transaction<K, V>
     private long creationDate;
 
     /** The revision on which we are having a transaction */
-    private Page<K, V> page;
+    private volatile Page<K, V> root;
+
+    /** A flag used to tell if a transaction is closed ot not */
+    private volatile boolean closed;
 
 
     /**
      * Creates a new transaction instance
+     * 
+     * @param root The associated root
      * @param revision The revision this transaction is using
      * @param creationDate The creation date for this transaction
      */
-    public Transaction( Page<K, V> page, long revision, long creationDate )
+    public Transaction( Page<K, V> root, long revision, long creationDate )
     {
         this.revision = revision;
         this.creationDate = creationDate;
-        this.page = page;
+        this.root = root;
+        closed = false;
     }
 
 
     /**
-     * @return the revision
+     * @return the associated revision
      */
     public long getRevision()
     {
         return revision;
+    }
+
+
+    /**
+     * @return the associated root
+     */
+    public Page<K, V> getRoot()
+    {
+        return root;
     }
 
 
@@ -89,7 +104,17 @@ public class Transaction<K, V>
      */
     public void close()
     {
-        page = null;
+        root = null;
+        closed = true;
+    }
+
+
+    /**
+     * @return true if this transaction has been closed
+     */
+    public boolean isClosed()
+    {
+        return closed;
     }
 
 
@@ -98,6 +123,6 @@ public class Transaction<K, V>
      */
     public String toString()
     {
-        return "Transaction[" + revision + ":" + new Date( creationDate ) + "]";
+        return "Transaction[" + revision + ":" + new Date( creationDate ) + ", closed :" + closed + "]";
     }
 }
