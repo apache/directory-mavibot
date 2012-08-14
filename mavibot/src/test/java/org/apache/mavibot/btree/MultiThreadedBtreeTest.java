@@ -258,7 +258,7 @@ public class MultiThreadedBtreeTest
             assertEquals( Long.toString( i ), btree.find( i ) );
         }
 
-        System.out.println( " Time to create 1M entries : "
+        System.out.println( " Time to create 10M entries : "
             + ( ( t1 - t0 ) / 1000 ) + " seconds" );
     }
 }
