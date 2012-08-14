@@ -69,7 +69,7 @@ public class BTreeConfiguration<K, V>
      * The default value is 10000 (10 seconds). If the value is 0 or below,
      * the delay is considered as infinite
      */
-    private long readTimeOut = 10 * 1000L;
+    private long readTimeOut = BTree.DEFAULT_READ_TIMEOUT;
 
     /** The maximal size of the journal. When this size is reached, the tree is 
      * flushed on disk.

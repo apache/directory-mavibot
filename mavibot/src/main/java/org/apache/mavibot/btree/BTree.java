@@ -91,6 +91,12 @@ public class BTree<K, V>
     /** The thread responsible for the cleanup of timed out reads */
     private Thread readTransactionsThread;
 
+    /** Define a default delay for a read transaction. This is 10 seconds */
+    public static final long DEFAULT_READ_TIMEOUT = 10 * 1000L;
+
+    /** The read transaction timeout */
+    private long readTimeOut = DEFAULT_READ_TIMEOUT;
+
 
     /**
      * Create a thread that is responsible of cleaning the transactions when
@@ -108,7 +114,7 @@ public class BTree<K, V>
 
                     while ( !Thread.currentThread().isInterrupted() )
                     {
-                        long timeoutDate = System.currentTimeMillis() - 10000L;
+                        long timeoutDate = System.currentTimeMillis() - readTimeOut;
 
                         // Loop on all the transactions from the queue
                         while ( ( transaction = readTransactions.peek() ) != null )
@@ -132,8 +138,8 @@ public class BTree<K, V>
                             break;
                         }
 
-                        //System.out.println( "Sleep for 10 seconds" );
-                        Thread.sleep( 10000L );
+                        // Wait until we reach the timeout
+                        Thread.sleep( readTimeOut );
                     }
                 }
                 catch ( InterruptedException ie )
@@ -168,6 +174,7 @@ public class BTree<K, V>
         pageSize = configuration.getPageSize();
         comparator = configuration.getComparator();
         serializer = configuration.getSerializer();
+        readTimeOut = configuration.getReadTimeOut();
 
         if ( comparator == null )
         {
@@ -882,6 +889,24 @@ public class BTree<K, V>
     public void flush() throws IOException
     {
         flush( file );
+    }
+
+
+    /**
+     * @return the readTimeOut
+     */
+    public long getReadTimeOut()
+    {
+        return readTimeOut;
+    }
+
+
+    /**
+     * @param readTimeOut the readTimeOut to set
+     */
+    public void setReadTimeOut( long readTimeOut )
+    {
+        this.readTimeOut = readTimeOut;
     }
 
 
