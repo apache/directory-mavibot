@@ -32,6 +32,7 @@ import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.mavibot.btree.serializer.BufferHandler;
 import org.apache.mavibot.btree.serializer.LongSerializer;
@@ -84,7 +85,11 @@ public class BTree<K, V>
     /** The number of elements in the current revision */
     private AtomicLong nbElems = new AtomicLong( 0 );
 
-    Thread readTransactionsThread;
+    /** A lock used to protect the write operation against concurrent access */
+    private final ReentrantLock writeLock = new ReentrantLock();
+
+    /** The thread responsible for the cleanup of timed out reads */
+    private Thread readTransactionsThread;
 
 
     /**
@@ -496,8 +501,7 @@ public class BTree<K, V>
      */
     private Tuple<K, V> delete( K key, long revision ) throws IOException
     {
-        // Commented atm, we will have to play around the idea of transactions later
-        //acquireWriteLock();
+        writeLock.lock();
 
         try
         {
@@ -533,7 +537,7 @@ public class BTree<K, V>
         finally
         {
             // See above
-            //releaseWriteLock()
+            writeLock.unlock();
         }
     }
 
@@ -618,7 +622,7 @@ public class BTree<K, V>
         }
 
         // Commented atm, we will have to play around the idea of transactions later
-        //acquireWriteLock();
+        writeLock.lock();
 
         try
         {
@@ -661,7 +665,7 @@ public class BTree<K, V>
         finally
         {
             // See above
-            //releaseWriteLock()
+            writeLock.unlock();
         }
     }
 
