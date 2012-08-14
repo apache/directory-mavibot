@@ -63,16 +63,16 @@ public class MultiThreadedBtreeTest
 
 
     /**
-     * Create a btree with 5 million elements in it
+     * Create a btree with 500 000 elements in it
      * @throws IOException If the creation failed
      */
-    private void create5MBTree() throws IOException
+    private void create500KBTree() throws IOException
     {
         Random random = new Random( System.nanoTime() );
 
-        int nbElems = 5000000;
+        int nbElems = 500000;
 
-        // Create a BTree with 5 million entries
+        // Create a BTree with 500 000 entries
         btree.setPageSize( 32 );
 
         for ( int i = 0; i < nbElems; i++ )
@@ -136,14 +136,14 @@ public class MultiThreadedBtreeTest
 
     /**
      * Chack that we can read the btree while it is being modified. We will start
-     * 1000 readers for one writer.
+     * 100 readers for one writer.
      * 
      * @throws InterruptedException If the btree access failed.
      */
     @Test
     public void testBrowseMultiThreads() throws InterruptedException
     {
-        int nbThreads = 1000;
+        int nbThreads = 100;
         final CountDownLatch latch = new CountDownLatch( nbThreads );
 
         Thread writer = new Thread()
@@ -152,7 +152,7 @@ public class MultiThreadedBtreeTest
             {
                 try
                 {
-                    create5MBTree();
+                    create500KBTree();
                 }
                 catch ( Exception e )
                 {
@@ -180,7 +180,7 @@ public class MultiThreadedBtreeTest
                         {
                             previous = res;
                             res = testBrowse();
-                            Thread.sleep( 100 );
+                            Thread.sleep( 500 );
                         }
 
                         latch.countDown();
