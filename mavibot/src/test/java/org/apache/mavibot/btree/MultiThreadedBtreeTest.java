@@ -20,6 +20,8 @@
 package org.apache.mavibot.btree;
 
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
@@ -201,6 +203,62 @@ public class MultiThreadedBtreeTest
         long t1 = System.currentTimeMillis();
 
         System.out.println( " Time to create 5M entries and to have " + nbThreads + " threads reading them : "
+            + ( ( t1 - t0 ) / 1000 ) + " seconds" );
+    }
+
+
+    /**
+     * Test that we can use many threads inserting data in a BTree
+     * @throws InterruptedException
+     */
+    @Test
+    public void testInsertMultiThreads() throws InterruptedException, IOException
+    {
+        int nbThreads = 100;
+        final CountDownLatch latch = new CountDownLatch( nbThreads );
+
+        long t0 = System.currentTimeMillis();
+
+        for ( int i = 0; i < nbThreads; i++ )
+        {
+            final long prefix = i;
+            Thread test = new Thread()
+            {
+                public void run()
+                {
+                    try
+                    {
+                        // Inject 100000 elements
+                        for ( int j = 0; j < 100000; j++ )
+                        {
+                            long value = prefix * 100000 + j;
+                            btree.insert( value, Long.toString( value ) );
+                        }
+
+                        latch.countDown();
+                    }
+                    catch ( Exception e )
+                    {
+                    }
+                }
+            };
+
+            // Start each reader
+            test.start();
+        }
+
+        // Wait for all the readers to be done
+        latch.await();
+
+        long t1 = System.currentTimeMillis();
+
+        // Check that the tree contains all the values
+        for ( long i = 0L; i < 1000000L; i++ )
+        {
+            assertEquals( Long.toString( i ), btree.find( i ) );
+        }
+
+        System.out.println( " Time to create 1M entries : "
             + ( ( t1 - t0 ) / 1000 ) + " seconds" );
     }
 }
