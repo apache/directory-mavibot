@@ -27,7 +27,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -37,17 +36,16 @@ import java.util.Set;
 
 import org.apache.mavibot.btree.comparator.IntComparator;
 import org.apache.mavibot.btree.comparator.LongComparator;
-import org.apache.mavibot.btree.serializer.DefaultSerializer;
 import org.junit.Ignore;
 import org.junit.Test;
 
 
 /**
- * A unit test class for BTree
+ * A unit test class for in-memory BTree
  * 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class BTreeTest
+public class InMemoryBTreeTest
 {
     // Some values to inject in a btree
     private static int[] sortedValues = new int[]
@@ -159,7 +157,7 @@ public class BTreeTest
         long l1 = System.currentTimeMillis();
         int n = 0;
         long delta = l1;
-        int nbTrees = 100000;
+        int nbTrees = 1000;
         int nbElems = 1000;
 
         for ( int j = 0; j < nbTrees; j++ )
@@ -1609,78 +1607,6 @@ public class BTreeTest
         // delete 
         checkRemoval( btree, 55, EXPECTED1 );
 
-        btree.close();
-    }
-
-
-    /**
-     * Test the insertion of 5 million elements in a BTree
-     * @throws Exception
-     */
-    @Test
-    public void testPageInsert5M() throws Exception
-    {
-        Random random = new Random( System.nanoTime() );
-
-        int nbError = 0;
-
-        long l1 = System.currentTimeMillis();
-        int n = 0;
-        long delta = l1;
-        int nbElems = 5000000;
-
-        BTree<Long, String> btree = new BTree<Long, String>( new LongComparator(), new DefaultSerializer<Long, String>(
-            Long.class, String.class ) );
-        btree.setPageSize( 32 );
-
-        for ( int i = 0; i < nbElems; i++ )
-        {
-            Long key = ( long ) random.nextLong();
-            String value = Long.toString( key );
-
-            try
-            {
-                btree.insert( key, value );
-            }
-            catch ( Exception e )
-            {
-                e.printStackTrace();
-                System.out.println( btree );
-                System.out.println( "Error while adding " + value );
-                nbError++;
-                return;
-            }
-
-            if ( i % 100000 == 0 )
-            {
-                if ( n > 0 )
-                {
-                    long t0 = System.currentTimeMillis();
-                    System.out.println( "Written " + i + " elements in : " + ( t0 - delta ) + "ms" );
-                    delta = t0;
-                }
-
-                n++;
-            }
-        }
-
-        long l2 = System.currentTimeMillis();
-
-        System.out.println( "Delta : " + ( l2 - l1 ) + ", nbError = " + nbError
-            + ", Nb insertion per second : " + ( nbElems ) / ( ( l2 - l1 ) / 1000 ) );
-
-        // Now, flush the btree
-
-        File tempFile = File.createTempFile( "mavibot", "tmp" );
-        tempFile.deleteOnExit();
-
-        long t0 = System.currentTimeMillis();
-
-        btree.flush( tempFile );
-
-        long t1 = System.currentTimeMillis();
-
-        System.out.println( "Time to flush 5 million elements : " + ( t1 - t0 ) );
         btree.close();
     }
 

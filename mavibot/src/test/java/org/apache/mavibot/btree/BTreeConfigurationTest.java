@@ -196,7 +196,7 @@ public class BTreeConfigurationTest
                 assertNotNull( value );
             }
 
-            btree.close();
+            btreeCopy.close();
         }
         finally
         {

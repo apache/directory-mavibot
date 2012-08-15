@@ -58,7 +58,7 @@ public class MultiThreadedBtreeTest
      * Close the btree
      */
     @AfterClass
-    public static void shutdown()
+    public static void shutdown() throws IOException
     {
         btree.close();
     }

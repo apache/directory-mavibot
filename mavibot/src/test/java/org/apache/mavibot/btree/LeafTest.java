@@ -54,7 +54,7 @@ public class LeafTest
 
 
     @After
-    public void shutdown()
+    public void shutdown() throws IOException
     {
         btree.close();
     }
