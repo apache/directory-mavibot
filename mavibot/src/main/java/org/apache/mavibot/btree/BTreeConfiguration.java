@@ -53,14 +53,9 @@ public class BTreeConfiguration<K, V>
     private String filePath;
 
     /**
-     * The BTree file's name. Default to "mavibot".
+     * The BTree file's name.
      */
-    private String filePrefix = "mavibot";
-
-    /**
-     * The BTree file's suffix. Default to "data".
-     */
-    private String fileSuffix = "data";
+    private String fileName;
 
     /** 
      * The maximum delay to wait before a revision is considered as unused.
@@ -83,16 +78,12 @@ public class BTreeConfiguration<K, V>
     private String journalPath;
 
     /**
-     * The journal's name. Default to "mavibot".
+     * The journal's name. Default to "mavibot.log".
      */
-    private String journalPrefix = "mavibot";
+    private String journalName = BTree.DEFAULT_JOURNAL;
 
-    /**
-     * The journal's suffix. Default to "log".
-     */
-    private String journalSuffix = "log";
-
-    /** The delay between two checkpoints. When we reach the maximum delay,
+    /** 
+     * The delay between two checkpoints. When we reach the maximum delay,
      * the BTree is flushed on disk, but only if we have had some modifications.
      * The default value is 60 seconds.
      */
@@ -226,38 +217,20 @@ public class BTreeConfiguration<K, V>
 
 
     /**
-     * @return the filePrefix
+     * @return the file name
      */
-    public String getFilePrefix()
+    public String getFileName()
     {
-        return filePrefix;
+        return fileName;
     }
 
 
     /**
-     * @param filePrefix the filePrefix to set
+     * @param fileName the file name to set
      */
-    public void setFilePrefix( String filePrefix )
+    public void setFileName( String fileName )
     {
-        this.filePrefix = filePrefix;
-    }
-
-
-    /**
-     * @return the fileSuffix
-     */
-    public String getFileSuffix()
-    {
-        return fileSuffix;
-    }
-
-
-    /**
-     * @param fileSuffix the fileSuffix to set
-     */
-    public void setFileSuffix( String fileSuffix )
-    {
-        this.fileSuffix = fileSuffix;
+        this.fileName = fileName;
     }
 
 
@@ -280,37 +253,19 @@ public class BTreeConfiguration<K, V>
 
 
     /**
-     * @return the journalPrefix
+     * @return the journal name
      */
-    public String getJournalPrefix()
+    public String getJournalName()
     {
-        return journalPrefix;
+        return journalName;
     }
 
 
     /**
-     * @param journalPrefix the journalPrefix to set
+     * @param journalName the journal name to set
      */
-    public void setJournalPrefix( String journalPrefix )
+    public void setJournalName( String journalName )
     {
-        this.journalPrefix = journalPrefix;
-    }
-
-
-    /**
-     * @return the journalSuffix
-     */
-    public String getJournalSuffix()
-    {
-        return journalSuffix;
-    }
-
-
-    /**
-     * @param journalSuffix the journalSuffix to set
-     */
-    public void setJournalSuffix( String journalSuffix )
-    {
-        this.journalSuffix = journalSuffix;
+        this.journalName = journalName;
     }
 }
