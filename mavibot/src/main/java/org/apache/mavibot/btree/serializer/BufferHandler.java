@@ -20,6 +20,7 @@
 package org.apache.mavibot.btree.serializer;
 
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -102,8 +103,13 @@ public class BufferHandler
 
             if ( channel != null )
             {
-                channel.read( buffer );
+                int nbReads = channel.read( buffer );
                 buffer.flip();
+
+                if ( nbReads <= 0 )
+                {
+                    throw new EOFException();
+                }
             }
             else
             {
