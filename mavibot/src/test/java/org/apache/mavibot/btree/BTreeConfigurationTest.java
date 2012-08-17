@@ -160,6 +160,7 @@ public class BTreeConfigurationTest
             config.setSerializer( new DefaultSerializer<Integer, String>( Integer.class, String.class ) );
 
             config.setFilePath( parent );
+            config.setFileName( "mavibot" );
 
             // Create the BTree
             BTree<Integer, String> btree = new BTree<Integer, String>( config );
@@ -181,8 +182,6 @@ public class BTreeConfigurationTest
             }
 
             // Flush the data
-            btree.flush();
-
             btree.close();
 
             // Now, create a new BTree using the same configuration
@@ -200,12 +199,20 @@ public class BTreeConfigurationTest
         }
         finally
         {
-            // Erase the mavibot.data file now
-            File mavibotFile = new File( parent, "mavibot.data" );
+            // Erase the mavibot file now
+            File mavibotFile = new File( parent, "mavibot" );
 
             if ( mavibotFile.exists() )
             {
                 mavibotFile.delete();
+            }
+
+            // Erase the journal too
+            File mavibotJournal = new File( parent, "mavibot.log" );
+
+            if ( mavibotJournal.exists() )
+            {
+                mavibotJournal.delete();
             }
         }
     }

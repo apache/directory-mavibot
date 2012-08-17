@@ -214,8 +214,10 @@ public class MultiThreadedBtreeTest
     @Test
     public void testInsertMultiThreads() throws InterruptedException, IOException
     {
-        int nbThreads = 100;
+        int nbThreads = 20;
         final CountDownLatch latch = new CountDownLatch( nbThreads );
+
+        //Thread.sleep( 60000L );
 
         long t0 = System.currentTimeMillis();
 
@@ -233,6 +235,14 @@ public class MultiThreadedBtreeTest
                         {
                             long value = prefix * 100000 + j;
                             btree.insert( value, Long.toString( value ) );
+
+                            /*
+                            if ( j % 10000 == 0 )
+                            {
+                                System.out.println( "Thread " + Thread.currentThread().getName() + " flushed " + j
+                                    + " elements" );
+                            }
+                            */
                         }
 
                         latch.countDown();
@@ -258,7 +268,7 @@ public class MultiThreadedBtreeTest
             assertEquals( Long.toString( i ), btree.find( i ) );
         }
 
-        System.out.println( " Time to create 10M entries : "
+        System.out.println( " Time to create 1M entries : "
             + ( ( t1 - t0 ) / 1000 ) + " seconds" );
     }
 }
