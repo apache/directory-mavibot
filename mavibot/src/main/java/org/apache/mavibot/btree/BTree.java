@@ -1172,7 +1172,7 @@ public class BTree<K, V>
      * @param file
      * @throws IOException
      */
-    private void load( File file ) throws IOException
+    public void load( File file ) throws IOException
     {
         long revision = generateRevision();
 
