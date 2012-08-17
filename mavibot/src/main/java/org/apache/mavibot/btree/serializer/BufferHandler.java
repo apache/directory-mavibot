@@ -96,8 +96,18 @@ public class BufferHandler
 
         while ( requested != 0 )
         {
-            int nbRead = buffer.limit() - buffer.position();
-            System.arraycopy( buffer.array(), buffer.position(), result, position, nbRead );
+            int nbRemainingRead = buffer.limit() - buffer.position();
+
+            if ( nbRemainingRead > requested )
+            {
+                buffer.get( result, position, requested );
+                break;
+            }
+            else
+            {
+                System.arraycopy( buffer.array(), buffer.position(), result, position, nbRemainingRead );
+                position += nbRemainingRead;
+            }
 
             buffer.clear();
 
@@ -116,7 +126,7 @@ public class BufferHandler
                 throw new IOException( "Not enough bytes in the buffer" );
             }
 
-            requested -= nbRead;
+            requested -= nbRemainingRead;
         }
 
         return result;
