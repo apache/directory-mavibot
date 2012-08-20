@@ -55,6 +55,9 @@ public class BTree<K, V>
     /** Default page size (number of entries per node) */
     public static final int DEFAULT_PAGE_SIZE = 16;
 
+    /** Default size of the buffer used to write data n disk. Around 1Mb */
+    public static final int DEFAULT_WRITE_BUFFER_SIZE = 4096 * 250;
+
     /** The default journal name */
     public static final String DEFAULT_JOURNAL = "mavibot.log";
 
@@ -81,6 +84,9 @@ public class BTree<K, V>
 
     /** Number of entries in each Page. */
     protected int pageSize;
+
+    /** The size of the buffer used to write data in disk */
+    private int writeBufferSize;
 
     /** The type to use to create the keys */
     protected Class<?> keyType;
@@ -338,6 +344,7 @@ public class BTree<K, V>
         comparator = configuration.getComparator();
         serializer = configuration.getSerializer();
         readTimeOut = configuration.getReadTimeOut();
+        writeBufferSize = configuration.getWriteBufferSize();
 
         if ( comparator == null )
         {
@@ -482,6 +489,8 @@ public class BTree<K, V>
         }
 
         setPageSize( pageSize );
+        writeBufferSize = DEFAULT_WRITE_BUFFER_SIZE;
+
         this.serializer = serializer;
 
         // Now, call the init() method
@@ -1055,7 +1064,7 @@ public class BTree<K, V>
         FileChannel ch = stream.getChannel();
 
         // Create a buffer containing 200 4Kb pages (around 1Mb)
-        ByteBuffer bb = ByteBuffer.allocateDirect( 4096 * 200 );
+        ByteBuffer bb = ByteBuffer.allocateDirect( writeBufferSize );
 
         Cursor<K, V> cursor = browse();
 
@@ -1277,6 +1286,24 @@ public class BTree<K, V>
     public File getJournal()
     {
         return journal;
+    }
+
+
+    /**
+     * @return the writeBufferSize
+     */
+    public int getWriteBufferSize()
+    {
+        return writeBufferSize;
+    }
+
+
+    /**
+     * @param writeBufferSize the writeBufferSize to set
+     */
+    public void setWriteBufferSize( int writeBufferSize )
+    {
+        this.writeBufferSize = writeBufferSize;
     }
 
 

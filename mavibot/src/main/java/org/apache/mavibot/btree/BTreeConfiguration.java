@@ -39,6 +39,9 @@ public class BTreeConfiguration<K, V>
     /** Number of entries in each Page. */
     private int pageSize = BTree.DEFAULT_PAGE_SIZE;
 
+    /** The size of the buffer used to write data in disk */
+    private int writeBufferSize = BTree.DEFAULT_WRITE_BUFFER_SIZE;
+
     /** Comparator used to order entries. */
     private Comparator<K> comparator;
 
@@ -267,5 +270,23 @@ public class BTreeConfiguration<K, V>
     public void setJournalName( String journalName )
     {
         this.journalName = journalName;
+    }
+
+
+    /**
+     * @return the writeBufferSize
+     */
+    public int getWriteBufferSize()
+    {
+        return writeBufferSize;
+    }
+
+
+    /**
+     * @param writeBufferSize the writeBufferSize to set
+     */
+    public void setWriteBufferSize( int writeBufferSize )
+    {
+        this.writeBufferSize = writeBufferSize;
     }
 }
