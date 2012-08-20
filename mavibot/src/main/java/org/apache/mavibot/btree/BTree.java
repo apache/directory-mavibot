@@ -551,6 +551,13 @@ public class BTree<K, V>
 
                 journal.createNewFile();
                 withJournal = true;
+
+                // If the journal is not empty, we have to read it
+                // and to apply all the modifications to the current file
+                if ( journal.length() > 0 )
+                {
+                    applyJournal();
+                }
             }
             else
             {
