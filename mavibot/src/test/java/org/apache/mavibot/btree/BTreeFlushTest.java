@@ -43,8 +43,8 @@ import org.junit.Test;
  */
 public class BTreeFlushTest
 {
-    /** A file containing 5 million elements */
-    private static String data5M;
+    /** A file containing 1 million elements */
+    private static String data1M;
 
     // Some values to inject in a btree
     private static int[] sortedValues = new int[]
@@ -115,7 +115,7 @@ public class BTreeFlushTest
     };
 
 
-    private static void create5MElementsFile() throws IOException
+    private static void create1MElementsFile() throws IOException
     {
         Random random = new Random( System.nanoTime() );
 
@@ -124,7 +124,7 @@ public class BTreeFlushTest
         long l1 = System.currentTimeMillis();
         int n = 0;
         long delta = l1;
-        int nbElems = 5000000;
+        int nbElems = 1000000;
 
         BTree<Long, String> btree = new BTree<Long, String>( new LongComparator(),
             new DefaultSerializer<Long, String>( Long.class, String.class ) );
@@ -181,14 +181,14 @@ public class BTreeFlushTest
         System.out.println( "Time to flush 5 million elements : " + ( t1 - t0 ) + "ms" );
         btree.close();
 
-        data5M = tempFile.getCanonicalPath();
+        data1M = tempFile.getCanonicalPath();
     }
 
 
     @BeforeClass
     public static void setup() throws IOException
     {
-        create5MElementsFile();
+        create1MElementsFile();
     }
 
 
@@ -293,7 +293,7 @@ public class BTreeFlushTest
     @Test
     public void testLoadBTreeFromFile() throws Exception
     {
-        File dataFile = new File( data5M );
+        File dataFile = new File( data1M );
         BTree<Long, String> btree = new BTree<Long, String>(
             dataFile.getParent(),
             dataFile.getName(),
