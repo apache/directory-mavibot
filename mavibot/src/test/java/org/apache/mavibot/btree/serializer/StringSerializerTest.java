@@ -80,7 +80,7 @@ public class StringSerializerTest
         assertEquals( value, serializer.deserialize( new BufferHandler( result ) ) );
 
         // ------------------------------------------------------------------
-        value = "Lécharny";
+        value = "L\u00E9charny";
         result = serializer.serialize( value );
 
         assertEquals( 13, result.length );
