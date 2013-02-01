@@ -29,9 +29,9 @@ import java.io.IOException;
 import java.util.Random;
 import java.util.Set;
 
-import org.apache.mavibot.btree.comparator.IntComparator;
-import org.apache.mavibot.btree.comparator.LongComparator;
-import org.apache.mavibot.btree.serializer.DefaultSerializer;
+import org.apache.mavibot.btree.serializer.IntSerializer;
+import org.apache.mavibot.btree.serializer.LongSerializer;
+import org.apache.mavibot.btree.serializer.StringSerializer;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -126,8 +126,7 @@ public class BTreeFlushTest
         long delta = l1;
         int nbElems = 1000000;
 
-        BTree<Long, String> btree = new BTree<Long, String>( new LongComparator(),
-            new DefaultSerializer<Long, String>( Long.class, String.class ) );
+        BTree<Long, String> btree = new BTree<Long, String>( new LongSerializer(), new StringSerializer() );
         btree.setPageSize( 32 );
 
         for ( int i = 0; i < nbElems; i++ )
@@ -221,9 +220,6 @@ public class BTreeFlushTest
     public void testFlushBTree() throws Exception
     {
         // Create a BTree with pages containing 8 elements
-        DefaultSerializer<Integer, String> serializer = new DefaultSerializer<Integer, String>( Integer.class,
-            String.class );
-
         // Create the file, it will be deleted on exit
         File tempFile = File.createTempFile( "testFlush", null );
         String path = tempFile.getParent();
@@ -234,7 +230,8 @@ public class BTreeFlushTest
 
         try
         {
-            BTree<Integer, String> btree = new BTree<Integer, String>( path, fileName, new IntComparator(), serializer );
+            BTree<Integer, String> btree = new BTree<Integer, String>( path, fileName, new IntSerializer(),
+                new StringSerializer() );
             btree.setPageSize( 8 );
 
             // Inject the values
@@ -255,8 +252,8 @@ public class BTreeFlushTest
             assertEquals( 0, journal.length() );
 
             // Load the data into a new tree
-            BTree<Integer, String> btreeLoaded = new BTree<Integer, String>( path, fileName, new IntComparator(),
-                serializer );
+            BTree<Integer, String> btreeLoaded = new BTree<Integer, String>( path, fileName, new IntSerializer(),
+                new StringSerializer() );
             btree.setPageSize( 8 );
 
             Cursor<Integer, String> cursor1 = btree.browse();
@@ -297,9 +294,8 @@ public class BTreeFlushTest
         BTree<Long, String> btree = new BTree<Long, String>(
             dataFile.getParent(),
             dataFile.getName(),
-            new LongComparator(),
-            new DefaultSerializer<Long, String>( Long.class, String.class ) );
+            new LongSerializer(),
+            new StringSerializer() );
         btree.setPageSize( 32 );
-
     }
 }

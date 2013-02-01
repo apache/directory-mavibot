@@ -24,36 +24,36 @@ import java.util.Comparator;
 
 
 /**
- * Compares integers
+ * Compares chars
  * 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class IntComparator implements Comparator<Integer>
+public class CharComparator implements Comparator<Character>
 {
     /**
-     * Compare two integers.
+     * Compare two chars.
      * 
-     * @param integer1 First integer
-     * @param integer2 Second integer
-     * @return 1 if integer1 > integer2, 0 if integer1 == integer2, -1 if integer1 < integer2
+     * @param char1 First char
+     * @param char2 Second char
+     * @return 1 if char1 > char2, 0 if char1 == char2, -1 if char1 < char2
      */
-    public int compare( Integer integer1, Integer integer2 )
+    public int compare( Character char1, Character char2 )
     {
-        if ( integer1 == integer2 )
+        if ( char1 == char2 )
         {
             return 0;
         }
 
-        if ( integer1 == null )
+        if ( char1 == null )
         {
             throw new IllegalArgumentException( "The first object to compare must not be null" );
         }
 
-        if ( integer2 == null )
+        if ( char2 == null )
         {
             throw new IllegalArgumentException( "The second object to compare must not be null" );
         }
 
-        return integer1.compareTo( integer2 );
+        return char1.compareTo( char2 );
     }
 }

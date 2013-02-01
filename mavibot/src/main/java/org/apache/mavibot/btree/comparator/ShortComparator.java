@@ -24,36 +24,36 @@ import java.util.Comparator;
 
 
 /**
- * Compares integers
+ * Compares shorts
  * 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class IntComparator implements Comparator<Integer>
+public class ShortComparator implements Comparator<Short>
 {
     /**
-     * Compare two integers.
+     * Compare two shorts.
      * 
-     * @param integer1 First integer
-     * @param integer2 Second integer
-     * @return 1 if integer1 > integer2, 0 if integer1 == integer2, -1 if integer1 < integer2
+     * @param short1 First short
+     * @param short2 Second short
+     * @return 1 if short1 > short2, 0 if short1 == short2, -1 if short1 < short2
      */
-    public int compare( Integer integer1, Integer integer2 )
+    public int compare( Short short1, Short short2 )
     {
-        if ( integer1 == integer2 )
+        if ( short1 == short2 )
         {
             return 0;
         }
 
-        if ( integer1 == null )
+        if ( short1 == null )
         {
             throw new IllegalArgumentException( "The first object to compare must not be null" );
         }
 
-        if ( integer2 == null )
+        if ( short2 == null )
         {
             throw new IllegalArgumentException( "The second object to compare must not be null" );
         }
 
-        return integer1.compareTo( integer2 );
+        return short1.compareTo( short2 );
     }
 }

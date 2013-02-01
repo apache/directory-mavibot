@@ -24,36 +24,36 @@ import java.util.Comparator;
 
 
 /**
- * Compares integers
+ * Compares booleans
  * 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class IntComparator implements Comparator<Integer>
+public class BooleanComparator implements Comparator<Boolean>
 {
     /**
-     * Compare two integers.
+     * Compare two booleans.
      * 
-     * @param integer1 First integer
-     * @param integer2 Second integer
-     * @return 1 if integer1 > integer2, 0 if integer1 == integer2, -1 if integer1 < integer2
+     * @param boolean1 First boolean
+     * @param boolean2 Second boolean
+     * @return 1 if boolean1 > boolean2, 0 if boolean1 == boolean2, -1 if boolean1 < boolean2
      */
-    public int compare( Integer integer1, Integer integer2 )
+    public int compare( Boolean boolean1, Boolean boolean2 )
     {
-        if ( integer1 == integer2 )
+        if ( boolean1 == boolean2 )
         {
             return 0;
         }
 
-        if ( integer1 == null )
+        if ( boolean1 == null )
         {
             throw new IllegalArgumentException( "The first object to compare must not be null" );
         }
 
-        if ( integer2 == null )
+        if ( boolean2 == null )
         {
             throw new IllegalArgumentException( "The second object to compare must not be null" );
         }
 
-        return integer1.compareTo( integer2 );
+        return boolean1.compareTo( boolean2 );
     }
 }

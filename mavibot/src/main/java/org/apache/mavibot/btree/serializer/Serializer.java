@@ -24,49 +24,44 @@ import java.io.IOException;
 
 
 /**
- * This interface is used by implementations of the key and value serializers.
+ * This interface is used by implementations of serializer, deserializr and comparator.
  * 
- * @param <K> The type for the keys
- * @param <V> The type for the stored values
+ * @param <T> The type for the element to serialize
  * 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public interface Serializer<K, V>
+public interface Serializer<T>
 {
     /**
-     * Produce the byte[] representation of the key
+     * Produce the byte[] representation of the type
      * 
-     * @param key The key to serialize
-     * @return The byte[] containing the serialized key
+     * @param type The type to serialize
+     * @return The byte[] containing the serialized type
      */
-    byte[] serializeKey( K key );
+    byte[] serialize( T type );
 
 
     /**
-     * Deserialize a key from a byte[]
+     * Deserialize a type from a byte[]
      * 
      * @param bufferHandler The incoming BufferHandler
-     * @return The deserialized key
+     * @return The deserialized type
      * @throws IOException If the deserialization failed
      */
-    K deserializeKey( BufferHandler bufferHandler ) throws IOException;
+    T deserialize( BufferHandler bufferHandler ) throws IOException;
 
 
     /**
-     * Produce the byte[] representation of the value
+     * Returns the comparison of two types. <br/>
+     * <ul>
+     * <li>If type1 < type2, return -1</li>
+     * <li>If type1 > type2, return 1</li>
+     * <li>If type1 == type2, return 0</li>
+     * </ul>
      * 
-     * @param value The value to serialize
-     * @return The byte[] containing the serialized value
+     * @param type1 The first type to compare 
+     * @param type2 The second type to compare 
+     * @return The comparison result
      */
-    byte[] serializeValue( V value );
-
-
-    /**
-     * Deserialize a value from a byte[]
-     * 
-     * @param bufferHandler The incoming BufferHandler
-     * @return The deserialized value
-     * @throws IOException If the deserialization failed
-     */
-    V deserializeValue( BufferHandler bufferHandler ) throws IOException;
+    int compare( T type1, T type2 );
 }

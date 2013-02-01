@@ -24,36 +24,36 @@ import java.util.Comparator;
 
 
 /**
- * Compares integers
+ * Compares bytes
  * 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class IntComparator implements Comparator<Integer>
+public class ByteComparator implements Comparator<Byte>
 {
     /**
-     * Compare two integers.
+     * Compare two bytes.
      * 
-     * @param integer1 First integer
-     * @param integer2 Second integer
-     * @return 1 if integer1 > integer2, 0 if integer1 == integer2, -1 if integer1 < integer2
+     * @param byte1 First byte
+     * @param byte2 Second byte
+     * @return 1 if byte1 > byte2, 0 if byte1 == byte2, -1 if byte1 < byte2
      */
-    public int compare( Integer integer1, Integer integer2 )
+    public int compare( Byte byte1, Byte byte2 )
     {
-        if ( integer1 == integer2 )
+        if ( byte1 == byte2 )
         {
             return 0;
         }
 
-        if ( integer1 == null )
+        if ( byte1 == null )
         {
             throw new IllegalArgumentException( "The first object to compare must not be null" );
         }
 
-        if ( integer2 == null )
+        if ( byte2 == null )
         {
             throw new IllegalArgumentException( "The second object to compare must not be null" );
         }
 
-        return integer1.compareTo( integer2 );
+        return byte1.compareTo( byte2 );
     }
 }

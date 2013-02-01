@@ -21,6 +21,9 @@ package org.apache.mavibot.btree.serializer;
 
 
 import java.io.IOException;
+import java.util.Comparator;
+
+import org.apache.mavibot.btree.comparator.LongComparator;
 
 
 /**
@@ -30,6 +33,19 @@ import java.io.IOException;
  */
 public class LongSerializer implements ElementSerializer<Long>
 {
+    /** The associated comparator */
+    private final Comparator<Long> comparator;
+
+
+    /**
+     * Create a new instance of LongSerializer
+     */
+    public LongSerializer()
+    {
+        comparator = new LongComparator();
+    }
+
+
     /**
      * {@inheritDoc}
      */
@@ -84,5 +100,51 @@ public class LongSerializer implements ElementSerializer<Long>
         byte[] in = bufferHandler.read( 8 );
 
         return deserialize( in );
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int compare( Long type1, Long type2 )
+    {
+        if ( type1 == type2 )
+        {
+            return 0;
+        }
+
+        if ( type1 == null )
+        {
+            if ( type2 == null )
+            {
+                return 0;
+            }
+            else
+            {
+                return -1;
+            }
+        }
+        else
+        {
+            if ( type2 == null )
+            {
+                return 1;
+            }
+            else
+            {
+                return type1.compareTo( type2 );
+            }
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Comparator<Long> getComparator()
+    {
+        return comparator;
     }
 }

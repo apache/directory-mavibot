@@ -21,6 +21,9 @@ package org.apache.mavibot.btree.serializer;
 
 
 import java.io.IOException;
+import java.util.Comparator;
+
+import org.apache.mavibot.btree.comparator.ByteComparator;
 
 
 /**
@@ -30,6 +33,19 @@ import java.io.IOException;
  */
 public class ByteSerializer implements ElementSerializer<Byte>
 {
+    /** The associated comparator */
+    private final Comparator<Byte> comparator;
+
+
+    /**
+     * Create a new instance of ByteSerializer
+     */
+    public ByteSerializer()
+    {
+        comparator = new ByteComparator();
+    }
+
+
     /**
      * {@inheritDoc}
      */
@@ -66,5 +82,51 @@ public class ByteSerializer implements ElementSerializer<Byte>
         byte[] in = bufferHandler.read( 1 );
 
         return deserialize( in );
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int compare( Byte type1, Byte type2 )
+    {
+        if ( type1 == type2 )
+        {
+            return 0;
+        }
+
+        if ( type1 == null )
+        {
+            if ( type2 == null )
+            {
+                return 0;
+            }
+            else
+            {
+                return -1;
+            }
+        }
+        else
+        {
+            if ( type2 == null )
+            {
+                return 1;
+            }
+            else
+            {
+                return type1.compareTo( type2 );
+            }
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Comparator<Byte> getComparator()
+    {
+        return comparator;
     }
 }

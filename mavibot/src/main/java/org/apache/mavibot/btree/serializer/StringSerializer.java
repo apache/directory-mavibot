@@ -22,6 +22,9 @@ package org.apache.mavibot.btree.serializer;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.util.Comparator;
+
+import org.apache.mavibot.btree.comparator.StringComparator;
 
 
 /**
@@ -31,6 +34,19 @@ import java.io.UnsupportedEncodingException;
  */
 public class StringSerializer implements ElementSerializer<String>
 {
+    /** The associated comparator */
+    private final Comparator<String> comparator;
+
+
+    /**
+     * Create a new instance of StringSerializer
+     */
+    public StringSerializer()
+    {
+        comparator = new StringComparator();
+    }
+
+
     /**
      * {@inheritDoc}
      */
@@ -122,5 +138,51 @@ public class StringSerializer implements ElementSerializer<String>
                     throw new RuntimeException( uee );
                 }
         }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int compare( String type1, String type2 )
+    {
+        if ( type1 == type2 )
+        {
+            return 0;
+        }
+
+        if ( type1 == null )
+        {
+            if ( type2 == null )
+            {
+                return 0;
+            }
+            else
+            {
+                return -1;
+            }
+        }
+        else
+        {
+            if ( type2 == null )
+            {
+                return 1;
+            }
+            else
+            {
+                return type1.compareTo( type2 );
+            }
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Comparator<String> getComparator()
+    {
+        return comparator;
     }
 }

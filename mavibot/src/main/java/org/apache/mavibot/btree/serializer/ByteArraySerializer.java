@@ -21,6 +21,9 @@ package org.apache.mavibot.btree.serializer;
 
 
 import java.io.IOException;
+import java.util.Comparator;
+
+import org.apache.mavibot.btree.comparator.ByteArrayComparator;
 
 
 /**
@@ -30,6 +33,19 @@ import java.io.IOException;
  */
 public class ByteArraySerializer implements ElementSerializer<byte[]>
 {
+    /** The associated comparator */
+    private final Comparator<byte[]> comparator;
+
+
+    /**
+     * Create a new instance of ShortSerializer
+     */
+    public ByteArraySerializer()
+    {
+        comparator = new ByteArrayComparator();
+    }
+
+
     /**
      * {@inheritDoc}
      */
@@ -104,5 +120,98 @@ public class ByteArraySerializer implements ElementSerializer<byte[]>
 
                 return in;
         }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int compare( byte[] type1, byte[] type2 )
+    {
+        if ( type1 == type2 )
+        {
+            return 0;
+        }
+
+        if ( type1 == null )
+        {
+            if ( type2 == null )
+            {
+                return 0;
+            }
+            else
+            {
+                return -1;
+            }
+        }
+        else
+        {
+            if ( type2 == null )
+            {
+                return 1;
+            }
+            else
+            {
+                if ( type1.length < type2.length )
+                {
+                    int pos = 0;
+
+                    for ( byte b1 : type1 )
+                    {
+                        byte b2 = type2[pos];
+
+                        if ( b1 == b2 )
+                        {
+                            pos++;
+                        }
+                        else if ( b1 < b2 )
+                        {
+                            return -1;
+                        }
+                        else
+                        {
+                            return 1;
+                        }
+                    }
+
+                    return 1;
+                }
+                else
+                {
+                    int pos = 0;
+
+                    for ( byte b2 : type2 )
+                    {
+                        byte b1 = type1[pos];
+
+                        if ( b1 == b2 )
+                        {
+                            pos++;
+                        }
+                        else if ( b1 < b2 )
+                        {
+                            return -1;
+                        }
+                        else
+                        {
+                            return 1;
+                        }
+                    }
+
+                    return -11;
+                }
+            }
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Comparator<byte[]> getComparator()
+    {
+        return comparator;
     }
 }

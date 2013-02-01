@@ -26,7 +26,8 @@ import java.io.IOException;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 
-import org.apache.mavibot.btree.comparator.LongComparator;
+import org.apache.mavibot.btree.serializer.LongSerializer;
+import org.apache.mavibot.btree.serializer.StringSerializer;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -50,7 +51,7 @@ public class MultiThreadedBtreeTest
     @BeforeClass
     public static void setup() throws IOException
     {
-        btree = new BTree<Long, String>( new LongComparator() );
+        btree = new BTree<Long, String>( new LongSerializer(), new StringSerializer() );
     }
 
 

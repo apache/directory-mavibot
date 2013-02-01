@@ -25,8 +25,8 @@ import static org.junit.Assert.assertNotNull;
 import java.io.File;
 import java.io.IOException;
 
-import org.apache.mavibot.btree.comparator.IntComparator;
-import org.apache.mavibot.btree.serializer.DefaultSerializer;
+import org.apache.mavibot.btree.serializer.IntSerializer;
+import org.apache.mavibot.btree.serializer.StringSerializer;
 import org.junit.Test;
 
 
@@ -114,8 +114,7 @@ public class BTreeConfigurationTest
     {
         BTreeConfiguration<Integer, String> config = new BTreeConfiguration<Integer, String>();
         config.setPageSize( 32 );
-        config.setComparator( new IntComparator() );
-        config.setSerializer( new DefaultSerializer<Integer, String>( Integer.class, String.class ) );
+        config.setSerializers( new IntSerializer(), new StringSerializer() );
 
         // Create the BTree
         BTree<Integer, String> btree = new BTree<Integer, String>( config );
@@ -156,8 +155,7 @@ public class BTreeConfigurationTest
         {
             BTreeConfiguration<Integer, String> config = new BTreeConfiguration<Integer, String>();
             config.setPageSize( 32 );
-            config.setComparator( new IntComparator() );
-            config.setSerializer( new DefaultSerializer<Integer, String>( Integer.class, String.class ) );
+            config.setSerializers( new IntSerializer(), new StringSerializer() );
 
             config.setFilePath( parent );
             config.setFileName( "mavibot" );

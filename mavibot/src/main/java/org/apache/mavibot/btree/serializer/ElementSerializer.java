@@ -21,12 +21,13 @@ package org.apache.mavibot.btree.serializer;
 
 
 import java.io.IOException;
+import java.util.Comparator;
 
 
 /**
- * This interface is used by implementations elements serializers.
+ * This interface is used by implementations of serializer, deserializr and comparator.
  * 
- * @param <T> The type for the element
+ * @param <T> The type for the element to serialize and compare
  * 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
@@ -49,4 +50,25 @@ public interface ElementSerializer<T>
      * @throws IOException If the deserialization failed
      */
     T deserialize( BufferHandler bufferHandler ) throws IOException;
+
+
+    /**
+     * Returns the comparison of two types. <br/>
+     * <ul>
+     * <li>If type1 < type2, return -1</li>
+     * <li>If type1 > type2, return 1</li>
+     * <li>If type1 == type2, return 0</li>
+     * </ul>
+     * 
+     * @param type1 The first type to compare 
+     * @param type2 The second type to compare 
+     * @return The comparison result
+     */
+    int compare( T type1, T type2 );
+
+
+    /**
+     * @return the comparator for the used type
+     */
+    Comparator<T> getComparator();
 }

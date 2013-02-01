@@ -20,9 +20,7 @@
 package org.apache.mavibot.btree;
 
 
-import java.util.Comparator;
-
-import org.apache.mavibot.btree.serializer.Serializer;
+import org.apache.mavibot.btree.serializer.ElementSerializer;
 
 
 /**
@@ -42,13 +40,11 @@ public class BTreeConfiguration<K, V>
     /** The size of the buffer used to write data in disk */
     private int writeBufferSize = BTree.DEFAULT_WRITE_BUFFER_SIZE;
 
-    /** Comparator used to order entries. */
-    private Comparator<K> comparator;
-
     /** The Key and Value serializer used for this tree. If none is provided, 
      * the BTree will deduce the serializer to use from the generic type, and
      * use the default Java serialization  */
-    private Serializer<K, V> serializer;
+    private ElementSerializer<K> keySerializer;
+    private ElementSerializer<V> valueSerializer;
 
     /** The path where the BTree file will be stored. Default to the local 
      * temporary directory.
@@ -94,24 +90,6 @@ public class BTreeConfiguration<K, V>
 
 
     /**
-     * @return the comparator
-     */
-    public Comparator<K> getComparator()
-    {
-        return comparator;
-    }
-
-
-    /**
-     * @param comparator the comparator to set
-     */
-    public void setComparator( Comparator<K> comparator )
-    {
-        this.comparator = comparator;
-    }
-
-
-    /**
      * @return the pageSize
      */
     public int getPageSize()
@@ -130,20 +108,49 @@ public class BTreeConfiguration<K, V>
 
 
     /**
-     * @return the serializer
+     * @return the key serializer
      */
-    public Serializer<K, V> getSerializer()
+    public ElementSerializer<K> getKeySerializer()
     {
-        return serializer;
+        return keySerializer;
     }
 
 
     /**
-     * @param serializer the serializer to set
+     * @return the value serializer
      */
-    public void setSerializer( Serializer<K, V> serializer )
+    public ElementSerializer<V> getValueSerializer()
     {
-        this.serializer = serializer;
+        return valueSerializer;
+    }
+
+
+    /**
+     * @param keySerializer the key serializer to set
+     * @param valueSerializer the value serializer to set
+     */
+    public void setSerializers( ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer )
+    {
+        this.keySerializer = keySerializer;
+        this.valueSerializer = valueSerializer;
+    }
+
+
+    /**
+     * @param serializer the key serializer to set
+     */
+    public void setKeySerializer( ElementSerializer<K> keySerializer )
+    {
+        this.keySerializer = keySerializer;
+    }
+
+
+    /**
+     * @param serializer the key serializer to set
+     */
+    public void setValueSerializer( ElementSerializer<V> valueSerializer )
+    {
+        this.valueSerializer = valueSerializer;
     }
 
 

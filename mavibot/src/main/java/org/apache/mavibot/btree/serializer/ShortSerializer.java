@@ -21,6 +21,9 @@ package org.apache.mavibot.btree.serializer;
 
 
 import java.io.IOException;
+import java.util.Comparator;
+
+import org.apache.mavibot.btree.comparator.ShortComparator;
 
 
 /**
@@ -30,6 +33,19 @@ import java.io.IOException;
  */
 public class ShortSerializer implements ElementSerializer<Short>
 {
+    /** The associated comparator */
+    private final Comparator<Short> comparator;
+
+
+    /**
+     * Create a new instance of ShortSerializer
+     */
+    public ShortSerializer()
+    {
+        comparator = new ShortComparator();
+    }
+
+
     /**
      * {@inheritDoc}
      */
@@ -69,5 +85,51 @@ public class ShortSerializer implements ElementSerializer<Short>
         byte[] in = bufferHandler.read( 2 );
 
         return deserialize( in );
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int compare( Short type1, Short type2 )
+    {
+        if ( type1 == type2 )
+        {
+            return 0;
+        }
+
+        if ( type1 == null )
+        {
+            if ( type2 == null )
+            {
+                return 0;
+            }
+            else
+            {
+                return -1;
+            }
+        }
+        else
+        {
+            if ( type2 == null )
+            {
+                return 1;
+            }
+            else
+            {
+                return type1.compareTo( type2 );
+            }
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Comparator<Short> getComparator()
+    {
+        return comparator;
     }
 }

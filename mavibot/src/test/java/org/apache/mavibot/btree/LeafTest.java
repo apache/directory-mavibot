@@ -26,7 +26,8 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 
-import org.apache.mavibot.btree.comparator.LongComparator;
+import org.apache.mavibot.btree.serializer.LongSerializer;
+import org.apache.mavibot.btree.serializer.StringSerializer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -48,7 +49,7 @@ public class LeafTest
     @Before
     public void setup() throws IOException
     {
-        btree = new BTree<Long, String>( new LongComparator() );
+        btree = new BTree<Long, String>( new LongSerializer(), new StringSerializer() );
         btree.setPageSize( 8 );
     }
 

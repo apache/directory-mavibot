@@ -38,8 +38,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.mavibot.btree.serializer.BufferHandler;
+import org.apache.mavibot.btree.serializer.ElementSerializer;
 import org.apache.mavibot.btree.serializer.LongSerializer;
-import org.apache.mavibot.btree.serializer.Serializer;
 
 
 /**
@@ -91,10 +91,11 @@ public class BTree<K, V>
     /** The type to use to create the keys */
     protected Class<?> keyType;
 
-    /** The Key and Value serializer used for this tree. If none is provided, 
-     * the BTree will deduce the serializer to use from the generic type, and
-     * use the default Java serialization  */
-    private Serializer<K, V> serializer;
+    /** The Key serializer used for this tree.*/
+    private ElementSerializer<K> keySerializer;
+
+    /** The Value serializer used for this tree. */
+    private ElementSerializer<V> valueSerializer;
 
     /** The associated file. If null, this is an in-memory btree  */
     private File file;
@@ -217,7 +218,7 @@ public class BTree<K, V>
             {
                 if ( modification instanceof Addition )
                 {
-                    byte[] keyBuffer = serializer.serializeKey( modification.getKey() );
+                    byte[] keyBuffer = keySerializer.serialize( modification.getKey() );
                     ByteBuffer bb = ByteBuffer.allocateDirect( keyBuffer.length + 1 );
                     bb.put( Modification.ADDITION );
                     bb.put( keyBuffer );
@@ -225,7 +226,7 @@ public class BTree<K, V>
 
                     channel.write( bb );
 
-                    byte[] valueBuffer = serializer.serializeValue( modification.getValue() );
+                    byte[] valueBuffer = valueSerializer.serialize( modification.getValue() );
                     bb = ByteBuffer.allocateDirect( valueBuffer.length );
                     bb.put( valueBuffer );
                     bb.flip();
@@ -234,7 +235,7 @@ public class BTree<K, V>
                 }
                 else if ( modification instanceof Deletion )
                 {
-                    byte[] keyBuffer = serializer.serializeKey( modification.getKey() );
+                    byte[] keyBuffer = keySerializer.serialize( modification.getKey() );
                     ByteBuffer bb = ByteBuffer.allocateDirect( keyBuffer.length + 1 );
                     bb.put( Modification.DELETION );
                     bb.put( keyBuffer );
@@ -341,8 +342,9 @@ public class BTree<K, V>
         }
 
         pageSize = configuration.getPageSize();
-        comparator = configuration.getComparator();
-        serializer = configuration.getSerializer();
+        keySerializer = configuration.getKeySerializer();
+        valueSerializer = configuration.getValueSerializer();
+        comparator = keySerializer.getComparator();
         readTimeOut = configuration.getReadTimeOut();
         writeBufferSize = configuration.getWriteBufferSize();
 
@@ -357,38 +359,25 @@ public class BTree<K, V>
 
 
     /**
-     * Creates a new in-memory BTree with a default page size and a comparator.
+     * Creates a new in-memory BTree with a default page size and key/value serializers.
      * 
      * @param comparator The comparator to use
      */
-    public BTree( Comparator<K> comparator ) throws IOException
+    public BTree( ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer ) throws IOException
     {
-        this( null, null, comparator, null, DEFAULT_PAGE_SIZE );
+        this( null, null, keySerializer, valueSerializer, DEFAULT_PAGE_SIZE );
     }
 
 
     /**
-     * Creates a new in-memory BTree with a default page size and a comparator.
+     * Creates a new in-memory BTree with a default page size and key/value serializers.
      * 
      * @param comparator The comparator to use
-     * @param serializer The serializer to use
      */
-    public BTree( Comparator<K> comparator, Serializer<K, V> serializer ) throws IOException
+    public BTree( ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer, int pageSize )
+        throws IOException
     {
-        this( null, null, comparator, serializer, DEFAULT_PAGE_SIZE );
-    }
-
-
-    /**
-     * Creates a new BTree with a default page size and a comparator, with an associated file.
-     * 
-     * @param path the File path
-     * @param file The file storing the BTree data
-     * @param comparator The comparator to use
-     */
-    public BTree( String path, String file, Comparator<K> comparator ) throws IOException
-    {
-        this( path, file, comparator, null, DEFAULT_PAGE_SIZE );
+        this( null, null, keySerializer, valueSerializer, pageSize );
     }
 
 
@@ -399,47 +388,10 @@ public class BTree<K, V>
      * @param comparator The comparator to use
      * @param serializer The serializer to use
      */
-    public BTree( String path, String file, Comparator<K> comparator, Serializer<K, V> serializer ) throws IOException
+    public BTree( String path, String file, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer )
+        throws IOException
     {
-        this( path, file, comparator, serializer, DEFAULT_PAGE_SIZE );
-    }
-
-
-    /**
-     * Creates a new in-memory BTree with a specific page size and a comparator.
-     * 
-     * @param comparator The comparator to use
-     * @param pageSize The number of elements we can store in a page
-     */
-    public BTree( Comparator<K> comparator, int pageSize ) throws IOException
-    {
-        this( null, null, comparator, null, pageSize );
-    }
-
-
-    /**
-     * Creates a new in-memory BTree with a specific page size and a comparator.
-     * 
-     * @param comparator The comparator to use
-     * @param serializer The serializer to use
-     * @param pageSize The number of elements we can store in a page
-     */
-    public BTree( Comparator<K> comparator, Serializer<K, V> serializer, int pageSize ) throws IOException
-    {
-        this( null, null, comparator, serializer, pageSize );
-    }
-
-
-    /**
-     * Creates a new BTree with a specific page size and a comparator.
-     * 
-     * @param file The file storing the BTree data
-     * @param comparator The comparator to use
-     * @param pageSize The number of elements we can store in a page
-     */
-    public BTree( String path, String file, Comparator<K> comparator, int pageSize ) throws IOException
-    {
-        this( path, file, comparator, null, pageSize );
+        this( path, file, keySerializer, valueSerializer, DEFAULT_PAGE_SIZE );
     }
 
 
@@ -451,16 +403,10 @@ public class BTree<K, V>
      * @param serializer The serializer to use
      * @param pageSize The number of elements we can store in a page
      */
-    public BTree( String path, String file, Comparator<K> comparator, Serializer<K, V> serializer, int pageSize )
+    public BTree( String path, String file, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer,
+        int pageSize )
         throws IOException
     {
-        if ( comparator == null )
-        {
-            throw new IllegalArgumentException( "Comparator should not be null" );
-        }
-
-        this.comparator = comparator;
-
         if ( ( path == null ) && ( file == null ) )
         {
             inMemory = true;
@@ -491,7 +437,9 @@ public class BTree<K, V>
         setPageSize( pageSize );
         writeBufferSize = DEFAULT_WRITE_BUFFER_SIZE;
 
-        this.serializer = serializer;
+        this.keySerializer = keySerializer;
+        this.valueSerializer = valueSerializer;
+        comparator = keySerializer.getComparator();
 
         // Now, call the init() method
         init();
@@ -501,7 +449,7 @@ public class BTree<K, V>
     /**
      * Initialize the BTree.
      * 
-     * @throws IOException If we get some exceptio while initializing the BTree
+     * @throws IOException If we get some exception while initializing the BTree
      */
     public void init() throws IOException
     {
@@ -971,6 +919,15 @@ public class BTree<K, V>
 
 
     /**
+     * @return the type for the keys
+     */
+    public Class<?> getKeyType()
+    {
+        return keyType;
+    }
+
+
+    /**
      * @return the comparator
      */
     public Comparator<K> getComparator()
@@ -989,20 +946,20 @@ public class BTree<K, V>
 
 
     /**
-     * @param serializer the serializer to set
+     * @param keySerializer the Key serializer to set
      */
-    public void setSerializer( Serializer<K, V> serializer )
+    public void setKeySerializer( ElementSerializer<K> keySerializer )
     {
-        this.serializer = serializer;
+        this.keySerializer = keySerializer;
     }
 
 
     /**
-     * @return the type for the keys
+     * @param valueSerializer the Value serializer to set
      */
-    public Class<?> getKeyType()
+    public void setValueSerializer( ElementSerializer<V> valueSerializer )
     {
-        return keyType;
+        this.valueSerializer = valueSerializer;
     }
 
 
@@ -1010,7 +967,7 @@ public class BTree<K, V>
      * Write the data in the ByteBuffer, and eventually on disk if needed.
      * 
      * @param channel The channel we want to write to
-     * @param bb The ByteBuffer we wat to feed
+     * @param bb The ByteBuffer we want to feed
      * @param buffer The data to inject
      * @throws IOException If the write failed
      */
@@ -1075,9 +1032,14 @@ public class BTree<K, V>
 
         Cursor<K, V> cursor = browse();
 
-        if ( serializer == null )
+        if ( keySerializer == null )
         {
-            throw new RuntimeException( "Cannot flush the btree without a serializer" );
+            throw new RuntimeException( "Cannot flush the btree without a Key serializer" );
+        }
+
+        if ( valueSerializer == null )
+        {
+            throw new RuntimeException( "Cannot flush the btree without a Value serializer" );
         }
 
         // Write the number of elements first
@@ -1087,11 +1049,11 @@ public class BTree<K, V>
         {
             Tuple<K, V> tuple = cursor.next();
 
-            byte[] keyBuffer = serializer.serializeKey( tuple.getKey() );
+            byte[] keyBuffer = keySerializer.serialize( tuple.getKey() );
 
             writeBuffer( ch, bb, keyBuffer );
 
-            byte[] valueBuffer = serializer.serializeValue( tuple.getValue() );
+            byte[] valueBuffer = valueSerializer.serialize( tuple.getValue() );
 
             writeBuffer( ch, bb, valueBuffer );
         }
@@ -1150,12 +1112,12 @@ public class BTree<K, V>
                 if ( type[0] == Modification.ADDITION )
                 {
                     // Read the key
-                    K key = serializer.deserializeKey( bufferHandler );
+                    K key = keySerializer.deserialize( bufferHandler );
 
                     //keys.add( key );
 
                     // Read the value
-                    V value = serializer.deserializeValue( bufferHandler );
+                    V value = valueSerializer.deserialize( bufferHandler );
 
                     //values.add( value );
 
@@ -1165,7 +1127,7 @@ public class BTree<K, V>
                 else
                 {
                     // Read the key
-                    K key = serializer.deserializeKey( bufferHandler );
+                    K key = keySerializer.deserialize( bufferHandler );
 
                     // Remove the key from the tree
                     delete( key, revision );
@@ -1219,12 +1181,12 @@ public class BTree<K, V>
         for ( long i = 0; i < nbElems; i++ )
         {
             // Read the key
-            K key = serializer.deserializeKey( bufferHandler );
+            K key = keySerializer.deserialize( bufferHandler );
 
             //keys.add( key );
 
             // Read the value
-            V value = serializer.deserializeValue( bufferHandler );
+            V value = valueSerializer.deserialize( bufferHandler );
 
             //values.add( value );
 
