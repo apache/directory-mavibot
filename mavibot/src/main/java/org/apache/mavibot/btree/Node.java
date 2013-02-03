@@ -20,6 +20,7 @@
 package org.apache.mavibot.btree;
 
 
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.LinkedList;
 
@@ -725,6 +726,26 @@ import java.util.LinkedList;
         RemoveResult<K, V> result = new RemoveResult<K, V>( newNode, mergedResult.getRemovedElement() );
 
         return result;
+    }
+
+
+    /**
+     * {@inheritDoc} 
+     */
+    public boolean exist( K key ) throws IOException
+    {
+        int pos = findPos( key );
+
+        if ( pos < 0 )
+        {
+            // Here, if we have found the key in the node, then we must go down into
+            // the right child, not the left one
+            return children[-pos].exist( key );
+        }
+        else
+        {
+            return children[pos].exist( key );
+        }
     }
 
 

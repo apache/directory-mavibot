@@ -890,6 +890,25 @@ public class InMemoryBTreeTest
 
 
     /**
+     * Test the exist() method
+     */
+    @Test
+    public void testExist() throws IOException
+    {
+        // Create a BTree with pages containing 4 elements
+        BTree<Integer, String> btree = createTwoLevelBTreeFullLeaves();
+
+        for ( int i = 1; i < 21; i++ )
+        {
+            assertTrue( btree.exist( 5 ) );
+        }
+
+        assertFalse( btree.exist( 0 ) );
+        assertFalse( btree.exist( 21 ) );
+    }
+
+
+    /**
      * Test various deletions in a tree, leadings to borrowFromSibling
      */
     @Test
@@ -1024,7 +1043,7 @@ public class InMemoryBTreeTest
 
         // Create a tree with 5 children containing 4 elements each. The tree is full.
         int[] keys = new int[]
-            { 1, 2, 5, 6, 3, 4, 9, 10, 7, 8, 9, 10, 7, 8, 13, 14, 11, 12, 17, 18, 15, 16, 19, 20 };
+            { 1, 2, 5, 6, 3, 4, 9, 10, 7, 8, 13, 14, 11, 12, 17, 18, 15, 16, 19, 20 };
 
         for ( int key : keys )
         {

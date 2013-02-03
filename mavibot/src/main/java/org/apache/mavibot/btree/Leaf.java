@@ -371,6 +371,24 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     /**
      * {@inheritDoc}
      */
+    public boolean exist( K key )
+    {
+        int pos = findPos( key );
+
+        if ( pos < 0 )
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
     public V get( K key ) throws KeyNotFoundException
     {
         int pos = findPos( key );

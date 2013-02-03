@@ -20,6 +20,7 @@
 package org.apache.mavibot.btree;
 
 
+import java.io.IOException;
 import java.util.LinkedList;
 
 
@@ -71,6 +72,16 @@ import java.util.LinkedList;
      * @return
      */
     DeleteResult<K, V> delete( long revision, K key, Page<K, V> parent, int parentPos );
+
+
+    /**
+     * Check if there is an element associated with the given key.
+     * 
+     * @param key The key we are looking at
+     * @return true if the Key exists in the BTree 
+     * @throws IOException If we have an error while trying to access the page
+     */
+    boolean exist( K key ) throws IOException;
 
 
     /**

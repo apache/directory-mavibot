@@ -803,6 +803,19 @@ public class BTree<K, V>
 
 
     /**
+     * Check if there is an element associated with the given key.
+     * 
+     * @param key The key we are looking at
+     * @return true if the Key exists in the BTree 
+     * @throws IOException 
+     */
+    public boolean exist( K key ) throws IOException
+    {
+        return rootPage.exist( key );
+    }
+
+
+    /**
      * Find a value in the tree, given its key. if the key is not found,
      * it will return null.
      * 
