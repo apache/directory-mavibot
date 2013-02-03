@@ -889,11 +889,6 @@ public class BTree<K, V>
             throw new IllegalArgumentException( "Key must not be null" );
         }
 
-        if ( value == null )
-        {
-            throw new IllegalArgumentException( "Value must not be null" );
-        }
-
         // Commented atm, we will have to play around the idea of transactions later
         writeLock.lock();
 

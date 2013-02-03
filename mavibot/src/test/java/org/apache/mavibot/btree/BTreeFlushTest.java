@@ -164,7 +164,7 @@ public class BTreeFlushTest
         long l2 = System.currentTimeMillis();
 
         System.out.println( "Delta : " + ( l2 - l1 ) + ", nbError = " + nbError
-            + ", Nb insertion per second : " + ( nbElems ) / ( ( l2 - l1 ) / 1000 ) );
+            + ", Nb insertion per second : " + ( ( nbElems ) / ( l2 - l1 ) ) * 1000 );
 
         // Now, flush the btree
 

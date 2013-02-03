@@ -23,6 +23,7 @@ package org.apache.mavibot.btree;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -1660,6 +1661,35 @@ public class InMemoryBTreeTest
         checkRemoval( btree, 55, EXPECTED1 );
 
         btree.close();
+    }
+
+
+    /**
+     * Test the addition of elements with null values
+     */
+    @Test
+    public void testAdditionNullValues() throws IOException
+    {
+        BTree<Integer, String> btree = createMultiLevelBTreeLeavesHalfFull();
+
+        // Adding an element with a null value
+        btree.insert( 100, null );
+
+        assertTrue( btree.exist( 100 ) );
+
+        try
+        {
+            assertNull( btree.get( 100 ) );
+        }
+        catch ( KeyNotFoundException knfe )
+        {
+            fail();
+        }
+
+        Tuple<Integer, String> deleted = btree.delete( 100 );
+
+        assertNotNull( deleted );
+        assertNull( deleted.getValue() );
     }
 
 
