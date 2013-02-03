@@ -74,12 +74,16 @@ import java.util.LinkedList;
 
 
     /**
-     * Find the value associated with the given key, if any.
+     * Get the value associated with the given key, if any. If we don't have 
+     * one, this method will throw a KeyNotFoundException.<br/>
+     * Note that we may get back null if a null value has been associated 
+     * with the key.
      * 
      * @param key The key we are looking for
+     * @throws KeyNotFoundException If no entry with the given key can be found
      * @return The associated value, or null if there is none
      */
-    V find( K key );
+    V get( K key ) throws KeyNotFoundException;
 
 
     /**

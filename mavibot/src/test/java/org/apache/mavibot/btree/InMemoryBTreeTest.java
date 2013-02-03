@@ -23,7 +23,6 @@ package org.apache.mavibot.btree;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -126,9 +125,11 @@ public class InMemoryBTreeTest
         // into the btree
         for ( Long key : expected )
         {
-            String value = btree.find( key );
-
-            if ( value == null )
+            try
+            {
+                btree.get( key );
+            }
+            catch ( KeyNotFoundException knfe )
             {
                 return false;
             }
@@ -246,7 +247,7 @@ public class InMemoryBTreeTest
      * @throws Exception
      */
     @Test
-    public void testPageDeleteRandom() throws Exception
+    public void testPageDeleteRandom() throws IOException
     {
         Set<Long> expected = new HashSet<Long>();
         List<Long> added = new ArrayList<Long>();
@@ -327,7 +328,8 @@ public class InMemoryBTreeTest
                 }
 
                 assertEquals( Long.valueOf( element ), tuple.getKey() );
-                assertNull( btree.find( element ) );
+
+                checkNull( btree, element );
 
                 //System.out.println( "" );
             }
@@ -418,7 +420,7 @@ public class InMemoryBTreeTest
                 assertEquals( Long.valueOf( value ), tuple.getKey() );
             }
 
-            assertNull( btree.find( value ) );
+            checkNull( btree, value );
         }
 
         btree.close();
@@ -523,7 +525,11 @@ public class InMemoryBTreeTest
 
             for ( int i = 0; i < size; i++ )
             {
-                if ( btree.find( elems[i] ) == null )
+                try
+                {
+                    btree.get( elems[i] );
+                }
+                catch ( KeyNotFoundException knfe )
                 {
                     System.out.println( "Bad tree, missing " + elems[i] + ", " + btree );
                 }
@@ -608,7 +614,7 @@ public class InMemoryBTreeTest
         // Check that the tree contains all the values
         for ( int key : sortedValues )
         {
-            String value = btree.find( key );
+            String value = btree.get( key );
 
             assertNotNull( value );
         }
@@ -692,7 +698,7 @@ public class InMemoryBTreeTest
         // Check that the tree contains all the values
         for ( int key : sortedValues )
         {
-            String value = btree.find( key );
+            String value = btree.get( key );
 
             assertNotNull( value );
         }
@@ -838,33 +844,47 @@ public class InMemoryBTreeTest
         // The tree remains the same after the deletion
         // First, no borrow nor merge
         btree.delete( 1 );
-        assertNull( btree.find( 1 ) );
+
+        checkNull( btree, 1 );
+
         btree.insert( 1, "V1" );
 
         btree.delete( 3 );
-        assertNull( btree.find( 3 ) );
+
+        checkNull( btree, 3 );
+
         btree.insert( 3, "V3" );
 
         btree.delete( 4 );
-        assertNull( btree.find( 4 ) );
+
+        checkNull( btree, 4 );
+
         btree.insert( 4, "V4" );
 
         btree.delete( 11 );
-        assertNull( btree.find( 11 ) );
+
+        checkNull( btree, 11 );
+
         btree.insert( 11, "V11" );
 
         btree.delete( 20 );
-        assertNull( btree.find( 20 ) );
+
+        checkNull( btree, 20 );
+
         btree.insert( 20, "V20" );
 
         btree.delete( 0 );
-        assertNull( btree.find( 0 ) );
+
+        checkNull( btree, 0 );
 
         btree.delete( 5 );
-        assertNull( btree.find( 5 ) );
+
+        checkNull( btree, 5 );
 
         btree.delete( 9 );
-        assertNull( btree.find( 9 ) );
+
+        checkNull( btree, 9 );
+
         btree.close();
     }
 
@@ -893,19 +913,23 @@ public class InMemoryBTreeTest
 
         // Delete the leftmost key
         btree.delete( 1 );
-        assertNull( btree.find( 1 ) );
+
+        checkNull( btree, 1 );
 
         // Delete the rightmost key
         btree.delete( 18 );
-        assertNull( btree.find( 18 ) );
+
+        checkNull( btree, 18 );
 
         // Delete one element in the left page, but not the first one
         btree.delete( 5 );
-        assertNull( btree.find( 5 ) );
+
+        checkNull( btree, 5 );
 
         // Delete the one element in the right page, but the first one
         btree.delete( 16 );
-        assertNull( btree.find( 16 ) );
+
+        checkNull( btree, 16 );
 
         btree.close();
 
@@ -918,10 +942,12 @@ public class InMemoryBTreeTest
 
         // and delete some
         btree.delete( 2 );
-        assertNull( btree.find( 2 ) );
+
+        checkNull( btree, 2 );
 
         btree.delete( 6 );
-        assertNull( btree.find( 6 ) );
+
+        checkNull( btree, 6 );
 
         // Add some more elements on the pre-last leaf before deleting some elements in the last leaf
         btree.insert( 96, "V96" );
@@ -929,21 +955,25 @@ public class InMemoryBTreeTest
 
         // and delete some
         btree.delete( 98 );
-        assertNull( btree.find( 98 ) );
+
+        checkNull( btree, 98 );
 
         btree.delete( 99 );
-        assertNull( btree.find( 99 ) );
+
+        checkNull( btree, 99 );
 
         // Now try to delete elements in the middle
         btree.insert( 48, "V48" );
 
         btree.delete( 42 );
-        assertNull( btree.find( 42 ) );
+
+        checkNull( btree, 42 );
 
         btree.insert( 72, "V72" );
 
         btree.delete( 67 );
-        assertNull( btree.find( 67 ) );
+
+        checkNull( btree, 67 );
 
         btree.close();
     }
@@ -1093,7 +1123,8 @@ public class InMemoryBTreeTest
         Tuple<Integer, String> removed = btree.delete( element );
         assertEquals( element, removed.getKey().intValue() );
         assertEquals( "v" + element, removed.getValue() );
-        assertNull( btree.find( element ) );
+
+        checkNull( btree, element );
 
         expected.remove( element );
         checkTree( btree, expected );
@@ -1171,85 +1202,85 @@ public class InMemoryBTreeTest
         Tuple<Integer, String> removed = btree.delete( 2 );
         assertEquals( 2, removed.getKey().intValue() );
         assertEquals( "v2", removed.getValue() );
-        assertNull( btree.find( 2 ) );
+        checkNull( btree, 2 );
 
         // delete the third element in the first leaf
         removed = btree.delete( 7 );
         assertEquals( 7, removed.getKey().intValue() );
         assertEquals( "v7", removed.getValue() );
-        assertNull( btree.find( 7 ) );
+        checkNull( btree, 7 );
 
         // Case 2 : Delete the second element in the leftmost leaf
         removed = btree.delete( 6 );
         assertEquals( 6, removed.getKey().intValue() );
         assertEquals( "v6", removed.getValue() );
-        assertNull( btree.find( 6 ) );
+        checkNull( btree, 6 );
 
         // delete the third element in the first leaf
         removed = btree.delete( 11 );
         assertEquals( 11, removed.getKey().intValue() );
         assertEquals( "v11", removed.getValue() );
-        assertNull( btree.find( 11 ) );
+        checkNull( btree, 11 );
 
         // Case 3 : delete the rightmost element in the btree in the rightmost leaf
         removed = btree.delete( 99 );
         assertEquals( 99, removed.getKey().intValue() );
         assertEquals( "v99", removed.getValue() );
-        assertNull( btree.find( 99 ) );
+        checkNull( btree, 99 );
 
         // delete the third element in the last leaf
         removed = btree.delete( 98 );
         assertEquals( 98, removed.getKey().intValue() );
         assertEquals( "v98", removed.getValue() );
-        assertNull( btree.find( 98 ) );
+        checkNull( btree, 98 );
 
         // Case 2 : Delete the first element in the rightmost leaf
         removed = btree.delete( 94 );
         assertEquals( 94, removed.getKey().intValue() );
         assertEquals( "v94", removed.getValue() );
-        assertNull( btree.find( 94 ) );
+        checkNull( btree, 94 );
 
         // delete the third element in the last leaf
         removed = btree.delete( 95 );
         assertEquals( 95, removed.getKey().intValue() );
         assertEquals( "v95", removed.getValue() );
-        assertNull( btree.find( 95 ) );
+        checkNull( btree, 95 );
 
         // Case 5 : delete the leftmost element which is referred in the root node
         removed = btree.delete( 22 );
         assertEquals( 22, removed.getKey().intValue() );
         assertEquals( "v22", removed.getValue() );
-        assertNull( btree.find( 22 ) );
+        checkNull( btree, 22 );
 
         // delete the third element in the last leaf
         removed = btree.delete( 27 );
         assertEquals( 27, removed.getKey().intValue() );
         assertEquals( "v27", removed.getValue() );
-        assertNull( btree.find( 27 ) );
+        checkNull( btree, 27 );
 
         // Case 6 : delete the leftmost element in a leaf in the middle of the tree
         removed = btree.delete( 70 );
         assertEquals( 70, removed.getKey().intValue() );
         assertEquals( "v70", removed.getValue() );
-        assertNull( btree.find( 70 ) );
+        checkNull( btree, 70 );
 
         // delete the third element in the leaf
         removed = btree.delete( 71 );
         assertEquals( 71, removed.getKey().intValue() );
         assertEquals( "v71", removed.getValue() );
-        assertNull( btree.find( 71 ) );
+        checkNull( btree, 71 );
 
         // Case 7 : delete the rightmost element in a leaf in the middle of the tree
         removed = btree.delete( 51 );
         assertEquals( 51, removed.getKey().intValue() );
         assertEquals( "v51", removed.getValue() );
-        assertNull( btree.find( 51 ) );
+        checkNull( btree, 51 );
 
         // delete the third element in the leaf
         removed = btree.delete( 50 );
         assertEquals( 50, removed.getKey().intValue() );
         assertEquals( "v50", removed.getValue() );
-        assertNull( btree.find( 50 ) );
+        checkNull( btree, 50 );
 
         btree.close();
     }
@@ -1268,31 +1299,31 @@ public class InMemoryBTreeTest
         // Test removals leadings to various merges.
         // Delete from the middle, not the leftmost value of the leaf
         btree.delete( 10 );
-        assertNull( btree.find( 10 ) );
+        checkNull( btree, 10 );
 
         // Delete the extraneous value
         btree.delete( 9 );
-        assertNull( btree.find( 9 ) );
+        checkNull( btree, 9 );
 
         // Delete the leftmost element in the middle
         btree.delete( 13 );
-        assertNull( btree.find( 13 ) );
+        checkNull( btree, 13 );
 
         // Delete the extraneous value
         btree.delete( 14 );
-        assertNull( btree.find( 14 ) );
+        checkNull( btree, 14 );
 
         // Delete the rightmost value
         btree.delete( 18 );
-        assertNull( btree.find( 18 ) );
+        checkNull( btree, 18 );
 
         // Delete the extraneous value
         btree.delete( 5 );
-        assertNull( btree.find( 5 ) );
+        checkNull( btree, 5 );
 
         // Delete the leftmost value of the right leaf
         btree.delete( 6 );
-        assertNull( btree.find( 6 ) );
+        checkNull( btree, 6 );
 
         btree.close();
     }
@@ -1618,14 +1649,14 @@ public class InMemoryBTreeTest
      * @throws Exception
      */
     @Test
-    public void testBrowse5M() throws Exception
+    public void testBrowse500K() throws Exception
     {
         Random random = new Random( System.nanoTime() );
 
         int nbError = 0;
 
         int n = 0;
-        int nbElems = 5000000;
+        int nbElems = 500000;
         long delta = System.currentTimeMillis();
 
         // Create a BTree with 5 million entries
@@ -1691,5 +1722,33 @@ public class InMemoryBTreeTest
 
         System.out.println( "Delta : " + ( l2 - l1 ) + ", nbError = " + nbError
             + ", Nb searches per second : " + ( ( nbElems ) / ( l2 - l1 ) ) * 1000 );
+    }
+
+
+    private void checkNull( BTree<Long, String> btree, long key ) throws IOException
+    {
+        try
+        {
+            btree.get( key );
+            fail();
+        }
+        catch ( KeyNotFoundException knfe )
+        {
+            // expected
+        }
+    }
+
+
+    private void checkNull( BTree<Integer, String> btree, int key ) throws IOException
+    {
+        try
+        {
+            btree.get( key );
+            fail();
+        }
+        catch ( KeyNotFoundException knfe )
+        {
+            // expected
+        }
     }
 }

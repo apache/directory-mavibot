@@ -21,6 +21,7 @@ package org.apache.mavibot.btree;
 
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.Random;
@@ -203,7 +204,7 @@ public class MultiThreadedBtreeTest
 
         long t1 = System.currentTimeMillis();
 
-        System.out.println( " Time to create 5M entries and to have " + nbThreads + " threads reading them : "
+        System.out.println( " Time to create 500K entries and to have " + nbThreads + " threads reading them : "
             + ( ( t1 - t0 ) / 1000 ) + " seconds" );
     }
 
@@ -231,10 +232,10 @@ public class MultiThreadedBtreeTest
                 {
                     try
                     {
-                        // Inject 100000 elements
-                        for ( int j = 0; j < 100000; j++ )
+                        // Inject 10000 elements
+                        for ( int j = 0; j < 10000; j++ )
                         {
-                            long value = prefix * 100000 + j;
+                            long value = prefix * 10000 + j;
                             btree.insert( value, Long.toString( value ) );
 
                             /*
@@ -264,9 +265,16 @@ public class MultiThreadedBtreeTest
         long t1 = System.currentTimeMillis();
 
         // Check that the tree contains all the values
-        for ( long i = 0L; i < 1000000L; i++ )
+        try
         {
-            assertEquals( Long.toString( i ), btree.find( i ) );
+            for ( long i = 0L; i < 100000L; i++ )
+            {
+                assertEquals( Long.toString( i ), btree.get( i ) );
+            }
+        }
+        catch ( KeyNotFoundException knfe )
+        {
+            fail();
         }
 
         System.out.println( " Time to create 1M entries : "

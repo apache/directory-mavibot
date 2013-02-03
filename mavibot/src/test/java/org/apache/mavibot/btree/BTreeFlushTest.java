@@ -43,8 +43,8 @@ import org.junit.Test;
  */
 public class BTreeFlushTest
 {
-    /** A file containing 1 million elements */
-    private static String data1M;
+    /** A file containing 100 000 elements */
+    private static String data100K;
 
     // Some values to inject in a btree
     private static int[] sortedValues = new int[]
@@ -124,7 +124,7 @@ public class BTreeFlushTest
         long l1 = System.currentTimeMillis();
         int n = 0;
         long delta = l1;
-        int nbElems = 1000000;
+        int nbElems = 100000;
 
         BTree<Long, String> btree = new BTree<Long, String>( new LongSerializer(), new StringSerializer() );
         btree.setPageSize( 32 );
@@ -148,7 +148,7 @@ public class BTreeFlushTest
                 return;
             }
 
-            if ( i % 100000 == 0 )
+            if ( i % 10000 == 0 )
             {
                 if ( n > 0 )
                 {
@@ -177,10 +177,10 @@ public class BTreeFlushTest
 
         long t1 = System.currentTimeMillis();
 
-        System.out.println( "Time to flush 5 million elements : " + ( t1 - t0 ) + "ms" );
+        System.out.println( "Time to flush 100 000 elements : " + ( t1 - t0 ) + "ms" );
         btree.close();
 
-        data1M = tempFile.getCanonicalPath();
+        data100K = tempFile.getCanonicalPath();
     }
 
 
@@ -200,9 +200,11 @@ public class BTreeFlushTest
         // into the btree
         for ( Long key : expected )
         {
-            String value = btree.find( key );
-
-            if ( value == null )
+            try
+            {
+                btree.get( key );
+            }
+            catch ( KeyNotFoundException knfe )
             {
                 return false;
             }
@@ -290,7 +292,7 @@ public class BTreeFlushTest
     @Test
     public void testLoadBTreeFromFile() throws Exception
     {
-        File dataFile = new File( data1M );
+        File dataFile = new File( data100K );
         BTree<Long, String> btree = new BTree<Long, String>(
             dataFile.getParent(),
             dataFile.getName(),

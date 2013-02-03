@@ -731,7 +731,7 @@ import java.util.LinkedList;
     /**
      * {@inheritDoc}
      */
-    public V find( K key )
+    public V get( K key ) throws KeyNotFoundException
     {
         int pos = findPos( key );
 
@@ -739,11 +739,11 @@ import java.util.LinkedList;
         {
             // Here, if we have found the key in the node, then we must go down into
             // the right child, not the left one
-            return children[-pos].find( key );
+            return children[-pos].get( key );
         }
         else
         {
-            return children[pos].find( key );
+            return children[pos].get( key );
         }
     }
 

@@ -713,6 +713,40 @@ public class BTree<K, V>
 
 
     /**
+     * Delete the value from an entry which key is given as a parameter. If the value
+     * is present, we will return it. If the remaining entry is empty, we will remove it
+     * from the tree.
+     * 
+     * @param key The key for the entry we try to remove
+     * @return A Tuple<K, V> containing the removed entry, or null if it's not found.
+     */
+    public Tuple<K, V> delete( K key, V value ) throws IOException
+    {
+        if ( key == null )
+        {
+            throw new IllegalArgumentException( "Key must not be null" );
+        }
+
+        if ( value == null )
+        {
+            throw new IllegalArgumentException( "Value must not be null" );
+        }
+
+        long revision = generateRevision();
+
+        Tuple<K, V> deleted = delete( key, revision );
+
+        // Decrease the number of element in the current tree if the delete is successful
+        if ( deleted != null )
+        {
+            nbElems.getAndDecrement();
+        }
+
+        return deleted;
+    }
+
+
+    /**
      * Delete the entry which key is given as a parameter. If the entry exists, it will
      * be removed from the tree, the old tuple will be returned. Otherwise, null is returned.
      * 
@@ -776,9 +810,9 @@ public class BTree<K, V>
      * @return The found value, or null if the key is not present in the tree
      * @throws IOException TODO
      */
-    public V find( K key ) throws IOException
+    public V get( K key ) throws IOException, KeyNotFoundException
     {
-        return rootPage.find( key );
+        return rootPage.get( key );
     }
 
 

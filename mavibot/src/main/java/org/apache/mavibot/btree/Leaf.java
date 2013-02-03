@@ -371,7 +371,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     /**
      * {@inheritDoc}
      */
-    public V find( K key )
+    public V get( K key ) throws KeyNotFoundException
     {
         int pos = findPos( key );
 
@@ -381,7 +381,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         }
         else
         {
-            return null;
+            throw new KeyNotFoundException( "Cannot find an entry for key " + key );
         }
     }
 

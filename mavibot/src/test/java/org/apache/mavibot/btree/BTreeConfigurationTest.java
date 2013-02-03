@@ -110,7 +110,7 @@ public class BTreeConfigurationTest
      * Test the creation of a in-memory BTree using the BTreeConfiguration.
      */
     @Test
-    public void testConfigurationBasic() throws IOException
+    public void testConfigurationBasic() throws IOException, KeyNotFoundException
     {
         BTreeConfiguration<Integer, String> config = new BTreeConfiguration<Integer, String>();
         config.setPageSize( 32 );
@@ -130,7 +130,7 @@ public class BTreeConfigurationTest
         // Check that the tree contains all the values
         for ( int key : sortedValues )
         {
-            String value = btree.find( key );
+            String value = btree.get( key );
 
             assertNotNull( value );
         }
@@ -144,7 +144,7 @@ public class BTreeConfigurationTest
      * tree on disk, then reloading it in another BTree.
      */
     @Test
-    public void testConfigurationFlushReload() throws IOException
+    public void testConfigurationFlushReload() throws IOException, KeyNotFoundException
     {
         // Create a temporary file
         File file = File.createTempFile( "testFlush", "data" );
@@ -174,7 +174,7 @@ public class BTreeConfigurationTest
             // Check that the tree contains all the values
             for ( int key : sortedValues )
             {
-                String value = btree.find( key );
+                String value = btree.get( key );
 
                 assertNotNull( value );
             }
@@ -188,7 +188,7 @@ public class BTreeConfigurationTest
             // Check that the tree contains all the values
             for ( int key : sortedValues )
             {
-                String value = btreeCopy.find( key );
+                String value = btreeCopy.get( key );
 
                 assertNotNull( value );
             }

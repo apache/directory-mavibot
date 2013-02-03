@@ -21,8 +21,8 @@ package org.apache.mavibot.btree;
 
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 
@@ -130,10 +130,26 @@ public class LeafTest
         assertEquals( "v3", removedElement.getValue() );
         assertEquals( 3, newLeaf.getNbElems() );
 
-        assertEquals( "v1", newLeaf.find( 1L ) );
-        assertEquals( "v2", newLeaf.find( 2L ) );
-        assertNull( newLeaf.find( 3L ) );
-        assertEquals( "v4", newLeaf.find( 4L ) );
+        try
+        {
+            assertEquals( "v1", newLeaf.get( 1L ) );
+            assertEquals( "v2", newLeaf.get( 2L ) );
+            assertEquals( "v4", newLeaf.get( 4L ) );
+        }
+        catch ( KeyNotFoundException knfe )
+        {
+            fail();
+        }
+
+        try
+        {
+            newLeaf.get( 3L );
+            fail();
+        }
+        catch ( KeyNotFoundException knfe )
+        {
+            // Expected
+        }
     }
 
 
@@ -163,10 +179,26 @@ public class LeafTest
         assertEquals( "v1", removedElement.getValue() );
         assertEquals( 3, newLeaf.getNbElems() );
 
-        assertNull( newLeaf.find( 1L ) );
-        assertEquals( "v2", newLeaf.find( 2L ) );
-        assertEquals( "v3", newLeaf.find( 3L ) );
-        assertEquals( "v4", newLeaf.find( 4L ) );
+        try
+        {
+            newLeaf.get( 1L );
+            fail();
+        }
+        catch ( KeyNotFoundException knfe )
+        {
+            // expected
+        }
+
+        try
+        {
+            assertEquals( "v2", newLeaf.get( 2L ) );
+            assertEquals( "v3", newLeaf.get( 3L ) );
+            assertEquals( "v4", newLeaf.get( 4L ) );
+        }
+        catch ( KeyNotFoundException knfe )
+        {
+            fail();
+        }
     }
 
 
