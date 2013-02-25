@@ -28,6 +28,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -1008,12 +1009,13 @@ public class InMemoryBTreeTest
         leaf.id = revision;
         leaf.nbElems = tuples.length;
         leaf.keys = new Integer[leaf.nbElems];
-        leaf.values = new String[leaf.nbElems];
+        leaf.values = ( MemoryValueHolder<Integer, String>[] ) Array
+            .newInstance( MemoryValueHolder.class, leaf.nbElems );
 
         for ( Tuple<Integer, String> tuple : tuples )
         {
             leaf.keys[pos] = tuple.getKey();
-            leaf.values[pos] = tuple.getValue();
+            leaf.values[pos] = btree.createHolder( tuple.getValue() );
             pos++;
         }
 

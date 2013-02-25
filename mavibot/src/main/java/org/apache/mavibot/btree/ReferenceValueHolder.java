@@ -47,9 +47,9 @@ import java.lang.ref.SoftReference;
      * @param offset The offset in disk for this value
      * @param value The value to store into a SoftReference
      */
-    public ReferenceValueHolder( long offset, V value )
+    public ReferenceValueHolder( BTree<K, V> btree, V value )
     {
-        this.offset = offset;
+        //this.offset = btree.getOffset();
         this.reference = new SoftReference<V>( value );
     }
 

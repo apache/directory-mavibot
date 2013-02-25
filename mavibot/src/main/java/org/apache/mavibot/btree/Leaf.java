@@ -20,6 +20,7 @@
 package org.apache.mavibot.btree;
 
 
+import java.lang.reflect.Array;
 import java.util.LinkedList;
 
 
@@ -34,7 +35,7 @@ import java.util.LinkedList;
 public class Leaf<K, V> extends AbstractPage<K, V>
 {
     /** Values associated with keys */
-    protected V[] values;
+    protected ValueHolder<K, V>[] values;
 
 
     /**
@@ -55,7 +56,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     {
         super( btree, revision, nbElems );
 
-        this.values = ( V[] ) new Object[nbElems];
+        this.values = ( ValueHolder<K, V>[] ) Array.newInstance( ValueHolder.class, nbElems );
     }
 
 
@@ -201,7 +202,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         // Create the new page. It will contain N - 1 elements (the maximum number)
         // as we merge two pages that contain N/2 elements minus the one we remove
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, btree.pageSize - 1 );
-        Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos] );
+        Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos].getValue( btree ) );
 
         if ( isLeft )
         {
@@ -235,7 +236,8 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         }
 
         // And create the result
-        DeleteResult<K, V> result = new MergedWithSiblingResult<K, V>( newLeaf, removedElement );
+        DeleteResult<K, V> result = new MergedWithSiblingResult<K, V>( newLeaf,
+            removedElement );
 
         return result;
     }
@@ -255,7 +257,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     {
         // The sibling is on the left, borrow the rightmost element
         K siblingKey = sibling.keys[sibling.getNbElems() - 1];
-        V siblingValue = sibling.values[sibling.getNbElems() - 1];
+        ValueHolder<K, V> siblingValue = sibling.values[sibling.getNbElems() - 1];
 
         // Create the new sibling, with one less element at the end
         Leaf<K, V> newSibling = ( Leaf<K, V> ) sibling.copy( revision, sibling.getNbElems() - 1 );
@@ -277,7 +279,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         System.arraycopy( values, pos + 1, newLeaf.values, pos + 1, values.length - pos - 1 );
 
         // Create the result
-        Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos] );
+        Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos].getValue( btree ) );
 
         DeleteResult<K, V> result = new BorrowedFromLeftResult<K, V>( newLeaf, newSibling, removedElement );
 
@@ -299,7 +301,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     {
         // The sibling is on the left, borrow the rightmost element
         K siblingKey = sibling.keys[0];
-        V siblingValue = sibling.values[0];
+        ValueHolder<K, V> siblingHolder = sibling.values[0];
 
         // Create the new sibling
         Leaf<K, V> newSibling = new Leaf<K, V>( btree, revision, sibling.getNbElems() - 1 );
@@ -314,7 +316,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
 
         // Insert the borrowed element at the end
         newLeaf.keys[nbElems - 1] = siblingKey;
-        newLeaf.values[nbElems - 1] = siblingValue;
+        newLeaf.values[nbElems - 1] = siblingHolder;
 
         // Copy the keys and the values up to the deletion position,
         System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
@@ -325,7 +327,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         System.arraycopy( values, pos + 1, newLeaf.values, pos, values.length - pos - 1 );
 
         // Create the result
-        Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos] );
+        Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos].getValue( btree ) );
 
         DeleteResult<K, V> result = new BorrowedFromRightResult<K, V>( newLeaf, newSibling, removedElement );
 
@@ -346,7 +348,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems - 1 );
 
         // Get the removed element
-        Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos] );
+        Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos].getValue( btree ) );
 
         // Deal with the special case of an page with only one element by skipping
         // the copy, as we won't have any remaining  element in the page
@@ -395,7 +397,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
 
         if ( pos < 0 )
         {
-            return values[-( pos + 1 )];
+            return values[-( pos + 1 )].getValue( btree );
         }
         else
         {
@@ -419,7 +421,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             // The first element has been found. Create the cursor
             stack.push( new ParentPos<K, V>( this, index ) );
 
-            cursor = new Cursor<K, V>( transaction, stack );
+            cursor = new Cursor<K, V>( btree, transaction, stack );
         }
         else
         {
@@ -428,14 +430,14 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             {
                 stack.push( new ParentPos<K, V>( this, pos ) );
 
-                cursor = new Cursor<K, V>( transaction, stack );
+                cursor = new Cursor<K, V>( btree, transaction, stack );
             }
             else
             {
                 // Not found : return a null cursor
                 stack.push( new ParentPos<K, V>( this, -1 ) );
 
-                return new Cursor<K, V>( transaction, stack );
+                return new Cursor<K, V>( btree, transaction, stack );
             }
         }
 
@@ -456,14 +458,14 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             // The tree is empty, it's the root, we have nothing to return
             stack.push( new ParentPos<K, V>( null, -1 ) );
 
-            return new Cursor<K, V>( transaction, stack );
+            return new Cursor<K, V>( btree, transaction, stack );
         }
         else
         {
             // Start at the beginning of the page
             stack.push( new ParentPos<K, V>( this, pos ) );
 
-            cursor = new Cursor<K, V>( transaction, stack );
+            cursor = new Cursor<K, V>( btree, transaction, stack );
         }
 
         return cursor;
@@ -509,8 +511,9 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         }
 
         // Now we can inject the value
-        V oldValue = newLeaf.values[pos];
-        newLeaf.values[pos] = value;
+        V oldValue = newLeaf.values[pos].getValue( btree );
+
+        newLeaf.values[pos] = btree.createHolder( value );
 
         // Create the result
         InsertResult<K, V> result = new ModifyResult<K, V>( newLeaf, oldValue );
@@ -533,12 +536,14 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     {
         // First copy the current page, but add one element in the copied page
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems + 1 );
+        ValueHolder<K, V> valueHolder = btree.createHolder( value );
 
         // Deal with the special case of an empty page
         if ( nbElems == 0 )
         {
             newLeaf.keys[0] = key;
-            newLeaf.values[0] = value;
+
+            newLeaf.values[0] = valueHolder;
         }
         else
         {
@@ -548,7 +553,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
 
             // Add the new element
             newLeaf.keys[pos] = key;
-            newLeaf.values[pos] = value;
+            newLeaf.values[pos] = valueHolder;
 
             // And copy the remaining elements
             System.arraycopy( keys, pos, newLeaf.keys, pos + 1, keys.length - pos );
@@ -579,6 +584,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         int middle = btree.pageSize >> 1;
         Leaf<K, V> leftLeaf = null;
         Leaf<K, V> rightLeaf = null;
+        ValueHolder<K, V> valueHolder = btree.createHolder( value );
 
         // Determinate where to store the new value
         if ( pos <= middle )
@@ -592,7 +598,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
 
             // Add the new element
             leftLeaf.keys[pos] = key;
-            leftLeaf.values[pos] = value;
+            leftLeaf.values[pos] = valueHolder;
 
             // And copy the remaining elements
             System.arraycopy( keys, pos, leftLeaf.keys, pos + 1, middle - pos );
@@ -625,7 +631,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
 
             // Add the new element
             rightLeaf.keys[rightPos] = key;
-            rightLeaf.values[rightPos] = value;
+            rightLeaf.values[rightPos] = valueHolder;
 
             // And copy the remaining elements
             System.arraycopy( keys, pos, rightLeaf.keys, rightPos + 1, nbElems - pos );
@@ -656,7 +662,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      */
     public Tuple<K, V> findLeftMost()
     {
-        return new Tuple<K, V>( keys[0], values[0] );
+        return new Tuple<K, V>( keys[0], values[0].getValue( btree ) );
     }
 
 
@@ -665,7 +671,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      */
     public Tuple<K, V> findRightMost()
     {
-        return new Tuple<K, V>( keys[nbElems - 1], values[nbElems - 1] );
+        return new Tuple<K, V>( keys[nbElems - 1], values[nbElems - 1].getValue( btree ) );
     }
 
 

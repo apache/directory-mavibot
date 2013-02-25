@@ -45,6 +45,9 @@ import java.util.LinkedList;
     /** The stack of pages from the root down to the leaf */
     private LinkedList<ParentPos<K, V>> stack;
 
+    /** The BTree we are walking */
+    private BTree<K, V> btree;
+
 
     /**
      * Creates a new instance of Cursor, starting on a page at a given position.
@@ -52,10 +55,11 @@ import java.util.LinkedList;
      * @param transaction The transaction this operation is protected by
      * @param stack The stack of parent's from root to this page
      */
-    /* No qualifier */Cursor( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
+    /* No qualifier */Cursor( BTree<K, V> btree, Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
     {
         this.transaction = transaction;
         this.stack = stack;
+        this.btree = btree;
     }
 
 
@@ -88,7 +92,7 @@ import java.util.LinkedList;
 
         Leaf<K, V> leaf = ( Leaf<K, V> ) ( parentPos.page );
         tuple.setKey( leaf.keys[parentPos.pos] );
-        tuple.setValue( leaf.values[parentPos.pos] );
+        tuple.setValue( leaf.values[parentPos.pos].getValue( btree ) );
 
         parentPos.pos++;
 
@@ -220,7 +224,7 @@ import java.util.LinkedList;
         parentPos.pos--;
 
         tuple.setKey( leaf.keys[parentPos.pos] );
-        tuple.setValue( leaf.values[parentPos.pos] );
+        tuple.setValue( leaf.values[parentPos.pos].getValue( btree ) );
 
         return tuple;
     }

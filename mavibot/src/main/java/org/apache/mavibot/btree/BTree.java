@@ -1321,6 +1321,34 @@ public class BTree<K, V>
 
 
     /**
+     * @return the inMemory flag
+     */
+    public boolean isInMemory()
+    {
+        return inMemory;
+    }
+
+
+    /**
+     * Create a ValueHolder depending on the kind of holder we want.
+     * 
+     * @param value The value to store
+     * @return The value holder
+     */
+    /* no qualifier */ValueHolder<K, V> createHolder( V value )
+    {
+        if ( inMemory )
+        {
+            return new MemoryValueHolder<K, V>( value );
+        }
+        else
+        {
+            return new ReferenceValueHolder<K, V>( this, value );
+        }
+    }
+
+
+    /**
      * @see Object#toString()
      */
     public String toString()
