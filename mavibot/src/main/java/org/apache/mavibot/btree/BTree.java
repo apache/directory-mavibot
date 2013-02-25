@@ -816,11 +816,13 @@ public class BTree<K, V>
 
 
     /**
-     * Find a value in the tree, given its key. if the key is not found,
-     * it will return null.
+     * Find a value in the tree, given its key. If the key is not found,
+     * it will throw a KeyNotFoundException. <br/>
+     * Note that we can get a null value stored, or many values.
      * 
      * @param key The key we are looking at
      * @return The found value, or null if the key is not present in the tree
+     * @throws KeyNotFoundException If the key is not found in the BTree
      * @throws IOException TODO
      */
     public V get( K key ) throws IOException, KeyNotFoundException
