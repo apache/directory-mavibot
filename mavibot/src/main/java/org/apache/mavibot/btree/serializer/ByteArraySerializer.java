@@ -38,7 +38,7 @@ public class ByteArraySerializer implements ElementSerializer<byte[]>
 
 
     /**
-     * Create a new instance of ShortSerializer
+     * Create a new instance of ByteArraySerializer
      */
     public ByteArraySerializer()
     {
