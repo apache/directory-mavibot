@@ -37,6 +37,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.apache.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.mavibot.btree.serializer.BufferHandler;
 import org.apache.mavibot.btree.serializer.ElementSerializer;
 import org.apache.mavibot.btree.serializer.LongSerializer;
@@ -66,6 +67,9 @@ public class BTree<K, V>
 
     /** The default journal file suffix */
     public static final String JOURNAL_SUFFIX = ".log";
+
+    /** The BTree name */
+    private String name;
 
     /** A field used to generate new revisions in a thread safe way */
     private AtomicLong revision;
@@ -363,9 +367,10 @@ public class BTree<K, V>
      * 
      * @param comparator The comparator to use
      */
-    public BTree( ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer ) throws IOException
+    public BTree( String name, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer )
+        throws IOException
     {
-        this( null, null, keySerializer, valueSerializer, DEFAULT_PAGE_SIZE );
+        this( name, null, null, keySerializer, valueSerializer, DEFAULT_PAGE_SIZE );
     }
 
 
@@ -374,10 +379,10 @@ public class BTree<K, V>
      * 
      * @param comparator The comparator to use
      */
-    public BTree( ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer, int pageSize )
+    public BTree( String name, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer, int pageSize )
         throws IOException
     {
-        this( null, null, keySerializer, valueSerializer, pageSize );
+        this( name, null, null, keySerializer, valueSerializer, pageSize );
     }
 
 
@@ -388,10 +393,11 @@ public class BTree<K, V>
      * @param comparator The comparator to use
      * @param serializer The serializer to use
      */
-    public BTree( String path, String file, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer )
+    public BTree( String name, String path, String file, ElementSerializer<K> keySerializer,
+        ElementSerializer<V> valueSerializer )
         throws IOException
     {
-        this( path, file, keySerializer, valueSerializer, DEFAULT_PAGE_SIZE );
+        this( name, path, file, keySerializer, valueSerializer, DEFAULT_PAGE_SIZE );
     }
 
 
@@ -403,10 +409,13 @@ public class BTree<K, V>
      * @param serializer The serializer to use
      * @param pageSize The number of elements we can store in a page
      */
-    public BTree( String path, String file, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer,
+    public BTree( String name, String path, String file, ElementSerializer<K> keySerializer,
+        ElementSerializer<V> valueSerializer,
         int pageSize )
         throws IOException
     {
+        this.name = name;
+
         if ( ( path == null ) && ( file == null ) )
         {
             inMemory = true;
@@ -1281,6 +1290,24 @@ public class BTree<K, V>
     public void setReadTimeOut( long readTimeOut )
     {
         this.readTimeOut = readTimeOut;
+    }
+
+
+    /**
+     * @return the name
+     */
+    public String getName()
+    {
+        return name;
+    }
+
+
+    /**
+     * @param name the name to set
+     */
+    public void setName( String name )
+    {
+        this.name = name;
     }
 
 

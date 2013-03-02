@@ -46,6 +46,9 @@ public class BTreeConfiguration<K, V>
     private ElementSerializer<K> keySerializer;
     private ElementSerializer<V> valueSerializer;
 
+    /** The BTree name */
+    private String name;
+
     /** The path where the BTree file will be stored. Default to the local 
      * temporary directory.
      */
@@ -295,5 +298,23 @@ public class BTreeConfiguration<K, V>
     public void setWriteBufferSize( int writeBufferSize )
     {
         this.writeBufferSize = writeBufferSize;
+    }
+
+
+    /**
+     * @return the name
+     */
+    public String getName()
+    {
+        return name;
+    }
+
+
+    /**
+     * @param name the name to set
+     */
+    public void setName( String name )
+    {
+        this.name = name;
     }
 }

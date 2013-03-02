@@ -23,6 +23,8 @@ package org.apache.mavibot.btree;
 import java.lang.reflect.Array;
 import java.util.LinkedList;
 
+import org.apache.mavibot.btree.exception.KeyNotFoundException;
+
 
 /**
  * A MVCC Leaf. It stores the keys and values. It does not have any children.
