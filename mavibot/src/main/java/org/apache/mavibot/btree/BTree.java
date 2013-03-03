@@ -1376,6 +1376,24 @@ public class BTree<K, V>
 
 
     /**
+     * @return the keySerializer
+     */
+    public ElementSerializer<K> getKeySerializer()
+    {
+        return keySerializer;
+    }
+
+
+    /**
+     * @return the valueSerializer
+     */
+    public ElementSerializer<V> getValueSerializer()
+    {
+        return valueSerializer;
+    }
+
+
+    /**
      * @see Object#toString()
      */
     public String toString()

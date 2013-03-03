@@ -17,55 +17,57 @@
  *  under the License. 
  *  
  */
-package org.apache.mavibot.btree;
+package org.apache.mavibot.btree.exception;
 
 
 /**
- * An exception thrown when we can't find a key in the BTree.
+ * An exception thrown when we try to change the RecordManager Page Size
+ * when it's already set.
+ * already managed by the RecordManager
  * 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class KeyNotFoundException extends Exception
+public class PageSizeAlreadySetException extends Exception
 {
     /** The serial version UUID */
     private static final long serialVersionUID = 1L;
 
 
     /**
-     * Creates a new instance of KeyNotFoundException.
+     * Creates a new instance of PageSizeAlreadySetException.
      */
-    public KeyNotFoundException()
+    public PageSizeAlreadySetException()
     {
     }
 
 
     /**
-     * Creates a new instance of KeyNotFoundException.
+     * Creates a new instance of PageSizeAlreadySetException.
      *
      * @param explanation The message associated with the exception
      */
-    public KeyNotFoundException( String explanation )
+    public PageSizeAlreadySetException( String explanation )
     {
         super( explanation );
     }
 
 
     /**
-     * Creates a new instance of KeyNotFoundException.
+     * Creates a new instance of PageSizeAlreadySetException.
      */
-    public KeyNotFoundException( Throwable cause )
+    public PageSizeAlreadySetException( Throwable cause )
     {
         super( cause );
     }
 
 
     /**
-     * Creates a new instance of KeyNotFoundException.
+     * Creates a new instance of PageSizeAlreadySetException.
      *
      * @param explanation The message associated with the exception
      * @param cause The root cause for this exception
      */
-    public KeyNotFoundException( String explanation, Throwable cause )
+    public PageSizeAlreadySetException( String explanation, Throwable cause )
     {
         super( explanation, cause );
     }
