@@ -25,6 +25,7 @@ import static org.junit.Assert.assertNotNull;
 import java.io.File;
 import java.io.IOException;
 
+import org.apache.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.mavibot.btree.serializer.IntSerializer;
 import org.apache.mavibot.btree.serializer.StringSerializer;
 import org.junit.Test;

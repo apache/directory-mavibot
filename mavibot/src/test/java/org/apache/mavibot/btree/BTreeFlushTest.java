@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.util.Random;
 import java.util.Set;
 
+import org.apache.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.mavibot.btree.serializer.IntSerializer;
 import org.apache.mavibot.btree.serializer.LongSerializer;
 import org.apache.mavibot.btree.serializer.StringSerializer;
@@ -126,7 +127,7 @@ public class BTreeFlushTest
         long delta = l1;
         int nbElems = 100000;
 
-        BTree<Long, String> btree = new BTree<Long, String>( new LongSerializer(), new StringSerializer() );
+        BTree<Long, String> btree = new BTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
         btree.setPageSize( 32 );
 
         for ( int i = 0; i < nbElems; i++ )
@@ -232,7 +233,7 @@ public class BTreeFlushTest
 
         try
         {
-            BTree<Integer, String> btree = new BTree<Integer, String>( path, fileName, new IntSerializer(),
+            BTree<Integer, String> btree = new BTree<Integer, String>( "test", path, fileName, new IntSerializer(),
                 new StringSerializer() );
             btree.setPageSize( 8 );
 
@@ -254,7 +255,8 @@ public class BTreeFlushTest
             assertEquals( 0, journal.length() );
 
             // Load the data into a new tree
-            BTree<Integer, String> btreeLoaded = new BTree<Integer, String>( path, fileName, new IntSerializer(),
+            BTree<Integer, String> btreeLoaded = new BTree<Integer, String>( "test", path, fileName,
+                new IntSerializer(),
                 new StringSerializer() );
             btree.setPageSize( 8 );
 
@@ -294,6 +296,7 @@ public class BTreeFlushTest
     {
         File dataFile = new File( data100K );
         BTree<Long, String> btree = new BTree<Long, String>(
+            "test",
             dataFile.getParent(),
             dataFile.getName(),
             new LongSerializer(),
