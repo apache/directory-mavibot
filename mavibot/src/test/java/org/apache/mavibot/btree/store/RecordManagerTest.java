@@ -26,6 +26,10 @@ import java.io.IOException;
 import org.junit.Test;
 
 
+/**
+ * 
+ * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ */
 public class RecordManagerTest
 {
 
