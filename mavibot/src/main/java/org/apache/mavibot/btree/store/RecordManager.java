@@ -33,7 +33,6 @@ import org.apache.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.mavibot.btree.serializer.IntSerializer;
 import org.apache.mavibot.btree.serializer.LongArraySerializer;
-import org.apache.mavibot.btree.serializer.LongSerializer;
 import org.apache.mavinot.btree.utils.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -308,7 +307,6 @@ public class RecordManager
         byte[] keySerializerBytes = Strings.getBytesUtf8( keySerializerFqcn );
         String valueSerializerFqcn = btree.getKeySerializer().getClass().getName();
         byte[] valueSerializerBytes = Strings.getBytesUtf8( valueSerializerFqcn );
-         
 
         int bufferSize = btreeNameBytes.length + keySerializerBytes.length + valueSerializerBytes.length + 12;
 
@@ -325,16 +323,17 @@ public class RecordManager
         // - The RootPage offset
         PageIO rootPageIo = fetchNewPage();
 
-        long position = storeBytes( pageIos, 0, btreeNameBytes );                // The tree name
-            btreeNameBytes,
-            IntSerializer.serialize( keySerializerBytes.length ), // The keySerializer name
-            keySerializerBytes,
-            IntSerializer.serialize( valueSerializerBytes.length ), // The valueSerialier name
-            valueSerializerBytes,
-            IntSerializer.serialize( btree.getPageSize() ), // The BTree page size
-            LongSerializer.serialize( btree.getRevision() ), // The BTree current revision
-            LongSerializer.serialize( btree.getNbElems() ), // The nb elems in the tree
-            LongSerializer.serialize( rootPageIo.getOffset() ) );
+        long position = storeBytes( pageIos, 0, btreeNameBytes ); // The tree name
+        /*btreeNameBytes,
+        IntSerializer.serialize( keySerializerBytes.length ), // The keySerializer name
+        keySerializerBytes,
+        IntSerializer.serialize( valueSerializerBytes.length ), // The valueSerialier name
+        valueSerializerBytes,
+        IntSerializer.serialize( btree.getPageSize() ), // The BTree page size
+        LongSerializer.serialize( btree.getRevision() ), // The BTree current revision
+        LongSerializer.serialize( btree.getNbElems() ), // The nb elems in the tree
+        LongSerializer.serialize( rootPageIo.getOffset() ) );
+        */
 
         // And flush the pages to disk now
         flushPages( pageIos );
@@ -445,7 +444,7 @@ public class RecordManager
 
     /**
      * Stores an Integer into one ore more pageIO (depending if the int is stored
-     * across a boundrary or not)
+     * across a boundary or not)
      * 
      * @param pageIos The pageIOs we have to store the data in
      * @param position The position in a virtual byte[] if all the pages were contiguous
@@ -518,6 +517,114 @@ public class RecordManager
     }
 
 
+    /**
+     * Stores a Long into one ore more pageIO (depending if the long is stored
+     * across a boundary or not)
+     * 
+     * @param pageIos The pageIOs we have to store the data in
+     * @param position The position in a virtual byte[] if all the pages were contiguous
+     * @param value The long to serialize
+     * @return The new position
+     */
+    private long storeBytes( PageIO[] pageIos, long position, long value )
+    {
+        // Compute the page in which we will store the data given the 
+        // current position
+        int pageNb = computePageNb( position );
+
+        // Compute the position in the current page
+        int pagePos = ( int ) ( position - pageNb * pageSize - ( pageNb + 1 ) * 8 - 4 );
+
+        // Get back the buffer in this page
+        ByteBuffer pageData = pageIos[pageNb].getData();
+
+        // Compute the remaining size in the page
+        int remaining = pageData.capacity() - pagePos;
+
+        if ( remaining < 8 )
+        {
+            // We have to copy the serialized length on two pages
+
+            switch ( remaining )
+            {
+                case 7:
+                    pageData.put( pagePos + 2, ( byte ) ( value >>> 8 ) );
+                    // Fallthrough !!!
+
+                case 6:
+                    pageData.put( pagePos + 2, ( byte ) ( value >>> 16 ) );
+                    // Fallthrough !!!
+
+                case 5:
+                    pageData.put( pagePos + 2, ( byte ) ( value >>> 24 ) );
+                    // Fallthrough !!!
+
+                case 4:
+                    pageData.put( pagePos + 2, ( byte ) ( value >>> 32 ) );
+                    // Fallthrough !!!
+
+                case 3:
+                    pageData.put( pagePos + 2, ( byte ) ( value >>> 40 ) );
+                    // Fallthrough !!!
+
+                case 2:
+                    pageData.put( pagePos + 1, ( byte ) ( value >>> 48 ) );
+                    // Fallthrough !!!
+
+                case 1:
+                    pageData.put( pagePos, ( byte ) ( value >>> 56 ) );
+                    break;
+            }
+
+            // Now deal with the next page
+            pageData = pageIos[pageNb + 1].getData();
+            pagePos = LINK_SIZE;
+
+            switch ( remaining )
+            {
+                case 1:
+                    pageData.put( pagePos, ( byte ) ( value >>> 48 ) );
+                    // fallthrough !!!
+
+                case 2:
+                    pageData.put( pagePos + 2 - remaining, ( byte ) ( value >>> 40 ) );
+                    // fallthrough !!!
+
+                case 3:
+                    pageData.put( pagePos + 3 - remaining, ( byte ) ( value >>> 32 ) );
+                    // fallthrough !!!
+
+                case 4:
+                    pageData.put( pagePos + 4 - remaining, ( byte ) ( value >>> 24 ) );
+                    // fallthrough !!!
+
+                case 5:
+                    pageData.put( pagePos + 5 - remaining, ( byte ) ( value >>> 16 ) );
+                    // fallthrough !!!
+
+                case 6:
+                    pageData.put( pagePos + 6 - remaining, ( byte ) ( value >>> 8 ) );
+                    // fallthrough !!!
+
+                case 7:
+                    pageData.put( pagePos + 7 - remaining, ( byte ) ( value ) );
+                    break;
+            }
+        }
+        else
+        {
+            // Store the value in the page at the selected position
+            pageData.putLong( pagePos, value );
+        }
+
+        // Increment the position to reflect the addition of an Long (8 bytes)
+        position += 8;
+
+        return position;
+    }
+
+
+    /*
     private void storeData1( PageIO[] pageIos, ByteBuffer... byteArrays )
     {
         if ( byteArrays != null )
@@ -552,7 +659,7 @@ public class RecordManager
             }
         }
     }
-
+    */
 
     /**
      * Get as many pages as needed to store the data which size is provided
