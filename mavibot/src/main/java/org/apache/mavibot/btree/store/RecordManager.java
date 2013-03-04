@@ -308,6 +308,7 @@ public class RecordManager
         byte[] keySerializerBytes = Strings.getBytesUtf8( keySerializerFqcn );
         String valueSerializerFqcn = btree.getKeySerializer().getClass().getName();
         byte[] valueSerializerBytes = Strings.getBytesUtf8( valueSerializerFqcn );
+         
 
         int bufferSize = btreeNameBytes.length + keySerializerBytes.length + valueSerializerBytes.length + 12;
 
@@ -437,6 +438,81 @@ public class RecordManager
                 currentPos += bytes.length;
             }
         }
+
+        return position;
+    }
+
+
+    /**
+     * Stores an Integer into one ore more pageIO (depending if the int is stored
+     * across a boundrary or not)
+     * 
+     * @param pageIos The pageIOs we have to store the data in
+     * @param position The position in a virtual byte[] if all the pages were contiguous
+     * @param value The int to serialize
+     * @return The new position
+     */
+    private long storeBytes( PageIO[] pageIos, long position, int value )
+    {
+        // Compute the page in which we will store the data given the 
+        // current position
+        int pageNb = computePageNb( position );
+
+        // Compute the position in the current page
+        int pagePos = ( int ) ( position - pageNb * pageSize - ( pageNb + 1 ) * 8 - 4 );
+
+        // Get back the buffer in this page
+        ByteBuffer pageData = pageIos[pageNb].getData();
+
+        // Compute the remaining size in the page
+        int remaining = pageData.capacity() - pagePos;
+
+        if ( remaining < 4 )
+        {
+            // We have to copy the serialized length on two pages
+
+            switch ( remaining )
+            {
+                case 3:
+                    pageData.put( pagePos + 2, ( byte ) ( value >>> 8 ) );
+                    // Fallthrough !!!
+
+                case 2:
+                    pageData.put( pagePos + 1, ( byte ) ( value >>> 16 ) );
+                    // Fallthrough !!!
+
+                case 1:
+                    pageData.put( pagePos, ( byte ) ( value >>> 24 ) );
+                    break;
+            }
+
+            // Now deal with the next page
+            pageData = pageIos[pageNb + 1].getData();
+            pagePos = LINK_SIZE;
+
+            switch ( remaining )
+            {
+                case 1:
+                    pageData.put( pagePos, ( byte ) ( value >>> 16 ) );
+                    // fallthrough !!!
+
+                case 2:
+                    pageData.put( pagePos + 2 - remaining, ( byte ) ( value >>> 8 ) );
+                    // fallthrough !!!
+
+                case 3:
+                    pageData.put( pagePos + 3 - remaining, ( byte ) ( value ) );
+                    break;
+            }
+        }
+        else
+        {
+            // Store the value in the page at the selected position
+            pageData.putInt( pagePos, value );
+        }
+
+        // Increment the position to reflect the addition of an Int (4 bytes)
+        position += 4;
 
         return position;
     }
