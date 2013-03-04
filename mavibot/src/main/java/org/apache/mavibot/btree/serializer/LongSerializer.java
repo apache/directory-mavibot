@@ -51,8 +51,18 @@ public class LongSerializer implements ElementSerializer<Long>
      */
     public byte[] serialize( Long element )
     {
+        return serialize( element.longValue() );
+    }
+
+
+    /**
+     * A static method used to derialize a long into a byte array.
+     * @param in The byte array containing the long
+     * @return A long
+     */
+    public static byte[] serialize( long value )
+    {
         byte[] bytes = new byte[8];
-        long value = element.longValue();
 
         bytes[0] = ( byte ) ( value >>> 56 );
         bytes[1] = ( byte ) ( value >>> 48 );
