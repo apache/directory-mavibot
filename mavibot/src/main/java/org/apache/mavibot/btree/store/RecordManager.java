@@ -25,12 +25,15 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.mavibot.btree.BTree;
 import org.apache.mavibot.btree.exception.BTreeAlreadyManagedException;
+import org.apache.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.mavibot.btree.serializer.IntSerializer;
 import org.apache.mavibot.btree.serializer.LongArraySerializer;
+import org.apache.mavibot.btree.serializer.LongSerializer;
 import org.apache.mavinot.btree.utils.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,6 +97,9 @@ public class RecordManager
     private static final int HEADER_SIZE = NB_TREE_SIZE + PAGE_SIZE + FIRST_FREE_PAGE_SIZE + LAST_FREE_PAGE_SIZE;
     private static final ByteBuffer HEADER_BUFFER = ByteBuffer.allocate( HEADER_SIZE );
 
+    /** A Page used to flush data on disk */
+    private final ByteBuffer PAGE_BUFFER;
+
     /** The default page size */
     private static final int DEFAULT_PAGE_SIZE = 4 * 1024;
 
@@ -119,7 +125,24 @@ public class RecordManager
      */
     public RecordManager( String fileName )
     {
+        this( fileName, DEFAULT_PAGE_SIZE );
+    }
+
+
+    /**
+     * Create a Record manager which will either create the underlying file
+     * or load an existing one. If a folder is provider, then we will create
+     * a file with a default name : mavibot.db
+     * 
+     * @param name The file name, or a folder name
+     * @param pageSize the size of a page on disk
+     */
+    public RecordManager( String fileName, int pageSize )
+    {
         this.fileName = fileName;
+        this.pageSize = pageSize;
+
+        PAGE_BUFFER = ByteBuffer.allocateDirect( pageSize );
 
         // Open the file or create it
         File tmpFile = new File( fileName );
@@ -149,7 +172,7 @@ public class RecordManager
         else
         {
             // It's a file. Let's see if it exists, otherwise create it
-            if ( !tmpFile.exists() )
+            if ( !tmpFile.exists() || ( tmpFile.length() == 0 ) )
             {
                 isNewFile = true;
 
@@ -208,12 +231,14 @@ public class RecordManager
         HEADER_BUFFER.putLong( NO_PAGE );
         lastFreePage = NO_PAGE;
 
-        // Now, initialize the Discarded Page BTree
+        // Now, initialize the Discarded Page BTree, which is a in-memory BTree
         copiedPageBTree = new BTree<Integer, long[]>( "copiedPageBTree", new IntSerializer(), new LongArraySerializer() );
 
         // Inject this BTree into the RecordManager
         try
         {
+            managedBTrees = new HashMap<String, BTree<?, ?>>();
+
             manage( copiedPageBTree );
         }
         catch ( BTreeAlreadyManagedException btame )
@@ -284,16 +309,172 @@ public class RecordManager
         String valueSerializerFqcn = btree.getKeySerializer().getClass().getName();
         byte[] valueSerializerBytes = Strings.getBytesUtf8( valueSerializerFqcn );
 
-        int bufferSize = btreeNameBytes.length + keySerializerBytes.length + valueSerializerBytes.length;
+        int bufferSize = btreeNameBytes.length + keySerializerBytes.length + valueSerializerBytes.length + 12;
 
         // Get the pageIOs we need to store the data. We may need more than one.
-        PageIO[] pageIos = fetchPageIOs( bufferSize );
+        PageIO[] pageIos = getFreePageIOs( bufferSize );
 
-        // Now store the data in the pages.
-        //storeData( pageIos, btreeNameBytes, keySerializerBytes, valueSerializerBytes );
+        // Now store the BTree data in the pages :
+        // - the BTree name
+        // - the keySerializer FQCN
+        // - the valueSerializer FQCN
+        // - the BTree page size
+        // - the BTree revision
+        // - the BTree number of elements
+        // - The RootPage offset
+        PageIO rootPageIo = fetchNewPage();
+
+        long position = storeBytes( pageIos, 0, btreeNameBytes );                // The tree name
+            btreeNameBytes,
+            IntSerializer.serialize( keySerializerBytes.length ), // The keySerializer name
+            keySerializerBytes,
+            IntSerializer.serialize( valueSerializerBytes.length ), // The valueSerialier name
+            valueSerializerBytes,
+            IntSerializer.serialize( btree.getPageSize() ), // The BTree page size
+            LongSerializer.serialize( btree.getRevision() ), // The BTree current revision
+            LongSerializer.serialize( btree.getNbElems() ), // The nb elems in the tree
+            LongSerializer.serialize( rootPageIo.getOffset() ) );
 
         // And flush the pages to disk now
-        //flushPages( pageIos );
+        flushPages( pageIos );
+        flushPages( rootPageIo );
+    }
+
+
+    private void flushPages( PageIO... pageIos ) throws IOException
+    {
+        for ( PageIO pageIo : pageIos )
+        {
+            PAGE_BUFFER.put( pageIo.getData() );
+            PAGE_BUFFER.position( 0 );
+
+            if ( fileChannel.size() <= ( pageIo.getOffset() + pageSize ) )
+            {
+                fileChannel.write( PAGE_BUFFER, pageIo.getOffset() );
+            }
+            else
+            {
+                // This is a page we have to add to the file
+                fileChannel.write( PAGE_BUFFER, fileChannel.size() );
+            }
+        }
+    }
+
+
+    /**
+     * Compute the page in which we will store data given an offset, when 
+     * we have a list of pages.
+     * 
+     * @param offset The position in the data
+     * @return The page number in which the offset will start
+     */
+    private int computePageNb( long offset )
+    {
+        long pageNb = 0;
+
+        offset -= pageSize - LINK_SIZE - PAGE_SIZE;
+
+        if ( offset < 0 )
+        {
+            return ( int ) pageNb;
+        }
+
+        pageNb = 1 + offset / ( pageSize - LINK_SIZE );
+
+        return ( int ) pageNb;
+    }
+
+
+    private long storeBytes( PageIO[] pageIos, long position, byte[] bytes )
+    {
+        if ( bytes != null )
+        {
+            int pageNb = computePageNb( position );
+            int currentNb = 0;
+
+            ByteBuffer pageData = pageIos[currentNb].getData();
+            int currentPos = LINK_SIZE + DATA_SIZE;
+
+            int remaining = pageData.capacity() - currentPos;
+
+            // First write the bytes length
+            if ( remaining < 4 )
+            {
+                // We  copy the serialized length on two ages
+                byte[] lengthBytes = IntSerializer.serialize( bytes.length );
+                pageData.put( lengthBytes, currentPos, remaining );
+                currentNb++;
+                pageData = pageIos[pageNb].getData();
+                currentPos = LINK_SIZE;
+                pageData.put( lengthBytes, currentPos, 4 - remaining );
+                currentPos += 4 - remaining;
+            }
+            else
+            {
+                // Store the bytes length first
+                pageData.putInt( currentPos, bytes.length );
+                currentPos += 4;
+            }
+
+            // Now deal with the bytes themselves
+            if ( bytes.length > remaining )
+            {
+                int bytesWritten = 0;
+
+                while ( bytesWritten < bytes.length )
+                {
+                    System.arraycopy( bytes, 0, pageData, currentPos, remaining );
+                    currentPos = LINK_SIZE;
+                    pageNb++;
+                    pageData = pageIos[pageNb].getData();
+                    bytesWritten += remaining;
+                    remaining = pageData.capacity() - LINK_SIZE;
+                }
+            }
+            else
+            {
+                System.arraycopy( bytes, 0, pageData, currentPos, bytes.length );
+                currentPos += bytes.length;
+            }
+        }
+
+        return position;
+    }
+
+
+    private void storeData1( PageIO[] pageIos, ByteBuffer... byteArrays )
+    {
+        if ( byteArrays != null )
+        {
+            int pageNb = 0;
+            ByteBuffer pageData = pageIos[0].getData();
+            int currentPos = LINK_SIZE + DATA_SIZE;
+
+            for ( byte[] bytes : byteArrays )
+            {
+                int remaining = pageData.capacity() - currentPos;
+
+                if ( bytes.length > remaining )
+                {
+                    int bytesWritten = 0;
+
+                    while ( bytesWritten < bytes.length )
+                    {
+                        System.arraycopy( bytes, 0, pageData, currentPos, remaining );
+                        currentPos = LINK_SIZE;
+                        pageNb++;
+                        pageData = pageIos[pageNb].getData();
+                        bytesWritten += remaining;
+                        remaining = pageData.capacity() - LINK_SIZE;
+                    }
+                }
+                else
+                {
+                    System.arraycopy( bytes, 0, pageData, currentPos, bytes.length );
+                    currentPos += bytes.length;
+                }
+            }
+        }
     }
 
 
@@ -303,7 +484,7 @@ public class RecordManager
      * @param dataSize The data size
      * @return An array of pages, enough to store the full data
      */
-    private PageIO[] fetchPageIOs( int dataSize ) throws IOException
+    private PageIO[] getFreePageIOs( int dataSize ) throws IOException
     {
         // Compute the number of pages needed.
         // Considering that each page coan contain PageSize bytes,
@@ -329,9 +510,21 @@ public class RecordManager
 
         PageIO[] pageIOs = new PageIO[nbNeededPages];
 
-        for ( int i = 0; i < nbNeededPages; i++ )
+        // The first page : set the size
+        pageIOs[0] = fetchNewPage();
+        pageIOs[0].setSize( dataSize );
+        long offset = pageIOs[0].getOffset() + pageSize;
+
+        for ( int i = 1; i < nbNeededPages; i++ )
         {
             pageIOs[i] = fetchNewPage();
+
+            // Create the link
+            pageIOs[i - 1].setNextPage( pageIOs[i].getOffset() );
+
+            // Update the offset
+            pageIOs[i].setOffset( offset );
+            offset += pageSize;
         }
 
         return pageIOs;
@@ -339,10 +532,12 @@ public class RecordManager
 
 
     /**
-     * Return a new Page 
-     * @return
+     * Return a new Page. We take one of the existing free page, or we create
+     * a new page at the end of the file.
+     * 
+     * @return The fetched PageIO
      */
-    private PageIO fetchNewPage() throws IOException
+    private synchronized PageIO fetchNewPage() throws IOException
     {
         if ( firstFreePage == NO_PAGE )
         {
@@ -351,18 +546,54 @@ public class RecordManager
             long offset = fileChannel.size();
             PageIO newPage = new PageIO( offset );
 
-            byte[] data = new byte[pageSize];
+            ByteBuffer data = ByteBuffer.allocateDirect( pageSize );
 
             newPage.setData( data );
             newPage.setNextPage( NO_PAGE );
             newPage.setSize( -1 );
+
+            return newPage;
         }
         else
         {
             // We have some existing free page. Fetch one from there.
-        }
+            PageIO pageIo = fetchPage( firstFreePage );
 
-        return null;
+            // Point to the next free page
+            firstFreePage = pageIo.getNextPage();
+
+            return pageIo;
+        }
+    }
+
+
+    /**
+     * fetch a page from disk, knowing its position in the file.
+     * 
+     * @param offset The position in the file
+     * @return The found page
+     */
+    private PageIO fetchPage( long offset ) throws IOException, EndOfFileExceededException
+    {
+        if ( fileChannel.size() <= offset + pageSize )
+        {
+            // Error : we are past the end of the file
+            throw new EndOfFileExceededException( "We are fetching a page on " + offset +
+                " when the file's size is " + fileChannel.size() );
+        }
+        else
+        {
+            // Read the page
+            fileChannel.position( offset );
+
+            ByteBuffer data = ByteBuffer.allocate( pageSize );
+            fileChannel.read( data );
+
+            PageIO readPage = new PageIO( offset );
+            readPage.setData( data );
+
+            return readPage;
+        }
     }
 
 
