@@ -20,6 +20,11 @@
 package org.apache.mavibot.btree.store;
 
 
+import java.nio.ByteBuffer;
+
+import org.apache.mavinot.btree.utils.Strings;
+
+
 /**
  * A structure containing a Page on disk. It's a byte[PageSize] plus a few informations like
  * the page offset on disk and a link to the next page.</br>
@@ -53,13 +58,13 @@ package org.apache.mavibot.btree.store;
 public class PageIO
 {
     /** The contain data */
-    private byte[] data;
+    private ByteBuffer data;
 
     /** A pointer to the next pageIO */
     private long nextPage;
 
     /** The offset on disk */
-    private long size;
+    private int size;
 
     /** The position of the page on disk */
     private long offset;
@@ -90,7 +95,7 @@ public class PageIO
     /**
      * @return the data
      */
-    public byte[] getData()
+    public ByteBuffer getData()
     {
         return data;
     }
@@ -99,7 +104,7 @@ public class PageIO
     /**
      * @param data the data to set
      */
-    public void setData( byte[] data )
+    public void setData( ByteBuffer data )
     {
         this.data = data;
     }
@@ -112,14 +117,7 @@ public class PageIO
     public long getNextPage()
     {
         // read the nextPage from the PageIO
-        nextPage = ( ( long ) data[0] << 56 ) +
-            ( ( data[1] & 0xFFL ) << 48 ) +
-            ( ( data[2] & 0xFFL ) << 40 ) +
-            ( ( data[3] & 0xFFL ) << 32 ) +
-            ( ( data[4] & 0xFFL ) << 24 ) +
-            ( ( data[5] & 0xFFL ) << 16 ) +
-            ( ( data[6] & 0xFFL ) << 8 ) +
-            ( data[7] & 0xFFL );
+        nextPage = data.getLong( 0 );
 
         return nextPage;
     }
@@ -132,14 +130,7 @@ public class PageIO
     {
         this.nextPage = nextPage;
 
-        data[0] = ( byte ) ( nextPage >>> 56 );
-        data[1] = ( byte ) ( nextPage >>> 48 );
-        data[2] = ( byte ) ( nextPage >>> 40 );
-        data[3] = ( byte ) ( nextPage >>> 32 );
-        data[4] = ( byte ) ( nextPage >>> 24 );
-        data[5] = ( byte ) ( nextPage >>> 16 );
-        data[6] = ( byte ) ( nextPage >>> 8 );
-        data[7] = ( byte ) ( nextPage );
+        data.putLong( 0, nextPage );
     }
 
 
@@ -148,10 +139,7 @@ public class PageIO
      */
     public long getSize()
     {
-        size = ( data[8] << 24 ) +
-            ( ( data[9] & 0xFF ) << 16 ) +
-            ( ( data[10] & 0xFF ) << 8 ) +
-            ( data[11] & 0xFF );
+        size = data.getInt( 8 );
 
         return size;
     }
@@ -160,12 +148,9 @@ public class PageIO
     /**
      * @param size the size to set
      */
-    public void setSize( long size )
+    public void setSize( int size )
     {
-        data[8] = ( byte ) ( size >>> 24 );
-        data[9] = ( byte ) ( size >>> 16 );
-        data[10] = ( byte ) ( size >>> 8 );
-        data[11] = ( byte ) ( size );
+        data.putInt( 8, size );
 
         this.size = size;
     }
@@ -186,5 +171,51 @@ public class PageIO
     public void setOffset( long offset )
     {
         this.offset = offset;
+    }
+
+
+    /**
+     * @see Object#toString()
+     */
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append( "PageIO[offset:" ).append( offset );
+
+        if ( size != -1 )
+        {
+            sb.append( ", size:" ).append( size );
+        }
+
+        if ( nextPage != -1L )
+        {
+            sb.append( ", next:" ).append( nextPage );
+        }
+
+        sb.append( "]" );
+
+        int start = 8;
+
+        if ( size != -1 )
+        {
+            start += 4;
+        }
+
+        byte[] array = data.array();
+        for ( int i = start; i < array.length; i++ )
+        {
+            if ( ( ( i - start ) % 16 ) == 0 )
+            {
+                sb.append( "\n    " );
+            }
+
+            sb.append( Strings.dumpByte( array[i] ) ).append( " " );
+        }
+        {
+
+        }
+
+        return sb.toString();
     }
 }
