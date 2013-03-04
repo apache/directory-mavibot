@@ -36,6 +36,9 @@ import org.junit.Test;
  */
 public class storeBytesTest
 {
+    /**
+     * Test the storeBytes( int ) method
+     */
     @Test
     public void testInjectInt() throws Exception
     {
@@ -122,6 +125,9 @@ public class storeBytesTest
     }
 
 
+    /**
+     * Test the storeBytes( long ) method
+     */
     @Test
     public void testInjectLong() throws Exception
     {
@@ -293,5 +299,53 @@ public class storeBytesTest
         assertEquals( ( byte ) 0xAB, pageIos[1].getData().get( pos++ ) );
         assertEquals( ( byte ) 0xCD, pageIos[1].getData().get( pos++ ) );
         assertEquals( ( byte ) 0xEF, pageIos[1].getData().get( pos++ ) );
+    }
+
+
+    /**
+     * Test the storeBytes( bytes ) method
+     */
+    @Test
+    public void testInjectBytes() throws Exception
+    {
+        File tempFile = File.createTempFile( "mavibot", ".db" );
+        String tempFileName = tempFile.getAbsolutePath();
+        tempFile.deleteOnExit();
+
+        // We use smaller pages
+        RecordManager recordManager = new RecordManager( tempFileName, 32 );
+        Method method = RecordManager.class.getDeclaredMethod( "storeBytes", PageIO[].class, long.class, byte[].class );
+        method.setAccessible( true );
+
+        // Allocate some Pages
+        PageIO[] pageIos = new PageIO[4];
+        pageIos[0] = new PageIO();
+        pageIos[0].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+        pageIos[1] = new PageIO();
+        pageIos[1].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+        pageIos[2] = new PageIO();
+        pageIos[2].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+        pageIos[3] = new PageIO();
+        pageIos[3].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+
+        // We start with 4 bytes
+        byte[] bytes = new byte[]
+            { 0x01, 0x23, 0x45, 0x67 };
+
+        // Set the bytes at the beginning
+        long position = ( Long ) method.invoke( recordManager, pageIos, 0L, bytes );
+
+        assertEquals( 8, position );
+        int pos = 12;
+        // The byte length
+        assertEquals( 0x00, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x00, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x00, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x04, pageIos[0].getData().get( pos++ ) );
+        // The data
+        assertEquals( 0x01, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x23, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x45, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x67, pageIos[0].getData().get( pos++ ) );
     }
 }
