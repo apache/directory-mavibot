@@ -1393,6 +1393,24 @@ public class BTree<K, V>
     }
 
 
+    /** 
+     * @return The current BTree revision
+     */
+    public long getRevision()
+    {
+        return revision.get();
+    }
+
+
+    /** 
+     * @return The current number of elements in the BTree
+     */
+    public long getNbElems()
+    {
+        return nbElems.get();
+    }
+
+
     /**
      * @see Object#toString()
      */
