@@ -37,7 +37,7 @@ import org.junit.Test;
 public class storeBytesTest
 {
     @Test
-    public void testInjectIntoOnePage() throws Exception
+    public void testInjectInt() throws Exception
     {
         File tempFile = File.createTempFile( "mavibot", ".db" );
         String tempFileName = tempFile.getAbsolutePath();
@@ -58,57 +58,240 @@ public class storeBytesTest
         long position = ( Long ) method.invoke( recordManager, pageIos, 0, 0x12345678 );
 
         assertEquals( 4, position );
-        assertEquals( 0x12, pageIos[0].getData().get( 12 ) );
-        assertEquals( 0x34, pageIos[0].getData().get( 13 ) );
-        assertEquals( 0x56, pageIos[0].getData().get( 14 ) );
-        assertEquals( 0x78, pageIos[0].getData().get( 15 ) );
+        int pos = 12;
+        assertEquals( 0x12, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x34, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x56, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x78, pageIos[0].getData().get( pos++ ) );
 
         // Set the int at the end of the first page
         position = ( Long ) method.invoke( recordManager, pageIos, 4080, 0x12345678 );
 
         assertEquals( 4084, position );
-        assertEquals( 0x12, pageIos[0].getData().get( 4092 ) );
-        assertEquals( 0x34, pageIos[0].getData().get( 4093 ) );
-        assertEquals( 0x56, pageIos[0].getData().get( 4094 ) );
-        assertEquals( 0x78, pageIos[0].getData().get( 4095 ) );
+        pos = 4092;
+        assertEquals( 0x12, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x34, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x56, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x78, pageIos[0].getData().get( pos++ ) );
 
         // Set the int at the end of the first page and overlapping on the second page
         // 1 byte overlapping
         position = ( Long ) method.invoke( recordManager, pageIos, 4081, 0x12345678 );
 
         assertEquals( 4085, position );
-        assertEquals( 0x12, pageIos[0].getData().get( 4093 ) );
-        assertEquals( 0x34, pageIos[0].getData().get( 4094 ) );
-        assertEquals( 0x56, pageIos[0].getData().get( 4095 ) );
-        assertEquals( 0x78, pageIos[1].getData().get( 8 ) );
+        pos = 4093;
+        assertEquals( 0x12, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x34, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x56, pageIos[0].getData().get( pos++ ) );
+        pos = 8;
+        assertEquals( 0x78, pageIos[1].getData().get( pos++ ) );
 
         // Set the int at the end of the first page and overlapping on the second page
         // 2 bytes overlapping
         position = ( Long ) method.invoke( recordManager, pageIos, 4082, 0x12345678 );
 
         assertEquals( 4086, position );
-        assertEquals( 0x12, pageIos[0].getData().get( 4094 ) );
-        assertEquals( 0x34, pageIos[0].getData().get( 4095 ) );
-        assertEquals( 0x56, pageIos[1].getData().get( 8 ) );
-        assertEquals( 0x78, pageIos[1].getData().get( 9 ) );
+        pos = 4094;
+        assertEquals( 0x12, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x34, pageIos[0].getData().get( pos++ ) );
+        pos = 8;
+        assertEquals( 0x56, pageIos[1].getData().get( pos++ ) );
+        assertEquals( 0x78, pageIos[1].getData().get( pos++ ) );
 
         // Set the int at the end of the first page and overlapping on the second page
         // 3 bytes overlapping
         position = ( Long ) method.invoke( recordManager, pageIos, 4083, 0x12345678 );
 
         assertEquals( 4087, position );
-        assertEquals( 0x12, pageIos[0].getData().get( 4095 ) );
-        assertEquals( 0x34, pageIos[1].getData().get( 8 ) );
-        assertEquals( 0x56, pageIos[1].getData().get( 9 ) );
-        assertEquals( 0x78, pageIos[1].getData().get( 10 ) );
+        pos = 4095;
+        assertEquals( 0x12, pageIos[0].getData().get( pos++ ) );
+        pos = 8;
+        assertEquals( 0x34, pageIos[1].getData().get( pos++ ) );
+        assertEquals( 0x56, pageIos[1].getData().get( pos++ ) );
+        assertEquals( 0x78, pageIos[1].getData().get( pos++ ) );
 
         // Set the int at the beginning of the second page
         position = ( Long ) method.invoke( recordManager, pageIos, 4084, 0x12345678 );
 
         assertEquals( 4088, position );
-        assertEquals( 0x12, pageIos[1].getData().get( 8 ) );
-        assertEquals( 0x34, pageIos[1].getData().get( 9 ) );
-        assertEquals( 0x56, pageIos[1].getData().get( 10 ) );
-        assertEquals( 0x78, pageIos[1].getData().get( 11 ) );
+        pos = 8;
+        assertEquals( 0x12, pageIos[1].getData().get( pos++ ) );
+        assertEquals( 0x34, pageIos[1].getData().get( pos++ ) );
+        assertEquals( 0x56, pageIos[1].getData().get( pos++ ) );
+        assertEquals( 0x78, pageIos[1].getData().get( pos++ ) );
+    }
+
+
+    @Test
+    public void testInjectLong() throws Exception
+    {
+        File tempFile = File.createTempFile( "mavibot", ".db" );
+        String tempFileName = tempFile.getAbsolutePath();
+        tempFile.deleteOnExit();
+
+        RecordManager recordManager = new RecordManager( tempFileName );
+        Method method = RecordManager.class.getDeclaredMethod( "storeBytes", PageIO[].class, long.class, long.class );
+        method.setAccessible( true );
+
+        // Allocate some Pages
+        PageIO[] pageIos = new PageIO[2];
+        pageIos[0] = new PageIO();
+        pageIos[0].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+        pageIos[1] = new PageIO();
+        pageIos[1].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+
+        // Set the long at the beginning
+        long position = ( Long ) method.invoke( recordManager, pageIos, 0, 0x0123456789ABCDEFL );
+
+        assertEquals( 8, position );
+        int pos = 12;
+        assertEquals( 0x01, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x23, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x45, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x67, pageIos[0].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0x89, pageIos[0].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xAB, pageIos[0].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xCD, pageIos[0].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xEF, pageIos[0].getData().get( pos++ ) );
+
+        // Set the long at the end of the first page
+        position = ( Long ) method.invoke( recordManager, pageIos, 4076, 0x0123456789ABCDEFL );
+
+        assertEquals( 4084, position );
+        pos = 4088;
+        assertEquals( 0x01, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x23, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x45, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x67, pageIos[0].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0x89, pageIos[0].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xAB, pageIos[0].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xCD, pageIos[0].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xEF, pageIos[0].getData().get( pos++ ) );
+
+        // Set the long at the end of the first page and overlapping on the second page
+        // 1 byte overlapping
+        position = ( Long ) method.invoke( recordManager, pageIos, 4077, 0x0123456789ABCDEFL );
+
+        assertEquals( 4085, position );
+        pos = 4089;
+        assertEquals( 0x01, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x23, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x45, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x67, pageIos[0].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0x89, pageIos[0].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xAB, pageIos[0].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xCD, pageIos[0].getData().get( pos++ ) );
+        pos = 8;
+        assertEquals( ( byte ) 0xEF, pageIos[1].getData().get( pos++ ) );
+
+        // Set the long at the end of the first page and overlapping on the second page
+        // 2 bytes overlapping
+        position = ( Long ) method.invoke( recordManager, pageIos, 4078, 0x0123456789ABCDEFL );
+
+        assertEquals( 4086, position );
+        pos = 4090;
+        assertEquals( 0x01, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x23, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x45, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x67, pageIos[0].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0x89, pageIos[0].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xAB, pageIos[0].getData().get( pos++ ) );
+        pos = 8;
+        assertEquals( ( byte ) 0xCD, pageIos[1].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xEF, pageIos[1].getData().get( pos++ ) );
+
+        // Set the long at the end of the first page and overlapping on the second page
+        // 3 bytes overlapping
+        position = ( Long ) method.invoke( recordManager, pageIos, 4079, 0x0123456789ABCDEFL );
+
+        assertEquals( 4087, position );
+        pos = 4091;
+        assertEquals( 0x01, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x23, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x45, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x67, pageIos[0].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0x89, pageIos[0].getData().get( pos++ ) );
+        pos = 8;
+        assertEquals( ( byte ) 0xAB, pageIos[1].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xCD, pageIos[1].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xEF, pageIos[1].getData().get( pos++ ) );
+
+        // Set the long at the end of the first page and overlapping on the second page
+        // 4 byte overlapping
+        position = ( Long ) method.invoke( recordManager, pageIos, 4080, 0x0123456789ABCDEFL );
+
+        assertEquals( 4088, position );
+        pos = 4092;
+        assertEquals( 0x01, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x23, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x45, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x67, pageIos[0].getData().get( pos++ ) );
+        pos = 8;
+        assertEquals( ( byte ) 0x89, pageIos[1].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xAB, pageIos[1].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xCD, pageIos[1].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xEF, pageIos[1].getData().get( pos++ ) );
+
+        // Set the long at the end of the first page and overlapping on the second page
+        // 5 bytes overlapping
+        position = ( Long ) method.invoke( recordManager, pageIos, 4081, 0x0123456789ABCDEFL );
+
+        assertEquals( 4089, position );
+        pos = 4093;
+        assertEquals( 0x01, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x23, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x45, pageIos[0].getData().get( pos++ ) );
+        pos = 8;
+        assertEquals( 0x67, pageIos[1].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0x89, pageIos[1].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xAB, pageIos[1].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xCD, pageIos[1].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xEF, pageIos[1].getData().get( pos++ ) );
+
+        // Set the long at the end of the first page and overlapping on the second page
+        // 6 bytes overlapping
+        position = ( Long ) method.invoke( recordManager, pageIos, 4082, 0x0123456789ABCDEFL );
+
+        assertEquals( 4090, position );
+        pos = 4094;
+        assertEquals( 0x01, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x23, pageIos[0].getData().get( pos++ ) );
+        pos = 8;
+        assertEquals( 0x45, pageIos[1].getData().get( pos++ ) );
+        assertEquals( 0x67, pageIos[1].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0x89, pageIos[1].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xAB, pageIos[1].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xCD, pageIos[1].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xEF, pageIos[1].getData().get( pos++ ) );
+
+        // Set the long at the end of the first page and overlapping on the second page
+        // 7 bytes overlapping
+        position = ( Long ) method.invoke( recordManager, pageIos, 4083, 0x0123456789ABCDEFL );
+
+        assertEquals( 4091, position );
+        pos = 4095;
+        assertEquals( 0x01, pageIos[0].getData().get( pos++ ) );
+        pos = 8;
+        assertEquals( 0x23, pageIos[1].getData().get( pos++ ) );
+        assertEquals( 0x45, pageIos[1].getData().get( pos++ ) );
+        assertEquals( 0x67, pageIos[1].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0x89, pageIos[1].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xAB, pageIos[1].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xCD, pageIos[1].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xEF, pageIos[1].getData().get( pos++ ) );
+
+        // Set the long at the beginning of the second page
+        position = ( Long ) method.invoke( recordManager, pageIos, 4084, 0x0123456789ABCDEFL );
+
+        assertEquals( 4092, position );
+        pos = 8;
+        assertEquals( 0x01, pageIos[1].getData().get( pos++ ) );
+        assertEquals( 0x23, pageIos[1].getData().get( pos++ ) );
+        assertEquals( 0x45, pageIos[1].getData().get( pos++ ) );
+        assertEquals( 0x67, pageIos[1].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0x89, pageIos[1].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xAB, pageIos[1].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xCD, pageIos[1].getData().get( pos++ ) );
+        assertEquals( ( byte ) 0xEF, pageIos[1].getData().get( pos++ ) );
     }
 }

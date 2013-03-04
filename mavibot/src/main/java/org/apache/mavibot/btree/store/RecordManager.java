@@ -217,6 +217,7 @@ public class RecordManager
     {
         // Create a new Header
         // The page size
+        HEADER_BUFFER.clear();
         HEADER_BUFFER.putInt( pageSize );
 
         // The number of managed BTree (currently we have only one : the discardedPage BTree
@@ -540,7 +541,7 @@ public class RecordManager
         int pageNb = computePageNb( position );
 
         // Compute the position in the current page
-        int pagePos = ( int ) ( position - pageNb * pageSize - ( pageNb + 1 ) * 8 - 4 );
+        int pagePos = ( int ) ( position + ( pageNb + 1 ) * 8 + 4 ) - pageNb * pageSize;
 
         // Get back the buffer in this page
         ByteBuffer pageData = pageIos[pageNb].getData();
@@ -555,19 +556,19 @@ public class RecordManager
             switch ( remaining )
             {
                 case 7:
-                    pageData.put( pagePos + 2, ( byte ) ( value >>> 8 ) );
+                    pageData.put( pagePos + 6, ( byte ) ( value >>> 8 ) );
                     // Fallthrough !!!
 
                 case 6:
-                    pageData.put( pagePos + 2, ( byte ) ( value >>> 16 ) );
+                    pageData.put( pagePos + 5, ( byte ) ( value >>> 16 ) );
                     // Fallthrough !!!
 
                 case 5:
-                    pageData.put( pagePos + 2, ( byte ) ( value >>> 24 ) );
+                    pageData.put( pagePos + 4, ( byte ) ( value >>> 24 ) );
                     // Fallthrough !!!
 
                 case 4:
-                    pageData.put( pagePos + 2, ( byte ) ( value >>> 32 ) );
+                    pageData.put( pagePos + 3, ( byte ) ( value >>> 32 ) );
                     // Fallthrough !!!
 
                 case 3:
