@@ -397,53 +397,55 @@ public class RecordManager
     {
         if ( bytes != null )
         {
+            // Write the bytes length
+            position = storeBytes( pageIos, position, bytes.length );
+
+            // Compute the page in which we will store the data given the 
+            // current position
             int pageNb = computePageNb( position );
-            int currentNb = 0;
 
-            ByteBuffer pageData = pageIos[currentNb].getData();
-            int currentPos = LINK_SIZE + DATA_SIZE;
+            // Get back the buffer in this page
+            ByteBuffer pageData = pageIos[pageNb].getData();
 
-            int remaining = pageData.capacity() - currentPos;
+            // Compute the position in the current page
+            int pagePos = ( int ) ( position + ( pageNb + 1 ) * 8 + 4 ) - pageNb * pageSize;
 
-            // First write the bytes length
-            if ( remaining < 4 )
+            // Compute the remaining size in the page
+            int remaining = pageData.capacity() - pagePos;
+            int nbStored = bytes.length;
+
+            // And now, write the bytes until we have none
+            while ( nbStored > 0 )
             {
-                // We  copy the serialized length on two ages
-                byte[] lengthBytes = IntSerializer.serialize( bytes.length );
-                pageData.put( lengthBytes, currentPos, remaining );
-                currentNb++;
-                pageData = pageIos[pageNb].getData();
-                currentPos = LINK_SIZE;
-                pageData.put( lengthBytes, currentPos, 4 - remaining );
-                currentPos += 4 - remaining;
-            }
-            else
-            {
-                // Store the bytes length first
-                pageData.putInt( currentPos, bytes.length );
-                currentPos += 4;
-            }
-
-            // Now deal with the bytes themselves
-            if ( bytes.length > remaining )
-            {
-                int bytesWritten = 0;
-
-                while ( bytesWritten < bytes.length )
+                if ( remaining > nbStored )
                 {
-                    System.arraycopy( bytes, 0, pageData, currentPos, remaining );
-                    currentPos = LINK_SIZE;
+                    pageData.mark();
+                    pageData.position( pagePos );
+                    pageData.put( bytes, 0, nbStored );
+                    pageData.reset();
+                    nbStored = 0;
+                }
+                else
+                {
+                    pageData.mark();
+                    pageData.position( pagePos );
+                    pageData.put( bytes, 0, remaining );
+                    pageData.reset();
                     pageNb++;
                     pageData = pageIos[pageNb].getData();
-                    bytesWritten += remaining;
-                    remaining = pageData.capacity() - LINK_SIZE;
+                    pagePos = LINK_SIZE;
+                    remaining = pageData.capacity() - pagePos;
+                    nbStored -= remaining;
                 }
             }
-            else
-            {
-                System.arraycopy( bytes, 0, pageData, currentPos, bytes.length );
-                currentPos += bytes.length;
-            }
+
+            // We are done
+            position += bytes.length;
+        }
+        else
+        {
+            // No bytes : write 0 and return
+            position = storeBytes( pageIos, position, 0 );
         }
 
         return position;
