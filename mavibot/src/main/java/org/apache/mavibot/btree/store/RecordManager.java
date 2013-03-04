@@ -323,7 +323,7 @@ public class RecordManager
         // - The RootPage offset
         PageIO rootPageIo = fetchNewPage();
 
-        long position = storeBytes( pageIos, 0, btreeNameBytes ); // The tree name
+        //long position = storeBytes( pageIos, 0, btreeNameBytes ); // The tree name
         /*btreeNameBytes,
         IntSerializer.serialize( keySerializerBytes.length ), // The keySerializer name
         keySerializerBytes,
@@ -336,8 +336,8 @@ public class RecordManager
         */
 
         // And flush the pages to disk now
-        flushPages( pageIos );
-        flushPages( rootPageIo );
+        //flushPages( pageIos );
+        //flushPages( rootPageIo );
     }
 
 
@@ -385,6 +385,13 @@ public class RecordManager
     }
 
 
+    /**
+     * 
+     * @param pageIos
+     * @param position
+     * @param bytes
+     * @return
+     */
     private long storeBytes( PageIO[] pageIos, long position, byte[] bytes )
     {
         if ( bytes != null )
@@ -458,7 +465,7 @@ public class RecordManager
         int pageNb = computePageNb( position );
 
         // Compute the position in the current page
-        int pagePos = ( int ) ( position - pageNb * pageSize - ( pageNb + 1 ) * 8 - 4 );
+        int pagePos = ( int ) ( position + ( pageNb + 1 ) * 8 + 4 ) - pageNb * pageSize;
 
         // Get back the buffer in this page
         ByteBuffer pageData = pageIos[pageNb].getData();
@@ -777,6 +784,15 @@ public class RecordManager
 
             return readPage;
         }
+    }
+
+
+    /**
+     * @return the pageSize
+     */
+    public int getPageSize()
+    {
+        return pageSize;
     }
 
 
