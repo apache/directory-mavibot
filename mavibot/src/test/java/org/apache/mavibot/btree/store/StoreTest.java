@@ -34,7 +34,7 @@ import org.junit.Test;
  * 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class storeTest
+public class StoreTest
 {
     /**
      * Test the store( int ) method
