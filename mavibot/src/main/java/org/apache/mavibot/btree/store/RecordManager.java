@@ -421,7 +421,7 @@ public class RecordManager
                 {
                     pageData.mark();
                     pageData.position( pagePos );
-                    pageData.put( bytes, 0, nbStored );
+                    pageData.put( bytes, bytes.length - nbStored, nbStored );
                     pageData.reset();
                     nbStored = 0;
                 }
@@ -429,13 +429,13 @@ public class RecordManager
                 {
                     pageData.mark();
                     pageData.position( pagePos );
-                    pageData.put( bytes, 0, remaining );
+                    pageData.put( bytes, bytes.length - nbStored, remaining );
                     pageData.reset();
                     pageNb++;
                     pageData = pageIos[pageNb].getData();
                     pagePos = LINK_SIZE;
-                    remaining = pageData.capacity() - pagePos;
                     nbStored -= remaining;
+                    remaining = pageData.capacity() - pagePos;
                 }
             }
 
