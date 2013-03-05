@@ -202,7 +202,23 @@ public class PageIO
             start += 4;
         }
 
-        byte[] array = data.array();
+        byte[] array = null;
+
+        data.mark();
+        data.position( 0 );
+
+        if ( data.isDirect() )
+        {
+            array = new byte[data.capacity()];
+            data.get( array );
+        }
+        else
+        {
+            array = data.array();
+        }
+
+        data.reset();
+
         for ( int i = start; i < array.length; i++ )
         {
             if ( ( ( i - start ) % 16 ) == 0 )
