@@ -236,6 +236,11 @@ public class RecordManager
         HEADER_BUFFER.putLong( NO_PAGE );
         lastFreePage = NO_PAGE;
 
+        // Write the header on disk
+        HEADER_BUFFER.rewind();
+        fileChannel.write( HEADER_BUFFER );
+        endOfFileOffset = fileChannel.size();
+
         // Now, initialize the Discarded Page BTree, which is a in-memory BTree
         copiedPageBTree = new BTree<Integer, long[]>( "copiedPageBTree", new IntSerializer(), new LongArraySerializer() );
 
