@@ -347,5 +347,112 @@ public class storeBytesTest
         assertEquals( 0x23, pageIos[0].getData().get( pos++ ) );
         assertEquals( 0x45, pageIos[0].getData().get( pos++ ) );
         assertEquals( 0x67, pageIos[0].getData().get( pos++ ) );
+
+        // Set the bytes at the end of the first page
+        position = ( Long ) method.invoke( recordManager, pageIos, 12L, bytes );
+
+        assertEquals( 20, position );
+        pos = 24;
+        // The byte length
+        assertEquals( 0x00, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x00, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x00, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x04, pageIos[0].getData().get( pos++ ) );
+        // The data
+        assertEquals( 0x01, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x23, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x45, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x67, pageIos[0].getData().get( pos++ ) );
+
+        // Set A full page of bytes in the first page 
+        bytes = new byte[16];
+
+        for ( int i = 0; i < 16; i++ )
+        {
+            bytes[i] = ( byte ) ( i + 1 );
+        }
+
+        position = ( Long ) method.invoke( recordManager, pageIos, 0L, bytes );
+
+        assertEquals( 20, position );
+        pos = 12;
+        // The byte length
+        assertEquals( 0x00, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x00, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x00, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x10, pageIos[0].getData().get( pos++ ) );
+
+        // The data
+        for ( int i = 0; i < 16; i++ )
+        {
+            assertEquals( ( byte ) ( i + 1 ), pageIos[0].getData().get( pos++ ) );
+        }
+
+        // Write the bytes over 2 pages
+        position = ( Long ) method.invoke( recordManager, pageIos, 15L, bytes );
+
+        assertEquals( 35, position );
+        pos = 27;
+        // The byte length
+        assertEquals( 0x00, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x00, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x00, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x10, pageIos[0].getData().get( pos++ ) );
+
+        // The data in the first page
+        assertEquals( 1, pageIos[0].getData().get( pos++ ) );
+
+        // and in the second page
+        pos = 8;
+
+        for ( int i = 0; i < 15; i++ )
+        {
+            assertEquals( ( byte ) ( i + 2 ), pageIos[1].getData().get( pos++ ) );
+        }
+
+        // Write the bytes over 4 pages
+        bytes = new byte[80];
+
+        for ( int i = 0; i < 80; i++ )
+        {
+            bytes[i] = ( byte ) ( i + 1 );
+        }
+
+        position = ( Long ) method.invoke( recordManager, pageIos, 2L, bytes );
+
+        assertEquals( 86, position );
+        pos = 14;
+        // The byte length
+        assertEquals( 0x00, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x00, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x00, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x50, pageIos[0].getData().get( pos++ ) );
+
+        // The data in the first page
+        for ( int i = 0; i < 14; i++ )
+        {
+            assertEquals( ( byte ) ( i + 1 ), pageIos[0].getData().get( pos++ ) );
+        }
+
+        // The data in the second page
+        pos = 8;
+        for ( int i = 14; i < 38; i++ )
+        {
+            assertEquals( ( byte ) ( i + 1 ), pageIos[1].getData().get( pos++ ) );
+        }
+
+        // The data in the third page
+        pos = 8;
+        for ( int i = 38; i < 62; i++ )
+        {
+            assertEquals( ( byte ) ( i + 1 ), pageIos[2].getData().get( pos++ ) );
+        }
+
+        // The data in the forth page
+        pos = 8;
+        for ( int i = 62; i < 80; i++ )
+        {
+            assertEquals( ( byte ) ( i + 1 ), pageIos[3].getData().get( pos++ ) );
+        }
     }
 }
