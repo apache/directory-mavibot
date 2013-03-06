@@ -367,7 +367,6 @@ public class RecordManager
     private long loadBTree( PageIO[] pageIos, long position, BTree<?, ?> btree )
     {
         // The tree name
-        /*
         byte[] btreeNameBytes = readBytes( pageIos, position );
 
         position += INT_SIZE;
@@ -427,17 +426,77 @@ public class RecordManager
 
         // The nb elems in the tree
         long nbElems = readLong( pageIos, position );
-        btree.setNbElems( nbElems )
+        btree.setNbElems( nbElems );
         position += LONG_SIZE;
 
         // The BTree rootPage offset
         long rootPageOffset = readLong( pageIos, position );
-        
-        List<PageIO> rootPage =  readPages( rootPageOffset );
+
+        //List<PageIO> rootPage = readPages( rootPageOffset );
         position += LONG_SIZE;
-        */
 
         return position;
+    }
+
+
+    /**
+     * Read a byte[] from pages.
+     * @param pageIos The pages we want to read the byte[] from
+     * @param position The position in the data stored in those pages
+     * @return The byte[] we have read
+     */
+    private byte[] readBytes( PageIO[] pageIos, long position )
+    {
+        // Read the byte[] length first
+        int length = readInt( pageIos, position );
+        position += INT_SIZE;
+
+        // Compute the page in which we will store the data given the 
+        // current position
+        int pageNb = computePageNb( position );
+
+        // Compute the position in the current page
+        int pagePos = ( int ) ( position + ( pageNb + 1 ) * 8 + 4 ) - pageNb * pageSize;
+
+        ByteBuffer pageData = pageIos[pageNb].getData();
+        int remaining = pageData.capacity() - pagePos;
+
+        if ( length == 0 )
+        {
+            // No bytes to read : return null;
+            return null;
+        }
+        else
+        {
+            byte[] bytes = new byte[length];
+            int bytesPos = 0;
+
+            while ( length > 0 )
+            {
+                if ( length <= remaining )
+                {
+                    pageData.mark();
+                    pageData.position( pagePos );
+                    pageData.get( bytes, bytesPos, length );
+                    pageData.reset();
+
+                    return bytes;
+                }
+
+                pageData.mark();
+                pageData.position( pagePos );
+                pageData.get( bytes, bytesPos, remaining );
+                pageData.reset();
+                pageNb++;
+                pagePos = LINK_SIZE;
+                bytesPos += remaining;
+                pageData = pageIos[pageNb].getData();
+                length -= remaining;
+                remaining = pageData.capacity() - pagePos;
+            }
+
+            return bytes;
+        }
     }
 
 

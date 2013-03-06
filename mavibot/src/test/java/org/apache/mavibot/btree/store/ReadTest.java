@@ -21,6 +21,7 @@ package org.apache.mavibot.btree.store;
 
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import java.io.File;
 import java.lang.reflect.Method;
@@ -219,5 +220,133 @@ public class ReadTest
 
         // Read it back
         readValue = ( Long ) readLongMethod.invoke( recordManager, pageIos, 20 );
+    }
+
+
+    /**
+     * Test the readBytes() method
+     */
+    @Test
+    public void testReadBytes() throws Exception
+    {
+        File tempFile = File.createTempFile( "mavibot", ".db" );
+        String tempFileName = tempFile.getAbsolutePath();
+        tempFile.deleteOnExit();
+
+        // We use smaller pages
+        RecordManager recordManager = new RecordManager( tempFileName, 32 );
+        Method storeMethod = RecordManager.class.getDeclaredMethod( "store", PageIO[].class, long.class, byte[].class );
+        Method readBytesMethod = RecordManager.class.getDeclaredMethod( "readBytes", PageIO[].class, long.class );
+        storeMethod.setAccessible( true );
+        readBytesMethod.setAccessible( true );
+
+        // Allocate some Pages
+        PageIO[] pageIos = new PageIO[4];
+        pageIos[0] = new PageIO();
+        pageIos[0].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+        pageIos[1] = new PageIO();
+        pageIos[1].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+        pageIos[2] = new PageIO();
+        pageIos[2].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+        pageIos[3] = new PageIO();
+        pageIos[3].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+
+        // We start with 4 bytes
+        byte[] bytes = new byte[]
+            { 0x01, 0x23, 0x45, 0x67 };
+
+        // Set the bytes at the beginning
+        long position = ( Long ) storeMethod.invoke( recordManager, pageIos, 0L, bytes );
+
+        // Read the bytes back
+        byte[] readBytes = ( byte[] ) readBytesMethod.invoke( recordManager, pageIos, 0L );
+
+        // The byte length
+        int pos = 0;
+        assertNotNull( readBytes );
+        assertEquals( 4, readBytes.length );
+        // The data
+        assertEquals( 0x01, readBytes[pos++] );
+        assertEquals( 0x23, readBytes[pos++] );
+        assertEquals( 0x45, readBytes[pos++] );
+        assertEquals( 0x67, readBytes[pos++] );
+
+        // Set the bytes at the end of the first page
+        position = ( Long ) storeMethod.invoke( recordManager, pageIos, 12L, bytes );
+
+        // Read the bytes back
+        readBytes = ( byte[] ) readBytesMethod.invoke( recordManager, pageIos, 12L );
+
+        // The byte length
+        pos = 0;
+        assertNotNull( readBytes );
+        assertEquals( 4, readBytes.length );
+        // The data
+        assertEquals( 0x01, readBytes[pos++] );
+        assertEquals( 0x23, readBytes[pos++] );
+        assertEquals( 0x45, readBytes[pos++] );
+        assertEquals( 0x67, readBytes[pos++] );
+
+        // Set A full page of bytes in the first page 
+        bytes = new byte[16];
+
+        for ( int i = 0; i < 16; i++ )
+        {
+            bytes[i] = ( byte ) ( i + 1 );
+        }
+
+        position = ( Long ) storeMethod.invoke( recordManager, pageIos, 0L, bytes );
+
+        // Read the bytes back
+        readBytes = ( byte[] ) readBytesMethod.invoke( recordManager, pageIos, 0L );
+
+        // The byte length
+        pos = 0;
+        assertNotNull( readBytes );
+        assertEquals( 16, readBytes.length );
+        // The data
+        for ( int i = 0; i < 16; i++ )
+        {
+            assertEquals( i + 1, readBytes[pos++] );
+        }
+
+        // Write the bytes over 2 pages
+        position = ( Long ) storeMethod.invoke( recordManager, pageIos, 15L, bytes );
+
+        // Read the bytes back
+        readBytes = ( byte[] ) readBytesMethod.invoke( recordManager, pageIos, 15L );
+
+        // The byte length
+        pos = 0;
+        assertNotNull( readBytes );
+        assertEquals( 16, readBytes.length );
+        // The data
+        for ( int i = 0; i < 16; i++ )
+        {
+            assertEquals( i + 1, readBytes[pos++] );
+        }
+
+        // Write the bytes over 4 pages
+        bytes = new byte[80];
+
+        for ( int i = 0; i < 80; i++ )
+        {
+            bytes[i] = ( byte ) ( i + 1 );
+        }
+
+        position = ( Long ) storeMethod.invoke( recordManager, pageIos, 2L, bytes );
+
+        // Read the bytes back
+        readBytes = ( byte[] ) readBytesMethod.invoke( recordManager, pageIos, 2L );
+
+        // The byte length
+        pos = 0;
+        assertNotNull( readBytes );
+        assertEquals( 80, readBytes.length );
+        // The data
+        for ( int i = 0; i < 80; i++ )
+        {
+            assertEquals( i + 1, readBytes[pos++] );
+        }
     }
 }
