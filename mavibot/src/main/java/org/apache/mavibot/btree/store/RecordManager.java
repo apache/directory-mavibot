@@ -441,6 +441,12 @@ public class RecordManager
     }
 
 
+    /**
+     * Read an int from pages 
+     * @param pageIos The pages we want to read the int from
+     * @param position The position in the data stored in those pages
+     * @return The int we have read
+     */
     private int readInt( PageIO[] pageIos, long position )
     {
         // Compute the page in which we will store the data given the 
@@ -493,6 +499,102 @@ public class RecordManager
 
                 case 3:
                     value += ( pageData.get( pagePos + 3 - remaining ) & 0x00FF );
+                    break;
+            }
+        }
+
+        return value;
+    }
+
+
+    /**
+     * Read a long from pages 
+     * @param pageIos The pages we want to read the long from
+     * @param position The position in the data stored in those pages
+     * @return The long we have read
+     */
+    private long readLong( PageIO[] pageIos, long position )
+    {
+        // Compute the page in which we will store the data given the 
+        // current position
+        int pageNb = computePageNb( position );
+
+        // Compute the position in the current page
+        int pagePos = ( int ) ( position + ( pageNb + 1 ) * 8 + 4 ) - pageNb * pageSize;
+
+        ByteBuffer pageData = pageIos[pageNb].getData();
+        int remaining = pageData.capacity() - pagePos;
+        long value = 0L;
+
+        if ( remaining >= LONG_SIZE )
+        {
+            value = pageData.getLong( pagePos );
+        }
+        else
+        {
+            switch ( remaining )
+            {
+                case 7:
+                    value += ( ( ( long ) pageData.get( pagePos + 6 ) & 0x00FF ) << 8 );
+                    // Fallthrough !!!
+
+                case 6:
+                    value += ( ( ( long ) pageData.get( pagePos + 5 ) & 0x00FF ) << 16 );
+                    // Fallthrough !!!
+
+                case 5:
+                    value += ( ( ( long ) pageData.get( pagePos + 4 ) & 0x00FF ) << 24 );
+                    // Fallthrough !!!
+
+                case 4:
+                    value += ( ( ( long ) pageData.get( pagePos + 3 ) & 0x00FF ) << 32 );
+                    // Fallthrough !!!
+
+                case 3:
+                    value += ( ( ( long ) pageData.get( pagePos + 2 ) & 0x00FF ) << 40 );
+                    // Fallthrough !!!
+
+                case 2:
+                    value += ( ( ( long ) pageData.get( pagePos + 1 ) & 0x00FF ) << 48 );
+                    // Fallthrough !!!
+
+                case 1:
+                    value += ( ( long ) pageData.get( pagePos ) << 56 );
+                    break;
+            }
+
+            // Now deal with the next page
+            pageData = pageIos[pageNb + 1].getData();
+            pagePos = LINK_SIZE;
+
+            switch ( remaining )
+            {
+                case 1:
+                    value += ( ( long ) pageData.get( pagePos ) & 0x00FF ) << 48;
+                    // fallthrough !!!
+
+                case 2:
+                    value += ( ( long ) pageData.get( pagePos + 2 - remaining ) & 0x00FF ) << 40;
+                    // fallthrough !!!
+
+                case 3:
+                    value += ( ( long ) pageData.get( pagePos + 3 - remaining ) & 0x00FF ) << 32;
+                    // fallthrough !!!
+
+                case 4:
+                    value += ( ( long ) pageData.get( pagePos + 4 - remaining ) & 0x00FF ) << 24;
+                    // fallthrough !!!
+
+                case 5:
+                    value += ( ( long ) pageData.get( pagePos + 5 - remaining ) & 0x00FF ) << 16;
+                    // fallthrough !!!
+
+                case 6:
+                    value += ( ( long ) pageData.get( pagePos + 6 - remaining ) & 0x00FF ) << 8;
+                    // fallthrough !!!
+
+                case 7:
+                    value += ( ( long ) pageData.get( pagePos + 7 - remaining ) & 0x00FF );
                     break;
             }
         }
