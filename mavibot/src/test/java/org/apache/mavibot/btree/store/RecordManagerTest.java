@@ -20,6 +20,8 @@
 package org.apache.mavibot.btree.store;
 
 
+import static org.junit.Assert.assertNotNull;
+
 import java.io.File;
 import java.io.IOException;
 
@@ -41,6 +43,8 @@ public class RecordManagerTest
         tempFile.deleteOnExit();
 
         RecordManager recordManager = new RecordManager( tempFileName );
+
+        assertNotNull( recordManager );
     }
 
 }

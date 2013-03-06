@@ -311,6 +311,14 @@ public class BTree<K, V>
 
 
     /**
+     * Creates a new BTree, with no initialization. 
+     */
+    public BTree() throws IOException
+    {
+    }
+
+
+    /**
      * Creates a new in-memory BTree using the BTreeConfiguration to initialize the 
      * BTree
      * 
@@ -1402,12 +1410,30 @@ public class BTree<K, V>
     }
 
 
+    /**
+     * @param revision the revision to set
+     */
+    public void setRevision( long revision )
+    {
+        this.revision.set( revision );
+    }
+
+
     /** 
      * @return The current number of elements in the BTree
      */
     public long getNbElems()
     {
         return nbElems.get();
+    }
+
+
+    /**
+     * @param nbElems the nbElems to set
+     */
+    public void setNbElems( long nbElems )
+    {
+        this.nbElems.set( nbElems );
     }
 
 
