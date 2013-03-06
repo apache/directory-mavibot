@@ -34,7 +34,7 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
  *
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-/* No qualifier */interface Page<K, V>
+public interface Page<K, V>
 {
     /**
      * @return The number of keys present in this page

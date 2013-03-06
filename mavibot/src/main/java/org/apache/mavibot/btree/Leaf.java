@@ -54,7 +54,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      */
     @SuppressWarnings("unchecked")
     // Cannot create an array of generic objects
-    private Leaf( BTree<K, V> btree, long revision, int nbElems )
+    /* No qualifier */Leaf( BTree<K, V> btree, long revision, int nbElems )
     {
         super( btree, revision, nbElems );
 

@@ -313,7 +313,7 @@ public class BTree<K, V>
     /**
      * Creates a new BTree, with no initialization. 
      */
-    public BTree() throws IOException
+    public BTree()
     {
     }
 
@@ -1413,7 +1413,7 @@ public class BTree<K, V>
     /**
      * @param revision the revision to set
      */
-    public void setRevision( long revision )
+    /* No qualifier */void setRevision( long revision )
     {
         this.revision.set( revision );
     }
@@ -1431,7 +1431,7 @@ public class BTree<K, V>
     /**
      * @param nbElems the nbElems to set
      */
-    public void setNbElems( long nbElems )
+    /* No qualifier */void setNbElems( long nbElems )
     {
         this.nbElems.set( nbElems );
     }

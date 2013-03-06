@@ -36,7 +36,7 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
  *
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-/* No qualifier */class Node<K, V> extends AbstractPage<K, V>
+public class Node<K, V> extends AbstractPage<K, V>
 {
     /** Children pages associated with keys. */
     protected Page<K, V>[] children;

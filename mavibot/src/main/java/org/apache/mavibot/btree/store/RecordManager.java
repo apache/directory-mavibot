@@ -31,6 +31,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.mavibot.btree.BTree;
+import org.apache.mavibot.btree.BTreeFactory;
+import org.apache.mavibot.btree.Page;
 import org.apache.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.mavibot.btree.serializer.IntSerializer;
@@ -209,9 +211,9 @@ public class RecordManager
                 loadRecordManager();
             }
         }
-        catch ( IOException ioe )
+        catch ( Exception e )
         {
-            LOG.error( "Error while initializing the RecordManager : {}", ioe.getMessage() );
+            LOG.error( "Error while initializing the RecordManager : {}", e.getMessage() );
         }
     }
 
@@ -284,8 +286,12 @@ public class RecordManager
 
     /**
      * We will load the header and all the existing BTrees in this record manager.
+     * @throws InstantiationException 
+     * @throws IllegalAccessException 
+     * @throws ClassNotFoundException 
      */
-    public void loadRecordManager() throws IOException
+    public void loadRecordManager() throws IOException, ClassNotFoundException, IllegalAccessException,
+        InstantiationException
     {
         if ( fileChannel.size() != 0 )
         {
@@ -311,6 +317,10 @@ public class RecordManager
             // the pages that are stored in it, as we have restarted 
             // the RecordManager.
             PageIO[] pageIos = readPages( 0L );
+
+            // Create the BTree
+            copiedPageBTree = BTreeFactory.createBTree();
+
             long position = loadBTree( pageIos, 0L, copiedPageBTree );
 
             // Then process the next ones
@@ -363,8 +373,12 @@ public class RecordManager
      * @param position The position in the pageIos
      * @param btree The BTree we have to initialize
      * @return The new position in the list of given pages
+     * @throws InstantiationException 
+     * @throws IllegalAccessException 
+     * @throws ClassNotFoundException 
      */
-    private long loadBTree( PageIO[] pageIos, long position, BTree<?, ?> btree )
+    private long loadBTree( PageIO[] pageIos, long position, BTree<?, ?> btree ) throws EndOfFileExceededException,
+        IOException, ClassNotFoundException, IllegalAccessException, InstantiationException
     {
         // The tree name
         byte[] btreeNameBytes = readBytes( pageIos, position );
@@ -375,11 +389,11 @@ public class RecordManager
         {
             position += btreeNameBytes.length;
             String btreeName = Strings.utf8ToString( btreeNameBytes );
-            btree.setName( btreeName );
+            BTreeFactory.setName( btree, btreeName );
         }
         else
         {
-            btree.setName( "" );
+            BTreeFactory.setName( btree, "" );
         }
 
         // The keySerializer FQCN
@@ -398,6 +412,8 @@ public class RecordManager
             keySerializerFqcn = "";
         }
 
+        BTreeFactory.setKeySerializer( btree, keySerializerFqcn );
+
         // The valueSerialier FQCN
         byte[] valueSerializerBytes = readBytes( pageIos, position );
 
@@ -414,26 +430,46 @@ public class RecordManager
             valueSerializerFqcn = "";
         }
 
+        BTreeFactory.setValueSerializer( btree, valueSerializerFqcn );
+
         // The BTree page size
-        int pagSize = readInt( pageIos, position );
-        btree.setPageSize( pagSize );
+        int btreePageSize = readInt( pageIos, position );
+        BTreeFactory.setPageSize( btree, btreePageSize );
         position += INT_SIZE;
 
         // The BTree current revision
         long revision = readLong( pageIos, position );
-        btree.setRevision( revision );
+        BTreeFactory.setRevision( btree, revision );
         position += LONG_SIZE;
 
         // The nb elems in the tree
-        long nbElems = readLong( pageIos, position );
-        btree.setNbElems( nbElems );
+        int nbElems = readInt( pageIos, position );
+        BTreeFactory.setNbElems( btree, nbElems );
         position += LONG_SIZE;
 
         // The BTree rootPage offset
         long rootPageOffset = readLong( pageIos, position );
 
-        //List<PageIO> rootPage = readPages( rootPageOffset );
+        PageIO[] rootPage = readPages( rootPageOffset );
         position += LONG_SIZE;
+
+        // Now, load the rootPage, which can be a Leaf or a Node, depending 
+        // on the number of elements in the tree : if it's above the pageSize,
+        // it's a Node, otherwise it's a Leaf
+        Page btreeRoot = null;
+
+        if ( nbElems > btreePageSize )
+        {
+            // It's a Node
+            btreeRoot = BTreeFactory.createNode( btree, revision, nbElems );
+        }
+        else
+        {
+            // it's a leaf
+            btreeRoot = BTreeFactory.createLeaf( btree, revision, nbElems );
+        }
+
+        BTreeFactory.setRoot( btree, btreeRoot );
 
         return position;
     }
