@@ -195,12 +195,7 @@ public class PageIO
 
         sb.append( "]" );
 
-        int start = 8;
-
-        if ( size != -1 )
-        {
-            start += 4;
-        }
+        int start = 0;
 
         byte[] array = null;
 

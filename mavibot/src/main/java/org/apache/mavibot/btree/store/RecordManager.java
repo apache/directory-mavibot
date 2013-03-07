@@ -238,7 +238,7 @@ public class RecordManager
      * We then store the BTree managing the pages that have been copied when we have added
      * or deleted an element in the BTree. They are associated with a version.
      */
-    public void initRecordManager() throws IOException
+    private void initRecordManager() throws IOException
     {
         // Create a new Header
         // The page size
@@ -290,7 +290,7 @@ public class RecordManager
      * @throws IllegalAccessException 
      * @throws ClassNotFoundException 
      */
-    public void loadRecordManager() throws IOException, ClassNotFoundException, IllegalAccessException,
+    private void loadRecordManager() throws IOException, ClassNotFoundException, IllegalAccessException,
         InstantiationException
     {
         if ( fileChannel.size() != 0 )
@@ -492,7 +492,7 @@ public class RecordManager
         int pageNb = computePageNb( position );
 
         // Compute the position in the current page
-        int pagePos = ( int ) ( position + ( pageNb + 1 ) * 8 + 4 ) - pageNb * pageSize;
+        int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * pageSize;
 
         ByteBuffer pageData = pageIos[pageNb].getData();
         int remaining = pageData.capacity() - pagePos;
@@ -549,7 +549,7 @@ public class RecordManager
         int pageNb = computePageNb( position );
 
         // Compute the position in the current page
-        int pagePos = ( int ) ( position + ( pageNb + 1 ) * 8 + 4 ) - pageNb * pageSize;
+        int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * pageSize;
 
         ByteBuffer pageData = pageIos[pageNb].getData();
         int remaining = pageData.capacity() - pagePos;
@@ -615,7 +615,7 @@ public class RecordManager
         int pageNb = computePageNb( position );
 
         // Compute the position in the current page
-        int pagePos = ( int ) ( position + ( pageNb + 1 ) * 8 + 4 ) - pageNb * pageSize;
+        int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * pageSize;
 
         ByteBuffer pageData = pageIos[pageNb].getData();
         int remaining = pageData.capacity() - pagePos;
@@ -736,16 +736,16 @@ public class RecordManager
                 LONG_SIZE + // the number of element
                 LONG_SIZE; // The root offset
 
+        // Get the pageIOs we need to store the data. We may need more than one.
+        PageIO[] pageIos = getFreePageIOs( bufferSize );
+
         // Get a free page to store the RootPage
         PageIO rootPageIo = fetchNewPage();
 
-        // Update the number of elements to 0
+        // Update the number of elements to 0, as it's a new page
+        // We have to do that as the page might contain garbage
         store( 0L, 0L, rootPageIo );
-
-        flushPages( rootPageIo );
-
-        // Get the pageIOs we need to store the data. We may need more than one.
-        PageIO[] pageIos = getFreePageIOs( bufferSize );
+        rootPageIo.setSize( LONG_SIZE );
 
         // Now store the BTree data in the pages :
         // - the BTree name
@@ -759,28 +759,29 @@ public class RecordManager
         long position = 0L;
 
         // The tree name
-        position = store( position, btreeNameBytes, rootPageIo );
+        position = store( position, btreeNameBytes, pageIos );
 
         // The keySerializer FQCN
-        position = store( position, keySerializerBytes, rootPageIo );
+        position = store( position, keySerializerBytes, pageIos );
 
         // The valueSerialier FQCN
-        position = store( position, valueSerializerBytes, rootPageIo );
+        position = store( position, valueSerializerBytes, pageIos );
 
         // The BTree page size
-        position = store( position, btree.getPageSize(), rootPageIo );
+        position = store( position, btree.getPageSize(), pageIos );
 
         // The BTree current revision
-        position = store( position, btree.getRevision(), rootPageIo );
+        position = store( position, btree.getRevision(), pageIos );
 
         // The nb elems in the tree
-        position = store( position, btree.getNbElems(), rootPageIo );
+        position = store( position, btree.getNbElems(), pageIos );
 
         // The BTree rootPage offset
-        position = store( position, rootPageIo.getOffset(), rootPageIo );
+        position = store( position, rootPageIo.getOffset(), pageIos );
 
         // And flush the pages to disk now
         flushPages( pageIos );
+        flushPages( rootPageIo );
     }
 
 
@@ -860,7 +861,7 @@ public class RecordManager
             ByteBuffer pageData = pageIos[pageNb].getData();
 
             // Compute the position in the current page
-            int pagePos = ( int ) ( position + ( pageNb + 1 ) * 8 + 4 ) - pageNb * pageSize;
+            int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * pageSize;
 
             // Compute the remaining size in the page
             int remaining = pageData.capacity() - pagePos;
@@ -920,7 +921,7 @@ public class RecordManager
         int pageNb = computePageNb( position );
 
         // Compute the position in the current page
-        int pagePos = ( int ) ( position + ( pageNb + 1 ) * 8 + 4 ) - pageNb * pageSize;
+        int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * pageSize;
 
         // Get back the buffer in this page
         ByteBuffer pageData = pageIos[pageNb].getData();
@@ -928,7 +929,7 @@ public class RecordManager
         // Compute the remaining size in the page
         int remaining = pageData.capacity() - pagePos;
 
-        if ( remaining < 4 )
+        if ( remaining < INT_SIZE )
         {
             // We have to copy the serialized length on two pages
 
@@ -973,7 +974,7 @@ public class RecordManager
         }
 
         // Increment the position to reflect the addition of an Int (4 bytes)
-        position += 4;
+        position += INT_SIZE;
 
         return position;
     }
@@ -995,7 +996,7 @@ public class RecordManager
         int pageNb = computePageNb( position );
 
         // Compute the position in the current page
-        int pagePos = ( int ) ( position + ( pageNb + 1 ) * 8 + 4 ) - pageNb * pageSize;
+        int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * pageSize;
 
         // Get back the buffer in this page
         ByteBuffer pageData = pageIos[pageNb].getData();
@@ -1003,7 +1004,7 @@ public class RecordManager
         // Compute the remaining size in the page
         int remaining = pageData.capacity() - pagePos;
 
-        if ( remaining < 8 )
+        if ( remaining < LONG_SIZE )
         {
             // We have to copy the serialized length on two pages
 
@@ -1080,7 +1081,7 @@ public class RecordManager
         }
 
         // Increment the position to reflect the addition of an Long (8 bytes)
-        position += 8;
+        position += LONG_SIZE;
 
         return position;
     }
@@ -1094,6 +1095,12 @@ public class RecordManager
      */
     private PageIO[] getFreePageIOs( int dataSize ) throws IOException
     {
+        if ( dataSize == 0 )
+        {
+            return new PageIO[]
+                {};
+        }
+
         // Compute the number of pages needed.
         // Considering that each page coan contain PageSize bytes,
         // but that the first 8 bytes are used for links and we 
@@ -1101,16 +1108,17 @@ public class RecordManager
         // pages is :
         // NbPages = ( (dataSize - (PageSize - 8 - 4 )) / (PageSize - 8) ) + 1 
         // NbPages += ( if (dataSize - (PageSize - 8 - 4 )) % (PageSize - 8) > 0 : 1 : 0 )
-        int availableSize = ( pageSize - 8 );
+        int availableSize = ( pageSize - LONG_SIZE );
         int nbNeededPages = 1;
 
         // Compute the number of pages that will be full but the first page
-        if ( dataSize > availableSize + 4 )
+        if ( dataSize > availableSize - INT_SIZE )
         {
-            int remainingSize = dataSize - ( availableSize + 4 );
+            int remainingSize = dataSize - ( availableSize - INT_SIZE );
             nbNeededPages += remainingSize / availableSize;
+            int remain = remainingSize % availableSize;
 
-            if ( remainingSize % availableSize > 0 )
+            if ( remain > 0 )
             {
                 nbNeededPages++;
             }
@@ -1121,7 +1129,6 @@ public class RecordManager
         // The first page : set the size
         pageIOs[0] = fetchNewPage();
         pageIOs[0].setSize( dataSize );
-        long offset = pageIOs[0].getOffset() + pageSize;
 
         for ( int i = 1; i < nbNeededPages; i++ )
         {
@@ -1129,10 +1136,6 @@ public class RecordManager
 
             // Create the link
             pageIOs[i - 1].setNextPage( pageIOs[i].getOffset() );
-
-            // Update the offset
-            pageIOs[i].setOffset( offset );
-            offset += pageSize;
         }
 
         return pageIOs;
@@ -1159,7 +1162,7 @@ public class RecordManager
 
             newPage.setData( data );
             newPage.setNextPage( NO_PAGE );
-            newPage.setSize( -1 );
+            newPage.setSize( 0 );
 
             return newPage;
         }

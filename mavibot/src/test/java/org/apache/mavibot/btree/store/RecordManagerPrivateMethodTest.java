@@ -20,45 +20,57 @@
 package org.apache.mavibot.btree.store;
 
 
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
-import org.apache.mavibot.btree.BTree;
-import org.apache.mavibot.btree.exception.BTreeAlreadyManagedException;
-import org.apache.mavibot.btree.serializer.LongSerializer;
-import org.apache.mavibot.btree.serializer.StringSerializer;
 import org.junit.Test;
 
 
 /**
- * 
+ * Test some of the RecordManager prvate methods
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class RecordManagerTest
+public class RecordManagerPrivateMethodTest
 {
-
+    /**
+     * Test the getFreePageIOs method
+     */
     @Test
-    public void testRecordManager() throws IOException, BTreeAlreadyManagedException
+    public void testGetFreePageIos() throws IOException, NoSuchMethodException, InvocationTargetException,
+        IllegalAccessException
     {
         File tempFile = File.createTempFile( "mavibot", ".db" );
         String tempFileName = tempFile.getAbsolutePath();
         tempFile.deleteOnExit();
 
         RecordManager recordManager = new RecordManager( tempFileName, 32 );
+        Method getFreePageIOsMethod = RecordManager.class.getDeclaredMethod( "getFreePageIOs", int.class );
+        getFreePageIOsMethod.setAccessible( true );
 
-        assertNotNull( recordManager );
+        PageIO[] pages = ( PageIO[] ) getFreePageIOsMethod.invoke( recordManager, 0 );
 
-        // Create a new BTree
-        BTree<Long, String> btree = new BTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
+        assertEquals( 0, pages.length );
 
-        // And make it managed by the RM
-        recordManager.manage( btree );
+        for ( int i = 1; i < 20; i++ )
+        {
+            pages = ( PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
+            assertEquals( 1, pages.length );
+        }
 
-        // Inject an element into the btree
-        btree.insert( 1L, "V1" );
+        for ( int i = 21; i < 44; i++ )
+        {
+            pages = ( PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
+            assertEquals( 2, pages.length );
+        }
 
+        for ( int i = 45; i < 68; i++ )
+        {
+            pages = ( PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
+            assertEquals( 3, pages.length );
+        }
     }
-
 }
