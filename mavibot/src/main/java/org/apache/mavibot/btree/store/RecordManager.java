@@ -725,12 +725,12 @@ public class RecordManager
         byte[] valueSerializerBytes = Strings.getBytesUtf8( valueSerializerFqcn );
 
         int bufferSize =
-            btreeNameBytes.length + // The name
-                INT_SIZE + // The name size
-                keySerializerBytes.length + // The keySerializerBytes
+            INT_SIZE + // The name size
+                btreeNameBytes.length + // The name
                 INT_SIZE + // The keySerializerBytes size 
-                valueSerializerBytes.length + // The valueSerializerBytes
+                keySerializerBytes.length + // The keySerializerBytes
                 INT_SIZE + // The valueSerializerBytes size
+                valueSerializerBytes.length + // The valueSerializerBytes
                 INT_SIZE + // The page size
                 LONG_SIZE + // The revision
                 LONG_SIZE + // the number of element
@@ -738,6 +738,9 @@ public class RecordManager
 
         // Get a free page to store the RootPage
         PageIO rootPageIo = fetchNewPage();
+
+        // Update the number of elements to 0
+        store( 0L, 0L, rootPageIo );
 
         flushPages( rootPageIo );
 
@@ -756,25 +759,25 @@ public class RecordManager
         long position = 0L;
 
         // The tree name
-        position = store( pageIos, position, btreeNameBytes );
+        position = store( position, btreeNameBytes, rootPageIo );
 
         // The keySerializer FQCN
-        position = store( pageIos, position, keySerializerBytes );
+        position = store( position, keySerializerBytes, rootPageIo );
 
         // The valueSerialier FQCN
-        position = store( pageIos, position, valueSerializerBytes );
+        position = store( position, valueSerializerBytes, rootPageIo );
 
         // The BTree page size
-        position = store( pageIos, position, btree.getPageSize() );
+        position = store( position, btree.getPageSize(), rootPageIo );
 
         // The BTree current revision
-        position = store( pageIos, position, btree.getRevision() );
+        position = store( position, btree.getRevision(), rootPageIo );
 
         // The nb elems in the tree
-        position = store( pageIos, position, btree.getNbElems() );
+        position = store( position, btree.getNbElems(), rootPageIo );
 
         // The BTree rootPage offset
-        position = store( pageIos, position, rootPageIo.getOffset() );
+        position = store( position, rootPageIo.getOffset(), rootPageIo );
 
         // And flush the pages to disk now
         flushPages( pageIos );
@@ -837,17 +840,17 @@ public class RecordManager
      * Stores a byte[] into one ore more pageIO (depending if the long is stored
      * across a boundary or not)
      * 
-     * @param pageIos The pageIOs we have to store the data in
      * @param position The position in a virtual byte[] if all the pages were contiguous
      * @param bytes The byte[] to serialize
+     * @param pageIos The pageIOs we have to store the data in
      * @return The new position
      */
-    private long store( PageIO[] pageIos, long position, byte[] bytes )
+    private long store( long position, byte[] bytes, PageIO... pageIos )
     {
         if ( bytes != null )
         {
             // Write the bytes length
-            position = store( pageIos, position, bytes.length );
+            position = store( position, bytes.length, pageIos );
 
             // Compute the page in which we will store the data given the 
             // current position
@@ -894,7 +897,7 @@ public class RecordManager
         else
         {
             // No bytes : write 0 and return
-            position = store( pageIos, position, 0 );
+            position = store( position, 0, pageIos );
         }
 
         return position;
@@ -905,12 +908,12 @@ public class RecordManager
      * Stores an Integer into one ore more pageIO (depending if the int is stored
      * across a boundary or not)
      * 
-     * @param pageIos The pageIOs we have to store the data in
      * @param position The position in a virtual byte[] if all the pages were contiguous
      * @param value The int to serialize
+     * @param pageIos The pageIOs we have to store the data in
      * @return The new position
      */
-    private long store( PageIO[] pageIos, long position, int value )
+    private long store( long position, int value, PageIO... pageIos )
     {
         // Compute the page in which we will store the data given the 
         // current position
@@ -980,12 +983,12 @@ public class RecordManager
      * Stores a Long into one ore more pageIO (depending if the long is stored
      * across a boundary or not)
      * 
-     * @param pageIos The pageIOs we have to store the data in
      * @param position The position in a virtual byte[] if all the pages were contiguous
      * @param value The long to serialize
+     * @param pageIos The pageIOs we have to store the data in
      * @return The new position
      */
-    private long store( PageIO[] pageIos, long position, long value )
+    private long store( long position, long value, PageIO... pageIos )
     {
         // Compute the page in which we will store the data given the 
         // current position

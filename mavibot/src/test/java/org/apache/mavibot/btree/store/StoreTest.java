@@ -47,7 +47,7 @@ public class StoreTest
         tempFile.deleteOnExit();
 
         RecordManager recordManager = new RecordManager( tempFileName );
-        Method method = RecordManager.class.getDeclaredMethod( "store", PageIO[].class, long.class, int.class );
+        Method method = RecordManager.class.getDeclaredMethod( "store", long.class, int.class, PageIO[].class );
         method.setAccessible( true );
 
         // Allocate some Pages
@@ -58,7 +58,7 @@ public class StoreTest
         pageIos[1].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
 
         // Set the int at the beginning
-        long position = ( Long ) method.invoke( recordManager, pageIos, 0, 0x12345678 );
+        long position = ( Long ) method.invoke( recordManager, 0, 0x12345678, pageIos );
 
         assertEquals( 4, position );
         int pos = 12;
@@ -68,7 +68,7 @@ public class StoreTest
         assertEquals( 0x78, pageIos[0].getData().get( pos++ ) );
 
         // Set the int at the end of the first page
-        position = ( Long ) method.invoke( recordManager, pageIos, 4080, 0x12345678 );
+        position = ( Long ) method.invoke( recordManager, 4080, 0x12345678, pageIos );
 
         assertEquals( 4084, position );
         pos = 4092;
@@ -79,7 +79,7 @@ public class StoreTest
 
         // Set the int at the end of the first page and overlapping on the second page
         // 1 byte overlapping
-        position = ( Long ) method.invoke( recordManager, pageIos, 4081, 0x12345678 );
+        position = ( Long ) method.invoke( recordManager, 4081, 0x12345678, pageIos );
 
         assertEquals( 4085, position );
         pos = 4093;
@@ -91,7 +91,7 @@ public class StoreTest
 
         // Set the int at the end of the first page and overlapping on the second page
         // 2 bytes overlapping
-        position = ( Long ) method.invoke( recordManager, pageIos, 4082, 0x12345678 );
+        position = ( Long ) method.invoke( recordManager, 4082, 0x12345678, pageIos );
 
         assertEquals( 4086, position );
         pos = 4094;
@@ -103,7 +103,7 @@ public class StoreTest
 
         // Set the int at the end of the first page and overlapping on the second page
         // 3 bytes overlapping
-        position = ( Long ) method.invoke( recordManager, pageIos, 4083, 0x12345678 );
+        position = ( Long ) method.invoke( recordManager, 4083, 0x12345678, pageIos );
 
         assertEquals( 4087, position );
         pos = 4095;
@@ -114,7 +114,7 @@ public class StoreTest
         assertEquals( 0x78, pageIos[1].getData().get( pos++ ) );
 
         // Set the int at the beginning of the second page
-        position = ( Long ) method.invoke( recordManager, pageIos, 4084, 0x12345678 );
+        position = ( Long ) method.invoke( recordManager, 4084, 0x12345678, pageIos );
 
         assertEquals( 4088, position );
         pos = 8;
@@ -136,7 +136,7 @@ public class StoreTest
         tempFile.deleteOnExit();
 
         RecordManager recordManager = new RecordManager( tempFileName );
-        Method method = RecordManager.class.getDeclaredMethod( "store", PageIO[].class, long.class, long.class );
+        Method method = RecordManager.class.getDeclaredMethod( "store", long.class, long.class, PageIO[].class );
         method.setAccessible( true );
 
         // Allocate some Pages
@@ -147,7 +147,7 @@ public class StoreTest
         pageIos[1].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
 
         // Set the long at the beginning
-        long position = ( Long ) method.invoke( recordManager, pageIos, 0, 0x0123456789ABCDEFL );
+        long position = ( Long ) method.invoke( recordManager, 0, 0x0123456789ABCDEFL, pageIos );
 
         assertEquals( 8, position );
         int pos = 12;
@@ -161,7 +161,7 @@ public class StoreTest
         assertEquals( ( byte ) 0xEF, pageIos[0].getData().get( pos++ ) );
 
         // Set the long at the end of the first page
-        position = ( Long ) method.invoke( recordManager, pageIos, 4076, 0x0123456789ABCDEFL );
+        position = ( Long ) method.invoke( recordManager, 4076, 0x0123456789ABCDEFL, pageIos );
 
         assertEquals( 4084, position );
         pos = 4088;
@@ -176,7 +176,7 @@ public class StoreTest
 
         // Set the long at the end of the first page and overlapping on the second page
         // 1 byte overlapping
-        position = ( Long ) method.invoke( recordManager, pageIos, 4077, 0x0123456789ABCDEFL );
+        position = ( Long ) method.invoke( recordManager, 4077, 0x0123456789ABCDEFL, pageIos );
 
         assertEquals( 4085, position );
         pos = 4089;
@@ -192,7 +192,7 @@ public class StoreTest
 
         // Set the long at the end of the first page and overlapping on the second page
         // 2 bytes overlapping
-        position = ( Long ) method.invoke( recordManager, pageIos, 4078, 0x0123456789ABCDEFL );
+        position = ( Long ) method.invoke( recordManager, 4078, 0x0123456789ABCDEFL, pageIos );
 
         assertEquals( 4086, position );
         pos = 4090;
@@ -208,7 +208,7 @@ public class StoreTest
 
         // Set the long at the end of the first page and overlapping on the second page
         // 3 bytes overlapping
-        position = ( Long ) method.invoke( recordManager, pageIos, 4079, 0x0123456789ABCDEFL );
+        position = ( Long ) method.invoke( recordManager, 4079, 0x0123456789ABCDEFL, pageIos );
 
         assertEquals( 4087, position );
         pos = 4091;
@@ -224,7 +224,7 @@ public class StoreTest
 
         // Set the long at the end of the first page and overlapping on the second page
         // 4 byte overlapping
-        position = ( Long ) method.invoke( recordManager, pageIos, 4080, 0x0123456789ABCDEFL );
+        position = ( Long ) method.invoke( recordManager, 4080, 0x0123456789ABCDEFL, pageIos );
 
         assertEquals( 4088, position );
         pos = 4092;
@@ -240,7 +240,7 @@ public class StoreTest
 
         // Set the long at the end of the first page and overlapping on the second page
         // 5 bytes overlapping
-        position = ( Long ) method.invoke( recordManager, pageIos, 4081, 0x0123456789ABCDEFL );
+        position = ( Long ) method.invoke( recordManager, 4081, 0x0123456789ABCDEFL, pageIos );
 
         assertEquals( 4089, position );
         pos = 4093;
@@ -256,7 +256,7 @@ public class StoreTest
 
         // Set the long at the end of the first page and overlapping on the second page
         // 6 bytes overlapping
-        position = ( Long ) method.invoke( recordManager, pageIos, 4082, 0x0123456789ABCDEFL );
+        position = ( Long ) method.invoke( recordManager, 4082, 0x0123456789ABCDEFL, pageIos );
 
         assertEquals( 4090, position );
         pos = 4094;
@@ -272,7 +272,7 @@ public class StoreTest
 
         // Set the long at the end of the first page and overlapping on the second page
         // 7 bytes overlapping
-        position = ( Long ) method.invoke( recordManager, pageIos, 4083, 0x0123456789ABCDEFL );
+        position = ( Long ) method.invoke( recordManager, 4083, 0x0123456789ABCDEFL, pageIos );
 
         assertEquals( 4091, position );
         pos = 4095;
@@ -287,7 +287,7 @@ public class StoreTest
         assertEquals( ( byte ) 0xEF, pageIos[1].getData().get( pos++ ) );
 
         // Set the long at the beginning of the second page
-        position = ( Long ) method.invoke( recordManager, pageIos, 4084, 0x0123456789ABCDEFL );
+        position = ( Long ) method.invoke( recordManager, 4084, 0x0123456789ABCDEFL, pageIos );
 
         assertEquals( 4092, position );
         pos = 8;
@@ -314,8 +314,8 @@ public class StoreTest
 
         // We use smaller pages
         RecordManager recordManager = new RecordManager( tempFileName, 32 );
-        Method method = RecordManager.class.getDeclaredMethod( "store", PageIO[].class, long.class, byte[].class );
-        method.setAccessible( true );
+        Method storeMethod = RecordManager.class.getDeclaredMethod( "store", long.class, byte[].class, PageIO[].class );
+        storeMethod.setAccessible( true );
 
         // Allocate some Pages
         PageIO[] pageIos = new PageIO[4];
@@ -333,7 +333,7 @@ public class StoreTest
             { 0x01, 0x23, 0x45, 0x67 };
 
         // Set the bytes at the beginning
-        long position = ( Long ) method.invoke( recordManager, pageIos, 0L, bytes );
+        long position = ( Long ) storeMethod.invoke( recordManager, 0L, bytes, pageIos );
 
         assertEquals( 8, position );
         int pos = 12;
@@ -349,7 +349,7 @@ public class StoreTest
         assertEquals( 0x67, pageIos[0].getData().get( pos++ ) );
 
         // Set the bytes at the end of the first page
-        position = ( Long ) method.invoke( recordManager, pageIos, 12L, bytes );
+        position = ( Long ) storeMethod.invoke( recordManager, 12L, bytes, pageIos );
 
         assertEquals( 20, position );
         pos = 24;
@@ -372,7 +372,7 @@ public class StoreTest
             bytes[i] = ( byte ) ( i + 1 );
         }
 
-        position = ( Long ) method.invoke( recordManager, pageIos, 0L, bytes );
+        position = ( Long ) storeMethod.invoke( recordManager, 0L, bytes, pageIos );
 
         assertEquals( 20, position );
         pos = 12;
@@ -389,7 +389,7 @@ public class StoreTest
         }
 
         // Write the bytes over 2 pages
-        position = ( Long ) method.invoke( recordManager, pageIos, 15L, bytes );
+        position = ( Long ) storeMethod.invoke( recordManager, 15L, bytes, pageIos );
 
         assertEquals( 35, position );
         pos = 27;
@@ -418,7 +418,7 @@ public class StoreTest
             bytes[i] = ( byte ) ( i + 1 );
         }
 
-        position = ( Long ) method.invoke( recordManager, pageIos, 2L, bytes );
+        position = ( Long ) storeMethod.invoke( recordManager, 2L, bytes, pageIos );
 
         assertEquals( 86, position );
         pos = 14;
