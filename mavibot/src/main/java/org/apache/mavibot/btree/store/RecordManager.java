@@ -241,26 +241,10 @@ public class RecordManager
     private void initRecordManager() throws IOException
     {
         // Create a new Header
-        // The page size
-        ByteBuffer header = ByteBuffer.allocate( HEADER_SIZE );
-
-        // The page size
-        header.putInt( pageSize );
-
-        // The number of managed BTree (currently we have only one : the discardedPage BTree
-        header.putInt( 1 );
-
-        // The first free page
-        header.putLong( NO_PAGE );
+        nbBtree = 0;
         firstFreePage = NO_PAGE;
-
-        // The last free page
-        header.putLong( NO_PAGE );
         lastFreePage = NO_PAGE;
-
-        // Write the header on disk
-        header.rewind();
-        fileChannel.write( header );
+        updateHeader();
 
         // Set the offset of the end of the file
         endOfFileOffset = fileChannel.size();
@@ -721,7 +705,7 @@ public class RecordManager
         byte[] btreeNameBytes = Strings.getBytesUtf8( name );
         String keySerializerFqcn = btree.getKeySerializer().getClass().getName();
         byte[] keySerializerBytes = Strings.getBytesUtf8( keySerializerFqcn );
-        String valueSerializerFqcn = btree.getKeySerializer().getClass().getName();
+        String valueSerializerFqcn = btree.getValueSerializer().getClass().getName();
         byte[] valueSerializerBytes = Strings.getBytesUtf8( valueSerializerFqcn );
 
         int bufferSize =
@@ -745,7 +729,7 @@ public class RecordManager
         // Update the number of elements to 0, as it's a new page
         // We have to do that as the page might contain garbage
         store( 0L, 0L, rootPageIo );
-        rootPageIo.setSize( LONG_SIZE );
+        rootPageIo.setSize( INT_SIZE );
 
         // Now store the BTree data in the pages :
         // - the BTree name
@@ -782,6 +766,37 @@ public class RecordManager
         // And flush the pages to disk now
         flushPages( pageIos );
         flushPages( rootPageIo );
+
+        nbBtree++;
+
+        // Last, not last, update the number of managed BTrees in the header
+        updateHeader();
+    }
+
+
+    /**
+     * Update the header, injecting the nbBtree, firstFreePage and lastFreePage
+     */
+    private void updateHeader() throws IOException
+    {
+        // The page size
+        ByteBuffer header = ByteBuffer.allocate( HEADER_SIZE );
+
+        // The page size
+        header.putInt( pageSize );
+
+        // The number of managed BTree (currently we have only one : the discardedPage BTree
+        header.putInt( nbBtree );
+
+        // The first free page
+        header.putLong( firstFreePage );
+
+        // The last free page
+        header.putLong( lastFreePage );
+
+        // Write the header on disk
+        header.rewind();
+        fileChannel.write( header, 0L );
     }
 
 
