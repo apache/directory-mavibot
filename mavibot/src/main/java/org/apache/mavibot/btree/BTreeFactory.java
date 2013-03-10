@@ -130,7 +130,10 @@ public class BTreeFactory
         throws ClassNotFoundException, IllegalAccessException, InstantiationException
     {
         Class<?> keySerializer = Class.forName( keySerializerFqcn );
-        btree.setKeySerializer( ( ElementSerializer ) keySerializer.newInstance() );
+        ElementSerializer instance = ( ElementSerializer ) keySerializer.newInstance();
+        btree.setKeySerializer( instance );
+
+        btree.setComparator( instance.getComparator() );
     }
 
 
