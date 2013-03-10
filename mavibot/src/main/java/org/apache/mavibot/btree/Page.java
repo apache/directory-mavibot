@@ -128,12 +128,6 @@ public interface Page<K, V>
 
 
     /**
-     * @return the page ID
-     */
-    long getId();
-
-
-    /**
      * Return the key at a given position
      * @param pos The position of the key we want to retrieve
      * @return The key found at the given position

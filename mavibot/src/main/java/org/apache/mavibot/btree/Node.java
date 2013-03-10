@@ -1038,7 +1038,7 @@ public class Node<K, V> extends AbstractPage<K, V>
             }
             else
             {
-                sb.append( children[0].getId() ).append( "-r" ).append( children[0].getRevision() );
+                sb.append( 'r' ).append( children[0].getRevision() );
             }
 
             for ( int i = 0; i < nbElems; i++ )
@@ -1051,7 +1051,7 @@ public class Node<K, V> extends AbstractPage<K, V>
                 }
                 else
                 {
-                    sb.append( children[i + 1].getId() ).append( "-r" ).append( children[i + 1].getRevision() );
+                    sb.append( 'r' ).append( children[i + 1].getRevision() );
                 }
             }
         }

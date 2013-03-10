@@ -72,10 +72,7 @@ public class BTree<K, V>
     private String name;
 
     /** A field used to generate new revisions in a thread safe way */
-    private AtomicLong revision;
-
-    /** A field used to generate new recordId in a thread safe way */
-    private transient AtomicLong pageRecordIdGenerator;
+    private AtomicLong revision = new AtomicLong( 0L );
 
     /** Comparator used to index entries. */
     private Comparator<K> comparator;
@@ -114,7 +111,7 @@ public class BTree<K, V>
     private File journal;
 
     /** The number of elements in the current revision */
-    private AtomicLong nbElems;
+    private AtomicLong nbElems = new AtomicLong( 0L );
 
     /** A lock used to protect the write operation against concurrent access */
     private ReentrantLock writeLock;
@@ -365,6 +362,10 @@ public class BTree<K, V>
             throw new IllegalArgumentException( "Comparator should not be null" );
         }
 
+        // Create the first root page, with revision 0L. It will be empty
+        // and increment the revision at the same time
+        rootPage = new Leaf<K, V>( this );
+
         // Now, initialize the BTree
         init();
     }
@@ -458,6 +459,10 @@ public class BTree<K, V>
         this.valueSerializer = valueSerializer;
         comparator = keySerializer.getComparator();
 
+        // Create the first root page, with revision 0L. It will be empty
+        // and increment the revision at the same time
+        rootPage = new Leaf<K, V>( this );
+
         // Now, call the init() method
         init();
     }
@@ -479,16 +484,6 @@ public class BTree<K, V>
             modificationsQueue = new LinkedBlockingDeque<Modification<K, V>>();
         }
 
-        // Initialize the PageId counter
-        pageRecordIdGenerator = new AtomicLong( 0 );
-
-        // Initialize the revision counter
-        revision = new AtomicLong( 0 );
-
-        // Create the first root page, with revision 0L. It will be empty
-        // and increment the revision at the same time
-        rootPage = new Leaf<K, V>( this );
-
         // We will extract the Type to use for keys, using the comparator for that
         Class<?> comparatorClass = comparator.getClass();
         Type[] types = comparatorClass.getGenericInterfaces();
@@ -499,7 +494,6 @@ public class BTree<K, V>
             keyType = ( Class<?> ) argumentTypes[0];
         }
 
-        nbElems = new AtomicLong( 0 );
         writeLock = new ReentrantLock();
 
         // Check the files and create them if missing
@@ -646,18 +640,6 @@ public class BTree<K, V>
     public int getPageSize()
     {
         return pageSize;
-    }
-
-
-    /**
-     * Generates a new RecordId. It's only used by the Page instances.
-     * 
-     * @return a new incremental recordId
-     */
-    /** No qualifier */
-    long generateRecordId()
-    {
-        return pageRecordIdGenerator.getAndIncrement();
     }
 
 
