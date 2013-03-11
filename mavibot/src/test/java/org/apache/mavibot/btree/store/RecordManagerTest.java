@@ -20,10 +20,13 @@
 package org.apache.mavibot.btree.store;
 
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Set;
 
 import org.apache.mavibot.btree.BTree;
 import org.apache.mavibot.btree.exception.BTreeAlreadyManagedException;
@@ -50,20 +53,35 @@ public class RecordManagerTest
 
         assertNotNull( recordManager );
 
-        //recordManager.dump();
-
         // Create a new BTree
         BTree<Long, String> btree = new BTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
 
         // And make it managed by the RM
         recordManager.manage( btree );
 
-        //recordManager.dump();
-
         // Close the recordManager
         recordManager.close();
 
         // Now, try to reload the file back
         RecordManager recordManager1 = new RecordManager( tempFileName );
+
+        assertEquals( 1, recordManager1.getNbManagedTrees() );
+
+        Set<String> managedBTrees = recordManager1.getManagedTrees();
+
+        assertEquals( 1, managedBTrees.size() );
+        assertTrue( managedBTrees.contains( "test" ) );
+
+        BTree btree1 = recordManager1.getManagedTree( "test" );
+
+        assertNotNull( btree1 );
+        assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
+        assertEquals( btree.getFile(), btree1.getFile() );
+        assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
+        assertEquals( btree.getName(), btree1.getName() );
+        assertEquals( btree.getNbElems(), btree1.getNbElems() );
+        assertEquals( btree.getPageSize(), btree1.getPageSize() );
+        assertEquals( btree.getRevision(), btree1.getRevision() );
+        assertEquals( btree.getValueSerializer().getClass().getName(), btree1.getValueSerializer().getClass().getName() );
     }
 }

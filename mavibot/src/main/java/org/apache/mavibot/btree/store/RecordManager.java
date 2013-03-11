@@ -27,8 +27,10 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.mavibot.btree.BTree;
 import org.apache.mavibot.btree.BTreeFactory;
@@ -1479,5 +1481,45 @@ public class RecordManager
                 System.out.println( "    " + pageIo );
             }
         }
+    }
+
+
+    /**
+     * Get the number of managed trees. We don't count the CopiedPage BTree.
+     * 
+     * @return The number of managed BTrees
+     */
+    public int getNbManagedTrees()
+    {
+        return nbBtree - 1;
+    }
+
+
+    /**
+     * Get the managed trees. We don't return the CopiedPage BTree.
+     * 
+     * @return The managed BTrees
+     */
+    public Set<String> getManagedTrees()
+    {
+        Set<String> btrees = new HashSet<String>();
+
+        for ( String btree : managedBTrees.keySet() )
+        {
+            btrees.add( btree );
+        }
+
+        return btrees;
+    }
+
+
+    /**
+     * Get one managed trees, knowing its name. 
+     * 
+     * @return The managed BTrees
+     */
+    public BTree getManagedTree( String name )
+    {
+        return managedBTrees.get( name );
     }
 }
