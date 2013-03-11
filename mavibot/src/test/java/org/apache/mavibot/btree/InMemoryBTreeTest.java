@@ -1007,7 +1007,6 @@ public class InMemoryBTreeTest
         Leaf<Integer, String> leaf = new Leaf<Integer, String>( btree );
         int pos = 0;
         leaf.revision = revision;
-        //leaf.id = revision;
         leaf.nbElems = tuples.length;
         leaf.keys = new Integer[leaf.nbElems];
         leaf.values = ( MemoryValueHolder<Integer, String>[] ) Array

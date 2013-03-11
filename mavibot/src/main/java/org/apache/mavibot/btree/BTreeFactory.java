@@ -91,6 +91,18 @@ public class BTreeFactory
 
 
     /**
+     * Return the BTree root page
+     * 
+     * @param btree The Btree we want to root page from
+     * @return The root page
+     */
+    public static Page getRoot( BTree<?, ?> btree )
+    {
+        return btree.rootPage;
+    }
+
+
+    /**
      * @param nbElems the nbElems to set
      */
     public static void setNbElems( BTree<?, ?> btree, long nbElems )

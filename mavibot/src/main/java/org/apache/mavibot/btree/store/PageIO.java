@@ -107,6 +107,7 @@ public class PageIO
     public void setData( ByteBuffer data )
     {
         this.data = data;
+        nextPage = data.getLong( 0 );
     }
 
 
@@ -116,9 +117,6 @@ public class PageIO
      */
     public long getNextPage()
     {
-        // read the nextPage from the PageIO
-        nextPage = data.getLong( 0 );
-
         return nextPage;
     }
 
@@ -139,8 +137,6 @@ public class PageIO
      */
     public long getSize()
     {
-        size = data.getInt( 8 );
-
         return size;
     }
 
@@ -153,6 +149,15 @@ public class PageIO
         data.putInt( 8, size );
 
         this.size = size;
+    }
+
+
+    /**
+     * @param size the size to set
+     */
+    public void setSize()
+    {
+        size = data.getInt( 8 );
     }
 
 

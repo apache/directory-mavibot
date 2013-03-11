@@ -50,15 +50,20 @@ public class RecordManagerTest
 
         assertNotNull( recordManager );
 
+        //recordManager.dump();
+
         // Create a new BTree
         BTree<Long, String> btree = new BTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
 
         // And make it managed by the RM
         recordManager.manage( btree );
 
-        // Inject an element into the btree
-        btree.insert( 1L, "V1" );
+        //recordManager.dump();
 
+        // Close the recordManager
+        recordManager.close();
+
+        // Now, try to reload the file back
+        RecordManager recordManager1 = new RecordManager( tempFileName );
     }
-
 }
