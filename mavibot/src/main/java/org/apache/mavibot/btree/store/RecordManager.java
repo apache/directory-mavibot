@@ -944,7 +944,7 @@ public class RecordManager
                 dataSize += buffer.length;
             }
 
-            // Nodes have one mor evalue to serialize
+            // Nodes have one more value to serialize
             if ( page instanceof Node )
             {
                 // TODO
@@ -1044,12 +1044,12 @@ public class RecordManager
 
             if ( fileChannel.size() <= ( pageIo.getOffset() + pageSize ) )
             {
-                fileChannel.write( pageIo.getData(), pageIo.getOffset() );
+                // This is a page we have to add to the file
+                fileChannel.write( pageIo.getData(), fileChannel.size() );
             }
             else
             {
-                // This is a page we have to add to the file
-                fileChannel.write( pageIo.getData(), fileChannel.size() );
+                fileChannel.write( pageIo.getData(), pageIo.getOffset() );
             }
 
             pageIo.getData().rewind();

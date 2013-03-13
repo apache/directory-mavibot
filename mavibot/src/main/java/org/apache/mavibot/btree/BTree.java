@@ -699,7 +699,7 @@ public class BTree<K, V>
     /** No qualifier */
     long generateRevision()
     {
-        return revision.getAndIncrement();
+        return revision.incrementAndGet();
     }
 
 
@@ -718,13 +718,33 @@ public class BTree<K, V>
     {
         long revision = generateRevision();
 
-        V existingValue = insert( key, value, revision );
+        V existingValue = null;
 
-        // Increase the number of element in the current tree if the insertion is successful
-        // and does not replace an element
-        if ( existingValue == null )
+        try
         {
-            nbElems.getAndIncrement();
+            // Commented atm, we will have to play around the idea of transactions later
+            writeLock.lock();
+
+            existingValue = insert( key, value, revision );
+
+            // Increase the number of element in the current tree if the insertion is successful
+            // and does not replace an element
+            if ( existingValue == null )
+            {
+                nbElems.getAndIncrement();
+            }
+
+            // If the BTree is managed, we have to update the rootPage on disk
+            if ( isManaged() )
+            {
+                // Update the BTree header now
+                recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
+            }
+        }
+        finally
+        {
+            // See above
+            writeLock.unlock();
         }
 
         return existingValue;
@@ -938,65 +958,47 @@ public class BTree<K, V>
             throw new IllegalArgumentException( "Key must not be null" );
         }
 
-        // Commented atm, we will have to play around the idea of transactions later
-        writeLock.lock();
+        // If the key exists, the existing value will be replaced. We store it
+        // to return it to the caller.
+        V modifiedValue = null;
 
-        try
+        // Try to insert the new value in the tree at the right place,
+        // starting from the root page. Here, the root page may be either
+        // a Node or a Leaf
+        InsertResult<K, V> result = rootPage.insert( revision, key, value );
+
+        if ( result instanceof ModifyResult )
         {
-            // If the key exists, the existing value will be replaced. We store it
-            // to return it to the caller.
-            V modifiedValue = null;
+            ModifyResult<K, V> modifyResult = ( ( ModifyResult<K, V> ) result );
 
-            // Try to insert the new value in the tree at the right place,
-            // starting from the root page. Here, the root page may be either
-            // a Node or a Leaf
-            InsertResult<K, V> result = rootPage.insert( revision, key, value );
+            // The root has just been modified, we haven't split it
+            // Get it and make it the current root page
+            rootPage = modifyResult.getModifiedPage();
 
-            if ( result instanceof ModifyResult )
-            {
-                ModifyResult<K, V> modifyResult = ( ( ModifyResult<K, V> ) result );
-
-                // The root has just been modified, we haven't split it
-                // Get it and make it the current root page
-                rootPage = modifyResult.getModifiedPage();
-
-                modifiedValue = modifyResult.getModifiedValue();
-
-                // If the BTree is managed, we have to update the rootPage on disk
-                if ( isManaged() )
-                {
-                    // Update the BTree header now
-                    recordManager.updateBtreeHeader( this, btreeOffset );
-                }
-            }
-            else
-            {
-                // We have split the old root, create a new one containing
-                // only the pivotal we got back
-                SplitResult<K, V> splitResult = ( ( SplitResult<K, V> ) result );
-
-                K pivot = splitResult.getPivot();
-                Page<K, V> leftPage = splitResult.getLeftPage();
-                Page<K, V> rightPage = splitResult.getRightPage();
-
-                // Create the new rootPage
-                rootPage = new Node<K, V>( this, revision, pivot, leftPage, rightPage );
-            }
-
-            // Inject the modification into the modification queue
-            if ( type == BTreeTypeEnum.PERSISTENT )
-            {
-                modificationsQueue.add( new Addition<K, V>( key, value ) );
-            }
-
-            // Return the value we have found if it was modified
-            return modifiedValue;
+            modifiedValue = modifyResult.getModifiedValue();
         }
-        finally
+        else
         {
-            // See above
-            writeLock.unlock();
+            // We have split the old root, create a new one containing
+            // only the pivotal we got back
+            SplitResult<K, V> splitResult = ( ( SplitResult<K, V> ) result );
+
+            K pivot = splitResult.getPivot();
+            Page<K, V> leftPage = splitResult.getLeftPage();
+            Page<K, V> rightPage = splitResult.getRightPage();
+
+            // Create the new rootPage
+            rootPage = new Node<K, V>( this, revision, pivot, leftPage, rightPage );
         }
+
+        // Inject the modification into the modification queue
+        if ( type == BTreeTypeEnum.PERSISTENT )
+        {
+            modificationsQueue.add( new Addition<K, V>( key, value ) );
+        }
+
+        // Return the value we have found if it was modified
+        return modifiedValue;
     }
 
 
