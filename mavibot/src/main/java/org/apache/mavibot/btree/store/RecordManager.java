@@ -316,8 +316,8 @@ public class RecordManager
             copiedPageBTree = BTreeFactory.createBTree();
             copiedPageBTree.setBtreeOffset( btreeOffset );
 
-            btreeOffset = position;
             position = loadBTree( pageIos, position, copiedPageBTree );
+            btreeOffset = position;
 
             // Then process the next ones
             for ( int i = 1; i < nbBtree; i++ )
