@@ -41,6 +41,7 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.mavibot.btree.serializer.BufferHandler;
 import org.apache.mavibot.btree.serializer.ElementSerializer;
 import org.apache.mavibot.btree.serializer.LongSerializer;
+import org.apache.mavibot.btree.store.RecordManager;
 
 
 /**
@@ -86,6 +87,9 @@ public class BTree<K, V>
     /** Number of entries in each Page. */
     protected int pageSize;
 
+    /** The position on disk where this BTree is stored */
+    private long btreeOffset;
+
     /** The size of the buffer used to write data in disk */
     private int writeBufferSize;
 
@@ -101,8 +105,11 @@ public class BTree<K, V>
     /** The associated file. If null, this is an in-memory btree  */
     private File file;
 
-    /** A flag set to true when the BTree is a in-memory BTree */
-    private boolean inMemory;
+    /** The RecordManager if the BTree is managed */
+    private RecordManager recordManager;
+
+    /** The BTree type : either in-memory, persistent or managed */
+    private BTreeTypeEnum type;
 
     /** A flag used to tell the BTree that the journal is activated */
     private boolean withJournal;
@@ -328,7 +335,7 @@ public class BTree<K, V>
 
         if ( fileName == null )
         {
-            inMemory = true;
+            type = BTreeTypeEnum.IN_MEMORY;
         }
         else
         {
@@ -347,7 +354,7 @@ public class BTree<K, V>
             }
 
             journal = new File( journalPath, journalName );
-            inMemory = false;
+            type = BTreeTypeEnum.PERSISTENT;
         }
 
         pageSize = configuration.getPageSize();
@@ -427,7 +434,7 @@ public class BTree<K, V>
 
         if ( ( path == null ) && ( file == null ) )
         {
-            inMemory = true;
+            type = BTreeTypeEnum.IN_MEMORY;
         }
         else
         {
@@ -449,7 +456,7 @@ public class BTree<K, V>
                 this.journal = new File( path, file + JOURNAL_SUFFIX );
             }
 
-            inMemory = false;
+            type = BTreeTypeEnum.PERSISTENT;
         }
 
         setPageSize( pageSize );
@@ -479,7 +486,7 @@ public class BTree<K, V>
         readTransactions = new ConcurrentLinkedQueue<Transaction<K, V>>();
 
         // Create the queue containing the modifications, if it's not a in-memory btree
-        if ( !inMemory )
+        if ( type == BTreeTypeEnum.PERSISTENT )
         {
             modificationsQueue = new LinkedBlockingDeque<Modification<K, V>>();
         }
@@ -551,7 +558,7 @@ public class BTree<K, V>
         createTransactionManager();
 
         // Initialize the Journal manager thread if it's not a in-memory btree
-        if ( !inMemory && withJournal )
+        if ( ( type == BTreeTypeEnum.PERSISTENT ) && withJournal )
         {
             createJournalManager();
         }
@@ -567,7 +574,7 @@ public class BTree<K, V>
         readTransactionsThread.interrupt();
         readTransactions.clear();
 
-        if ( !inMemory )
+        if ( type == BTreeTypeEnum.PERSISTENT )
         {
             // Stop the journal manager thread, by injecting a poison pill into
             // the queue this thread is using, so that all the epnding data
@@ -579,6 +586,24 @@ public class BTree<K, V>
         }
 
         rootPage = null;
+    }
+
+
+    /**
+     * @return the btreeOffset
+     */
+    public long getBtreeOffset()
+    {
+        return btreeOffset;
+    }
+
+
+    /**
+     * @param btreeOffset the btreeOffset to set
+     */
+    public void setBtreeOffset( long btreeOffset )
+    {
+        this.btreeOffset = btreeOffset;
     }
 
 
@@ -631,6 +656,29 @@ public class BTree<K, V>
     /* No qualifier */void setRoot( Page<K, V> root )
     {
         rootPage = root;
+    }
+
+
+    /**
+     * Gets the RecordManager for a managed BTree
+     * 
+     * @return The recordManager if the BTree is managed
+     */
+    /* No qualifier */RecordManager getRecordManager()
+    {
+        return recordManager;
+    }
+
+
+    /**
+     * Inject a RecordManager for a managed BTree
+     * 
+     * @param recordManager The injected RecordManager
+     */
+    /* No qualifier */void setRecordManager( RecordManager recordManager )
+    {
+        this.recordManager = recordManager;
+        this.type = BTreeTypeEnum.MANAGED;
     }
 
 
@@ -784,7 +832,7 @@ public class BTree<K, V>
                 tuple = removeResult.getRemovedElement();
             }
 
-            if ( !inMemory )
+            if ( type == BTreeTypeEnum.PERSISTENT )
             {
                 // Inject the modification into the modification queue
                 modificationsQueue.add( new Deletion<K, V>( key ) );
@@ -913,6 +961,13 @@ public class BTree<K, V>
                 rootPage = modifyResult.getModifiedPage();
 
                 modifiedValue = modifyResult.getModifiedValue();
+
+                // If the BTree is managed, we have to update the rootPage on disk
+                if ( isManaged() )
+                {
+                    // Update the BTree header now
+                    recordManager.updateBtreeHeader( this, btreeOffset );
+                }
             }
             else
             {
@@ -929,7 +984,7 @@ public class BTree<K, V>
             }
 
             // Inject the modification into the modification queue
-            if ( !inMemory )
+            if ( type == BTreeTypeEnum.PERSISTENT )
             {
                 modificationsQueue.add( new Addition<K, V>( key, value ) );
             }
@@ -1251,7 +1306,7 @@ public class BTree<K, V>
      */
     public void flush() throws IOException
     {
-        if ( !inMemory )
+        if ( type == BTreeTypeEnum.PERSISTENT )
         {
             // Then flush the file
             flush( file );
@@ -1338,11 +1393,29 @@ public class BTree<K, V>
 
 
     /**
-     * @return the inMemory flag
+     * @return true if the BTree is fully in memory
      */
     public boolean isInMemory()
     {
-        return inMemory;
+        return type == BTreeTypeEnum.IN_MEMORY;
+    }
+
+
+    /**
+     * @return true if the BTree is persisted on disk
+     */
+    public boolean isPersistent()
+    {
+        return type == BTreeTypeEnum.IN_MEMORY;
+    }
+
+
+    /**
+     * @return true if the BTree is managed by a RecordManager
+     */
+    public boolean isManaged()
+    {
+        return type == BTreeTypeEnum.MANAGED;
     }
 
 
@@ -1354,13 +1427,13 @@ public class BTree<K, V>
      */
     /* no qualifier */ValueHolder<K, V> createHolder( V value )
     {
-        if ( inMemory )
+        if ( type == BTreeTypeEnum.MANAGED )
         {
-            return new MemoryValueHolder<K, V>( value );
+            return new ReferenceValueHolder<K, V>( this, value, -1L );
         }
         else
         {
-            return new ReferenceValueHolder<K, V>( this, value );
+            return new MemoryValueHolder<K, V>( this, value );
         }
     }
 
@@ -1426,9 +1499,20 @@ public class BTree<K, V>
     {
         StringBuilder sb = new StringBuilder();
 
-        if ( inMemory )
+        switch ( type )
         {
-            sb.append( "In-memory " );
+            case IN_MEMORY:
+                sb.append( "In-memory " );
+                break;
+
+            case MANAGED:
+                sb.append( "Managed " );
+                break;
+
+            case PERSISTENT:
+                sb.append( "Persistent " );
+                break;
+
         }
 
         sb.append( "BTree" );
@@ -1436,7 +1520,7 @@ public class BTree<K, V>
 
         if ( rootPage != null )
         {
-            sb.append( ", nbEntries:" ).append( rootPage.getNbElems() );
+            sb.append( ", nbEntries:" ).append( nbElems );
         }
         else
         {
@@ -1454,7 +1538,7 @@ public class BTree<K, V>
             sb.append( comparator.getClass().getSimpleName() );
         }
 
-        if ( !inMemory )
+        if ( type == BTreeTypeEnum.PERSISTENT )
         {
             try
             {

@@ -20,8 +20,6 @@
 package org.apache.mavibot.btree;
 
 
-
-
 /**
  * A In-Memory Value holder. The value is always present in memory.
  * 
@@ -31,6 +29,9 @@ package org.apache.mavibot.btree;
  */
 /* No qualifier */class MemoryValueHolder<K, V> implements ValueHolder<K, V>
 {
+    /** The BTree */
+    private BTree<K, V> btree;
+
     /** The reference to the Value instance, or null if it's not present */
     private V reference;
 
@@ -41,8 +42,9 @@ package org.apache.mavibot.btree;
      * @param offset The offset in disk for this value
      * @param value The value to store into a SoftReference
      */
-    public MemoryValueHolder( V value )
+    public MemoryValueHolder( BTree<K, V> btree, V value )
     {
+        this.btree = btree;
         this.reference = value;
     }
 
@@ -54,5 +56,24 @@ package org.apache.mavibot.btree;
     public V getValue( BTree<K, V> btree )
     {
         return reference;
+    }
+
+
+    /**
+     * @see Object#toString()
+     */
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append( btree.getName() ).append( " : '" );
+
+        V value = getValue( btree );
+
+        sb.append( value );
+
+        sb.append( "'" );
+
+        return sb.toString();
     }
 }

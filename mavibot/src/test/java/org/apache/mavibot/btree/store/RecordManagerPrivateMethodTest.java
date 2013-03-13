@@ -73,4 +73,38 @@ public class RecordManagerPrivateMethodTest
             assertEquals( 3, pages.length );
         }
     }
+
+
+    /**
+     * Test the ComputeNbPages method
+     */
+    @Test
+    public void testComputeNbPages() throws IOException, SecurityException, NoSuchMethodException,
+        IllegalArgumentException, IllegalAccessException, InvocationTargetException
+    {
+        File tempFile = File.createTempFile( "mavibot", ".db" );
+        String tempFileName = tempFile.getAbsolutePath();
+        tempFile.deleteOnExit();
+
+        RecordManager recordManager = new RecordManager( tempFileName, 32 );
+        Method computeNbPagesMethod = RecordManager.class.getDeclaredMethod( "computeNbPages", int.class );
+        computeNbPagesMethod.setAccessible( true );
+
+        assertEquals( 0, ( ( Integer ) computeNbPagesMethod.invoke( recordManager, 0 ) ).intValue() );
+
+        for ( int i = 1; i < 21; i++ )
+        {
+            assertEquals( 1, ( ( Integer ) computeNbPagesMethod.invoke( recordManager, i ) ).intValue() );
+        }
+
+        for ( int i = 21; i < 45; i++ )
+        {
+            assertEquals( 2, ( ( Integer ) computeNbPagesMethod.invoke( recordManager, i ) ).intValue() );
+        }
+
+        for ( int i = 45; i < 68; i++ )
+        {
+            assertEquals( 3, ( ( Integer ) computeNbPagesMethod.invoke( recordManager, i ) ).intValue() );
+        }
+    }
 }

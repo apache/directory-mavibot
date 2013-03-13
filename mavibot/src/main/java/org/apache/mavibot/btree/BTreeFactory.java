@@ -21,6 +21,7 @@ package org.apache.mavibot.btree;
 
 
 import org.apache.mavibot.btree.serializer.ElementSerializer;
+import org.apache.mavibot.btree.store.RecordManager;
 
 
 /**
@@ -174,5 +175,16 @@ public class BTreeFactory
     public static void setPageSize( BTree<?, ?> btree, int pageSize )
     {
         btree.setPageSize( pageSize );
+    }
+
+
+    /**
+     * Set the RecordManager
+     * 
+     * @param recordManager The injected RecordManager
+     */
+    public static void setRecordManager( BTree<?, ?> btree, RecordManager recordManager )
+    {
+        btree.setRecordManager( recordManager );
     }
 }

@@ -95,7 +95,7 @@ public class Node<K, V> extends AbstractPage<K, V>
     /**
      * {@inheritDoc}
      */
-    public InsertResult<K, V> insert( long revision, K key, V value )
+    public InsertResult<K, V> insert( long revision, K key, V value ) throws IOException
     {
         // Find the key into this leaf
         int pos = findPos( key );
@@ -767,6 +767,22 @@ public class Node<K, V> extends AbstractPage<K, V>
         else
         {
             return children[pos].get( key );
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public Page<K, V> getReference( int pos )
+    {
+        if ( pos < nbElems + 1 )
+        {
+            return children[pos];
+        }
+        else
+        {
+            return null;
         }
     }
 

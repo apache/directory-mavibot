@@ -64,8 +64,9 @@ public class LeafTest
 
     /**
      * A helper method to insert elements in a Leaf
+     * @throws IOException 
      */
-    private Leaf<Long, String> insert( Leaf<Long, String> leaf, long key, String value )
+    private Leaf<Long, String> insert( Leaf<Long, String> leaf, long key, String value ) throws IOException
     {
         InsertResult<Long, String> result = leaf.insert( 1L, key, value );
 
@@ -206,9 +207,10 @@ public class LeafTest
     /**
      * Check that deleting an element from a leaf with N/2 element works when we borrow
      * an element in a left page with more than N/2 elements
+     * @throws IOException 
      */
     @Test
-    public void testDeleteBorrowingFromLeftSibling()
+    public void testDeleteBorrowingFromLeftSibling() throws IOException
     {
         Node<Long, String> parent = new Node<Long, String>( btree, 1L, 2 );
         Leaf<Long, String> left = new Leaf<Long, String>( btree );
@@ -275,9 +277,10 @@ public class LeafTest
     /**
      * Check that deleting an element from a leaf with N/2 element works when we borrow
      * an element in a right page with more than N/2 elements
+     * @throws IOException 
      */
     @Test
-    public void testDeleteBorrowingFromRightSibling()
+    public void testDeleteBorrowingFromRightSibling() throws IOException
     {
         Node<Long, String> parent = new Node<Long, String>( btree, 1L, 2 );
         Leaf<Long, String> left = new Leaf<Long, String>( btree );
@@ -345,9 +348,10 @@ public class LeafTest
     /**
      * Check that deleting an element from a leaf with N/2 element works when we merge
      * it with one of its sibling, if both has N/2 elements
+     * @throws IOException 
      */
     @Test
-    public void testDeleteMergeWithSibling()
+    public void testDeleteMergeWithSibling() throws IOException
     {
         Node<Long, String> parent = new Node<Long, String>( btree, 1L, 2 );
         Leaf<Long, String> left = new Leaf<Long, String>( btree );

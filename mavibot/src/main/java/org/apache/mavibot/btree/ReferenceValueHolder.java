@@ -32,8 +32,11 @@ import java.lang.ref.SoftReference;
  *
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-/* No qualifier */class ReferenceValueHolder<K, V> implements ValueHolder<K, V>
+public class ReferenceValueHolder<K, V> implements ValueHolder<K, V>
 {
+    /** The BTree */
+    private BTree<K, V> btree;
+
     /** The offset for a value stored on disk */
     private long offset;
 
@@ -47,9 +50,10 @@ import java.lang.ref.SoftReference;
      * @param offset The offset in disk for this value
      * @param value The value to store into a SoftReference
      */
-    public ReferenceValueHolder( BTree<K, V> btree, V value )
+    public ReferenceValueHolder( BTree<K, V> btree, V value, long offset )
     {
-        //this.offset = btree.getOffset();
+        this.btree = btree;
+        this.offset = offset;
         this.reference = new SoftReference<V>( value );
     }
 
@@ -79,5 +83,30 @@ import java.lang.ref.SoftReference;
     private V fetchValue( BTree<K, V> btree )
     {
         return null;
+    }
+
+
+    /* No qualifier */long getOffset()
+    {
+        return offset;
+    }
+
+
+    /**
+     * @see Object#toString()
+     */
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append( btree.getName() ).append( "[" ).append( offset ).append( "] : '" );
+
+        V value = getValue( btree );
+
+        sb.append( value );
+
+        sb.append( "'" );
+
+        return sb.toString();
     }
 }

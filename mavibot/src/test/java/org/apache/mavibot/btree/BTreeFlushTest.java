@@ -33,7 +33,6 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.mavibot.btree.serializer.IntSerializer;
 import org.apache.mavibot.btree.serializer.LongSerializer;
 import org.apache.mavibot.btree.serializer.StringSerializer;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 
@@ -44,9 +43,6 @@ import org.junit.Test;
  */
 public class BTreeFlushTest
 {
-    /** A file containing 100 000 elements */
-    private static String data100K;
-
     // Some values to inject in a btree
     private static int[] sortedValues = new int[]
         {
@@ -116,7 +112,7 @@ public class BTreeFlushTest
     };
 
 
-    private static void create1MElementsFile() throws IOException
+    private String create100KElementsFile() throws IOException
     {
         Random random = new Random( System.nanoTime() );
 
@@ -146,7 +142,7 @@ public class BTreeFlushTest
                 System.out.println( "Error while adding " + value );
                 nbError++;
 
-                return;
+                return null;
             }
 
             if ( i % 10000 == 0 )
@@ -181,14 +177,7 @@ public class BTreeFlushTest
         System.out.println( "Time to flush 100 000 elements : " + ( t1 - t0 ) + "ms" );
         btree.close();
 
-        data100K = tempFile.getCanonicalPath();
-    }
-
-
-    @BeforeClass
-    public static void setup() throws IOException
-    {
-        create1MElementsFile();
+        return tempFile.getCanonicalPath();
     }
 
 
@@ -294,6 +283,7 @@ public class BTreeFlushTest
     @Test
     public void testLoadBTreeFromFile() throws Exception
     {
+        String data100K = create100KElementsFile();
         File dataFile = new File( data100K );
         BTree<Long, String> btree = new BTree<Long, String>(
             "test",

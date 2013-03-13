@@ -21,19 +21,23 @@ package org.apache.mavibot.btree;
 
 
 /**
- * A Value holder. As we may not store all the values in memory (except for an in-memory
- * BTree), we will use a SoftReference to keep a reference to a Value, and if it's null,
- * then we will load the Value from the underlying physical support, using the offset. 
- * 
- * @param <V> The type for the stored value
- *
+ * An enum to describe the BTree type. We have three possible type :
+ * <ul>
+ * <li>IN_MEMORY : the BTree will remain in memory, and won't be persisted on disk</li>
+ * <li>PERSISTENT : the BTree is in memory, but will be persisted on disk</li>
+ * <li>MANAGED : the BTree is managed by a RecordManager, and some pages may
+ * be swapped out from memory on demand</li>
+ * </ul>
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public interface ValueHolder<K, V>
+public enum BTreeTypeEnum
 {
-    /**
-     * @param btree The Btree storing the value
-     * @return The stored value
-     */
-    V getValue( BTree<K, V> btree );
+    /** Pure in-memory BTree, not persisted on disk */
+    IN_MEMORY,
+
+    /** In-memory BTree but persisted on disk */
+    PERSISTENT,
+
+    /** A BTree associated with a RecordManager */
+    MANAGED
 }

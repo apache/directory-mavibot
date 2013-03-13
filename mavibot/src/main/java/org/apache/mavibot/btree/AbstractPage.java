@@ -46,6 +46,9 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
     /** The number of current values in the Page */
     protected int nbElems;
 
+    /** The Page offset on disk if the BTree is managed */
+    private long offset;
+
 
     /**
      * Creates a default empty AbstractPage
@@ -269,6 +272,24 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
         {
             return null;
         }
+    }
+
+
+    /**
+     * @return the offset
+     */
+    /* No qualifier */long getOffset()
+    {
+        return offset;
+    }
+
+
+    /**
+     * @param offset the offset to set
+     */
+    /* No qualifier */void setOffset( long offset )
+    {
+        this.offset = offset;
     }
 
 

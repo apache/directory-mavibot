@@ -20,6 +20,7 @@
 package org.apache.mavibot.btree;
 
 
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.LinkedList;
 
@@ -64,8 +65,9 @@ public class Leaf<K, V> extends AbstractPage<K, V>
 
     /**
      * {@inheritDoc}
+     * @throws IOException 
      */
-    public InsertResult<K, V> insert( long revision, K key, V value )
+    public InsertResult<K, V> insert( long revision, K key, V value ) throws IOException
     {
         // Find the key into this leaf
         int pos = findPos( key );
@@ -88,6 +90,17 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             // The current page is not full, it can contain the added element.
             // We insert it into a copied page and return the result
             Page<K, V> modifiedPage = addElement( revision, key, value, pos );
+
+            // If the BTree is managed, we now have to write the page on disk
+            // and to add this page to the list of modified pages
+            if ( btree.isManaged() )
+            {
+                ValueHolder holder = btree.getRecordManager()
+                    .modifyPage( btree, this, revision, modifiedPage, revision );
+
+                // Store the offset on disk in the page
+                ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( ReferenceValueHolder ) holder ).getOffset() );
+            }
 
             InsertResult<K, V> result = new ModifyResult<K, V>( modifiedPage, null );
 
@@ -411,6 +424,22 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     /**
      * {@inheritDoc}
      */
+    public ValueHolder<K, V> getValue( int pos )
+    {
+        if ( pos < nbElems )
+        {
+            return values[pos];
+        }
+        else
+        {
+            return null;
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
     public Cursor<K, V> browse( K key, Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
     {
         int pos = findPos( key );
@@ -538,7 +567,10 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     {
         // First copy the current page, but add one element in the copied page
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems + 1 );
-        ValueHolder<K, V> valueHolder = btree.createHolder( value );
+
+        // Atm, store the value in memory 
+        ValueHolder<K, V> valueHolder = new MemoryValueHolder<K, V>( btree, value );
+        //ValueHolder<K, V> valueHolder = btree.createHolder( value );
 
         // Deal with the special case of an empty page
         if ( nbElems == 0 )

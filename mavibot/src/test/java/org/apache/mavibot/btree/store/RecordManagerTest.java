@@ -36,12 +36,14 @@ import org.junit.Test;
 
 
 /**
- * 
+ * test the RecordManager
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
 public class RecordManagerTest
 {
-
+    /**
+     * Test the creation of a RecordManager, and that we can read it back.  
+     */
     @Test
     public void testRecordManager() throws IOException, BTreeAlreadyManagedException
     {
@@ -58,6 +60,58 @@ public class RecordManagerTest
 
         // And make it managed by the RM
         recordManager.manage( btree );
+
+        // Close the recordManager
+        recordManager.close();
+
+        // Now, try to reload the file back
+        RecordManager recordManager1 = new RecordManager( tempFileName );
+
+        assertEquals( 1, recordManager1.getNbManagedTrees() );
+
+        Set<String> managedBTrees = recordManager1.getManagedTrees();
+
+        assertEquals( 1, managedBTrees.size() );
+        assertTrue( managedBTrees.contains( "test" ) );
+
+        BTree btree1 = recordManager1.getManagedTree( "test" );
+
+        assertNotNull( btree1 );
+        assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
+        assertEquals( btree.getFile(), btree1.getFile() );
+        assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
+        assertEquals( btree.getName(), btree1.getName() );
+        assertEquals( btree.getNbElems(), btree1.getNbElems() );
+        assertEquals( btree.getPageSize(), btree1.getPageSize() );
+        assertEquals( btree.getRevision(), btree1.getRevision() );
+        assertEquals( btree.getValueSerializer().getClass().getName(), btree1.getValueSerializer().getClass().getName() );
+
+        recordManager1.close();
+    }
+
+
+    /**
+     * Test the creation of a RecordManager with a BTree containing data.
+     */
+    @Test
+    public void testRecordManagerWithBTree() throws IOException, BTreeAlreadyManagedException
+    {
+        File tempFile = File.createTempFile( "mavibot", ".db" );
+        String tempFileName = tempFile.getAbsolutePath();
+        tempFile.deleteOnExit();
+
+        RecordManager recordManager = new RecordManager( tempFileName, 32 );
+
+        assertNotNull( recordManager );
+
+        // Create a new BTree
+        BTree<Long, String> btree = new BTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
+
+        // And make it managed by the RM
+        recordManager.manage( btree );
+
+        // Now, add some elemnts in the BTree
+        btree.insert( 1L, "V1" );
 
         // Close the recordManager
         recordManager.close();

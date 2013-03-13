@@ -59,7 +59,7 @@ public interface Page<K, V>
      * @param value Inserted value
      * @return Either a modified Page or an Overflow element if the Page was full
      */
-    InsertResult<K, V> insert( long revision, K key, V value );
+    InsertResult<K, V> insert( long revision, K key, V value ) throws IOException;
 
 
     /**
