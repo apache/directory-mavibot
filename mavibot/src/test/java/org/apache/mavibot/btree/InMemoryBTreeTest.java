@@ -1032,8 +1032,7 @@ public class InMemoryBTreeTest
             node.keys[pos - 1] = leftmost.getKey();
         }
 
-        node.children[pos] = new ReferenceHolder<Page<Integer, String>, Integer, String>( btree, page,
-            ( ( AbstractPage<Integer, String> ) page ).getOffset() );
+        node.children[pos] = btree.createHolder( page );
     }
 
 
