@@ -21,6 +21,7 @@ package org.apache.mavibot.btree.serializer;
 
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Comparator;
 
 import org.apache.mavibot.btree.comparator.BooleanComparator;
@@ -71,6 +72,15 @@ public class BooleanSerializer implements ElementSerializer<Boolean>
         }
 
         return in[0] == 0x01;
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public Boolean deserialize( ByteBuffer buffer ) throws IOException
+    {
+        return buffer.get() == 0x01;
     }
 
 

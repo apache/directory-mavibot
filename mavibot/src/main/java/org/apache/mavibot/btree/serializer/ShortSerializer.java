@@ -21,6 +21,7 @@ package org.apache.mavibot.btree.serializer;
 
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Comparator;
 
 import org.apache.mavibot.btree.comparator.ShortComparator;
@@ -74,6 +75,15 @@ public class ShortSerializer implements ElementSerializer<Short>
         }
 
         return ( short ) ( ( in[0] << 8 ) + ( in[1] & 0xFF ) );
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public Short deserialize( ByteBuffer buffer ) throws IOException
+    {
+        return buffer.getShort();
     }
 
 

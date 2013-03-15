@@ -21,6 +21,7 @@ package org.apache.mavibot.btree.serializer;
 
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Comparator;
 
 import org.apache.mavibot.btree.comparator.CharComparator;
@@ -75,6 +76,15 @@ public class CharSerializer implements ElementSerializer<Character>
 
         return Character.valueOf( ( char ) ( ( in[0] << 8 ) +
             ( in[1] & 0xFF ) ) );
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public Character deserialize( ByteBuffer buffer ) throws IOException
+    {
+        return buffer.getChar();
     }
 
 

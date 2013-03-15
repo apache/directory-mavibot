@@ -75,6 +75,16 @@ public class BufferHandler
     }
 
 
+    public byte[] getBuffer()
+    {
+        byte[] bytes = new byte[buffer.capacity()];
+
+        buffer.get( bytes );
+
+        return bytes;
+    }
+
+
     /**
      * Read a buffer containing the given number of bytes
      * @param len The number of bytes to read

@@ -21,6 +21,7 @@ package org.apache.mavibot.btree.serializer;
 
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Comparator;
 
 import org.apache.mavibot.btree.comparator.LongArrayComparator;
@@ -143,6 +144,35 @@ public class LongArraySerializer implements ElementSerializer<long[]>
                         ( ( in[pos++] & 0xFFL ) << 16 ) +
                         ( ( in[pos++] & 0xFFL ) << 8 ) +
                         ( in[pos++] & 0xFFL );
+                }
+
+                return longs;
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public long[] deserialize( ByteBuffer buffer ) throws IOException
+    {
+        int len = buffer.getInt();
+
+        switch ( len )
+        {
+            case 0:
+                return new long[]
+                    {};
+
+            case -1:
+                return null;
+
+            default:
+                long[] longs = new long[len];
+
+                for ( int i = 0; i < len; i++ )
+                {
+                    longs[i] = buffer.getLong();
                 }
 
                 return longs;

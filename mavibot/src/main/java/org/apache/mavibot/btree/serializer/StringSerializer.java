@@ -22,9 +22,11 @@ package org.apache.mavibot.btree.serializer;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
 import java.util.Comparator;
 
 import org.apache.mavibot.btree.comparator.StringComparator;
+import org.apache.mavinot.btree.utils.Strings;
 
 
 /**
@@ -110,6 +112,7 @@ public class StringSerializer implements ElementSerializer<String>
 
     /**
      * {@inheritDoc}
+     * @throws IOException 
      */
     public String deserialize( BufferHandler bufferHandler ) throws IOException
     {
@@ -126,17 +129,31 @@ public class StringSerializer implements ElementSerializer<String>
                 return null;
 
             default:
-                try
-                {
-                    in = bufferHandler.read( len );
+                in = bufferHandler.read( len );
 
-                    return new String( in, 0, len, "UTF-8" );
-                }
-                catch ( UnsupportedEncodingException uee )
-                {
-                    // if this happens something is really strange
-                    throw new RuntimeException( uee );
-                }
+                return Strings.utf8ToString( in );
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public String deserialize( ByteBuffer buffer ) throws IOException
+    {
+        int len = buffer.getInt();
+
+        switch ( len )
+        {
+            case 0:
+                return "";
+
+            default:
+                byte[] bytes = new byte[len];
+
+                buffer.get( bytes );
+
+                return Strings.utf8ToString( bytes );
         }
     }
 

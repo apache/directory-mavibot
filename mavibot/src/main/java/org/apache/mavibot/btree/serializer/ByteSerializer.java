@@ -21,6 +21,7 @@ package org.apache.mavibot.btree.serializer;
 
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Comparator;
 
 import org.apache.mavibot.btree.comparator.ByteComparator;
@@ -71,6 +72,15 @@ public class ByteSerializer implements ElementSerializer<Byte>
         }
 
         return in[0];
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public Byte deserialize( ByteBuffer buffer ) throws IOException
+    {
+        return buffer.get();
     }
 
 

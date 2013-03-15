@@ -21,6 +21,7 @@ package org.apache.mavibot.btree.serializer;
 
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Comparator;
 
 
@@ -45,11 +46,21 @@ public interface ElementSerializer<T>
     /**
      * Deserialize an element from a byte[]
      * 
-     * @param in The incoming bufferHandler
+     * @param bufferHandler The incoming bufferHandler
      * @return The deserialized element
      * @throws IOException If the deserialization failed
      */
     T deserialize( BufferHandler bufferHandler ) throws IOException;
+
+
+    /**
+     * Deserialize an element from a byte[]
+     * 
+     * @param buffer The incoming bufferHandler
+     * @return The deserialized element
+     * @throws IOException If the deserialization failed
+     */
+    T deserialize( ByteBuffer buffer ) throws IOException;
 
 
     /**
