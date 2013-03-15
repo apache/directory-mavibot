@@ -20,6 +20,9 @@
 package org.apache.mavibot.btree.store;
 
 
+import java.util.concurrent.atomic.AtomicLong;
+
+
 /**
  * Store in memory the information associated with a BTree. <br>
  * A BTree Header on disk contains the following elements :
@@ -48,19 +51,19 @@ package org.apache.mavibot.btree.store;
 public class BTreeHeader
 {
     /** The current revision */
-    private long revision;
+    private AtomicLong revision = new AtomicLong( 0L );
 
     /** The number of elements in this BTree */
-    private long nbElems;
+    private AtomicLong nbElems = new AtomicLong( 0L );
 
     /** The offset of the BTree RootPage */
     private long rootPageOffset;
 
     /** The offset of the next BTree */
-    private long nextBtreeOffset;
+    private long nextBTreeOffset;
 
     /** The number of elements in a page for this BTree */
-    private long pageSize;
+    private int pageSize;
 
     /** The BTree name */
     private String name;
@@ -73,7 +76,7 @@ public class BTreeHeader
 
     // Those are data which aren't serialized : they are in memory only */
     /** The position in the file */
-    private long offset;
+    private long btreeOffset;
 
     /** The existing versions */
     private long[] versions;
@@ -122,20 +125,20 @@ public class BTreeHeader
 
 
     /**
-     * @return the offset
+     * @return the btreeOffset
      */
-    public long getOffset()
+    public long getBTreeOffset()
     {
-        return offset;
+        return btreeOffset;
     }
 
 
     /**
-     * @param offset the offset to set
+     * @param btreeOffset the btreeOffset to set
      */
-    public void setOffset( long offset )
+    public void setBTreeOffset( long btreeOffset )
     {
-        this.offset = offset;
+        this.btreeOffset = btreeOffset;
     }
 
 
@@ -162,7 +165,7 @@ public class BTreeHeader
      */
     public long getRevision()
     {
-        return revision;
+        return revision.get();
     }
 
 
@@ -171,7 +174,18 @@ public class BTreeHeader
      */
     public void setRevision( long revision )
     {
-        this.revision = revision;
+        this.revision.set( revision );
+    }
+
+
+    /**
+     * Increment the revision
+     * 
+     * @return the new revision
+     */
+    public long incrementRevision()
+    {
+        return revision.incrementAndGet();
     }
 
 
@@ -180,7 +194,25 @@ public class BTreeHeader
      */
     public long getNbElems()
     {
-        return nbElems;
+        return nbElems.get();
+    }
+
+
+    /**
+     * Increment the number of elements
+     */
+    public void incrementNbElems()
+    {
+        nbElems.incrementAndGet();
+    }
+
+
+    /**
+     * Decrement the number of elements
+     */
+    public void decrementNbElems()
+    {
+        nbElems.decrementAndGet();
     }
 
 
@@ -189,32 +221,32 @@ public class BTreeHeader
      */
     public void setNbElems( long nbElems )
     {
-        this.nbElems = nbElems;
+        this.nbElems.set( nbElems );
     }
 
 
     /**
-     * @return the nextBtreeOffset
+     * @return the nextBTreeOffset
      */
-    public long getNextBtreeOffset()
+    public long getNextBTreeOffset()
     {
-        return nextBtreeOffset;
+        return nextBTreeOffset;
     }
 
 
     /**
      * @param nextBtreeOffset the nextBtreeOffset to set
      */
-    public void setNextBtreeOffset( long nextBtreeOffset )
+    public void setNextBTreeOffset( long nextBTreeOffset )
     {
-        this.nextBtreeOffset = nextBtreeOffset;
+        this.nextBTreeOffset = nextBTreeOffset;
     }
 
 
     /**
      * @return the pageSize
      */
-    public long getPageSize()
+    public int getPageSize()
     {
         return pageSize;
     }
@@ -223,7 +255,7 @@ public class BTreeHeader
     /**
      * @param pageSize the pageSize to set
      */
-    public void setPageSize( long pageSize )
+    public void setPageSize( int pageSize )
     {
         this.pageSize = pageSize;
     }
@@ -273,12 +305,12 @@ public class BTreeHeader
         StringBuilder sb = new StringBuilder();
 
         sb.append( "Btree '" ).append( name ).append( "'" );
-        sb.append( ", R[" ).append( revision ).append( "]" );
-        sb.append( ", O[" ).append( offset ).append( "]\n" );
-        sb.append( ", root[" ).append( rootPageOffset ).append( "]\n" );
-        sb.append( ", next[" ).append( nextBtreeOffset ).append( "]\n" );
-        sb.append( ", N[" ).append( nbElems ).append( "]" );
-        sb.append( ", S[" ).append( pageSize ).append( "]" );
+        sb.append( ", revision[" ).append( revision ).append( "]" );
+        sb.append( ", btreeOffset[" ).append( btreeOffset ).append( "]" );
+        sb.append( ", rootPageOffset[" ).append( rootPageOffset ).append( "]" );
+        sb.append( ", nextBTree[" ).append( nextBTreeOffset ).append( "]" );
+        sb.append( ", nbElems[" ).append( nbElems ).append( "]" );
+        sb.append( ", pageSize[" ).append( pageSize ).append( "]" );
         sb.append( "{\n" );
         sb.append( "    Key serializer   : " ).append( keySerializerFQCN ).append( "\n" );
         sb.append( "    Value serializer : " ).append( valueSerializerFQCN ).append( "\n" );
