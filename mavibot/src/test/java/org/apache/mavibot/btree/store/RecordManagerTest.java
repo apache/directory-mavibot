@@ -30,6 +30,7 @@ import java.util.Set;
 
 import org.apache.mavibot.btree.BTree;
 import org.apache.mavibot.btree.exception.BTreeAlreadyManagedException;
+import org.apache.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.mavibot.btree.serializer.LongSerializer;
 import org.apache.mavibot.btree.serializer.StringSerializer;
 import org.junit.Test;
@@ -92,9 +93,10 @@ public class RecordManagerTest
 
     /**
      * Test the creation of a RecordManager with a BTree containing data.
+     * @throws KeyNotFoundException 
      */
     @Test
-    public void testRecordManagerWithBTree() throws IOException, BTreeAlreadyManagedException
+    public void testRecordManagerWithBTree() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
         File tempFile = File.createTempFile( "mavibot", ".db" );
         String tempFileName = tempFile.getAbsolutePath();
@@ -110,8 +112,10 @@ public class RecordManagerTest
         // And make it managed by the RM
         recordManager.manage( btree );
 
-        // Now, add some elemnts in the BTree
+        // Now, add some elements in the BTree
+        btree.insert( 3L, "V3" );
         btree.insert( 1L, "V1" );
+        btree.insert( 5L, "V5" );
 
         // Close the recordManager
         recordManager.close();
@@ -126,7 +130,7 @@ public class RecordManagerTest
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        BTree btree1 = recordManager1.getManagedTree( "test" );
+        BTree<Long, String> btree1 = recordManager1.getManagedTree( "test" );
 
         assertNotNull( btree1 );
         assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
@@ -137,5 +141,13 @@ public class RecordManagerTest
         assertEquals( btree.getPageSize(), btree1.getPageSize() );
         assertEquals( btree.getRevision(), btree1.getRevision() );
         assertEquals( btree.getValueSerializer().getClass().getName(), btree1.getValueSerializer().getClass().getName() );
+
+        // Check the stord element
+        assertTrue( btree1.exist( 1L ) );
+        assertTrue( btree1.exist( 3L ) );
+        assertTrue( btree1.exist( 5L ) );
+        assertEquals( "V1", btree1.get( 1L ) );
+        assertEquals( "V3", btree1.get( 3L ) );
+        assertEquals( "V5", btree1.get( 5L ) );
     }
 }

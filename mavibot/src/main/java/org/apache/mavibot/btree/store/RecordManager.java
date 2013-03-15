@@ -34,12 +34,12 @@ import java.util.Set;
 
 import org.apache.mavibot.btree.BTree;
 import org.apache.mavibot.btree.BTreeFactory;
+import org.apache.mavibot.btree.ElementHolder;
 import org.apache.mavibot.btree.Leaf;
 import org.apache.mavibot.btree.MemoryHolder;
 import org.apache.mavibot.btree.Node;
 import org.apache.mavibot.btree.Page;
 import org.apache.mavibot.btree.ReferenceHolder;
-import org.apache.mavibot.btree.ElementHolder;
 import org.apache.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.mavibot.btree.serializer.IntSerializer;
@@ -1256,6 +1256,13 @@ public class RecordManager
                     pageData.put( bytes, bytes.length - nbStored, remaining );
                     pageData.reset();
                     pageNb++;
+
+                    if ( pageNb == pageIos.length )
+                    {
+                        // We can stop here : we have reach the end of the page
+                        break;
+                    }
+
                     pageData = pageIos[pageNb].getData();
                     pagePos = LINK_SIZE;
                     nbStored -= remaining;
