@@ -39,7 +39,7 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
 public class Node<K, V> extends AbstractPage<K, V>
 {
     /** Children pages associated with keys. */
-    protected Page<K, V>[] children;
+    protected ElementHolder<Page<K, V>, K, V>[] children;
 
 
     /**
@@ -57,7 +57,7 @@ public class Node<K, V> extends AbstractPage<K, V>
         super( btree, revision, nbElems );
 
         // Create the children array
-        children = new Page[nbElems + 1];
+        children = ( ReferenceHolder<Page<K, V>, K, V>[] ) Array.newInstance( ReferenceHolder.class, nbElems + 1 );
     }
 
 
@@ -78,9 +78,10 @@ public class Node<K, V> extends AbstractPage<K, V>
         super( btree, revision, 1 );
 
         // Create the children array, and store the left and right children
-        children = new Page[btree.getPageSize()];
-        children[0] = leftPage;
-        children[1] = rightPage;
+        children = ( ReferenceHolder<Page<K, V>, K, V>[] ) Array.newInstance( ReferenceHolder.class,
+            btree.getPageSize() );
+        children[0] = new ReferenceHolder( btree, leftPage, ( ( AbstractPage ) leftPage ).getOffset() );
+        children[1] = new ReferenceHolder( btree, rightPage, ( ( AbstractPage ) rightPage ).getOffset() );
 
         // Create the keys array and store the pivot into it
         // We get the type of array to create from the btree
@@ -108,7 +109,7 @@ public class Node<K, V> extends AbstractPage<K, V>
         }
 
         // Get the child page into which we will insert the <K, V> tuple
-        Page<K, V> child = children[pos];
+        Page<K, V> child = children[pos].getValue( btree );
 
         // and insert the <K, V> into this child
         InsertResult<K, V> result = child.insert( revision, key, value );
@@ -159,13 +160,17 @@ public class Node<K, V> extends AbstractPage<K, V>
         // the modified page.
         Node<K, V> newPage = copy( revision );
 
+        Page<K, V> modifiedPage = removeResult.getModifiedPage();
+
         if ( found )
         {
-            newPage.children[index + 1] = removeResult.getModifiedPage();
+            newPage.children[index + 1] = new ReferenceHolder( btree, modifiedPage,
+                ( ( AbstractPage ) modifiedPage ).getOffset() );
         }
         else
         {
-            newPage.children[index] = removeResult.getModifiedPage();
+            newPage.children[index] = new ReferenceHolder( btree, modifiedPage,
+                ( ( AbstractPage ) modifiedPage ).getOffset() );
         }
 
         if ( pos < 0 )
@@ -226,7 +231,7 @@ public class Node<K, V> extends AbstractPage<K, V>
         // Create the new sibling, with one less element at the beginning
         Node<K, V> newSibling = new Node<K, V>( btree, revision, sibling.getNbElems() - 1 );
 
-        K siblingKey = sibling.children[0].getLeftMostKey();
+        K siblingKey = sibling.children[0].getValue( btree ).getLeftMostKey();
 
         // Copy the keys and children of the old sibling in the new sibling
         System.arraycopy( sibling.keys, 1, newSibling.keys, 0, newSibling.getNbElems() );
@@ -249,7 +254,9 @@ public class Node<K, V> extends AbstractPage<K, V>
             System.arraycopy( keys, 1, newNode.keys, 0, nbElems - 1 );
 
             // Inject the modified page
-            newNode.children[0] = mergedResult.getModifiedPage();
+            Page<K, V> modifiedPage = mergedResult.getModifiedPage();
+            newNode.children[0] = new ReferenceHolder( btree, modifiedPage,
+                ( ( AbstractPage ) modifiedPage ).getOffset() );
 
             // Copy the children
             System.arraycopy( children, 2, newNode.children, 1, nbElems - 1 );
@@ -278,7 +285,9 @@ public class Node<K, V> extends AbstractPage<K, V>
             System.arraycopy( children, 0, newNode.children, 0, index - 1 ); // 5
 
             // Inject the modified page
-            newNode.children[index - 1] = mergedResult.getModifiedPage(); // 6
+            Page<K, V> modifiedPage = mergedResult.getModifiedPage();
+            newNode.children[index - 1] = new ReferenceHolder( btree, modifiedPage,
+                ( ( AbstractPage ) modifiedPage ).getOffset() ); // 6
         }
 
         // Create the result
@@ -303,7 +312,7 @@ public class Node<K, V> extends AbstractPage<K, V>
         Node<K, V> sibling, int pos )
     {
         // The sibling is on the left, borrow the rightmost element
-        Page<K, V> siblingChild = sibling.children[sibling.nbElems];
+        Page<K, V> siblingChild = sibling.children[sibling.nbElems].getValue( btree );
 
         // Create the new sibling, with one less element at the end
         Node<K, V> newSibling = new Node<K, V>( btree, revision, sibling.getNbElems() - 1 );
@@ -317,7 +326,7 @@ public class Node<K, V> extends AbstractPage<K, V>
         Node<K, V> newNode = new Node<K, V>( btree, revision, nbElems );
 
         // Sets the first children
-        newNode.children[0] = siblingChild; //1
+        newNode.children[0] = new ReferenceHolder( btree, siblingChild, sibling.getOffset() ); //1
 
         int index = Math.abs( pos );
 
@@ -326,13 +335,15 @@ public class Node<K, V> extends AbstractPage<K, V>
             newNode.keys[0] = mergedResult.getModifiedPage().getLeftMostKey();
             System.arraycopy( keys, 1, newNode.keys, 1, nbElems - 1 );
 
-            newNode.children[1] = mergedResult.getModifiedPage();
+            Page<K, V> modifiedPage = mergedResult.getModifiedPage();
+            newNode.children[1] = new ReferenceHolder( btree, modifiedPage,
+                ( ( AbstractPage ) modifiedPage ).getOffset() );
             System.arraycopy( children, 2, newNode.children, 2, nbElems - 1 );
         }
         else
         {
             // Set the first key
-            newNode.keys[0] = children[0].getLeftMostKey(); //2
+            newNode.keys[0] = children[0].getValue( btree ).getLeftMostKey(); //2
 
             if ( index > 2 )
             {
@@ -356,7 +367,9 @@ public class Node<K, V> extends AbstractPage<K, V>
             System.arraycopy( children, 0, newNode.children, 1, index - 1 ); // 6
 
             // Insert the modified page
-            newNode.children[index] = mergedResult.getModifiedPage(); // 7
+            Page<K, V> modifiedPage = mergedResult.getModifiedPage();
+            newNode.children[index] = new ReferenceHolder( btree, modifiedPage,
+                ( ( AbstractPage ) modifiedPage ).getOffset() ); // 7
         }
 
         // Create the result
@@ -398,14 +411,16 @@ public class Node<K, V> extends AbstractPage<K, V>
                 newNode.keys[half] = mergedResult.getModifiedPage().getLeftMostKey();
                 System.arraycopy( keys, 1, newNode.keys, half + 1, half - 1 );
 
-                newNode.children[half + 1] = mergedResult.getModifiedPage();
+                Page<K, V> modifiedPage = mergedResult.getModifiedPage();
+                newNode.children[half + 1] = new ReferenceHolder( btree, modifiedPage,
+                    ( ( AbstractPage ) modifiedPage ).getOffset() );
                 System.arraycopy( children, 2, newNode.children, half + 2, half - 1 );
             }
             else
             {
                 // Copy the left part of the node keys up to the deletion point
                 // Insert the new key
-                newNode.keys[half] = children[0].getLeftMostKey(); // 3
+                newNode.keys[half] = children[0].getValue( btree ).getLeftMostKey(); // 3
 
                 if ( index > 2 )
                 {
@@ -425,7 +440,9 @@ public class Node<K, V> extends AbstractPage<K, V>
                 System.arraycopy( children, 0, newNode.children, half + 1, index - 1 ); // 7
 
                 // Inject the new merged child
-                newNode.children[half + index] = mergedResult.getModifiedPage(); //8
+                Page<K, V> modifiedPage = mergedResult.getModifiedPage();
+                newNode.children[half + index] = new ReferenceHolder( btree, modifiedPage,
+                    ( ( AbstractPage ) modifiedPage ).getOffset() ); //8
             }
         }
         else
@@ -437,7 +454,9 @@ public class Node<K, V> extends AbstractPage<K, V>
                 System.arraycopy( keys, 1, newNode.keys, 0, half - 1 );
 
                 // Insert the first child
-                newNode.children[0] = mergedResult.getModifiedPage();
+                Page<K, V> modifiedPage = mergedResult.getModifiedPage();
+                newNode.children[0] = new ReferenceHolder( btree, modifiedPage,
+                    ( ( AbstractPage ) modifiedPage ).getOffset() );
 
                 // Copy the node children
                 System.arraycopy( children, 2, newNode.children, 1, half - 1 );
@@ -458,7 +477,9 @@ public class Node<K, V> extends AbstractPage<K, V>
                 newNode.keys[index - 2] = mergedResult.getModifiedPage().getLeftMostKey(); //2
 
                 // Inject the modified children
-                newNode.children[index - 1] = mergedResult.getModifiedPage(); // 7
+                Page<K, V> modifiedPage = mergedResult.getModifiedPage();
+                newNode.children[index - 1] = new ReferenceHolder( btree, modifiedPage,
+                    ( ( AbstractPage ) modifiedPage ).getOffset() ); // 7
 
                 // Add the remaining node's key if needed
                 if ( index < half )
@@ -503,12 +524,12 @@ public class Node<K, V> extends AbstractPage<K, V>
         if ( found )
         {
             index = -( pos + 1 );
-            child = children[-pos];
+            child = children[-pos].getValue( btree );
             deleteResult = child.delete( revision, key, this, -pos );
         }
         else
         {
-            child = children[pos];
+            child = children[pos].getValue( btree );
             deleteResult = child.delete( revision, key, this, pos );
         }
 
@@ -572,7 +593,7 @@ public class Node<K, V> extends AbstractPage<K, V>
                 // a sibling, or we will have to merge two pages
                 int siblingPos = selectSibling( ( Node<K, V> ) parent, parentPos );
 
-                Node<K, V> sibling = ( Node<K, V> ) ( ( Node<K, V> ) parent ).children[siblingPos];
+                Node<K, V> sibling = ( Node<K, V> ) ( ( ( Node<K, V> ) parent ).children[siblingPos].getValue( btree ) );
 
                 if ( sibling.getNbElems() > halfSize )
                 {
@@ -633,8 +654,10 @@ public class Node<K, V> extends AbstractPage<K, V>
                 newPage.keys[pos + 1] = modifiedSibling.findLeftMost().getKey();
 
                 // Update the children
-                newPage.children[pos + 1] = modifiedPage;
-                newPage.children[pos + 2] = modifiedSibling;
+                newPage.children[pos + 1] = new ReferenceHolder( btree, modifiedPage,
+                    ( ( AbstractPage ) modifiedPage ).getOffset() );
+                newPage.children[pos + 2] = new ReferenceHolder( btree, modifiedSibling,
+                    ( ( AbstractPage ) modifiedSibling ).getOffset() );
             }
             else
             {
@@ -642,8 +665,10 @@ public class Node<K, V> extends AbstractPage<K, V>
                 newPage.keys[pos] = modifiedPage.findLeftMost().getKey();
 
                 // Update the children
-                newPage.children[pos] = modifiedSibling;
-                newPage.children[pos + 1] = modifiedPage;
+                newPage.children[pos] = new ReferenceHolder( btree, modifiedSibling,
+                    ( ( AbstractPage ) modifiedSibling ).getOffset() );
+                newPage.children[pos + 1] = new ReferenceHolder( btree, modifiedPage,
+                    ( ( AbstractPage ) modifiedPage ).getOffset() );
             }
         }
         else
@@ -654,8 +679,10 @@ public class Node<K, V> extends AbstractPage<K, V>
                 newPage.keys[pos] = modifiedSibling.findLeftMost().getKey();
 
                 // Update the children
-                newPage.children[pos] = modifiedPage;
-                newPage.children[pos + 1] = modifiedSibling;
+                newPage.children[pos] = new ReferenceHolder( btree, modifiedPage,
+                    ( ( AbstractPage ) modifiedPage ).getOffset() );
+                newPage.children[pos + 1] = new ReferenceHolder( btree, modifiedSibling,
+                    ( ( AbstractPage ) modifiedSibling ).getOffset() );
             }
             else
             {
@@ -663,8 +690,10 @@ public class Node<K, V> extends AbstractPage<K, V>
                 newPage.keys[pos - 1] = modifiedPage.findLeftMost().getKey();
 
                 // Update the children
-                newPage.children[pos - 1] = modifiedSibling;
-                newPage.children[pos] = modifiedPage;
+                newPage.children[pos - 1] = new ReferenceHolder( btree, modifiedSibling,
+                    ( ( AbstractPage ) modifiedSibling ).getOffset() );
+                newPage.children[pos] = new ReferenceHolder( btree, modifiedPage,
+                    ( ( AbstractPage ) modifiedPage ).getOffset() );
             }
         }
 
@@ -695,7 +724,9 @@ public class Node<K, V> extends AbstractPage<K, V>
         {
             // Copy the keys and the children
             System.arraycopy( keys, 1, newNode.keys, 0, newNode.nbElems );
-            newNode.children[0] = mergedResult.getModifiedPage();
+            Page<K, V> modifiedPage = mergedResult.getModifiedPage();
+            newNode.children[0] = new ReferenceHolder( btree, modifiedPage,
+                ( ( AbstractPage ) modifiedPage ).getOffset() );
             System.arraycopy( children, 2, newNode.children, 1, nbElems - 1 );
         }
         else
@@ -716,7 +747,9 @@ public class Node<K, V> extends AbstractPage<K, V>
             // Copy the children
             System.arraycopy( children, 0, newNode.children, 0, index + 1 );
 
-            newNode.children[index + 1] = mergedResult.getModifiedPage();
+            Page<K, V> modifiedPage = mergedResult.getModifiedPage();
+            newNode.children[index + 1] = new ReferenceHolder( btree, modifiedPage,
+                ( ( AbstractPage ) modifiedPage ).getOffset() );
 
             if ( index < nbElems - 2 )
             {
@@ -742,11 +775,11 @@ public class Node<K, V> extends AbstractPage<K, V>
         {
             // Here, if we have found the key in the node, then we must go down into
             // the right child, not the left one
-            return children[-pos].exist( key );
+            return children[-pos].getValue( btree ).exist( key );
         }
         else
         {
-            return children[pos].exist( key );
+            return children[pos].getValue( btree ).exist( key );
         }
     }
 
@@ -762,11 +795,11 @@ public class Node<K, V> extends AbstractPage<K, V>
         {
             // Here, if we have found the key in the node, then we must go down into
             // the right child, not the left one
-            return children[-pos].get( key );
+            return children[-pos].getValue( btree ).get( key );
         }
         else
         {
-            return children[pos].get( key );
+            return children[pos].getValue( btree ).get( key );
         }
     }
 
@@ -778,7 +811,8 @@ public class Node<K, V> extends AbstractPage<K, V>
      */
     public void setValue( int pos, ElementHolder<Page<K, V>, K, V> value )
     {
-        children[pos] = value.getValue( btree );
+        Page<K, V> page = value.getValue( btree );
+        children[pos] = new ReferenceHolder( btree, page, ( ( AbstractPage<K, V> ) page ).getOffset() );
     }
 
 
@@ -789,7 +823,7 @@ public class Node<K, V> extends AbstractPage<K, V>
     {
         if ( pos < nbElems + 1 )
         {
-            return children[pos];
+            return children[pos].getValue( btree );
         }
         else
         {
@@ -813,7 +847,7 @@ public class Node<K, V> extends AbstractPage<K, V>
         // We first stack the current page
         stack.push( new ParentPos<K, V>( this, pos ) );
 
-        return children[pos].browse( key, transaction, stack );
+        return children[pos].getValue( btree ).browse( key, transaction, stack );
     }
 
 
@@ -824,7 +858,7 @@ public class Node<K, V> extends AbstractPage<K, V>
     {
         stack.push( new ParentPos<K, V>( this, 0 ) );
 
-        return children[0].browse( transaction, stack );
+        return children[0].getValue( btree ).browse( transaction, stack );
     }
 
 
@@ -845,7 +879,9 @@ public class Node<K, V> extends AbstractPage<K, V>
 
         // Last, we update the children table of the newly created page
         // to point on the modified child
-        ( ( Node<K, V> ) newPage ).children[pos] = result.modifiedPage;
+        Page<K, V> modifiedPage = result.getModifiedPage();
+        ( ( Node<K, V> ) newPage ).children[pos] = new ReferenceHolder( btree, modifiedPage,
+            ( ( AbstractPage ) modifiedPage ).getOffset() );
 
         // We can return the result, where we update the modifiedPage,
         // to avoid the creation of a new object
@@ -875,8 +911,8 @@ public class Node<K, V> extends AbstractPage<K, V>
         if ( nbElems == 0 )
         {
             newNode.keys[0] = key;
-            newNode.children[0] = leftPage;
-            newNode.children[1] = rightPage;
+            newNode.children[0] = new ReferenceHolder( btree, leftPage, ( ( AbstractPage ) leftPage ).getOffset() );
+            newNode.children[1] = new ReferenceHolder( btree, rightPage, ( ( AbstractPage ) rightPage ).getOffset() );
         }
         else
         {
@@ -886,8 +922,9 @@ public class Node<K, V> extends AbstractPage<K, V>
 
             // Add the new key and children
             newNode.keys[pos] = key;
-            newNode.children[pos] = leftPage;
-            newNode.children[pos + 1] = rightPage;
+            newNode.children[pos] = new ReferenceHolder( btree, leftPage, ( ( AbstractPage ) leftPage ).getOffset() );
+            newNode.children[pos + 1] = new ReferenceHolder( btree, rightPage,
+                ( ( AbstractPage ) rightPage ).getOffset() );
 
             // And copy the remaining keys and children
             System.arraycopy( keys, pos, newNode.keys, pos + 1, keys.length - pos );
@@ -936,8 +973,9 @@ public class Node<K, V> extends AbstractPage<K, V>
 
             // Add the new element
             newLeftPage.keys[pos] = pivot;
-            newLeftPage.children[pos] = leftPage;
-            newLeftPage.children[pos + 1] = rightPage;
+            newLeftPage.children[pos] = new ReferenceHolder( btree, leftPage, ( ( AbstractPage ) leftPage ).getOffset() );
+            newLeftPage.children[pos + 1] = new ReferenceHolder( btree, rightPage,
+                ( ( AbstractPage ) rightPage ).getOffset() );;
 
             // And copy the remaining elements minus the new pivot
             System.arraycopy( keys, pos, newLeftPage.keys, pos + 1, middle - pos - 1 );
@@ -959,12 +997,14 @@ public class Node<K, V> extends AbstractPage<K, V>
             // Copy the keys and the children up to the insertion position (here, middle)
             System.arraycopy( keys, 0, newLeftPage.keys, 0, middle );
             System.arraycopy( children, 0, newLeftPage.children, 0, middle );
-            newLeftPage.children[middle] = leftPage;
+            newLeftPage.children[middle] = new ReferenceHolder( btree, leftPage,
+                ( ( AbstractPage ) leftPage ).getOffset() );
 
             // And process the right page now
             System.arraycopy( keys, middle, newRightPage.keys, 0, middle );
             System.arraycopy( children, middle + 1, newRightPage.children, 1, middle );
-            newRightPage.children[0] = rightPage;
+            newRightPage.children[0] = new ReferenceHolder( btree, rightPage,
+                ( ( AbstractPage ) rightPage ).getOffset() );;
 
             // Create the result
             InsertResult<K, V> result = new SplitResult<K, V>( pivot, newLeftPage, newRightPage );
@@ -983,8 +1023,10 @@ public class Node<K, V> extends AbstractPage<K, V>
 
             // Add the new element
             newRightPage.keys[pos - middle - 1] = pivot;
-            newRightPage.children[pos - middle - 1] = leftPage;
-            newRightPage.children[pos - middle] = rightPage;
+            newRightPage.children[pos - middle - 1] = new ReferenceHolder( btree, leftPage,
+                ( ( AbstractPage ) leftPage ).getOffset() );
+            newRightPage.children[pos - middle] = new ReferenceHolder( btree, rightPage,
+                ( ( AbstractPage ) rightPage ).getOffset() );
 
             // And copy the remaining elements minus the new pivot
             System.arraycopy( keys, pos, newRightPage.keys, pos - middle, nbElems - pos );
@@ -1023,7 +1065,7 @@ public class Node<K, V> extends AbstractPage<K, V>
      */
     public K getLeftMostKey()
     {
-        return children[0].getLeftMostKey();
+        return children[0].getValue( btree ).getLeftMostKey();
     }
 
 
@@ -1032,7 +1074,7 @@ public class Node<K, V> extends AbstractPage<K, V>
      */
     public Tuple<K, V> findLeftMost()
     {
-        return children[0].findLeftMost();
+        return children[0].getValue( btree ).findLeftMost();
     }
 
 
@@ -1041,7 +1083,7 @@ public class Node<K, V> extends AbstractPage<K, V>
      */
     public Tuple<K, V> findRightMost()
     {
-        return children[nbElems].findRightMost();
+        return children[nbElems].getValue( btree ).findRightMost();
     }
 
 
@@ -1065,7 +1107,7 @@ public class Node<K, V> extends AbstractPage<K, V>
             }
             else
             {
-                sb.append( 'r' ).append( children[0].getRevision() );
+                sb.append( 'r' ).append( children[0].getValue( btree ).getRevision() );
             }
 
             for ( int i = 0; i < nbElems; i++ )
@@ -1078,7 +1120,7 @@ public class Node<K, V> extends AbstractPage<K, V>
                 }
                 else
                 {
-                    sb.append( 'r' ).append( children[i + 1].getRevision() );
+                    sb.append( 'r' ).append( children[i + 1].getValue( btree ).getRevision() );
                 }
             }
         }
@@ -1099,14 +1141,14 @@ public class Node<K, V> extends AbstractPage<K, V>
         if ( nbElems > 0 )
         {
             // Start with the first child
-            sb.append( children[0].dumpPage( tabs + "    " ) );
+            sb.append( children[0].getValue( btree ).dumpPage( tabs + "    " ) );
 
             for ( int i = 0; i < nbElems; i++ )
             {
                 sb.append( tabs );
                 sb.append( "<" );
                 sb.append( keys[i] ).append( ">\n" );
-                sb.append( children[i + 1].dumpPage( tabs + "    " ) );
+                sb.append( children[i + 1].getValue( btree ).dumpPage( tabs + "    " ) );
             }
         }
 

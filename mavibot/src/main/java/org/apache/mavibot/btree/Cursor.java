@@ -133,7 +133,7 @@ import java.util.LinkedList;
                 {
                     Node<K, V> node = ( Node<K, V> ) newParentPos.page;
 
-                    newParentPos = new ParentPos<K, V>( node.children[newPos], 0 );
+                    newParentPos = new ParentPos<K, V>( node.children[newPos].getValue( btree ), 0 );
 
                     stack.push( newParentPos );
 
@@ -179,7 +179,8 @@ import java.util.LinkedList;
                 {
                     Node<K, V> node = ( Node<K, V> ) newParentPos.page;
 
-                    newParentPos = new ParentPos<K, V>( node.children[newPos], node.children[newPos].getNbElems() );
+                    newParentPos = new ParentPos<K, V>( node.children[newPos].getValue( btree ), node.children[newPos]
+                        .getValue( btree ).getNbElems() );
 
                     stack.push( newParentPos );
 

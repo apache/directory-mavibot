@@ -1023,7 +1023,7 @@ public class InMemoryBTreeTest
     }
 
 
-    private void addPage( Node<Integer, String> node, Page<Integer, String> page, int pos )
+    private void addPage( BTree<Integer, String> btree, Node<Integer, String> node, Page<Integer, String> page, int pos )
     {
         Tuple<Integer, String> leftmost = page.findLeftMost();
 
@@ -1032,7 +1032,8 @@ public class InMemoryBTreeTest
             node.keys[pos - 1] = leftmost.getKey();
         }
 
-        node.children[pos] = page;
+        node.children[pos] = new ReferenceHolder<Page<Integer, String>, Integer, String>( btree, page,
+            ( ( AbstractPage<Integer, String> ) page ).getOffset() );
     }
 
 
@@ -1119,13 +1120,13 @@ public class InMemoryBTreeTest
 
                 counter += 2;
 
-                addPage( node, leaf, j );
+                addPage( btree, node, leaf, j );
 
                 EXPECTED1.add( even );
                 EXPECTED1.add( even + 1 );
             }
 
-            addPage( root, node, i );
+            addPage( btree, root, node, i );
         }
 
         btree.setRoot( root );

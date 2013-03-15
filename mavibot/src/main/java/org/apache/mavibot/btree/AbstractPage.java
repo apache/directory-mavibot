@@ -103,8 +103,8 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
             return parentPos - 1;
         }
 
-        Page<K, V> prevPage = parent.children[parentPos - 1];
-        Page<K, V> nextPage = parent.children[parentPos + 1];
+        Page<K, V> prevPage = parent.children[parentPos - 1].getValue( btree );
+        Page<K, V> nextPage = parent.children[parentPos + 1].getValue( btree );
 
         int prevPageSize = prevPage.getNbElems();
         int nextPageSize = nextPage.getNbElems();

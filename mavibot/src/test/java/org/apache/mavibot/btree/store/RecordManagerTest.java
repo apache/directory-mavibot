@@ -93,7 +93,6 @@ public class RecordManagerTest
 
     /**
      * Test the creation of a RecordManager with a BTree containing data.
-     * @throws KeyNotFoundException 
      */
     @Test
     public void testRecordManagerWithBTree() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
@@ -142,12 +141,73 @@ public class RecordManagerTest
         assertEquals( btree.getRevision(), btree1.getRevision() );
         assertEquals( btree.getValueSerializer().getClass().getName(), btree1.getValueSerializer().getClass().getName() );
 
-        // Check the stord element
+        // Check the stored element
         assertTrue( btree1.exist( 1L ) );
         assertTrue( btree1.exist( 3L ) );
         assertTrue( btree1.exist( 5L ) );
         assertEquals( "V1", btree1.get( 1L ) );
         assertEquals( "V3", btree1.get( 3L ) );
         assertEquals( "V5", btree1.get( 5L ) );
+    }
+
+
+    /**
+     * Test the creation of a RecordManager with a BTree containing data, enough for some Node to be created.
+     */
+    @Test
+    public void testRecordManagerWithBTreeLeafNode() throws IOException, BTreeAlreadyManagedException,
+        KeyNotFoundException
+    {
+        File tempFile = File.createTempFile( "mavibot", ".db" );
+        String tempFileName = tempFile.getAbsolutePath();
+        tempFile.deleteOnExit();
+
+        RecordManager recordManager = new RecordManager( tempFileName, 32 );
+
+        assertNotNull( recordManager );
+
+        // Create a new BTree
+        BTree<Long, String> btree = new BTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
+
+        // And make it managed by the RM
+        recordManager.manage( btree );
+
+        // Now, add some elements in the BTree
+        for ( long i = 1L; i < 32L; i++ )
+        {
+            btree.insert( i, "V" + i );
+        }
+
+        // Close the recordManager
+        recordManager.close();
+
+        // Now, try to reload the file back
+        RecordManager recordManager1 = new RecordManager( tempFileName );
+
+        assertEquals( 1, recordManager1.getNbManagedTrees() );
+
+        Set<String> managedBTrees = recordManager1.getManagedTrees();
+
+        assertEquals( 1, managedBTrees.size() );
+        assertTrue( managedBTrees.contains( "test" ) );
+
+        BTree<Long, String> btree1 = recordManager1.getManagedTree( "test" );
+
+        assertNotNull( btree1 );
+        assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
+        assertEquals( btree.getFile(), btree1.getFile() );
+        assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
+        assertEquals( btree.getName(), btree1.getName() );
+        assertEquals( btree.getNbElems(), btree1.getNbElems() );
+        assertEquals( btree.getPageSize(), btree1.getPageSize() );
+        assertEquals( btree.getRevision(), btree1.getRevision() );
+        assertEquals( btree.getValueSerializer().getClass().getName(), btree1.getValueSerializer().getClass().getName() );
+
+        // Check the stored element
+        for ( long i = 1L; i < 32L; i++ )
+        {
+            assertTrue( btree1.exist( i ) );
+            assertEquals( "V" + i, btree1.get( i ) );
+        }
     }
 }

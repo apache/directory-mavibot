@@ -1476,7 +1476,7 @@ public class RecordManager
      * @return The offset of the new page
      * @throws IOException 
      */
-    public ElementHolder modifyPage( BTree btree, Page oldPage, long oldRevision, Page newPage, long newRevision )
+    public ElementHolder writePage( BTree btree, Page oldPage, Page newPage, long newRevision )
         throws IOException
     {
         // We first need to save the new page on disk

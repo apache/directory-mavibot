@@ -96,7 +96,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             if ( btree.isManaged() )
             {
                 ElementHolder holder = btree.getRecordManager()
-                    .modifyPage( btree, this, revision, modifiedPage, revision );
+                    .writePage( btree, this, modifiedPage, revision );
 
                 // Store the offset on disk in the page
                 ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( ReferenceHolder ) holder ).getOffset() );
@@ -111,6 +111,27 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             // The Page is already full : we split it and return the overflow element,
             // after having created two pages.
             InsertResult<K, V> result = addAndSplit( revision, key, value, pos );
+
+            // If the BTree is managed, we have to write the two pages
+            // and to keep a track of the two offsets for the upper node
+            if ( btree.isManaged() )
+            {
+                ElementHolder holderLeft = btree.getRecordManager().writePage( btree, this,
+                    ( ( SplitResult ) result ).getLeftPage(),
+                    revision );
+
+                // Store the offset on disk in the page
+                ( ( AbstractPage ) ( ( SplitResult ) result ).getLeftPage() )
+                    .setOffset( ( ( ReferenceHolder ) holderLeft ).getOffset() );
+
+                ElementHolder holderRight = btree.getRecordManager().writePage( btree, this,
+                    ( ( SplitResult ) result ).getRightPage(),
+                    revision );
+
+                // Store the offset on disk in the page
+                ( ( AbstractPage<K, V> ) ( ( SplitResult ) result ).getRightPage() )
+                    .setOffset( ( ( ReferenceHolder ) holderRight ).getOffset() );
+            }
 
             return result;
         }
@@ -162,7 +183,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
                 // Check in both next and previous page, if they have the same parent
                 // and select the biggest page with the same parent to borrow an element.
                 int siblingPos = selectSibling( ( Node<K, V> ) parent, parentPos );
-                Leaf<K, V> sibling = ( Leaf<K, V> ) ( ( Node<K, V> ) parent ).children[siblingPos];
+                Leaf<K, V> sibling = ( Leaf<K, V> ) ( ( ( Node<K, V> ) parent ).children[siblingPos].getValue( btree ) );
 
                 if ( sibling.getNbElems() == halfSize )
                 {
