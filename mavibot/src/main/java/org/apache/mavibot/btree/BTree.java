@@ -307,7 +307,7 @@ public class BTree<K, V>
      */
     public BTree()
     {
-        btreeHeader = new BTreeHeader( null );
+        btreeHeader = new BTreeHeader();
         type = BTreeTypeEnum.MANAGED;
     }
 
@@ -347,7 +347,8 @@ public class BTree<K, V>
             type = BTreeTypeEnum.PERSISTENT;
         }
 
-        btreeHeader = new BTreeHeader( configuration.getName() );
+        btreeHeader = new BTreeHeader();
+        btreeHeader.setName( configuration.getName() );
         btreeHeader.setPageSize( configuration.getPageSize() );
         keySerializer = configuration.getKeySerializer();
         valueSerializer = configuration.getValueSerializer();
@@ -421,7 +422,8 @@ public class BTree<K, V>
         int pageSize )
         throws IOException
     {
-        btreeHeader = new BTreeHeader( name );
+        btreeHeader = new BTreeHeader();
+        btreeHeader.setName( name );
 
         if ( ( path == null ) && ( file == null ) )
         {

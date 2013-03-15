@@ -82,9 +82,11 @@ public class BTreeHeader
     private long[] versions;
 
 
-    public BTreeHeader( String name )
+    /**
+     * Creates a BTreeHeader instance
+     */
+    public BTreeHeader()
     {
-        this.name = name;
     }
 
 

@@ -228,9 +228,6 @@ public class PageIO
 
             sb.append( Strings.dumpByte( array[i] ) ).append( " " );
         }
-        {
-
-        }
 
         return sb.toString();
     }
