@@ -38,7 +38,7 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
 public class Leaf<K, V> extends AbstractPage<K, V>
 {
     /** Values associated with keys */
-    protected ValueHolder<K, V>[] values;
+    protected ElementHolder<V, K, V>[] values;
 
 
     /**
@@ -59,7 +59,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     {
         super( btree, revision, nbElems );
 
-        this.values = ( ValueHolder<K, V>[] ) Array.newInstance( ValueHolder.class, nbElems );
+        this.values = ( MemoryHolder<K, V>[] ) Array.newInstance( MemoryHolder.class, nbElems );
     }
 
 
@@ -95,11 +95,11 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             // and to add this page to the list of modified pages
             if ( btree.isManaged() )
             {
-                ValueHolder holder = btree.getRecordManager()
+                ElementHolder holder = btree.getRecordManager()
                     .modifyPage( btree, this, revision, modifiedPage, revision );
 
                 // Store the offset on disk in the page
-                ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( ReferenceValueHolder ) holder ).getOffset() );
+                ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( ReferenceHolder ) holder ).getOffset() );
             }
 
             InsertResult<K, V> result = new ModifyResult<K, V>( modifiedPage, null );
@@ -272,7 +272,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     {
         // The sibling is on the left, borrow the rightmost element
         K siblingKey = sibling.keys[sibling.getNbElems() - 1];
-        ValueHolder<K, V> siblingValue = sibling.values[sibling.getNbElems() - 1];
+        ElementHolder<V, K, V> siblingValue = sibling.values[sibling.getNbElems() - 1];
 
         // Create the new sibling, with one less element at the end
         Leaf<K, V> newSibling = ( Leaf<K, V> ) sibling.copy( revision, sibling.getNbElems() - 1 );
@@ -316,7 +316,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     {
         // The sibling is on the left, borrow the rightmost element
         K siblingKey = sibling.keys[0];
-        ValueHolder<K, V> siblingHolder = sibling.values[0];
+        ElementHolder<V, K, V> siblingHolder = sibling.values[0];
 
         // Create the new sibling
         Leaf<K, V> newSibling = new Leaf<K, V>( btree, revision, sibling.getNbElems() - 1 );
@@ -424,7 +424,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     /**
      * {@inheritDoc}
      */
-    public ValueHolder<K, V> getValue( int pos )
+    public ElementHolder<V, K, V> getValue( int pos )
     {
         if ( pos < nbElems )
         {
@@ -442,7 +442,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    public void setValue( int pos, ValueHolder<K, V> value )
+    public void setValue( int pos, ElementHolder<V, K, V> value )
     {
         values[pos] = value;
     }
@@ -580,7 +580,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems + 1 );
 
         // Atm, store the value in memory 
-        ValueHolder<K, V> valueHolder = new MemoryValueHolder<K, V>( btree, value );
+        MemoryHolder<K, V> valueHolder = new MemoryHolder<K, V>( btree, value );
         //ValueHolder<K, V> valueHolder = btree.createHolder( value );
 
         // Deal with the special case of an empty page
@@ -629,7 +629,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         int middle = btree.getPageSize() >> 1;
         Leaf<K, V> leftLeaf = null;
         Leaf<K, V> rightLeaf = null;
-        ValueHolder<K, V> valueHolder = btree.createHolder( value );
+        ElementHolder<V, K, V> valueHolder = btree.createHolder( value );
 
         // Determinate where to store the new value
         if ( pos <= middle )

@@ -28,11 +28,13 @@ import java.lang.ref.SoftReference;
  * BTree), we will use a SoftReference to keep a reference to a Value, and if it's null,
  * then we will load the Value from the underlying physical support, using the offset. 
  * 
- * @param <V> The type for the stored value
+ * @param <E> The type for the stored element (either a value or a page)
+ * @param <K> The type of the BTree key
+ * @param <V> The type of the BTree value
  *
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class ReferenceValueHolder<K, V> implements ValueHolder<K, V>
+public class ReferenceHolder<E, K, V> implements ElementHolder<E, K, V>
 {
     /** The BTree */
     private BTree<K, V> btree;
@@ -40,21 +42,21 @@ public class ReferenceValueHolder<K, V> implements ValueHolder<K, V>
     /** The offset for a value stored on disk */
     private long offset;
 
-    /** The reference to the Value instance, or null if it's not present */
-    private SoftReference<V> reference;
+    /** The reference to the element instance, or null if it's not present */
+    private SoftReference<E> reference;
 
 
     /**
-     * Create a new holder storing an offest and a SoftReference containing the value.
+     * Create a new holder storing an offset and a SoftReference containing the element.
      * 
      * @param offset The offset in disk for this value
-     * @param value The value to store into a SoftReference
+     * @param element The element to store into a SoftReference
      */
-    public ReferenceValueHolder( BTree<K, V> btree, V value, long offset )
+    public ReferenceHolder( BTree<K, V> btree, E element, long offset )
     {
         this.btree = btree;
         this.offset = offset;
-        this.reference = new SoftReference<V>( value );
+        this.reference = new SoftReference<E>( element );
     }
 
 
@@ -62,17 +64,17 @@ public class ReferenceValueHolder<K, V> implements ValueHolder<K, V>
      * {@inheritDoc}
      */
     @Override
-    public V getValue( BTree<K, V> btree )
+    public E getValue( BTree<K, V> btree )
     {
-        V value = reference.get();
+        E element = reference.get();
 
-        if ( value != null )
+        if ( element != null )
         {
-            return value;
+            return element;
         }
 
-        // We have to fetch the value from disk, using the offset now
-        return fetchValue( btree );
+        // We have to fetch the element from disk, using the offset now
+        return fetchElement( btree );
     }
 
 
@@ -80,7 +82,7 @@ public class ReferenceValueHolder<K, V> implements ValueHolder<K, V>
      * Retrieve the value from the disk, using the BTree and offset
      * @return
      */
-    private V fetchValue( BTree<K, V> btree )
+    private E fetchElement( BTree<K, V> btree )
     {
         return null;
     }
@@ -99,11 +101,11 @@ public class ReferenceValueHolder<K, V> implements ValueHolder<K, V>
     {
         StringBuilder sb = new StringBuilder();
 
-        V value = reference.get();
+        E element = reference.get();
 
-        if ( value != null )
+        if ( element != null )
         {
-            sb.append( value );
+            sb.append( element );
         }
         else
         {

@@ -25,15 +25,20 @@ package org.apache.mavibot.btree;
  * BTree), we will use a SoftReference to keep a reference to a Value, and if it's null,
  * then we will load the Value from the underlying physical support, using the offset. 
  * 
- * @param <V> The type for the stored value
+ * @param <E> The type for the stored element (either a value or a page)
+ * @param <K> The type of the BTree key
+ * @param <V> The type of the BTree value
  *
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public interface ValueHolder<K, V>
+public interface ElementHolder<E, K, V>
 {
     /**
-     * @param btree The Btree storing the value
-     * @return The stored value
+     * Get back the element
+     * 
+     * @param btree The Btree storing the element
+     * 
+     * @return The stored element
      */
-    V getValue( BTree<K, V> btree );
+    E getValue( BTree<K, V> btree );
 }

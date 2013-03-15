@@ -23,29 +23,30 @@ package org.apache.mavibot.btree;
 /**
  * A In-Memory Value holder. The value is always present in memory.
  * 
- * @param <V> The type for the stored value
+ * @param <K> The type of the BTree key
+ * @param <V> The type of the BTree value
  *
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class MemoryValueHolder<K, V> implements ValueHolder<K, V>
+public class MemoryHolder<K, V> implements ElementHolder<V, K, V>
 {
     /** The BTree */
     private BTree<K, V> btree;
 
     /** The reference to the Value instance, or null if it's not present */
-    private V reference;
+    private V value;
 
 
     /**
-     * Create a new holder storing an offest and a SoftReference containing the value.
+     * Create a new holder storing an offset and a SoftReference containing the value.
      * 
      * @param offset The offset in disk for this value
      * @param value The value to store into a SoftReference
      */
-    public MemoryValueHolder( BTree<K, V> btree, V value )
+    public MemoryHolder( BTree<K, V> btree, V value )
     {
         this.btree = btree;
-        this.reference = value;
+        this.value = value;
     }
 
 
@@ -55,7 +56,7 @@ public class MemoryValueHolder<K, V> implements ValueHolder<K, V>
     @Override
     public V getValue( BTree<K, V> btree )
     {
-        return reference;
+        return value;
     }
 
 

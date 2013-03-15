@@ -776,9 +776,9 @@ public class Node<K, V> extends AbstractPage<K, V>
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    public void setValue( int pos, ValueHolder<K, V> value )
+    public void setValue( int pos, ElementHolder<Page<K, V>, K, V> value )
     {
-        children[pos] = ( Page<K, V> ) value.getValue( btree );
+        children[pos] = value.getValue( btree );
     }
 
 

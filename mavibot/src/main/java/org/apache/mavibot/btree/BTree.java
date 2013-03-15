@@ -1464,15 +1464,24 @@ public class BTree<K, V>
      * @param value The value to store
      * @return The value holder
      */
-    /* no qualifier */ValueHolder<K, V> createHolder( V value )
+    /* no qualifier */ElementHolder<V, K, V> createHolder( V value )
     {
         if ( type == BTreeTypeEnum.MANAGED )
         {
-            return new ReferenceValueHolder<K, V>( this, value, -1L );
+            if ( value instanceof Page )
+            {
+                return new ReferenceHolder<V, K, V>( this, value, -1L );
+            }
+            else
+            {
+                // Atm, keep the values in memory
+                return new MemoryHolder<K, V>( this, value );
+
+            }
         }
         else
         {
-            return new MemoryValueHolder<K, V>( this, value );
+            return new MemoryHolder<K, V>( this, value );
         }
     }
 

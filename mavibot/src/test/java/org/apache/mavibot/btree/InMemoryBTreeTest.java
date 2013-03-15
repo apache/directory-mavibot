@@ -1009,8 +1009,8 @@ public class InMemoryBTreeTest
         leaf.revision = revision;
         leaf.nbElems = tuples.length;
         leaf.keys = new Integer[leaf.nbElems];
-        leaf.values = ( MemoryValueHolder<Integer, String>[] ) Array
-            .newInstance( MemoryValueHolder.class, leaf.nbElems );
+        leaf.values = ( MemoryHolder<Integer, String>[] ) Array
+            .newInstance( MemoryHolder.class, leaf.nbElems );
 
         for ( Tuple<Integer, String> tuple : tuples )
         {

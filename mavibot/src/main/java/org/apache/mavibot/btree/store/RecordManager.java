@@ -35,11 +35,11 @@ import java.util.Set;
 import org.apache.mavibot.btree.BTree;
 import org.apache.mavibot.btree.BTreeFactory;
 import org.apache.mavibot.btree.Leaf;
-import org.apache.mavibot.btree.MemoryValueHolder;
+import org.apache.mavibot.btree.MemoryHolder;
 import org.apache.mavibot.btree.Node;
 import org.apache.mavibot.btree.Page;
-import org.apache.mavibot.btree.ReferenceValueHolder;
-import org.apache.mavibot.btree.ValueHolder;
+import org.apache.mavibot.btree.ReferenceHolder;
+import org.apache.mavibot.btree.ElementHolder;
 import org.apache.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.mavibot.btree.serializer.IntSerializer;
@@ -541,7 +541,7 @@ public class RecordManager
             {
                 Object value = btree.getValueSerializer().deserialize( byteBuffer );
 
-                ValueHolder valueHolder = new MemoryValueHolder( btree, value );
+                ElementHolder valueHolder = new MemoryHolder( btree, value );
                 BTreeFactory.setValue( ( ( Leaf ) page ), i, valueHolder );
 
                 Object key = btree.getKeySerializer().deserialize( byteBuffer );
@@ -986,7 +986,7 @@ public class RecordManager
                 }
                 else
                 {
-                    ValueHolder value = ( ( Leaf ) page ).getValue( pos );
+                    ElementHolder value = ( ( Leaf ) page ).getValue( pos );
                     buffer = btree.getValueSerializer().serialize( value.getValue( btree ) );
                     serializedData.add( buffer );
                     dataSize += buffer.length;
@@ -1469,7 +1469,7 @@ public class RecordManager
      * @return The offset of the new page
      * @throws IOException 
      */
-    public ValueHolder modifyPage( BTree btree, Page oldPage, long oldRevision, Page newPage, long newRevision )
+    public ElementHolder modifyPage( BTree btree, Page oldPage, long oldRevision, Page newPage, long newRevision )
         throws IOException
     {
         // We first need to save the new page on disk
@@ -1479,7 +1479,7 @@ public class RecordManager
         flushPages( pageIos );
 
         // Build the resulting reference
-        ValueHolder valueHolder = new ReferenceValueHolder( btree, newPage, pageIos[0].getOffset() );
+        ElementHolder valueHolder = new ReferenceHolder( btree, newPage, pageIos[0].getOffset() );
 
         return valueHolder;
     }

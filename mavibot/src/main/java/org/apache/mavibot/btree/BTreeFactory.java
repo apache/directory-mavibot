@@ -223,7 +223,7 @@ public class BTreeFactory
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    public static void setValue( Leaf page, int pos, ValueHolder value )
+    public static void setValue( Leaf page, int pos, ElementHolder value )
     {
         page.setValue( pos, value );
     }
@@ -234,7 +234,7 @@ public class BTreeFactory
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    public static void setValue( Node page, int pos, ValueHolder value )
+    public static void setValue( Node page, int pos, ElementHolder value )
     {
         page.setValue( pos, value );
     }
