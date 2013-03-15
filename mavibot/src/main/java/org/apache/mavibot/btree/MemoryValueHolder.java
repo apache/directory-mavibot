@@ -27,7 +27,7 @@ package org.apache.mavibot.btree;
  *
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-/* No qualifier */class MemoryValueHolder<K, V> implements ValueHolder<K, V>
+public class MemoryValueHolder<K, V> implements ValueHolder<K, V>
 {
     /** The BTree */
     private BTree<K, V> btree;
@@ -66,7 +66,7 @@ package org.apache.mavibot.btree;
     {
         StringBuilder sb = new StringBuilder();
 
-        sb.append( btree.getName() ).append( " : '" );
+        sb.append( "'" );
 
         V value = getValue( btree );
 

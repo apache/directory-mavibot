@@ -381,9 +381,9 @@ public class Node<K, V> extends AbstractPage<K, V>
     {
         // Create the new node. It will contain N - 1 elements (the maximum number)
         // as we merge two nodes that contain N/2 elements minus the one we remove
-        Node<K, V> newNode = new Node<K, V>( btree, revision, btree.pageSize );
+        Node<K, V> newNode = new Node<K, V>( btree, revision, btree.getPageSize() );
         Tuple<K, V> removedElement = mergedResult.getRemovedElement();
-        int half = btree.pageSize / 2;
+        int half = btree.getPageSize() / 2;
         int index = Math.abs( pos );
 
         if ( isLeft )
@@ -553,7 +553,7 @@ public class Node<K, V> extends AbstractPage<K, V>
             }
 
             // We have some parent. Check if the current page is not half full
-            int halfSize = btree.pageSize / 2;
+            int halfSize = btree.getPageSize() / 2;
 
             if ( nbElems > halfSize )
             {
@@ -772,6 +772,17 @@ public class Node<K, V> extends AbstractPage<K, V>
 
 
     /**
+     * Set the value at a give position
+     * @param pos The position in the values array
+     * @param value the value to inject
+     */
+    public void setValue( int pos, ValueHolder<K, V> value )
+    {
+        children[pos] = ( Page<K, V> ) value.getValue( btree );
+    }
+
+
+    /**
      * {@inheritDoc}
      */
     public Page<K, V> getReference( int pos )
@@ -908,7 +919,7 @@ public class Node<K, V> extends AbstractPage<K, V>
      */
     private InsertResult<K, V> addAndSplit( long revision, K pivot, Page<K, V> leftPage, Page<K, V> rightPage, int pos )
     {
-        int middle = btree.pageSize >> 1;
+        int middle = btree.getPageSize() >> 1;
 
         // Create two new pages
         Node<K, V> newLeftPage = new Node<K, V>( btree, revision, middle );

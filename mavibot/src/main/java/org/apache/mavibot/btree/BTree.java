@@ -34,13 +34,13 @@ import java.util.LinkedList;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.mavibot.btree.serializer.BufferHandler;
 import org.apache.mavibot.btree.serializer.ElementSerializer;
 import org.apache.mavibot.btree.serializer.LongSerializer;
+import org.apache.mavibot.btree.store.BTreeHeader;
 import org.apache.mavibot.btree.store.RecordManager;
 
 
@@ -54,6 +54,9 @@ import org.apache.mavibot.btree.store.RecordManager;
  */
 public class BTree<K, V>
 {
+    /** The Hader for a managed BTree */
+    private BTreeHeader btreeHeader;
+
     /** Default page size (number of entries per node) */
     public static final int DEFAULT_PAGE_SIZE = 16;
 
@@ -69,12 +72,6 @@ public class BTree<K, V>
     /** The default journal file suffix */
     public static final String JOURNAL_SUFFIX = ".log";
 
-    /** The BTree name */
-    private String name;
-
-    /** A field used to generate new revisions in a thread safe way */
-    private AtomicLong revision = new AtomicLong( 0L );
-
     /** Comparator used to index entries. */
     private Comparator<K> comparator;
 
@@ -83,12 +80,6 @@ public class BTree<K, V>
 
     /** The list of read transactions being executed */
     private ConcurrentLinkedQueue<Transaction<K, V>> readTransactions;
-
-    /** Number of entries in each Page. */
-    protected int pageSize;
-
-    /** The position on disk where this BTree is stored */
-    private long btreeOffset;
 
     /** The size of the buffer used to write data in disk */
     private int writeBufferSize;
@@ -116,9 +107,6 @@ public class BTree<K, V>
 
     /** The associated journal. If null, this is an in-memory btree  */
     private File journal;
-
-    /** The number of elements in the current revision */
-    private AtomicLong nbElems = new AtomicLong( 0L );
 
     /** A lock used to protect the write operation against concurrent access */
     private ReentrantLock writeLock;
@@ -319,6 +307,8 @@ public class BTree<K, V>
      */
     public BTree()
     {
+        btreeHeader = new BTreeHeader( null );
+        type = BTreeTypeEnum.MANAGED;
     }
 
 
@@ -357,7 +347,8 @@ public class BTree<K, V>
             type = BTreeTypeEnum.PERSISTENT;
         }
 
-        pageSize = configuration.getPageSize();
+        btreeHeader = new BTreeHeader( configuration.getName() );
+        btreeHeader.setPageSize( configuration.getPageSize() );
         keySerializer = configuration.getKeySerializer();
         valueSerializer = configuration.getValueSerializer();
         comparator = keySerializer.getComparator();
@@ -430,7 +421,7 @@ public class BTree<K, V>
         int pageSize )
         throws IOException
     {
-        this.name = name;
+        btreeHeader = new BTreeHeader( name );
 
         if ( ( path == null ) && ( file == null ) )
         {
@@ -463,7 +454,13 @@ public class BTree<K, V>
         writeBufferSize = DEFAULT_WRITE_BUFFER_SIZE;
 
         this.keySerializer = keySerializer;
+
+        btreeHeader.setKeySerializerFQCN( keySerializer.getClass().getName() );
+
         this.valueSerializer = valueSerializer;
+
+        btreeHeader.setValueSerializerFQCN( valueSerializer.getClass().getName() );
+
         comparator = keySerializer.getComparator();
 
         // Create the first root page, with revision 0L. It will be empty
@@ -594,7 +591,7 @@ public class BTree<K, V>
      */
     public long getBtreeOffset()
     {
-        return btreeOffset;
+        return btreeHeader.getBTreeOffset();
     }
 
 
@@ -603,7 +600,43 @@ public class BTree<K, V>
      */
     public void setBtreeOffset( long btreeOffset )
     {
-        this.btreeOffset = btreeOffset;
+        btreeHeader.setBTreeOffset( btreeOffset );
+    }
+
+
+    /**
+     * @return the rootPageOffset
+     */
+    public long getRootPageOffset()
+    {
+        return btreeHeader.getRootPageOffset();
+    }
+
+
+    /**
+     * @param rootPageOffset the rootPageOffset to set
+     */
+    public void setRootPageOffset( long rootPageOffset )
+    {
+        btreeHeader.setRootPageOffset( rootPageOffset );
+    }
+
+
+    /**
+     * @return the nextBTreeOffset
+     */
+    public long getNextBTreeOffset()
+    {
+        return btreeHeader.getNextBTreeOffset();
+    }
+
+
+    /**
+     * @param nextBTreeOffset the nextBTreeOffset to set
+     */
+    public void setNextBTreeOffset( long nextBTreeOffset )
+    {
+        btreeHeader.setNextBTreeOffset( nextBTreeOffset );
     }
 
 
@@ -636,14 +669,14 @@ public class BTree<K, V>
      */
     public void setPageSize( int pageSize )
     {
-        this.pageSize = pageSize;
-
         if ( pageSize <= 2 )
         {
-            this.pageSize = DEFAULT_PAGE_SIZE;
+            btreeHeader.setPageSize( DEFAULT_PAGE_SIZE );
         }
-
-        this.pageSize = getPowerOf2( pageSize );
+        else
+        {
+            btreeHeader.setPageSize( getPowerOf2( pageSize ) );
+        }
     }
 
 
@@ -687,7 +720,7 @@ public class BTree<K, V>
      */
     public int getPageSize()
     {
-        return pageSize;
+        return btreeHeader.getPageSize();
     }
 
 
@@ -699,7 +732,7 @@ public class BTree<K, V>
     /** No qualifier */
     long generateRevision()
     {
-        return revision.incrementAndGet();
+        return btreeHeader.incrementRevision();
     }
 
 
@@ -731,7 +764,7 @@ public class BTree<K, V>
             // and does not replace an element
             if ( existingValue == null )
             {
-                nbElems.getAndIncrement();
+                btreeHeader.incrementNbElems();
             }
 
             // If the BTree is managed, we have to update the rootPage on disk
@@ -772,7 +805,7 @@ public class BTree<K, V>
         // Decrease the number of element in the current tree if the delete is successful
         if ( deleted != null )
         {
-            nbElems.getAndDecrement();
+            btreeHeader.decrementNbElems();
         }
 
         return deleted;
@@ -806,7 +839,7 @@ public class BTree<K, V>
         // Decrease the number of element in the current tree if the delete is successful
         if ( deleted != null )
         {
-            nbElems.getAndDecrement();
+            btreeHeader.decrementNbElems();
         }
 
         return deleted;
@@ -1009,7 +1042,7 @@ public class BTree<K, V>
      */
     private Transaction<K, V> beginReadTransaction()
     {
-        Transaction<K, V> readTransaction = new Transaction<K, V>( rootPage, revision.get() - 1,
+        Transaction<K, V> readTransaction = new Transaction<K, V>( rootPage, btreeHeader.getRevision() - 1,
             System.currentTimeMillis() );
 
         readTransactions.add( readTransaction );
@@ -1051,6 +1084,7 @@ public class BTree<K, V>
     public void setKeySerializer( ElementSerializer<K> keySerializer )
     {
         this.keySerializer = keySerializer;
+        btreeHeader.setKeySerializerFQCN( keySerializer.getClass().getName() );
     }
 
 
@@ -1060,6 +1094,7 @@ public class BTree<K, V>
     public void setValueSerializer( ElementSerializer<V> valueSerializer )
     {
         this.valueSerializer = valueSerializer;
+        btreeHeader.setValueSerializerFQCN( valueSerializer.getClass().getName() );
     }
 
 
@@ -1143,7 +1178,7 @@ public class BTree<K, V>
         }
 
         // Write the number of elements first
-        bb.putLong( nbElems.get() );
+        bb.putLong( btreeHeader.getNbElems() );
 
         while ( cursor.hasNext() )
         {
@@ -1266,7 +1301,7 @@ public class BTree<K, V>
         BufferHandler bufferHandler = new BufferHandler( channel, buffer );
 
         long nbElems = LongSerializer.deserialize( bufferHandler.read( 8 ) );
-        this.nbElems.set( nbElems );
+        btreeHeader.setNbElems( nbElems );
 
         // Prepare a list of keys and values read from the disk
         //List<K> keys = new ArrayList<K>();
@@ -1345,7 +1380,7 @@ public class BTree<K, V>
      */
     public String getName()
     {
-        return name;
+        return btreeHeader.getName();
     }
 
 
@@ -1354,7 +1389,7 @@ public class BTree<K, V>
      */
     public void setName( String name )
     {
-        this.name = name;
+        btreeHeader.setName( name );
     }
 
 
@@ -1450,6 +1485,15 @@ public class BTree<K, V>
 
 
     /**
+     * @return the keySerializer FQCN
+     */
+    public String getKeySerializerFQCN()
+    {
+        return btreeHeader.getKeySerializerFQCN();
+    }
+
+
+    /**
      * @return the valueSerializer
      */
     public ElementSerializer<V> getValueSerializer()
@@ -1458,12 +1502,21 @@ public class BTree<K, V>
     }
 
 
+    /**
+     * @return the valueSerializer FQCN
+     */
+    public String getValueSerializerFQCN()
+    {
+        return btreeHeader.getValueSerializerFQCN();
+    }
+
+
     /** 
      * @return The current BTree revision
      */
     public long getRevision()
     {
-        return revision.get();
+        return btreeHeader.getRevision();
     }
 
 
@@ -1472,7 +1525,7 @@ public class BTree<K, V>
      */
     /* No qualifier */void setRevision( long revision )
     {
-        this.revision.set( revision );
+        btreeHeader.setRevision( revision );
     }
 
 
@@ -1481,7 +1534,7 @@ public class BTree<K, V>
      */
     public long getNbElems()
     {
-        return nbElems.get();
+        return btreeHeader.getNbElems();
     }
 
 
@@ -1490,7 +1543,7 @@ public class BTree<K, V>
      */
     /* No qualifier */void setNbElems( long nbElems )
     {
-        this.nbElems.set( nbElems );
+        btreeHeader.setNbElems( nbElems );
     }
 
 
@@ -1518,11 +1571,11 @@ public class BTree<K, V>
         }
 
         sb.append( "BTree" );
-        sb.append( "( pageSize:" ).append( pageSize );
+        sb.append( "( pageSize:" ).append( btreeHeader.getPageSize() );
 
         if ( rootPage != null )
         {
-            sb.append( ", nbEntries:" ).append( nbElems );
+            sb.append( ", nbEntries:" ).append( btreeHeader.getNbElems() );
         }
         else
         {

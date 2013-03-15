@@ -85,7 +85,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         }
 
         // The key is not present in the leaf. We have to add it in the page
-        if ( nbElems < btree.pageSize )
+        if ( nbElems < btree.getPageSize() )
         {
             // The current page is not full, it can contain the added element.
             // We insert it into a copied page and return the result
@@ -153,7 +153,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         {
             // The current page is not the root. Check if the leaf has more than N/2
             // elements
-            int halfSize = btree.pageSize / 2;
+            int halfSize = btree.getPageSize() / 2;
 
             if ( nbElems == halfSize )
             {
@@ -216,7 +216,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     {
         // Create the new page. It will contain N - 1 elements (the maximum number)
         // as we merge two pages that contain N/2 elements minus the one we remove
-        Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, btree.pageSize - 1 );
+        Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, btree.getPageSize() - 1 );
         Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos].getValue( btree ) );
 
         if ( isLeft )
@@ -438,6 +438,17 @@ public class Leaf<K, V> extends AbstractPage<K, V>
 
 
     /**
+     * Set the value at a give position
+     * @param pos The position in the values array
+     * @param value the value to inject
+     */
+    public void setValue( int pos, ValueHolder<K, V> value )
+    {
+        values[pos] = value;
+    }
+
+
+    /**
      * {@inheritDoc}
      */
     public Cursor<K, V> browse( K key, Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
@@ -615,7 +626,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      */
     private InsertResult<K, V> addAndSplit( long revision, K key, V value, int pos )
     {
-        int middle = btree.pageSize >> 1;
+        int middle = btree.getPageSize() >> 1;
         Leaf<K, V> leftLeaf = null;
         Leaf<K, V> rightLeaf = null;
         ValueHolder<K, V> valueHolder = btree.createHolder( value );

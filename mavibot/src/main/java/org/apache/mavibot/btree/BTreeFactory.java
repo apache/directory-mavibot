@@ -122,6 +122,24 @@ public class BTreeFactory
 
 
     /**
+     * @param rootPageOffset the rootPageOffset to set
+     */
+    public static void setRootPageOffset( BTree<?, ?> btree, long rootPageOffset )
+    {
+        btree.setRootPageOffset( rootPageOffset );
+    }
+
+
+    /**
+     * @param nextBTreeOffset the nextBTreeOffset to set
+     */
+    public static void setNextBTreeOffset( BTree<?, ?> btree, long nextBTreeOffset )
+    {
+        btree.setNextBTreeOffset( nextBTreeOffset );
+    }
+
+
+    /**
      * @param name the name to set
      */
     public static void setName( BTree<?, ?> btree, String name )
@@ -186,5 +204,38 @@ public class BTreeFactory
     public static void setRecordManager( BTree<?, ?> btree, RecordManager recordManager )
     {
         btree.setRecordManager( recordManager );
+    }
+
+
+    /**
+     * Set the key at a give position
+     * @param pos The position in the keys array
+     * @param key the key to inject
+     */
+    public static void setKey( Page page, int pos, Object key )
+    {
+        ( ( AbstractPage ) page ).setKey( pos, key );
+    }
+
+
+    /**
+     * Set the value at a give position
+     * @param pos The position in the values array
+     * @param value the value to inject
+     */
+    public static void setValue( Leaf page, int pos, ValueHolder value )
+    {
+        page.setValue( pos, value );
+    }
+
+
+    /**
+     * Set the value at a give position
+     * @param pos The position in the values array
+     * @param value the value to inject
+     */
+    public static void setValue( Node page, int pos, ValueHolder value )
+    {
+        page.setValue( pos, value );
     }
 }

@@ -276,6 +276,17 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
 
 
     /**
+     * Set the key at a give position
+     * @param pos The position in the keys array
+     * @param key the key to inject
+     */
+    /* No qualifier*/void setKey( int pos, K key )
+    {
+        keys[pos] = key;
+    }
+
+
+    /**
      * @return the offset
      */
     /* No qualifier */long getOffset()

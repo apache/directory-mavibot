@@ -99,13 +99,16 @@ public class ReferenceValueHolder<K, V> implements ValueHolder<K, V>
     {
         StringBuilder sb = new StringBuilder();
 
-        sb.append( btree.getName() ).append( "[" ).append( offset ).append( "] : '" );
+        V value = reference.get();
 
-        V value = getValue( btree );
-
-        sb.append( value );
-
-        sb.append( "'" );
+        if ( value != null )
+        {
+            sb.append( value );
+        }
+        else
+        {
+            sb.append( btree.getName() ).append( "[" ).append( offset ).append( "]" );
+        }
 
         return sb.toString();
     }
