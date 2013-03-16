@@ -103,6 +103,40 @@ public class Node<K, V> extends AbstractPage<K, V>
 
 
     /**
+     * Create a new Node which will contain only one key, with references to
+     * a left and right page. This is a specific constructor used by the btree
+     * when the root was full when we added a new value.
+     * 
+     * @param btree the parent BTree
+     * @param revision the Node revision
+     * @param key The new key
+     * @param leftPage The left page
+     * @param rightPage The right page
+     */
+    @SuppressWarnings("unchecked")
+    /* No qualifier */Node( BTree<K, V> btree, long revision, K key, ElementHolder<Page<K, V>, K, V> leftPage,
+        ElementHolder<Page<K, V>, K, V> rightPage )
+    {
+        super( btree, revision, 1 );
+
+        // Create the children array, and store the left and right children
+        children = ( ReferenceHolder<Page<K, V>, K, V>[] ) Array.newInstance( ReferenceHolder.class,
+            btree.getPageSize() );
+
+        children[0] = leftPage;
+        children[1] = rightPage;
+
+        // Create the keys array and store the pivot into it
+        // We get the type of array to create from the btree
+        // Yes, this is an hack...
+        Class<?> keyType = btree.getKeyType();
+        keys = ( K[] ) Array.newInstance( keyType, btree.getPageSize() );
+
+        keys[0] = key;
+    }
+
+
+    /**
      * {@inheritDoc}
      */
     public InsertResult<K, V> insert( long revision, K key, V value ) throws IOException
@@ -860,8 +894,9 @@ public class Node<K, V> extends AbstractPage<K, V>
      * @param result The modified page
      * @param pos The position of the found key
      * @return A modified page
+     * @throws IOException 
      */
-    private InsertResult<K, V> replaceChild( long revision, ModifyResult<K, V> result, int pos )
+    private InsertResult<K, V> replaceChild( long revision, ModifyResult<K, V> result, int pos ) throws IOException
     {
         // Just copy the current page and update its revision
         Page<K, V> newPage = copy( revision );
@@ -869,7 +904,24 @@ public class Node<K, V> extends AbstractPage<K, V>
         // Last, we update the children table of the newly created page
         // to point on the modified child
         Page<K, V> modifiedPage = result.getModifiedPage();
-        ( ( Node<K, V> ) newPage ).children[pos] = btree.createHolder( modifiedPage );
+
+        // If the BTree is managed, we now have to write the modified page on disk
+        // and to add this page to the list of modified pages
+        if ( btree.isManaged() )
+        {
+            ElementHolder<Page<K, V>, K, V> holder = btree.getRecordManager().writePage( btree, this, modifiedPage,
+                revision );
+
+            // Store the offset on disk in the page in memory
+            ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holder )
+                .getOffset() );
+
+            ( ( Node<K, V> ) newPage ).children[pos] = holder;
+        }
+        else
+        {
+            ( ( Node<K, V> ) newPage ).children[pos] = btree.createHolder( modifiedPage );
+        }
 
         // We can return the result, where we update the modifiedPage,
         // to avoid the creation of a new object

@@ -91,17 +91,6 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             // We insert it into a copied page and return the result
             Page<K, V> modifiedPage = addElement( revision, key, value, pos );
 
-            // If the BTree is managed, we now have to write the page on disk
-            // and to add this page to the list of modified pages
-            if ( btree.isManaged() )
-            {
-                ElementHolder holder = btree.getRecordManager()
-                    .writePage( btree, this, modifiedPage, revision );
-
-                // Store the offset on disk in the page
-                ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( ReferenceHolder ) holder ).getOffset() );
-            }
-
             InsertResult<K, V> result = new ModifyResult<K, V>( modifiedPage, null );
 
             return result;
@@ -111,27 +100,6 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             // The Page is already full : we split it and return the overflow element,
             // after having created two pages.
             InsertResult<K, V> result = addAndSplit( revision, key, value, pos );
-
-            // If the BTree is managed, we have to write the two pages
-            // and to keep a track of the two offsets for the upper node
-            if ( btree.isManaged() )
-            {
-                ElementHolder holderLeft = btree.getRecordManager().writePage( btree, this,
-                    ( ( SplitResult ) result ).getLeftPage(),
-                    revision );
-
-                // Store the offset on disk in the page
-                ( ( AbstractPage ) ( ( SplitResult ) result ).getLeftPage() )
-                    .setOffset( ( ( ReferenceHolder ) holderLeft ).getOffset() );
-
-                ElementHolder holderRight = btree.getRecordManager().writePage( btree, this,
-                    ( ( SplitResult ) result ).getRightPage(),
-                    revision );
-
-                // Store the offset on disk in the page
-                ( ( AbstractPage<K, V> ) ( ( SplitResult ) result ).getRightPage() )
-                    .setOffset( ( ( ReferenceHolder ) holderRight ).getOffset() );
-            }
 
             return result;
         }

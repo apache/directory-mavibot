@@ -919,12 +919,6 @@ public class RecordManager
     {
         int nbElems = page.getNbElems();
 
-        // Make it a negative value if it's a Node
-        if ( page instanceof Node )
-        {
-            nbElems = -nbElems;
-        }
-
         if ( nbElems == 0 )
         {
             // We will have 1 single page if we have no elements
@@ -971,6 +965,12 @@ public class RecordManager
             serializedSize += buffer.length;
 
             // The number of elements
+            // Make it a negative value if it's a Node
+            if ( page instanceof Node )
+            {
+                nbElems = -nbElems;
+            }
+
             buffer = IntSerializer.serialize( nbElems );
             serializedData.add( buffer );
             serializedSize += buffer.length;

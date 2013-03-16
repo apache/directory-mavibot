@@ -1006,9 +1006,24 @@ public class BTree<K, V>
         {
             ModifyResult<K, V> modifyResult = ( ( ModifyResult<K, V> ) result );
 
+            Page<K, V> modifiedPage = modifyResult.getModifiedPage();
+
+            if ( isManaged() )
+            {
+                // Write the modified page on disk
+                // Note that we don't use the holder, the new root page will
+                // remain in memory.
+                ElementHolder<Page<K, V>, K, V> holder = recordManager.writePage( this, rootPage, modifiedPage,
+                    revision );
+
+                // Store the offset on disk in the page in memory
+                ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holder )
+                    .getOffset() );
+            }
+
             // The root has just been modified, we haven't split it
             // Get it and make it the current root page
-            rootPage = modifyResult.getModifiedPage();
+            rootPage = modifiedPage;
 
             modifiedValue = modifyResult.getModifiedValue();
         }
@@ -1021,9 +1036,48 @@ public class BTree<K, V>
             K pivot = splitResult.getPivot();
             Page<K, V> leftPage = splitResult.getLeftPage();
             Page<K, V> rightPage = splitResult.getRightPage();
+            Page<K, V> newRootPage = null;
 
-            // Create the new rootPage
-            rootPage = new Node<K, V>( this, revision, pivot, leftPage, rightPage );
+            // If the BTree is managed, we have to write the two pages that were created
+            // and to keep a track of the two offsets for the upper node
+            if ( isManaged() )
+            {
+                ElementHolder<Page<K, V>, K, V> holderLeft = recordManager.writePage( this, rootPage,
+                    ( ( SplitResult ) result ).getLeftPage(), revision );
+
+                // Store the offset on disk in the page
+                ( ( AbstractPage ) ( ( SplitResult ) result ).getLeftPage() )
+                    .setOffset( ( ( ReferenceHolder ) holderLeft ).getOffset() );
+
+                ElementHolder<Page<K, V>, K, V> holderRight = recordManager.writePage( this, rootPage,
+                    ( ( SplitResult ) result ).getRightPage(),
+                    revision );
+
+                // Store the offset on disk in the page
+                ( ( AbstractPage<K, V> ) ( ( SplitResult ) result ).getRightPage() )
+                    .setOffset( ( ( ReferenceHolder ) holderRight ).getOffset() );
+
+                // Create the new rootPage
+                newRootPage = new Node<K, V>( this, revision, pivot, leftPage, rightPage );
+            }
+            else
+            {
+                // Create the new rootPage
+                newRootPage = new Node<K, V>( this, revision, pivot, leftPage, rightPage );
+            }
+
+            // If the BTree is managed, we now have to write the page on disk
+            // and to add this page to the list of modified pages
+            if ( isManaged() )
+            {
+                ElementHolder<Page<K, V>, K, V> holder = recordManager
+                    .writePage( this, rootPage, newRootPage, revision );
+
+                // Store the offset on disk in the page
+                ( ( AbstractPage<K, V> ) newRootPage ).setOffset( ( ( ReferenceHolder ) holder ).getOffset() );
+            }
+
+            rootPage = newRootPage;
         }
 
         // Inject the modification into the modification queue
