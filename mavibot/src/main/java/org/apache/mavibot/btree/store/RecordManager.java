@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.mavibot.btree.AbstractPage;
 import org.apache.mavibot.btree.BTree;
 import org.apache.mavibot.btree.BTreeFactory;
 import org.apache.mavibot.btree.ElementHolder;
@@ -552,7 +553,7 @@ public class RecordManager
         else
         {
             // It's a node
-            page = BTreeFactory.createNode( btree, revision, nbElems );
+            page = BTreeFactory.createNode( btree, revision, -nbElems );
         }
 
         return page;
@@ -966,12 +967,14 @@ public class RecordManager
 
             // The number of elements
             // Make it a negative value if it's a Node
+            int pageNbElems = nbElems;
+
             if ( page instanceof Node )
             {
-                nbElems = -nbElems;
+                pageNbElems = -nbElems;
             }
 
-            buffer = IntSerializer.serialize( nbElems );
+            buffer = IntSerializer.serialize( pageNbElems );
             serializedData.add( buffer );
             serializedSize += buffer.length;
 
@@ -982,7 +985,9 @@ public class RecordManager
                 if ( page instanceof Node )
                 {
                     Page child = ( ( Node ) page ).getReference( pos );
-                    //serializedData.add( btree.getValueSerializer().serialize( child..get );
+                    buffer = LongSerializer.serialize( ( ( AbstractPage ) child ).getOffset() );
+                    serializedData.add( buffer );
+                    dataSize += buffer.length;
                 }
                 else
                 {
@@ -1001,7 +1006,10 @@ public class RecordManager
             // Nodes have one more value to serialize
             if ( page instanceof Node )
             {
-                // TODO
+                Page child = ( ( Node ) page ).getReference( nbElems );
+                buffer = LongSerializer.serialize( ( ( AbstractPage ) child ).getOffset() );
+                serializedData.add( buffer );
+                dataSize += buffer.length;
             }
 
             // Store the data size

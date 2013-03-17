@@ -289,7 +289,7 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
     /**
      * @return the offset
      */
-    /* No qualifier */long getOffset()
+    public long getOffset()
     {
         return offset;
     }
