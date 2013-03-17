@@ -73,7 +73,7 @@ public interface Page<K, V>
      * @param parentPos he position of the current page in it's parent
      * @return
      */
-    DeleteResult<K, V> delete( long revision, K key, Page<K, V> parent, int parentPos );
+    DeleteResult<K, V> delete( long revision, K key, Page<K, V> parent, int parentPos ) throws IOException;
 
 
     /**

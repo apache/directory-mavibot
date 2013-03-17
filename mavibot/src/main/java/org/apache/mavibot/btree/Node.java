@@ -195,8 +195,10 @@ public class Node<K, V> extends AbstractPage<K, V>
     /**
      * Modify the current node after a remove has been done in one of its children.
      * The node won't be merged with another node.
+     * @throws IOException 
      */
     private RemoveResult<K, V> handleRemoveResult( RemoveResult<K, V> removeResult, int index, int pos, boolean found )
+        throws IOException
     {
         // Simplest case : the element has been removed from the underlying page,
         // we just have to copy the current page an modify the reference to link to
@@ -207,11 +209,11 @@ public class Node<K, V> extends AbstractPage<K, V>
 
         if ( found )
         {
-            newPage.children[index + 1] = btree.createHolder( modifiedPage );
+            newPage.children[index + 1] = createHolder( modifiedPage );
         }
         else
         {
-            newPage.children[index] = btree.createHolder( modifiedPage );
+            newPage.children[index] = createHolder( modifiedPage );
         }
 
         if ( pos < 0 )
@@ -234,8 +236,10 @@ public class Node<K, V> extends AbstractPage<K, V>
      * @param pos The position in the current root
      * @param found Tells if the removed key is present in the root page
      * @return The resulting root page
+     * @throws IOException 
      */
     private RemoveResult<K, V> handleRootRemove( MergedWithSiblingResult<K, V> mergedResult, int pos, boolean found )
+        throws IOException
     {
         RemoveResult<K, V> removeResult = null;
 
@@ -265,9 +269,10 @@ public class Node<K, V> extends AbstractPage<K, V>
      * @param sibling The right sibling
      * @param pos The position of the element to remove
      * @return The resulting pages
+     * @throws IOException 
      */
     private DeleteResult<K, V> borrowFromRight( long revision, MergedWithSiblingResult<K, V> mergedResult,
-        Node<K, V> sibling, int pos )
+        Node<K, V> sibling, int pos ) throws IOException
     {
         // Create the new sibling, with one less element at the beginning
         Node<K, V> newSibling = new Node<K, V>( btree, revision, sibling.getNbElems() - 1 );
@@ -296,7 +301,7 @@ public class Node<K, V> extends AbstractPage<K, V>
 
             // Inject the modified page
             Page<K, V> modifiedPage = mergedResult.getModifiedPage();
-            newNode.children[0] = btree.createHolder( modifiedPage );
+            newNode.children[0] = createHolder( modifiedPage );
 
             // Copy the children
             System.arraycopy( children, 2, newNode.children, 1, nbElems - 1 );
@@ -326,7 +331,7 @@ public class Node<K, V> extends AbstractPage<K, V>
 
             // Inject the modified page
             Page<K, V> modifiedPage = mergedResult.getModifiedPage();
-            newNode.children[index - 1] = btree.createHolder( modifiedPage ); // 6
+            newNode.children[index - 1] = createHolder( modifiedPage ); // 6
         }
 
         // Create the result
@@ -346,9 +351,10 @@ public class Node<K, V> extends AbstractPage<K, V>
      * @param sibling The left sibling
      * @param pos The position of the element to remove
      * @return The resulting pages
+     * @throws IOException 
      */
     private DeleteResult<K, V> borrowFromLeft( long revision, MergedWithSiblingResult<K, V> mergedResult,
-        Node<K, V> sibling, int pos )
+        Node<K, V> sibling, int pos ) throws IOException
     {
         // The sibling is on the left, borrow the rightmost element
         Page<K, V> siblingChild = sibling.children[sibling.nbElems].getValue( btree );
@@ -365,7 +371,7 @@ public class Node<K, V> extends AbstractPage<K, V>
         Node<K, V> newNode = new Node<K, V>( btree, revision, nbElems );
 
         // Sets the first children
-        newNode.children[0] = btree.createHolder( siblingChild ); //1
+        newNode.children[0] = createHolder( siblingChild ); //1
 
         int index = Math.abs( pos );
 
@@ -375,7 +381,7 @@ public class Node<K, V> extends AbstractPage<K, V>
             System.arraycopy( keys, 1, newNode.keys, 1, nbElems - 1 );
 
             Page<K, V> modifiedPage = mergedResult.getModifiedPage();
-            newNode.children[1] = btree.createHolder( modifiedPage );
+            newNode.children[1] = createHolder( modifiedPage );
             System.arraycopy( children, 2, newNode.children, 2, nbElems - 1 );
         }
         else
@@ -406,7 +412,7 @@ public class Node<K, V> extends AbstractPage<K, V>
 
             // Insert the modified page
             Page<K, V> modifiedPage = mergedResult.getModifiedPage();
-            newNode.children[index] = btree.createHolder( modifiedPage ); // 7
+            newNode.children[index] = createHolder( modifiedPage ); // 7
         }
 
         // Create the result
@@ -425,9 +431,10 @@ public class Node<K, V> extends AbstractPage<K, V>
      * @param mergedResult
      * @param pos
      * @return
+     * @throws IOException 
      */
     public DeleteResult<K, V> mergeWithSibling( long revision, MergedWithSiblingResult<K, V> mergedResult,
-        Node<K, V> sibling, boolean isLeft, int pos )
+        Node<K, V> sibling, boolean isLeft, int pos ) throws IOException
     {
         // Create the new node. It will contain N - 1 elements (the maximum number)
         // as we merge two nodes that contain N/2 elements minus the one we remove
@@ -449,7 +456,7 @@ public class Node<K, V> extends AbstractPage<K, V>
                 System.arraycopy( keys, 1, newNode.keys, half + 1, half - 1 );
 
                 Page<K, V> modifiedPage = mergedResult.getModifiedPage();
-                newNode.children[half + 1] = btree.createHolder( modifiedPage );
+                newNode.children[half + 1] = createHolder( modifiedPage );
                 System.arraycopy( children, 2, newNode.children, half + 2, half - 1 );
             }
             else
@@ -477,7 +484,7 @@ public class Node<K, V> extends AbstractPage<K, V>
 
                 // Inject the new merged child
                 Page<K, V> modifiedPage = mergedResult.getModifiedPage();
-                newNode.children[half + index] = btree.createHolder( modifiedPage ); //8
+                newNode.children[half + index] = createHolder( modifiedPage ); //8
             }
         }
         else
@@ -490,7 +497,7 @@ public class Node<K, V> extends AbstractPage<K, V>
 
                 // Insert the first child
                 Page<K, V> modifiedPage = mergedResult.getModifiedPage();
-                newNode.children[0] = btree.createHolder( modifiedPage );
+                newNode.children[0] = createHolder( modifiedPage );
 
                 // Copy the node children
                 System.arraycopy( children, 2, newNode.children, 1, half - 1 );
@@ -512,7 +519,7 @@ public class Node<K, V> extends AbstractPage<K, V>
 
                 // Inject the modified children
                 Page<K, V> modifiedPage = mergedResult.getModifiedPage();
-                newNode.children[index - 1] = btree.createHolder( modifiedPage ); // 7
+                newNode.children[index - 1] = createHolder( modifiedPage ); // 7
 
                 // Add the remaining node's key if needed
                 if ( index < half )
@@ -543,8 +550,9 @@ public class Node<K, V> extends AbstractPage<K, V>
 
     /**
      * {@inheritDoc}
+     * @throws IOException 
      */
-    public DeleteResult<K, V> delete( long revision, K key, Page<K, V> parent, int parentPos )
+    public DeleteResult<K, V> delete( long revision, K key, Page<K, V> parent, int parentPos ) throws IOException
     {
         // We first try to delete the element from the child it belongs to
         // Find the key in the page
@@ -668,8 +676,10 @@ public class Node<K, V> extends AbstractPage<K, V>
      * @param borrowedResult The result of the deletion from the children
      * @param pos The position the key was found in the current node
      * @return The result
+     * @throws IOException 
      */
     private RemoveResult<K, V> handleBorrowedResult( BorrowedFromSiblingResult<K, V> borrowedResult, int pos )
+        throws IOException
     {
         Page<K, V> modifiedPage = borrowedResult.getModifiedPage();
         Page<K, V> modifiedSibling = borrowedResult.getModifiedSibling();
@@ -687,8 +697,8 @@ public class Node<K, V> extends AbstractPage<K, V>
                 newPage.keys[pos + 1] = modifiedSibling.findLeftMost().getKey();
 
                 // Update the children
-                newPage.children[pos + 1] = btree.createHolder( modifiedPage );
-                newPage.children[pos + 2] = btree.createHolder( modifiedSibling );
+                newPage.children[pos + 1] = createHolder( modifiedPage );
+                newPage.children[pos + 2] = createHolder( modifiedSibling );
             }
             else
             {
@@ -696,8 +706,8 @@ public class Node<K, V> extends AbstractPage<K, V>
                 newPage.keys[pos] = modifiedPage.findLeftMost().getKey();
 
                 // Update the children
-                newPage.children[pos] = btree.createHolder( modifiedSibling );
-                newPage.children[pos + 1] = btree.createHolder( modifiedPage );
+                newPage.children[pos] = createHolder( modifiedSibling );
+                newPage.children[pos + 1] = createHolder( modifiedPage );
             }
         }
         else
@@ -708,8 +718,8 @@ public class Node<K, V> extends AbstractPage<K, V>
                 newPage.keys[pos] = modifiedSibling.findLeftMost().getKey();
 
                 // Update the children
-                newPage.children[pos] = btree.createHolder( modifiedPage );
-                newPage.children[pos + 1] = btree.createHolder( modifiedSibling );
+                newPage.children[pos] = createHolder( modifiedPage );
+                newPage.children[pos + 1] = createHolder( modifiedSibling );
             }
             else
             {
@@ -717,8 +727,8 @@ public class Node<K, V> extends AbstractPage<K, V>
                 newPage.keys[pos - 1] = modifiedPage.findLeftMost().getKey();
 
                 // Update the children
-                newPage.children[pos - 1] = btree.createHolder( modifiedSibling );
-                newPage.children[pos] = btree.createHolder( modifiedPage );
+                newPage.children[pos - 1] = createHolder( modifiedSibling );
+                newPage.children[pos] = createHolder( modifiedPage );
             }
         }
 
@@ -736,8 +746,10 @@ public class Node<K, V> extends AbstractPage<K, V>
      * @param revision The revision of the modified page
      * @param pos The position into the page of the element to remove
      * @return The modified page with the <K,V> element added
+     * @throws IOException 
      */
     private RemoveResult<K, V> removeKey( MergedWithSiblingResult<K, V> mergedResult, long revision, int pos )
+        throws IOException
     {
         // First copy the current page, but remove one element in the copied page
         Node<K, V> newNode = new Node<K, V>( btree, revision, nbElems - 1 );
@@ -750,7 +762,7 @@ public class Node<K, V> extends AbstractPage<K, V>
             // Copy the keys and the children
             System.arraycopy( keys, 1, newNode.keys, 0, newNode.nbElems );
             Page<K, V> modifiedPage = mergedResult.getModifiedPage();
-            newNode.children[0] = btree.createHolder( modifiedPage );
+            newNode.children[0] = createHolder( modifiedPage );
             System.arraycopy( children, 2, newNode.children, 1, nbElems - 1 );
         }
         else
@@ -772,7 +784,7 @@ public class Node<K, V> extends AbstractPage<K, V>
             System.arraycopy( children, 0, newNode.children, 0, index + 1 );
 
             Page<K, V> modifiedPage = mergedResult.getModifiedPage();
-            newNode.children[index + 1] = btree.createHolder( modifiedPage );
+            newNode.children[index + 1] = createHolder( modifiedPage );
 
             if ( index < nbElems - 2 )
             {
@@ -905,29 +917,34 @@ public class Node<K, V> extends AbstractPage<K, V>
         // to point on the modified child
         Page<K, V> modifiedPage = result.getModifiedPage();
 
-        // If the BTree is managed, we now have to write the modified page on disk
-        // and to add this page to the list of modified pages
-        if ( btree.isManaged() )
-        {
-            ElementHolder<Page<K, V>, K, V> holder = btree.getRecordManager().writePage( btree, this, modifiedPage,
-                revision );
-
-            // Store the offset on disk in the page in memory
-            ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holder )
-                .getOffset() );
-
-            ( ( Node<K, V> ) newPage ).children[pos] = holder;
-        }
-        else
-        {
-            ( ( Node<K, V> ) newPage ).children[pos] = btree.createHolder( modifiedPage );
-        }
+        ( ( Node<K, V> ) newPage ).children[pos] = createHolder( modifiedPage );
 
         // We can return the result, where we update the modifiedPage,
         // to avoid the creation of a new object
         result.modifiedPage = newPage;
 
         return result;
+    }
+
+
+    private ElementHolder<Page<K, V>, K, V> createHolder( Page<K, V> page ) throws IOException
+    {
+        if ( btree.isManaged() )
+        {
+            ElementHolder<Page<K, V>, K, V> holder = btree.getRecordManager().writePage( btree, this,
+                page,
+                revision );
+
+            // Store the offset on disk in the page in memory
+            ( ( AbstractPage<K, V> ) page ).setOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holder )
+                .getOffset() );
+
+            return holder;
+        }
+        else
+        {
+            return btree.createHolder( page );
+        }
     }
 
 
@@ -961,32 +978,8 @@ public class Node<K, V> extends AbstractPage<K, V>
 
         // If the BTree is managed, we now have to write the modified page on disk
         // and to add this page to the list of modified pages
-        if ( btree.isManaged() )
-        {
-            ElementHolder<Page<K, V>, K, V> holderLeft = btree.getRecordManager().writePage( btree, this, leftPage,
-                revision );
-
-            // Store the offset on disk in the page in memory
-            ( ( AbstractPage<K, V> ) leftPage ).setOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holderLeft )
-                .getOffset() );
-
-            newNode.children[pos] = holderLeft;
-
-            ElementHolder<Page<K, V>, K, V> holderRight = btree.getRecordManager().writePage( btree, this,
-                rightPage,
-                revision );
-
-            // Store the offset on disk in the page in memory
-            ( ( AbstractPage<K, V> ) rightPage ).setOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holderRight )
-                .getOffset() );
-
-            newNode.children[pos + 1] = holderRight;
-        }
-        else
-        {
-            newNode.children[pos] = btree.createHolder( leftPage );
-            newNode.children[pos + 1] = btree.createHolder( rightPage );
-        }
+        newNode.children[pos] = createHolder( leftPage );
+        newNode.children[pos + 1] = createHolder( rightPage );
 
         // And copy the remaining keys and children
         if ( nbElems > 0 )
@@ -1017,8 +1010,10 @@ public class Node<K, V> extends AbstractPage<K, V>
      * @param rightPage The right child
      * @param pos The position of the insertion of the new element
      * @return An OverflowPage containing the pivot, and the new left and right pages
+     * @throws IOException 
      */
     private InsertResult<K, V> addAndSplit( long revision, K pivot, Page<K, V> leftPage, Page<K, V> rightPage, int pos )
+        throws IOException
     {
         int middle = btree.getPageSize() >> 1;
 
@@ -1037,8 +1032,8 @@ public class Node<K, V> extends AbstractPage<K, V>
 
             // Add the new element
             newLeftPage.keys[pos] = pivot;
-            newLeftPage.children[pos] = btree.createHolder( leftPage );
-            newLeftPage.children[pos + 1] = btree.createHolder( rightPage );
+            newLeftPage.children[pos] = createHolder( leftPage );
+            newLeftPage.children[pos + 1] = createHolder( rightPage );
 
             // And copy the remaining elements minus the new pivot
             System.arraycopy( keys, pos, newLeftPage.keys, pos + 1, middle - pos - 1 );
@@ -1060,12 +1055,12 @@ public class Node<K, V> extends AbstractPage<K, V>
             // Copy the keys and the children up to the insertion position (here, middle)
             System.arraycopy( keys, 0, newLeftPage.keys, 0, middle );
             System.arraycopy( children, 0, newLeftPage.children, 0, middle );
-            newLeftPage.children[middle] = btree.createHolder( leftPage );
+            newLeftPage.children[middle] = createHolder( leftPage );
 
             // And process the right page now
             System.arraycopy( keys, middle, newRightPage.keys, 0, middle );
             System.arraycopy( children, middle + 1, newRightPage.children, 1, middle );
-            newRightPage.children[0] = btree.createHolder( rightPage );
+            newRightPage.children[0] = createHolder( rightPage );
 
             // Create the result
             InsertResult<K, V> result = new SplitResult<K, V>( pivot, newLeftPage, newRightPage );
@@ -1084,8 +1079,8 @@ public class Node<K, V> extends AbstractPage<K, V>
 
             // Add the new element
             newRightPage.keys[pos - middle - 1] = pivot;
-            newRightPage.children[pos - middle - 1] = btree.createHolder( leftPage );
-            newRightPage.children[pos - middle] = btree.createHolder( rightPage );
+            newRightPage.children[pos - middle - 1] = createHolder( leftPage );
+            newRightPage.children[pos - middle] = createHolder( rightPage );
 
             // And copy the remaining elements minus the new pivot
             System.arraycopy( keys, pos, newRightPage.keys, pos - middle, nbElems - pos );
