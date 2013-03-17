@@ -20,7 +20,10 @@
 package org.apache.mavibot.btree;
 
 
+import java.io.IOException;
 import java.lang.reflect.Array;
+
+import org.apache.mavibot.btree.exception.EndOfFileExceededException;
 
 
 /**
@@ -86,8 +89,10 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
      * @param parent The parent of the current page
      * @param The position of the current page reference in its parent
      * @return The position of the sibling, or -1 if we have'nt found any sibling
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
-    protected int selectSibling( Node<K, V> parent, int parentPos )
+    protected int selectSibling( Node<K, V> parent, int parentPos ) throws EndOfFileExceededException, IOException
     {
         if ( parentPos == 0 )
         {

@@ -20,7 +20,10 @@
 package org.apache.mavibot.btree;
 
 
+import java.io.IOException;
 import java.lang.ref.SoftReference;
+
+import org.apache.mavibot.btree.exception.EndOfFileExceededException;
 
 
 /**
@@ -62,29 +65,35 @@ public class ReferenceHolder<E, K, V> implements ElementHolder<E, K, V>
 
     /**
      * {@inheritDoc}
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
     @Override
-    public E getValue( BTree<K, V> btree )
+    public E getValue( BTree<K, V> btree ) throws EndOfFileExceededException, IOException
     {
         E element = reference.get();
 
-        if ( element != null )
+        if ( element == null )
         {
-            return element;
+            // We have to fetch the element from disk, using the offset now
+            element = fetchElement( btree );
         }
 
-        // We have to fetch the element from disk, using the offset now
-        return fetchElement( btree );
+        return element;
     }
 
 
     /**
      * Retrieve the value from the disk, using the BTree and offset
-     * @return
+     * @return The deserialized element (
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
-    private E fetchElement( BTree<K, V> btree )
+    private E fetchElement( BTree<K, V> btree ) throws EndOfFileExceededException, IOException
     {
-        return null;
+        E element = ( E ) btree.getRecordManager().deserialize( btree, offset );
+
+        return element;
     }
 
 

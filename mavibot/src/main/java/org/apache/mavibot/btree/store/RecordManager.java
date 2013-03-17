@@ -492,6 +492,7 @@ public class RecordManager
         PageIO[] rootPageIos = readPages( rootPageOffset, Long.MAX_VALUE );
 
         Page btreeRoot = readPage( btree, rootPageIos );
+        BTreeFactory.setRecordManager( btree, this );
 
         BTreeFactory.setRoot( btree, btreeRoot );
     }
@@ -505,6 +506,16 @@ public class RecordManager
         PageIO[] pageIos = readPages( offset, Long.MAX_VALUE );
 
         return node;
+    }
+
+
+    public Page deserialize( BTree btree, long offset ) throws EndOfFileExceededException, IOException
+    {
+        PageIO[] rootPageIos = readPages( offset, Long.MAX_VALUE );
+
+        Page page = readPage( btree, rootPageIos );
+
+        return page;
     }
 
 

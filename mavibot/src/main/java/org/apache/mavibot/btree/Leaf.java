@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.LinkedList;
 
+import org.apache.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.mavibot.btree.exception.KeyNotFoundException;
 
 
@@ -108,9 +109,12 @@ public class Leaf<K, V> extends AbstractPage<K, V>
 
     /**
      * {@inheritDoc}
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
     @SuppressWarnings("unchecked")
     public DeleteResult<K, V> delete( long revision, K key, Page<K, V> parent, int parentPos )
+        throws EndOfFileExceededException, IOException
     {
         // Check that the leaf is not empty
         if ( nbElems == 0 )
@@ -200,8 +204,11 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      * @param isLeft Tells if the sibling is on the left or on the right
      * @param pos The position of the removed element
      * @return The new created leaf containing the sibling and the old page.
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
     private DeleteResult<K, V> mergeWithSibling( long revision, Leaf<K, V> sibling, boolean isLeft, int pos )
+        throws EndOfFileExceededException, IOException
     {
         // Create the new page. It will contain N - 1 elements (the maximum number)
         // as we merge two pages that contain N/2 elements minus the one we remove
@@ -256,8 +263,11 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      * @param sibling The left sibling
      * @param pos The position of the element to remove
      * @return The resulting pages
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
     private DeleteResult<K, V> borrowFromLeft( long revision, Leaf<K, V> sibling, int pos )
+        throws EndOfFileExceededException, IOException
     {
         // The sibling is on the left, borrow the rightmost element
         K siblingKey = sibling.keys[sibling.getNbElems() - 1];
@@ -300,8 +310,11 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      * @param sibling The right sibling
      * @param pos The position of the element to remove
      * @return The resulting pages
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
     private DeleteResult<K, V> borrowFromRight( long revision, Leaf<K, V> sibling, int pos )
+        throws EndOfFileExceededException, IOException
     {
         // The sibling is on the left, borrow the rightmost element
         K siblingKey = sibling.keys[0];
@@ -345,8 +358,10 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      * @param revision The revision of the modified page
      * @param pos The position into the page of the element to remove
      * @return The modified page with the <K,V> element added
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
-    private DeleteResult<K, V> removeElement( long revision, int pos )
+    private DeleteResult<K, V> removeElement( long revision, int pos ) throws EndOfFileExceededException, IOException
     {
         // First copy the current page, but remove one element in the copied page
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems - 1 );
@@ -394,8 +409,10 @@ public class Leaf<K, V> extends AbstractPage<K, V>
 
     /**
      * {@inheritDoc}
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
-    public V get( K key ) throws KeyNotFoundException
+    public V get( K key ) throws KeyNotFoundException, EndOfFileExceededException, IOException
     {
         int pos = findPos( key );
 
@@ -530,8 +547,11 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      * @param value the new value
      * @param pos The position of the key in the page
      * @return The copied page
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
     private InsertResult<K, V> replaceElement( long revision, K key, V value, int pos )
+        throws EndOfFileExceededException, IOException
     {
         Leaf<K, V> newLeaf = this;
 
@@ -693,8 +713,10 @@ public class Leaf<K, V> extends AbstractPage<K, V>
 
     /**
      * {@inheritDoc}
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
-    public Tuple<K, V> findLeftMost()
+    public Tuple<K, V> findLeftMost() throws EndOfFileExceededException, IOException
     {
         return new Tuple<K, V>( keys[0], values[0].getValue( btree ) );
     }
@@ -702,8 +724,10 @@ public class Leaf<K, V> extends AbstractPage<K, V>
 
     /**
      * {@inheritDoc}
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
-    public Tuple<K, V> findRightMost()
+    public Tuple<K, V> findRightMost() throws EndOfFileExceededException, IOException
     {
         return new Tuple<K, V>( keys[nbElems - 1], values[nbElems - 1].getValue( btree ) );
     }

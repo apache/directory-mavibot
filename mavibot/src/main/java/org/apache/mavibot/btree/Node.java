@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.LinkedList;
 
+import org.apache.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.mavibot.btree.exception.KeyNotFoundException;
 
 
@@ -821,8 +822,11 @@ public class Node<K, V> extends AbstractPage<K, V>
 
     /**
      * {@inheritDoc}
+     * @throws IOException 
+     * @throws KeyNotFoundException 
+     * @throws EndOfFileExceededException 
      */
-    public V get( K key ) throws KeyNotFoundException
+    public V get( K key ) throws IOException, KeyNotFoundException
     {
         int pos = findPos( key );
 
@@ -852,8 +856,10 @@ public class Node<K, V> extends AbstractPage<K, V>
 
     /**
      * {@inheritDoc}
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
-    public Page<K, V> getReference( int pos )
+    public Page<K, V> getReference( int pos ) throws EndOfFileExceededException, IOException
     {
         if ( pos < nbElems + 1 )
         {
@@ -868,8 +874,11 @@ public class Node<K, V> extends AbstractPage<K, V>
 
     /**
      * {@inheritDoc}
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
     public Cursor<K, V> browse( K key, Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
+        throws EndOfFileExceededException, IOException
     {
         int pos = findPos( key );
 
@@ -887,8 +896,11 @@ public class Node<K, V> extends AbstractPage<K, V>
 
     /**
      * {@inheritDoc}
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
     public Cursor<K, V> browse( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
+        throws EndOfFileExceededException, IOException
     {
         stack.push( new ParentPos<K, V>( this, 0 ) );
 
@@ -1115,8 +1127,10 @@ public class Node<K, V> extends AbstractPage<K, V>
 
     /**
      * {@inheritDoc}
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
-    public K getLeftMostKey()
+    public K getLeftMostKey() throws EndOfFileExceededException, IOException
     {
         return children[0].getValue( btree ).getLeftMostKey();
     }
@@ -1124,8 +1138,10 @@ public class Node<K, V> extends AbstractPage<K, V>
 
     /**
      * {@inheritDoc}
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
-    public Tuple<K, V> findLeftMost()
+    public Tuple<K, V> findLeftMost() throws EndOfFileExceededException, IOException
     {
         return children[0].getValue( btree ).findLeftMost();
     }
@@ -1133,14 +1149,18 @@ public class Node<K, V> extends AbstractPage<K, V>
 
     /**
      * {@inheritDoc}
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
-    public Tuple<K, V> findRightMost()
+    public Tuple<K, V> findRightMost() throws EndOfFileExceededException, IOException
     {
         return children[nbElems].getValue( btree ).findRightMost();
     }
 
 
     /**
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      * @see Object#toString()
      */
     public String toString()
@@ -1151,31 +1171,38 @@ public class Node<K, V> extends AbstractPage<K, V>
         sb.append( super.toString() );
         sb.append( "] -> {" );
 
-        if ( nbElems > 0 )
+        try
         {
-            // Start with the first child
-            if ( children[0] == null )
+            if ( nbElems > 0 )
             {
-                sb.append( "null" );
-            }
-            else
-            {
-                sb.append( 'r' ).append( children[0].getValue( btree ).getRevision() );
-            }
-
-            for ( int i = 0; i < nbElems; i++ )
-            {
-                sb.append( "|<" ).append( keys[i] ).append( ">|" );
-
-                if ( children[i + 1] == null )
+                // Start with the first child
+                if ( children[0] == null )
                 {
                     sb.append( "null" );
                 }
                 else
                 {
-                    sb.append( 'r' ).append( children[i + 1].getValue( btree ).getRevision() );
+                    sb.append( 'r' ).append( children[0].getValue( btree ).getRevision() );
+                }
+
+                for ( int i = 0; i < nbElems; i++ )
+                {
+                    sb.append( "|<" ).append( keys[i] ).append( ">|" );
+
+                    if ( children[i + 1] == null )
+                    {
+                        sb.append( "null" );
+                    }
+                    else
+                    {
+                        sb.append( 'r' ).append( children[i + 1].getValue( btree ).getRevision() );
+                    }
                 }
             }
+        }
+        catch ( IOException ioe )
+        {
+            // Do nothing
         }
 
         sb.append( "}" );
@@ -1193,15 +1220,22 @@ public class Node<K, V> extends AbstractPage<K, V>
 
         if ( nbElems > 0 )
         {
-            // Start with the first child
-            sb.append( children[0].getValue( btree ).dumpPage( tabs + "    " ) );
-
-            for ( int i = 0; i < nbElems; i++ )
+            try
             {
-                sb.append( tabs );
-                sb.append( "<" );
-                sb.append( keys[i] ).append( ">\n" );
-                sb.append( children[i + 1].getValue( btree ).dumpPage( tabs + "    " ) );
+                // Start with the first child
+                sb.append( children[0].getValue( btree ).dumpPage( tabs + "    " ) );
+
+                for ( int i = 0; i < nbElems; i++ )
+                {
+                    sb.append( tabs );
+                    sb.append( "<" );
+                    sb.append( keys[i] ).append( ">\n" );
+                    sb.append( children[i + 1].getValue( btree ).dumpPage( tabs + "    " ) );
+                }
+            }
+            catch ( IOException ioe )
+            {
+                // Do nothing
             }
         }
 

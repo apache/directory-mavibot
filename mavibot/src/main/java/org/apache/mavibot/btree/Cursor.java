@@ -20,7 +20,10 @@
 package org.apache.mavibot.btree;
 
 
+import java.io.IOException;
 import java.util.LinkedList;
+
+import org.apache.mavibot.btree.exception.EndOfFileExceededException;
 
 
 /**
@@ -67,8 +70,10 @@ import java.util.LinkedList;
      * Find the next key/value
      * 
      * @return A Tuple containing the found key and value
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
-    /* No qualifier */Tuple<K, V> next()
+    /* No qualifier */Tuple<K, V> next() throws EndOfFileExceededException, IOException
     {
         ParentPos<K, V> parentPos = stack.getFirst();
 
@@ -104,8 +109,10 @@ import java.util.LinkedList;
      * Find the leaf containing the following elements.
      * 
      * @return the new ParentPos instance, or null if we have no following leaf
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
-    private ParentPos<K, V> findNextParentPos()
+    private ParentPos<K, V> findNextParentPos() throws EndOfFileExceededException, IOException
     {
         while ( true )
         {
@@ -150,8 +157,10 @@ import java.util.LinkedList;
      * Find the leaf containing the previous elements.
      * 
      * @return the new ParentPos instance, or null if we have no previous leaf
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
-    private ParentPos<K, V> findPreviousParentPos()
+    private ParentPos<K, V> findPreviousParentPos() throws EndOfFileExceededException, IOException
     {
         while ( true )
         {
@@ -197,8 +206,10 @@ import java.util.LinkedList;
      * Find the previous key/value
      * 
      * @return A Tuple containing the found key and value
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
-    /* No qualifier */Tuple<K, V> prev()
+    /* No qualifier */Tuple<K, V> prev() throws EndOfFileExceededException, IOException
     {
         ParentPos<K, V> parentPos = stack.peek();
 
@@ -234,8 +245,10 @@ import java.util.LinkedList;
     /**
      * Tells if the cursor can return a next element
      * @return true if there are some more elements
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
-    /* No qualifier */boolean hasNext()
+    /* No qualifier */boolean hasNext() throws EndOfFileExceededException, IOException
     {
         ParentPos<K, V> parentPos = stack.peek();
 
@@ -265,8 +278,10 @@ import java.util.LinkedList;
     /**
      * Tells if the cursor can return a previous element
      * @return true if there are some more elements
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
-    /* No qualifier */boolean hasPrev()
+    /* No qualifier */boolean hasPrev() throws EndOfFileExceededException, IOException
     {
         ParentPos<K, V> parentPos = stack.peek();
 

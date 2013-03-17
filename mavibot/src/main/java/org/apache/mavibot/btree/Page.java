@@ -23,6 +23,7 @@ package org.apache.mavibot.btree;
 import java.io.IOException;
 import java.util.LinkedList;
 
+import org.apache.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.mavibot.btree.exception.KeyNotFoundException;
 
 
@@ -96,7 +97,7 @@ public interface Page<K, V>
      * @throws KeyNotFoundException If no entry with the given key can be found
      * @return The associated value, or null if there is none
      */
-    V get( K key ) throws KeyNotFoundException;
+    V get( K key ) throws KeyNotFoundException, IOException;
 
 
     /**
@@ -108,7 +109,8 @@ public interface Page<K, V>
      * @param stack The stack of parents we go through to get to this page
      * @return A Cursor to browse the next elements
      */
-    Cursor<K, V> browse( K key, Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack );
+    Cursor<K, V> browse( K key, Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
+        throws EndOfFileExceededException, IOException;
 
 
     /**
@@ -117,8 +119,11 @@ public interface Page<K, V>
      * @param transaction The started transaction for this operation
      * @param stack The stack of parents we go through to get to this page
      * @return A Cursor to browse the next elements
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
-    Cursor<K, V> browse( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack );
+    Cursor<K, V> browse( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
+        throws EndOfFileExceededException, IOException;
 
 
     /**
@@ -140,8 +145,10 @@ public interface Page<K, V>
      * down in the leftmost children to recursively find the leftmost key.
      * 
      * @return The leftmost key in the tree
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
-    K getLeftMostKey();
+    K getLeftMostKey() throws EndOfFileExceededException, IOException;
 
 
     /**
@@ -149,8 +156,10 @@ public interface Page<K, V>
      * down in the leftmost children to recursively find the leftmost element.
      * 
      * @return The leftmost element in the tree
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
-    Tuple<K, V> findLeftMost();
+    Tuple<K, V> findLeftMost() throws EndOfFileExceededException, IOException;
 
 
     /**
@@ -158,8 +167,10 @@ public interface Page<K, V>
      * down in the rightmost children to recursively find the rightmost element.
      * 
      * @return The rightmost element in the tree
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
-    Tuple<K, V> findRightMost();
+    Tuple<K, V> findRightMost() throws EndOfFileExceededException, IOException;
 
 
     /**

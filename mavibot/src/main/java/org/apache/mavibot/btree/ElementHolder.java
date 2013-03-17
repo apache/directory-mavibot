@@ -20,6 +20,11 @@
 package org.apache.mavibot.btree;
 
 
+import java.io.IOException;
+
+import org.apache.mavibot.btree.exception.EndOfFileExceededException;
+
+
 /**
  * A Value holder. As we may not store all the values in memory (except for an in-memory
  * BTree), we will use a SoftReference to keep a reference to a Value, and if it's null,
@@ -40,5 +45,5 @@ public interface ElementHolder<E, K, V>
      * 
      * @return The stored element
      */
-    E getValue( BTree<K, V> btree );
+    E getValue( BTree<K, V> btree ) throws EndOfFileExceededException, IOException;
 }
