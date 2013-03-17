@@ -846,8 +846,7 @@ public class Node<K, V> extends AbstractPage<K, V>
      */
     public void setValue( int pos, ElementHolder<Page<K, V>, K, V> value )
     {
-        Page<K, V> page = value.getValue( btree );
-        children[pos] = btree.createHolder( page );
+        children[pos] = value;
     }
 
 

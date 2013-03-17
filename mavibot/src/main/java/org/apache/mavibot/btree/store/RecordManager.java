@@ -133,6 +133,9 @@ public class RecordManager
     /** The default file name */
     private static final String DEFAULT_FILE_NAME = "mavibot.db";
 
+    /** A deserializer for Offsets */
+    private static final LongSerializer OFFSET_SERIALIZER = new LongSerializer();
+
 
     /**
      * Create a Record manager which will either create the underlying file
@@ -553,7 +556,28 @@ public class RecordManager
         else
         {
             // It's a node
-            page = BTreeFactory.createNode( btree, revision, -nbElems );
+            int nodeNbElems = -nbElems;
+
+            page = BTreeFactory.createNode( btree, revision, nodeNbElems );
+
+            // Read each value and key
+            for ( int i = 0; i < nodeNbElems; i++ )
+            {
+                // This is an Offset
+                long offset = OFFSET_SERIALIZER.deserialize( byteBuffer );
+
+                ElementHolder valueHolder = new ReferenceHolder( btree, null, offset );
+                ( ( Node ) page ).setValue( i, valueHolder );
+
+                Object key = btree.getKeySerializer().deserialize( byteBuffer );
+                BTreeFactory.setKey( page, i, key );
+            }
+
+            // and read the last value, as it's a node
+            long offset = OFFSET_SERIALIZER.deserialize( byteBuffer );
+
+            ElementHolder valueHolder = new ReferenceHolder( btree, null, offset );
+            ( ( Node ) page ).setValue( nodeNbElems, valueHolder );
         }
 
         return page;
