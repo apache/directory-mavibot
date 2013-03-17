@@ -314,6 +314,11 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
         sb.append( "r" ).append( revision );
         sb.append( ", nbElems:" ).append( nbElems );
 
+        if ( offset > 0 )
+        {
+            sb.append( ", offset:" ).append( offset );
+        }
+
         return sb.toString();
     }
 

@@ -1058,7 +1058,7 @@ public class BTree<K, V>
                     .setOffset( ( ( ReferenceHolder ) holderRight ).getOffset() );
 
                 // Create the new rootPage
-                newRootPage = new Node<K, V>( this, revision, pivot, leftPage, rightPage );
+                newRootPage = new Node<K, V>( this, revision, pivot, holderLeft, holderRight );
             }
             else
             {

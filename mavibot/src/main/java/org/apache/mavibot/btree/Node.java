@@ -941,31 +941,56 @@ public class Node<K, V> extends AbstractPage<K, V>
      * @param rightPage The right child
      * @param pos The position into the page
      * @return The modified page with the <K,V> element added
+     * @throws IOException 
      */
     private InsertResult<K, V> insertChild( long revision, K key, Page<K, V> leftPage, Page<K, V> rightPage, int pos )
+        throws IOException
     {
         // First copy the current page, but add one element in the copied page
         Node<K, V> newNode = new Node<K, V>( btree, revision, nbElems + 1 );
 
-        // Deal with the special case of an empty page
-        if ( nbElems == 0 )
+        // Copy the keys and the children up to the insertion position
+        if ( nbElems > 0 )
         {
-            newNode.keys[0] = key;
-            newNode.children[0] = btree.createHolder( leftPage );
-            newNode.children[1] = btree.createHolder( rightPage );
+            System.arraycopy( keys, 0, newNode.keys, 0, pos );
+            System.arraycopy( children, 0, newNode.children, 0, pos );
+        }
+
+        // Add the new key and children
+        newNode.keys[pos] = key;
+
+        // If the BTree is managed, we now have to write the modified page on disk
+        // and to add this page to the list of modified pages
+        if ( btree.isManaged() )
+        {
+            ElementHolder<Page<K, V>, K, V> holderLeft = btree.getRecordManager().writePage( btree, this, leftPage,
+                revision );
+
+            // Store the offset on disk in the page in memory
+            ( ( AbstractPage<K, V> ) leftPage ).setOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holderLeft )
+                .getOffset() );
+
+            newNode.children[pos] = holderLeft;
+
+            ElementHolder<Page<K, V>, K, V> holderRight = btree.getRecordManager().writePage( btree, this,
+                rightPage,
+                revision );
+
+            // Store the offset on disk in the page in memory
+            ( ( AbstractPage<K, V> ) rightPage ).setOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holderRight )
+                .getOffset() );
+
+            newNode.children[pos + 1] = holderRight;
         }
         else
         {
-            // Copy the keys and the children up to the insertion position
-            System.arraycopy( keys, 0, newNode.keys, 0, pos );
-            System.arraycopy( children, 0, newNode.children, 0, pos );
-
-            // Add the new key and children
-            newNode.keys[pos] = key;
             newNode.children[pos] = btree.createHolder( leftPage );
             newNode.children[pos + 1] = btree.createHolder( rightPage );
+        }
 
-            // And copy the remaining keys and children
+        // And copy the remaining keys and children
+        if ( nbElems > 0 )
+        {
             System.arraycopy( keys, pos, newNode.keys, pos + 1, keys.length - pos );
             System.arraycopy( children, pos + 1, newNode.children, pos + 2, children.length - pos - 1 );
         }
