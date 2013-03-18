@@ -77,6 +77,7 @@ public class ReferenceHolder<E, K, V> implements ElementHolder<E, K, V>
         {
             // We have to fetch the element from disk, using the offset now
             element = fetchElement( btree );
+            reference = new SoftReference( element );
         }
 
         return element;
