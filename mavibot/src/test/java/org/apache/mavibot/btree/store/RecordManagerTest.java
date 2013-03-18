@@ -33,6 +33,7 @@ import org.apache.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.mavibot.btree.serializer.LongSerializer;
 import org.apache.mavibot.btree.serializer.StringSerializer;
+import org.junit.Ignore;
 import org.junit.Test;
 
 
@@ -167,7 +168,7 @@ public class RecordManagerTest
         assertNotNull( recordManager );
 
         // Create a new BTree
-        BTree<Long, String> btree = new BTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
+        BTree<Long, String> btree = new BTree<Long, String>( "test", new LongSerializer(), new StringSerializer(), 4 );
 
         // And make it managed by the RM
         recordManager.manage( btree );
@@ -209,5 +210,87 @@ public class RecordManagerTest
             assertTrue( btree1.exist( i ) );
             assertEquals( "V" + i, btree1.get( i ) );
         }
+    }
+
+
+    /**
+     * Test the creation of a RecordManager with a BTree containing 100 000 elements
+     */
+    @Test
+    @Ignore("This is a performance test")
+    public void testRecordManagerWithBTreeLeafNode100K() throws IOException, BTreeAlreadyManagedException,
+        KeyNotFoundException
+    {
+        File tempFile = File.createTempFile( "mavibot", ".db" );
+
+        String tempFileName = tempFile.getAbsolutePath();
+        tempFile.deleteOnExit();
+
+        RecordManager recordManager = new RecordManager( tempFileName, 512 );
+
+        assertNotNull( recordManager );
+
+        // Create a new BTree
+        BTree<Long, String> btree = new BTree<Long, String>( "test", new LongSerializer(), new StringSerializer(), 32 );
+
+        // And make it managed by the RM
+        recordManager.manage( btree );
+
+        // Now, add some elements in the BTree
+        long t0 = System.currentTimeMillis();
+        for ( long i = 0L; i < 100000L; i++ )
+        {
+            btree.insert( i, "V" + i );
+        }
+        long t1 = System.currentTimeMillis();
+
+        // Close the recordManager
+        recordManager.close();
+
+        System.out.println( "Time taken to write 100 000 elements : " + ( t1 - t0 ) );
+
+        // Now, try to reload the file back
+        RecordManager recordManager1 = new RecordManager( tempFileName );
+
+        assertEquals( 1, recordManager1.getNbManagedTrees() );
+
+        Set<String> managedBTrees = recordManager1.getManagedTrees();
+
+        assertEquals( 1, managedBTrees.size() );
+        assertTrue( managedBTrees.contains( "test" ) );
+
+        BTree<Long, String> btree1 = recordManager1.getManagedTree( "test" );
+
+        assertNotNull( btree1 );
+        assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
+        assertEquals( btree.getFile(), btree1.getFile() );
+        assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
+        assertEquals( btree.getName(), btree1.getName() );
+        assertEquals( btree.getNbElems(), btree1.getNbElems() );
+        assertEquals( btree.getPageSize(), btree1.getPageSize() );
+        assertEquals( btree.getRevision(), btree1.getRevision() );
+        assertEquals( btree.getValueSerializer().getClass().getName(), btree1.getValueSerializer().getClass().getName() );
+
+        // Check the stored element
+        long t2 = System.currentTimeMillis();
+        for ( long i = 0L; i < 100000L; i++ )
+        {
+            //assertTrue( btree1.exist( i ) );
+            assertEquals( "V" + i, btree1.get( i ) );
+        }
+        long t3 = System.currentTimeMillis();
+        System.out.println( "Time taken to verify 100 000 elements : " + ( t3 - t2 ) );
+
+        // Check the stored element a second time
+        long t4 = System.currentTimeMillis();
+        for ( long i = 0L; i < 100000L; i++ )
+        {
+            //assertTrue( btree1.exist( i ) );
+            assertEquals( "V" + i, btree1.get( i ) );
+        }
+        long t5 = System.currentTimeMillis();
+        System.out.println( "Time taken to verify 100 000 elements : " + ( t5 - t4 ) );
+
+        System.out.println( "File size : " + tempFile.length() );
     }
 }
