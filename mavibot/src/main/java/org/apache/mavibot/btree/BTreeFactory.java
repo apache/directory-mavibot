@@ -55,9 +55,9 @@ public class BTreeFactory
      * @param nbElems The number or elements in this node
      * @return A Node instance
      */
-    public static Page createNode( BTree btree, long revision, int nbElems )
+    public static Node createNode( BTree btree, long revision, int nbElems )
     {
-        Page node = new Node( btree, revision, nbElems );
+        Node node = new Node( btree, revision, nbElems );
 
         return node;
     }
@@ -71,9 +71,9 @@ public class BTreeFactory
      * @param nbElems The number or elements in this leaf
      * @return A Leaf instance
      */
-    public static Page createLeaf( BTree btree, long revision, int nbElems )
+    public static Leaf createLeaf( BTree btree, long revision, int nbElems )
     {
-        Page leaf = new Leaf( btree, revision, nbElems );
+        Leaf leaf = new Leaf( btree, revision, nbElems );
 
         return leaf;
     }
