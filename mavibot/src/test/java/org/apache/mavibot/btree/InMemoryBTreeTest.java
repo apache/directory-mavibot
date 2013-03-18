@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
+import org.apache.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.mavibot.btree.serializer.IntSerializer;
 import org.apache.mavibot.btree.serializer.LongSerializer;
@@ -1024,6 +1025,7 @@ public class InMemoryBTreeTest
 
 
     private void addPage( BTree<Integer, String> btree, Node<Integer, String> node, Page<Integer, String> page, int pos )
+        throws EndOfFileExceededException, IOException
     {
         Tuple<Integer, String> leftmost = page.findLeftMost();
 
