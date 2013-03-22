@@ -27,7 +27,12 @@ import static org.apache.mavibot.btree.BTreeFactory.setKey;
 import static org.apache.mavibot.btree.BTreeFactory.setValue;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
+import org.apache.mavibot.btree.serializer.ElementSerializer;
 import org.apache.mavibot.btree.serializer.IntSerializer;
 
 
@@ -38,58 +43,169 @@ import org.apache.mavibot.btree.serializer.IntSerializer;
  */
 public class BTreeBuilder<K, V>
 {
-    public BTreeBuilder()
+    private String name;
+    
+    private int numKeysInNode;
+    
+    private ElementSerializer<K> keySerializer;
+    
+    private ElementSerializer<V> valueSerializer;
+
+
+    public BTreeBuilder( String name, int numKeysInNode, ElementSerializer<K> keySerializer,
+        ElementSerializer<V> valueSerializer )
     {
+        this.numKeysInNode = numKeysInNode;
+        this.keySerializer = keySerializer;
+        this.valueSerializer = valueSerializer;
     }
 
-    public void build() throws IOException
+
+    public BTree<K, V> build( Iterator<Tuple<K, V>> sortedTupleItr ) throws IOException
     {
-        IntSerializer keySer = new IntSerializer();
-        
-        BTree<Integer, Integer> btree = new BTree<Integer, Integer>("master", keySer, keySer);
+        BTree<K, V> btree = new BTree<K, V>( name, keySerializer, valueSerializer );
         btree.init();
-        Leaf<Integer, Integer> leaf1 = createLeaf( btree, 0, 4 );
-        fillLeaf( new int[]
-            { 1, 2, 3, 4 }, leaf1, btree );
 
-        Leaf<Integer, Integer> leaf2 = createLeaf( btree, 0, 3 );
-        fillLeaf( new int[]
-            { 5, 6, 7 }, leaf2, btree );
+        List<Page<K, V>> lstLeaves = new ArrayList<Page<K, V>>();
+        
+        int totalTupleCount = 0;
+        
+        Leaf<K, V> leaf1 = createLeaf( btree, 0, numKeysInNode );
+        lstLeaves.add( leaf1 );
 
-        Node<Integer, Integer> node = ( Node<Integer, Integer> ) createNode( btree, 0, 1 );
-
-        setKey( node, 0, 5 );
-        node.children[0] = btree.createHolder( leaf1 );
-        node.children[1] = btree.createHolder( leaf2 );
-
-        btree.rootPage = node;
-
-        Cursor<Integer, Integer> cursor = btree.browse();
-        while(cursor.hasNext())
+        int leafIndex = 0;
+        while ( sortedTupleItr.hasNext() )
         {
-            Tuple<Integer, Integer> t = cursor.next();
-            System.out.println( t );
+            Tuple<K, V> tuple = sortedTupleItr.next();
+
+            setKey( leaf1, leafIndex, tuple.getKey() );
+
+            MemoryHolder<K, V> eh = new MemoryHolder<K, V>( btree, tuple.getValue() );
+
+            setValue( leaf1, leafIndex, eh );
+
+            leafIndex++;
+            totalTupleCount++;
+            if ( ( totalTupleCount % numKeysInNode ) == 0 )
+            {
+                leafIndex = 0;
+                leaf1 = createLeaf( btree, 0, numKeysInNode );
+                lstLeaves.add( leaf1 );
+            }
         }
-        cursor.close();
+
+        if ( lstLeaves.isEmpty() )
+        {
+            return btree;
+        }
+
+        // remove null keys and values from the last leaf and resize
+        Leaf<K, V> lastLeaf = ( Leaf<K, V> ) lstLeaves.get( lstLeaves.size() - 1 );
+        for ( int i = 0; i < lastLeaf.nbElems; i++ )
+        {
+            if ( lastLeaf.keys[i] == null )
+            {
+                int n = i + 1;
+                lastLeaf.nbElems = n;
+                K[] keys = lastLeaf.keys;
+
+                Class<?> keyType = btree.getKeyType();
+                lastLeaf.keys = ( K[] ) Array.newInstance( keyType, n );
+                System.arraycopy( keys, 0, lastLeaf.keys, 0, n );
+
+                ElementHolder<V, K, V>[] values = lastLeaf.values;
+                lastLeaf.values = ( MemoryHolder<K, V>[] ) Array.newInstance( MemoryHolder.class, n );
+                System.arraycopy( values, 0, lastLeaf.values, 0, n );
+
+                break;
+            }
+        }
+
+        Page<K, V> rootPage = attachNodes( lstLeaves, btree );
+
+        btree.rootPage = rootPage;
+
+        return btree;
     }
 
 
-    private void fillLeaf( int[] arr, Leaf<Integer, Integer> leaf, BTree<Integer, Integer> btree )
+    private Page<K, V> attachNodes( List<Page<K, V>> children, BTree btree ) throws IOException
     {
-        for ( int i = 0; i < arr.length; i++ )
+        if ( children.size() == 1 )
         {
-            setKey( leaf, i, arr[i] );
-
-            MemoryHolder<Integer, Integer> eh = new MemoryHolder<Integer, Integer>( btree, arr[i] );
-
-            setValue( leaf, i, eh );
+            return children.get( 0 );
         }
+
+        List<Page<K, V>> lstNodes = new ArrayList<Page<K, V>>();
+
+        int numChildren = numKeysInNode + 1;
+
+        Node<K, V> node = createNode( btree, 0, numKeysInNode );
+        lstNodes.add( node );
+        int i = 0;
+        int totalNodes = 0;
+        for ( Page<K, V> p : children )
+        {
+            if ( i != 0 )
+            {
+                setKey( node, i, p.getLeftMostKey() );
+            }
+
+            node.children[i] = btree.createHolder( p );
+
+            i++;
+            totalNodes++;
+
+            if ( ( totalNodes % numChildren ) == 0 )
+            {
+                i = 0;
+                node = createNode( btree, 0, numKeysInNode );
+                lstNodes.add( node );
+            }
+        }
+
+        // remove null keys and values from the last node and resize
+        AbstractPage<K, V> lastNode = ( AbstractPage<K, V> ) lstNodes.get( lstNodes.size() - 1 );
+        for ( int j = 0; j < lastNode.nbElems; j++ )
+        {
+            if ( lastNode.keys[j] == null )
+            {
+                int n = j + 1;
+                lastNode.nbElems = n;
+                K[] keys = lastNode.keys;
+
+                Class<?> keyType = btree.getKeyType();
+                lastNode.keys = ( K[] ) Array.newInstance( keyType, n );
+                System.arraycopy( keys, 0, lastNode.keys, 0, n );
+
+                break;
+            }
+        }
+
+        return attachNodes( lstNodes, btree );
     }
 
 
     public static void main( String[] args ) throws IOException
     {
-        BTreeBuilder<Integer, Integer> bb = new BTreeBuilder<Integer, Integer>();
-        bb.build();
+        List<Tuple<Integer, Integer>> sortedTuple = new ArrayList<Tuple<Integer, Integer>>();
+        for ( int i = 0; i < 8; i++ )
+        {
+            Tuple<Integer, Integer> t = new Tuple<Integer, Integer>( i, i );
+            sortedTuple.add( t );
+        }
+
+        IntSerializer ser = new IntSerializer();
+        BTreeBuilder<Integer, Integer> bb = new BTreeBuilder<Integer, Integer>( "master", 4, ser, ser );
+
+        BTree btree = bb.build( sortedTuple.iterator() );
+
+        Cursor<Integer, Integer> cursor = btree.browse();
+        while ( cursor.hasNext() )
+        {
+            Tuple<Integer, Integer> t = cursor.next();
+            System.out.println( t );
+        }
+        cursor.close();
     }
 }
