@@ -33,7 +33,6 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.apache.mavibot.btree.serializer.ElementSerializer;
-import org.apache.mavibot.btree.serializer.IntSerializer;
 
 
 /**
@@ -105,7 +104,7 @@ public class BTreeBuilder<K, V>
         {
             if ( lastLeaf.keys[i] == null )
             {
-                int n = i + 1;
+                int n = i;
                 lastLeaf.nbElems = n;
                 K[] keys = lastLeaf.keys;
 
@@ -170,7 +169,7 @@ public class BTreeBuilder<K, V>
         {
             if ( lastNode.keys[j] == null )
             {
-                int n = j + 1;
+                int n = j;
                 lastNode.nbElems = n;
                 K[] keys = lastNode.keys;
 
@@ -183,29 +182,5 @@ public class BTreeBuilder<K, V>
         }
 
         return attachNodes( lstNodes, btree );
-    }
-
-
-    public static void main( String[] args ) throws IOException
-    {
-        List<Tuple<Integer, Integer>> sortedTuple = new ArrayList<Tuple<Integer, Integer>>();
-        for ( int i = 0; i < 8; i++ )
-        {
-            Tuple<Integer, Integer> t = new Tuple<Integer, Integer>( i, i );
-            sortedTuple.add( t );
-        }
-
-        IntSerializer ser = new IntSerializer();
-        BTreeBuilder<Integer, Integer> bb = new BTreeBuilder<Integer, Integer>( "master", 4, ser, ser );
-
-        BTree btree = bb.build( sortedTuple.iterator() );
-
-        Cursor<Integer, Integer> cursor = btree.browse();
-        while ( cursor.hasNext() )
-        {
-            Tuple<Integer, Integer> t = cursor.next();
-            System.out.println( t );
-        }
-        cursor.close();
     }
 }
