@@ -147,7 +147,7 @@ public class BTreeBuilder<K, V>
         {
             if ( i != 0 )
             {
-                setKey( node, i, p.getLeftMostKey() );
+                setKey( node, i-1, p.getLeftMostKey() );
             }
 
             node.children[i] = btree.createHolder( p );
