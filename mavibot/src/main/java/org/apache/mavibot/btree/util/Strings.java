@@ -17,7 +17,7 @@
  *  under the License.
  *
  */
-package org.apache.mavinot.btree.utils;
+package org.apache.mavibot.btree.util;
 
 
 import java.io.UnsupportedEncodingException;

@@ -46,7 +46,7 @@ import org.apache.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.mavibot.btree.serializer.IntSerializer;
 import org.apache.mavibot.btree.serializer.LongArraySerializer;
 import org.apache.mavibot.btree.serializer.LongSerializer;
-import org.apache.mavinot.btree.utils.Strings;
+import org.apache.mavibot.btree.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

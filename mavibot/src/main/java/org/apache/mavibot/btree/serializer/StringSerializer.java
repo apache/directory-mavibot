@@ -26,7 +26,7 @@ import java.nio.ByteBuffer;
 import java.util.Comparator;
 
 import org.apache.mavibot.btree.comparator.StringComparator;
-import org.apache.mavinot.btree.utils.Strings;
+import org.apache.mavibot.btree.util.Strings;
 
 
 /**

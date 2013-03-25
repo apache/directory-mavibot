@@ -22,7 +22,7 @@ package org.apache.mavibot.btree.store;
 
 import java.nio.ByteBuffer;
 
-import org.apache.mavinot.btree.utils.Strings;
+import org.apache.mavibot.btree.util.Strings;
 
 
 /**
