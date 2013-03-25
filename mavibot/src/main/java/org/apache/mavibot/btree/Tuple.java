@@ -41,7 +41,7 @@ public class Tuple<K, V>
     /**
      * Creates a Tuple with no content
      */
-    /* No qualifier */Tuple()
+    public Tuple()
     {
     }
 
@@ -51,7 +51,7 @@ public class Tuple<K, V>
      * @param key The key
      * @param value The associated value
      */
-    /* No qualifier */Tuple( K key, V value )
+    public Tuple( K key, V value )
     {
         this.key = key;
         this.value = value;
@@ -61,7 +61,7 @@ public class Tuple<K, V>
     /**
      * @return the key
      */
-    /* No qualifier */K getKey()
+    public K getKey()
     {
         return key;
     }
@@ -79,7 +79,7 @@ public class Tuple<K, V>
     /**
      * @return the value
      */
-    /* No qualifier */V getValue()
+    public V getValue()
     {
         return value;
     }
