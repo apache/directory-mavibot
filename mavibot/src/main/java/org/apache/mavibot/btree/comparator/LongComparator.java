@@ -46,14 +46,36 @@ public class LongComparator implements Comparator<Long>
 
         if ( long1 == null )
         {
-            throw new IllegalArgumentException( "The first object to compare must not be null" );
+            if ( long2 == null )
+            {
+                return 0;
+            }
+            else
+            {
+                return -1;
+            }
         }
-
-        if ( long2 == null )
+        else
         {
-            throw new IllegalArgumentException( "The second object to compare must not be null" );
+            if ( long2 == null )
+            {
+                return 1;
+            }
+            else
+            {
+                if ( long1 < long2 )
+                {
+                    return -1;
+                }
+                else if ( long1 > long2 )
+                {
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
         }
-
-        return long1.compareTo( long2 );
     }
 }

@@ -46,14 +46,36 @@ public class CharComparator implements Comparator<Character>
 
         if ( char1 == null )
         {
-            throw new IllegalArgumentException( "The first object to compare must not be null" );
+            if ( char2 == null )
+            {
+                return 0;
+            }
+            else
+            {
+                return -1;
+            }
         }
-
-        if ( char2 == null )
+        else
         {
-            throw new IllegalArgumentException( "The second object to compare must not be null" );
+            if ( char2 == null )
+            {
+                return 1;
+            }
+            else
+            {
+                if ( char1 < char2 )
+                {
+                    return -1;
+                }
+                else if ( char1 > char2 )
+                {
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
         }
-
-        return char1.compareTo( char2 );
     }
 }

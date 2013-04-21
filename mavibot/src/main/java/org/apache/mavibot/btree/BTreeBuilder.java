@@ -54,6 +54,7 @@ public class BTreeBuilder<K, V>
     public BTreeBuilder( String name, int numKeysInNode, ElementSerializer<K> keySerializer,
         ElementSerializer<V> valueSerializer )
     {
+        this.name = name;
         this.numKeysInNode = numKeysInNode;
         this.keySerializer = keySerializer;
         this.valueSerializer = valueSerializer;

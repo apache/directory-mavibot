@@ -22,7 +22,6 @@ package org.apache.mavibot.btree.serializer;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Comparator;
 
 import org.apache.mavibot.btree.comparator.ByteComparator;
 
@@ -32,18 +31,14 @@ import org.apache.mavibot.btree.comparator.ByteComparator;
  * 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class ByteSerializer implements ElementSerializer<Byte>
+public class ByteSerializer extends AbstractElementSerializer<Byte>
 {
-    /** The associated comparator */
-    private final Comparator<Byte> comparator;
-
-
     /**
      * Create a new instance of ByteSerializer
      */
     public ByteSerializer()
     {
-        comparator = new ByteComparator();
+        super( new ByteComparator() );
     }
 
 
@@ -53,9 +48,38 @@ public class ByteSerializer implements ElementSerializer<Byte>
     public byte[] serialize( Byte element )
     {
         byte[] bytes = new byte[1];
-        bytes[0] = element.byteValue();
 
-        return bytes;
+        return serialize( bytes, 0, element );
+    }
+
+
+    /**
+     * Serialize a byte
+     * 
+     * @param value the value to serialize
+     * @return The byte[] containing the serialized byte
+     */
+    public static byte[] serialize( byte value )
+    {
+        byte[] bytes = new byte[1];
+
+        return serialize( bytes, 0, value );
+    }
+
+
+    /**
+     * Serialize a byte
+     * 
+     * @param buffer the Buffer that will contain the serialized value
+     * @param start the position in the buffer we will store the serialized byte
+     * @param value the value to serialize
+     * @return The byte[] containing the serialized byte
+     */
+    public static byte[] serialize( byte[] buffer, int start, byte value )
+    {
+        buffer[start] = value;
+
+        return buffer;
     }
 
 
@@ -66,12 +90,24 @@ public class ByteSerializer implements ElementSerializer<Byte>
      */
     public static Byte deserialize( byte[] in )
     {
-        if ( ( in == null ) || ( in.length < 1 ) )
+        return deserialize( in, 0 );
+    }
+
+
+    /**
+     * A static method used to deserialize a Byte from a byte array.
+     * @param in The byte array containing the Byte
+     * @param start the position in the byte[] we will deserialize the byte from
+     * @return A Byte
+     */
+    public static Byte deserialize( byte[] in, int start )
+    {
+        if ( ( in == null ) || ( in.length < 1 + start ) )
         {
             throw new RuntimeException( "Cannot extract a Byte from a buffer with not enough bytes" );
         }
 
-        return in[0];
+        return in[start];
     }
 
 
@@ -92,51 +128,5 @@ public class ByteSerializer implements ElementSerializer<Byte>
         byte[] in = bufferHandler.read( 1 );
 
         return deserialize( in );
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int compare( Byte type1, Byte type2 )
-    {
-        if ( type1 == type2 )
-        {
-            return 0;
-        }
-
-        if ( type1 == null )
-        {
-            if ( type2 == null )
-            {
-                return 0;
-            }
-            else
-            {
-                return -1;
-            }
-        }
-        else
-        {
-            if ( type2 == null )
-            {
-                return 1;
-            }
-            else
-            {
-                return type1.compareTo( type2 );
-            }
-        }
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Comparator<Byte> getComparator()
-    {
-        return comparator;
     }
 }

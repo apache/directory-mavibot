@@ -37,23 +37,35 @@ public class StringComparator implements Comparator<String>
      * @param string2 Second String
      * @return 1 if string1 > String2, 0 if string1 == String2, -1 if string1 < String2
      */
-    public int compare( String string1, String String2 )
+    public int compare( String string1, String string2 )
     {
-        if ( string1 == String2 )
+        if ( string1 == string2 )
         {
             return 0;
         }
 
         if ( string1 == null )
         {
-            throw new IllegalArgumentException( "The first object to compare must not be null" );
+            return -1;
         }
-
-        if ( String2 == null )
+        else if ( string2 == null )
         {
-            throw new IllegalArgumentException( "The second object to compare must not be null" );
+            return 1;
         }
 
-        return string1.compareTo( String2 );
+        int result = string1.compareTo( string2 );
+
+        if ( result < 0 )
+        {
+            return -1;
+        }
+        else if ( result > 0 )
+        {
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
     }
 }

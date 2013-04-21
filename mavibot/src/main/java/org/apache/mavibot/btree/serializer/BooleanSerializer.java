@@ -22,7 +22,6 @@ package org.apache.mavibot.btree.serializer;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Comparator;
 
 import org.apache.mavibot.btree.comparator.BooleanComparator;
 
@@ -32,18 +31,14 @@ import org.apache.mavibot.btree.comparator.BooleanComparator;
  * 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class BooleanSerializer implements ElementSerializer<Boolean>
+public class BooleanSerializer extends AbstractElementSerializer<Boolean>
 {
-    /** The associated comparator */
-    private final Comparator<Boolean> comparator;
-
-
     /**
      * Create a new instance of BooleanSerializer
      */
     public BooleanSerializer()
     {
-        comparator = new BooleanComparator();
+        super( new BooleanComparator() );
     }
 
 
@@ -53,25 +48,68 @@ public class BooleanSerializer implements ElementSerializer<Boolean>
     public byte[] serialize( Boolean element )
     {
         byte[] bytes = new byte[1];
-        bytes[0] = element.booleanValue() ? ( byte ) 0x01 : ( byte ) 0x00;
 
-        return bytes;
+        return serialize( bytes, 0, element );
+    }
+
+
+    /**
+     * Serialize a boolean
+     * 
+     * @param value the value to serialize
+     * @return The byte[] containing the serialized boolean
+     */
+    public static byte[] serialize( boolean element )
+    {
+        byte[] bytes = new byte[1];
+
+        return serialize( bytes, 0, element );
+    }
+
+
+    /**
+     * Serialize a boolean
+     * 
+     * @param buffer the Buffer that will contain the serialized value
+     * @param start the position in the buffer we will store the serialized boolean
+     * @param value the value to serialize
+     * @return The byte[] containing the serialized boolean
+     */
+    public static byte[] serialize( byte[] buffer, int start, boolean element )
+    {
+        buffer[start] = element ? ( byte ) 0x01 : ( byte ) 0x00;
+
+        return buffer;
     }
 
 
     /**
      * A static method used to deserialize a Boolean from a byte array.
+     * 
      * @param in The byte array containing the boolean
      * @return A boolean
      */
     public static Boolean deserialize( byte[] in )
     {
-        if ( ( in == null ) || ( in.length < 1 ) )
+        return deserialize( in, 0 );
+    }
+
+
+    /**
+     * A static method used to deserialize a Boolean from a byte array.
+     * 
+     * @param in The byte array containing the boolean
+     * @param start the position in the byte[] we will deserialize the boolean from
+     * @return A boolean
+     */
+    public static Boolean deserialize( byte[] in, int start )
+    {
+        if ( ( in == null ) || ( in.length < 1 + start ) )
         {
             throw new RuntimeException( "Cannot extract a Boolean from a buffer with not enough bytes" );
         }
 
-        return in[0] == 0x01;
+        return in[start] == 0x01;
     }
 
 
@@ -80,7 +118,7 @@ public class BooleanSerializer implements ElementSerializer<Boolean>
      */
     public Boolean deserialize( ByteBuffer buffer ) throws IOException
     {
-        return buffer.get() == 0x01;
+        return buffer.get() != 0x00;
     }
 
 
@@ -93,51 +131,5 @@ public class BooleanSerializer implements ElementSerializer<Boolean>
         byte[] in = bufferHandler.read( 1 );
 
         return deserialize( in );
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int compare( Boolean type1, Boolean type2 )
-    {
-        if ( type1 == type2 )
-        {
-            return 0;
-        }
-
-        if ( type1 == null )
-        {
-            if ( type2 == null )
-            {
-                return 0;
-            }
-            else
-            {
-                return -1;
-            }
-        }
-        else
-        {
-            if ( type2 == null )
-            {
-                return 1;
-            }
-            else
-            {
-                return type1.compareTo( type2 );
-            }
-        }
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Comparator<Boolean> getComparator()
-    {
-        return comparator;
     }
 }

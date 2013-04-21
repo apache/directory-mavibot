@@ -46,14 +46,25 @@ public class IntComparator implements Comparator<Integer>
 
         if ( integer1 == null )
         {
-            throw new IllegalArgumentException( "The first object to compare must not be null" );
+            if ( integer2 == null )
+            {
+                return 0;
+            }
+            else
+            {
+                return -1;
+            }
         }
-
-        if ( integer2 == null )
+        else
         {
-            throw new IllegalArgumentException( "The second object to compare must not be null" );
+            if ( integer2 == null )
+            {
+                return 1;
+            }
+            else
+            {
+                return integer1.compareTo( integer2 );
+            }
         }
-
-        return integer1.compareTo( integer2 );
     }
 }

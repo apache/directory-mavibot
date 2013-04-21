@@ -54,11 +54,6 @@ public class BTreeConfiguration<K, V>
      */
     private String filePath;
 
-    /**
-     * The BTree file's name.
-     */
-    private String fileName;
-
     /** 
      * The maximum delay to wait before a revision is considered as unused.
      * This delay is necessary so that a read that does not ends does not 
@@ -74,11 +69,6 @@ public class BTreeConfiguration<K, V>
      */
     private long journalSize = 10 * 1024 * 1024L;
 
-    /** The path where the journal will be stored. Default to the local 
-     * temporary directory.
-     */
-    private String journalPath;
-
     /**
      * The journal's name. Default to "mavibot.log".
      */
@@ -91,6 +81,8 @@ public class BTreeConfiguration<K, V>
      */
     private long checkPointDelay = 60 * 1000L;
 
+    /** Flag to enable duplicate key support */
+    private boolean allowDuplicates;
 
     /**
      * @return the pageSize
@@ -230,42 +222,6 @@ public class BTreeConfiguration<K, V>
 
 
     /**
-     * @return the file name
-     */
-    public String getFileName()
-    {
-        return fileName;
-    }
-
-
-    /**
-     * @param fileName the file name to set
-     */
-    public void setFileName( String fileName )
-    {
-        this.fileName = fileName;
-    }
-
-
-    /**
-     * @return the journalPath
-     */
-    public String getJournalPath()
-    {
-        return journalPath;
-    }
-
-
-    /**
-     * @param journalPath the journalPath to set
-     */
-    public void setJournalPath( String journalPath )
-    {
-        this.journalPath = journalPath;
-    }
-
-
-    /**
      * @return the journal name
      */
     public String getJournalName()
@@ -315,6 +271,29 @@ public class BTreeConfiguration<K, V>
      */
     public void setName( String name )
     {
-        this.name = name;
+        this.name = name.trim();
     }
+
+    
+    /**
+     * @return true if duplicate key support is enabled
+     */
+    public boolean isAllowDuplicates()
+    {
+        return allowDuplicates;
+    }
+
+
+    /**
+     * enable duplicate key support
+     * 
+     * @param allowDuplicates
+     * @throws IllegalStateException if the btree was already initialized or when tried to turn off duplicate suport on
+     *                               an existing btree containing duplicate keys
+     */
+    public void setAllowDuplicates( boolean allowDuplicates )
+    {
+        this.allowDuplicates = allowDuplicates;
+    }
+
 }

@@ -33,8 +33,8 @@ public class LongArrayComparator implements Comparator<long[]>
     /**
      * Compare two long arrays.
      * 
-     * @param longArray1 First longArray
-     * @param longArray2 Second longArray
+     * @param longArray1 First long array
+     * @param longArray2 Second long array
      * @return 1 if longArray1 > longArray2, 0 if longArray1 == longArray2, -1 if longArray1 < longArray2
      */
     public int compare( long[] longArray1, long[] longArray2 )
@@ -46,49 +46,79 @@ public class LongArrayComparator implements Comparator<long[]>
 
         if ( longArray1 == null )
         {
-            throw new IllegalArgumentException( "The first object to compare must not be null" );
-        }
-
-        if ( longArray2 == null )
-        {
-            throw new IllegalArgumentException( "The second object to compare must not be null" );
-        }
-
-        if ( longArray1.length < longArray2.length )
-        {
-            return -1;
-        }
-
-        if ( longArray1.length > longArray2.length )
-        {
-            return 1;
-        }
-
-        for ( int pos = 0; pos < longArray1.length; pos++ )
-        {
-            int comp = compare( longArray1[pos], longArray2[pos] );
-
-            if ( comp != 0 )
+            if ( longArray2 == null )
             {
-                return comp;
+                return 0;
+            }
+            else
+            {
+                return -1;
             }
         }
-
-        return 0;
-    }
-
-
-    private int compare( long long1, long long2 )
-    {
-        if ( long1 < long2 )
+        else
         {
-            return -1;
-        }
-        if ( long1 > long2 )
-        {
-            return 1;
-        }
+            if ( longArray2 == null )
+            {
+                return 1;
+            }
+            else
+            {
+                if ( longArray1.length < longArray2.length )
+                {
+                    int pos = 0;
 
-        return 0;
+                    for ( long long1 : longArray1 )
+                    {
+                        long long2 = longArray2[pos];
+
+                        if ( long1 == long2 )
+                        {
+                            pos++;
+                        }
+                        else if ( long1 < long2 )
+                        {
+                            return -1;
+                        }
+                        else
+                        {
+                            return 1;
+                        }
+                    }
+
+                    return -1;
+                }
+                else
+                {
+                    int pos = 0;
+
+                    for ( long long2 : longArray2 )
+                    {
+                        long long1 = longArray1[pos];
+
+                        if ( long1 == long2 )
+                        {
+                            pos++;
+                        }
+                        else if ( long1 < long2 )
+                        {
+                            return -1;
+                        }
+                        else
+                        {
+                            return 1;
+                        }
+                    }
+
+                    if ( pos < longArray1.length )
+                    {
+                        return 1;
+                    }
+                    else
+                    {
+                        return 0;
+                    }
+                }
+            }
+        }
     }
 }

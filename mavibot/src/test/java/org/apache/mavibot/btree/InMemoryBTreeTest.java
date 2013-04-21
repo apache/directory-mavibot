@@ -625,7 +625,7 @@ public class InMemoryBTreeTest
 
         // Browse starting at position 10
         int pos = 10;
-        Cursor<Integer, String> cursor = btree.browse( sortedValues[pos] );
+        Cursor<Integer, String> cursor = btree.browseFrom( sortedValues[pos] );
 
         while ( cursor.hasNext() )
         {
@@ -641,7 +641,7 @@ public class InMemoryBTreeTest
         cursor.close();
 
         // Now, start on a non existing key (7)
-        cursor = btree.browse( 7 );
+        cursor = btree.browseFrom( 7 );
 
         // We should start reading values superior to 7, so value 8 at position 6 in the array
         pos = 6;
@@ -709,7 +709,7 @@ public class InMemoryBTreeTest
 
         // Browse starting at position 10
         int pos = 10;
-        Cursor<Integer, String> cursor = btree.browse( sortedValues[pos] );
+        Cursor<Integer, String> cursor = btree.browseFrom( sortedValues[pos] );
 
         while ( cursor.hasPrev() )
         {
@@ -726,7 +726,7 @@ public class InMemoryBTreeTest
         cursor.close();
 
         // Now, start on a non existing key (7)
-        cursor = btree.browse( 7 );
+        cursor = btree.browseFrom( 7 );
 
         // We should start reading values superior to 7, so value 8 at position 6 in the array
         pos = 6;
@@ -793,7 +793,7 @@ public class InMemoryBTreeTest
         }
 
         // Start to browse in the middle
-        Cursor<Integer, String> cursor = btree.browse( 8 );
+        Cursor<Integer, String> cursor = btree.browseFrom( 8 );
 
         assertTrue( cursor.hasNext() );
 
@@ -811,6 +811,8 @@ public class InMemoryBTreeTest
 
         // get 12 (now, we must have gone through at least 2 pages)
         assertEquals( 12, cursor.next().getKey().intValue() );
+
+        assertTrue( cursor.hasPrev() );
 
         // Lets go backward. We should get the same value, as the next() call have incremented the counter
         assertEquals( 12, cursor.prev().getKey().intValue() );
@@ -904,11 +906,11 @@ public class InMemoryBTreeTest
 
         for ( int i = 1; i < 21; i++ )
         {
-            assertTrue( btree.exist( 5 ) );
+            assertTrue( btree.hasKey( 5 ) );
         }
 
-        assertFalse( btree.exist( 0 ) );
-        assertFalse( btree.exist( 21 ) );
+        assertFalse( btree.hasKey( 0 ) );
+        assertFalse( btree.hasKey( 21 ) );
     }
 
 
@@ -999,6 +1001,34 @@ public class InMemoryBTreeTest
         checkNull( btree, 67 );
 
         btree.close();
+    }
+
+
+    /**
+     * Test the browse method with a non existing key 
+     * @throws Exception
+     */
+    @Test
+    public void testBrowseNonExistingKey() throws Exception
+    {
+        // Create a BTree with pages containing 8 elements
+        BTree<Integer, String> btree = new BTree<Integer, String>( "test", new IntSerializer(), new StringSerializer() );
+        btree.setPageSize( 8 );
+        for ( int i = 0; i < 11; i++ )
+        {
+            btree.insert( i, String.valueOf( i ) );
+        }
+
+        for ( int i = 0; i < 11; i++ )
+        {
+            assertNotNull( btree.get( i ) );
+        }
+
+        assertTrue( btree.hasKey( 8 ) );
+        assertFalse( btree.hasKey( 11 ) );
+
+        Cursor<Integer, String> cursor = btree.browseFrom( 11 );
+        assertFalse( cursor.hasNext() );
     }
 
 
@@ -1679,7 +1709,7 @@ public class InMemoryBTreeTest
         // Adding an element with a null value
         btree.insert( 100, null );
 
-        assertTrue( btree.exist( 100 ) );
+        assertTrue( btree.hasKey( 100 ) );
 
         try
         {
@@ -1804,4 +1834,103 @@ public class InMemoryBTreeTest
             // expected
         }
     }
+    
+    /**
+     * Test a browse forward and backward
+     */
+    @Test
+    public void testBrowseForwardBackwardExtremes() throws Exception
+    {
+        // Create a BTree with pages containing 4 elements
+        BTree<Integer, String> btree = new BTree<Integer, String>( "test", new IntSerializer(), new StringSerializer() );
+        btree.setPageSize( 4 );
+
+        for ( int i = 8; i < 13; i++ )
+        {
+            String strValue = "V" + i;
+            btree.insert( i, strValue );
+        }
+
+        // Start to browse in the middle
+        Cursor<Integer, String> cursor = btree.browseFrom( 8 );
+
+        assertTrue( cursor.hasNext() );
+
+        // Get 8
+        assertEquals( 8, cursor.next().getKey().intValue() );
+
+        // get 9
+        assertEquals( 9, cursor.next().getKey().intValue() );
+
+        // get 10
+        assertEquals( 10, cursor.next().getKey().intValue() );
+
+        // get 11
+        assertEquals( 11, cursor.next().getKey().intValue() );
+
+        // get 12 (now, we must have gone through at least 2 pages)
+        assertEquals( 12, cursor.next().getKey().intValue() );
+
+        assertFalse( cursor.hasNext() );
+        assertTrue( cursor.hasPrev() );
+        
+        // Lets go backward. We should get the same value, as the next() call have incremented the counter
+        assertEquals( 12, cursor.prev().getKey().intValue() );
+
+        // Get 11
+        assertEquals( 11, cursor.prev().getKey().intValue() );
+
+        // Get 10
+        assertEquals( 10, cursor.prev().getKey().intValue() );
+
+        // Get 9
+        assertEquals( 9, cursor.prev().getKey().intValue() );
+
+        // Get 8
+        assertEquals( 8, cursor.prev().getKey().intValue() );
+
+        assertFalse(cursor.hasPrev());
+        assertTrue(cursor.hasNext());
+        
+        cursor.close();
+        btree.close();
+    }
+
+    @Test
+    public void testNextAfterPrev() throws Exception
+    {
+        IntSerializer serializer = new IntSerializer();
+
+        BTreeConfiguration<Integer, Integer> config = new BTreeConfiguration<Integer, Integer>();
+        config.setName( "master" );
+        config.setPageSize( 4 );
+        config.setSerializers( serializer, serializer );
+        BTree<Integer, Integer> btree = new BTree<Integer, Integer>( config );
+
+        int i = 7;
+        for ( int k=0; k < i; k++ )
+        {
+            btree.insert( k, k );
+        }
+        
+        // 3 is the last element of the first leaf
+        Cursor<Integer, Integer> cursor = btree.browseFrom(4);
+
+        assertTrue( cursor.hasNext() );
+        Tuple<Integer, Integer> tuple = cursor.next();
+        assertEquals( Integer.valueOf( 4 ), tuple.getKey() );
+        assertEquals( Integer.valueOf( 4 ), tuple.getValue() );
+        
+        assertTrue( cursor.hasPrev() );
+        tuple = cursor.prev();
+        assertEquals( Integer.valueOf( 4 ), tuple.getKey() );
+        assertEquals( Integer.valueOf( 4 ), tuple.getValue() );
+
+        assertTrue( cursor.hasNext() );
+        tuple = cursor.next();
+        assertEquals( Integer.valueOf( 4 ), tuple.getKey() );
+        assertEquals( Integer.valueOf( 4 ), tuple.getValue() );
+        cursor.close();
+    }    
+    
 }

@@ -83,7 +83,7 @@ public class LeafTest
     {
         Leaf<Long, String> leaf = new Leaf<Long, String>( btree );
 
-        DeleteResult<Long, String> result = leaf.delete( 1L, 1L, null, -1 );
+        DeleteResult<Long, String> result = leaf.delete( 1L, 1L, null, null, -1 );
 
         assertEquals( NotPresentResult.NOT_PRESENT, result );
     }
@@ -102,7 +102,7 @@ public class LeafTest
         leaf = insert( leaf, 3L, "v3" );
         leaf = insert( leaf, 4L, "v4" );
 
-        DeleteResult<Long, String> result = leaf.delete( 2L, 5L, null, -1 );
+        DeleteResult<Long, String> result = leaf.delete( 2L, 5L, null, null, -1 );
 
         assertEquals( NotPresentResult.NOT_PRESENT, result );
     }
@@ -121,7 +121,7 @@ public class LeafTest
         leaf = insert( leaf, 3L, "v3" );
         leaf = insert( leaf, 4L, "v4" );
 
-        DeleteResult<Long, String> result = leaf.delete( 4L, 3L, null, -1 );
+        DeleteResult<Long, String> result = leaf.delete( 4L, 3L, null, null, -1 );
 
         assertTrue( result instanceof RemoveResult );
 
@@ -168,7 +168,7 @@ public class LeafTest
         leaf = insert( leaf, 3L, "v3" );
         leaf = insert( leaf, 4L, "v4" );
 
-        DeleteResult<Long, String> result = leaf.delete( 4L, 1L, null, -1 );
+        DeleteResult<Long, String> result = leaf.delete( 4L, 1L, null, null, -1 );
 
         assertTrue( result instanceof RemoveResult );
 
@@ -248,7 +248,7 @@ public class LeafTest
         parent.keys[1] = 10L;
 
         // Now, delete the element from the target page
-        DeleteResult<Long, String> result = target.delete( 2L, 7L, parent, 1 );
+        DeleteResult<Long, String> result = target.delete( 2L, 7L, null, parent, 1 );
 
         assertTrue( result instanceof BorrowedFromLeftResult );
 
@@ -321,7 +321,7 @@ public class LeafTest
         parent.keys[1] = 10L;
 
         // Now, delete the element from the target page
-        DeleteResult<Long, String> result = target.delete( 2L, 7L, parent, 1 );
+        DeleteResult<Long, String> result = target.delete( 2L, 7L, null, parent, 1 );
 
         assertTrue( result instanceof BorrowedFromRightResult );
 
@@ -394,7 +394,7 @@ public class LeafTest
         parent.keys[1] = 9L;
 
         // Now, delete the element from the target page
-        DeleteResult<Long, String> result = target.delete( 2L, 7L, parent, 1 );
+        DeleteResult<Long, String> result = target.delete( 2L, 7L, null, parent, 1 );
 
         assertTrue( result instanceof MergedWithSiblingResult );
 

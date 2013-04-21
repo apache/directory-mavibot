@@ -24,47 +24,75 @@ import java.util.Comparator;
 
 
 /**
- * Compares bytes
+ * Compares boolean arrays. A boolean is considered as below the other one if the first boolean
+ * is false when the second one is true.
  * 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class ByteComparator implements Comparator<Byte>
+public class BooleanArrayComparator implements Comparator<boolean[]>
 {
     /**
-     * Compare two bytes.
+     * Compare two boolean arrays.
      * 
-     * @param byte1 First byte
-     * @param byte2 Second byte
-     * @return 1 if byte1 > byte2, 0 if byte1 == byte2, -1 if byte1 < byte2
+     * @param booleanArray1 First boolean array
+     * @param booleanArray2 Second boolean array
+     * @return 1 if booleanArray1 > booleanArray2, 0 if booleanArray1 == booleanArray2, -1 if booleanArray1 < booleanArray2
      */
-    public int compare( Byte byte1, Byte byte2 )
+    public int compare( boolean[] booleanArray1, boolean[] booleanArray2 )
     {
-        if ( byte1 == byte2 )
+        if ( booleanArray1 == booleanArray2 )
         {
             return 0;
         }
 
-        if ( byte1 == null )
+        if ( booleanArray1 == null )
         {
             return -1;
         }
 
-        if ( byte2 == null )
+        if ( booleanArray2 == null )
         {
             return 1;
         }
 
-        if ( byte1 < byte2 )
+        if ( booleanArray1.length < booleanArray2.length )
         {
             return -1;
         }
-        else if ( byte1 > byte2 )
+
+        if ( booleanArray1.length > booleanArray2.length )
+        {
+            return 1;
+        }
+
+        for ( int pos = 0; pos < booleanArray1.length; pos++ )
+        {
+            int comp = compare( booleanArray1[pos], booleanArray2[pos] );
+
+            if ( comp != 0 )
+            {
+                return comp;
+            }
+        }
+
+        return 0;
+    }
+
+
+    private int compare( boolean boolean1, boolean boolean2 )
+    {
+        if ( boolean1 == boolean2 )
+        {
+            return 0;
+        }
+
+        if ( boolean1 )
         {
             return 1;
         }
         else
         {
-            return 0;
+            return -1;
         }
     }
 }

@@ -24,29 +24,29 @@ import java.util.Comparator;
 
 
 /**
- * Compares byte arrays.
+ * Compares short arrays
  * 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class ByteArrayComparator implements Comparator<byte[]>
+public class ShortArrayComparator implements Comparator<short[]>
 {
     /**
-     * Compare two byte arrays.
+     * Compare two short arrays.
      * 
-     * @param byteArray1 First byteArray
-     * @param byteArray2 Second byteArray
-     * @return 1 if byteArray1 > byteArray2, 0 if byteArray1 == byteArray2, -1 if byteArray1 < byteArray2
+     * @param shortArray1 First short array
+     * @param shortArray2 Second short array
+     * @return 1 if shortArray1 > shortArray2, 0 if shortArray1 == shortArray2, -1 if shortArray1 < shortArray2
      */
-    public int compare( byte[] byteArray1, byte[] byteArray2 )
+    public int compare( short[] shortArray1, short[] shortArray2 )
     {
-        if ( byteArray1 == byteArray2 )
+        if ( shortArray1 == shortArray2 )
         {
             return 0;
         }
 
-        if ( byteArray1 == null )
+        if ( shortArray1 == null )
         {
-            if ( byteArray2 == null )
+            if ( shortArray2 == null )
             {
                 return 0;
             }
@@ -57,25 +57,25 @@ public class ByteArrayComparator implements Comparator<byte[]>
         }
         else
         {
-            if ( byteArray2 == null )
+            if ( shortArray2 == null )
             {
                 return 1;
             }
             else
             {
-                if ( byteArray1.length < byteArray2.length )
+                if ( shortArray1.length < shortArray2.length )
                 {
                     int pos = 0;
 
-                    for ( byte b1 : byteArray1 )
+                    for ( short short1 : shortArray1 )
                     {
-                        byte b2 = byteArray2[pos];
+                        short short2 = shortArray2[pos];
 
-                        if ( b1 == b2 )
+                        if ( short1 == short2 )
                         {
                             pos++;
                         }
-                        else if ( b1 < b2 )
+                        else if ( short1 < short2 )
                         {
                             return -1;
                         }
@@ -91,15 +91,15 @@ public class ByteArrayComparator implements Comparator<byte[]>
                 {
                     int pos = 0;
 
-                    for ( byte b2 : byteArray2 )
+                    for ( short short2 : shortArray2 )
                     {
-                        byte b1 = byteArray1[pos];
+                        short short1 = shortArray1[pos];
 
-                        if ( b1 == b2 )
+                        if ( short1 == short2 )
                         {
                             pos++;
                         }
-                        else if ( b1 < b2 )
+                        else if ( short1 < short2 )
                         {
                             return -1;
                         }
@@ -109,7 +109,7 @@ public class ByteArrayComparator implements Comparator<byte[]>
                         }
                     }
 
-                    if ( pos < byteArray1.length )
+                    if ( pos < shortArray1.length )
                     {
                         return 1;
                     }

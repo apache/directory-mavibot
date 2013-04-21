@@ -22,7 +22,6 @@ package org.apache.mavibot.btree.serializer;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Comparator;
 
 import org.apache.mavibot.btree.comparator.IntComparator;
 
@@ -32,27 +31,14 @@ import org.apache.mavibot.btree.comparator.IntComparator;
  * 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class IntSerializer implements ElementSerializer<Integer>
+public class IntSerializer extends AbstractElementSerializer<Integer>
 {
-    /** The associated comparator */
-    private final Comparator<Integer> comparator;
-
-
     /**
      * Create a new instance of IntSerializer
      */
     public IntSerializer()
     {
-        comparator = new IntComparator();
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    public byte[] serialize( Integer element )
-    {
-        return serialize( element.intValue() );
+        super( new IntComparator() );
     }
 
 
@@ -63,31 +49,27 @@ public class IntSerializer implements ElementSerializer<Integer>
      */
     public static Integer deserialize( byte[] in )
     {
-        if ( ( in == null ) || ( in.length < 4 ) )
-        {
-            throw new RuntimeException( "Cannot extract a Integer from a buffer with not enough bytes" );
-        }
-
-        return ( in[0] << 24 ) +
-            ( ( in[1] & 0xFF ) << 16 ) +
-            ( ( in[2] & 0xFF ) << 8 ) +
-            ( in[3] & 0xFF );
+        return deserialize( in, 0 );
     }
 
 
     /**
-     * {@inheritDoc}
+     * A static method used to deserialize an Integer from a byte array.
+     * @param in The byte array containing the Integer
+     * @param start the position in the byte[] we will deserialize the int from
+     * @return An Integer
      */
-    public static byte[] serialize( int value )
+    public static Integer deserialize( byte[] in, int start )
     {
-        byte[] bytes = new byte[4];
+        if ( ( in == null ) || ( in.length < 4 + start ) )
+        {
+            throw new RuntimeException( "Cannot extract a Integer from a buffer with not enough bytes" );
+        }
 
-        bytes[0] = ( byte ) ( value >>> 24 );
-        bytes[1] = ( byte ) ( value >>> 16 );
-        bytes[2] = ( byte ) ( value >>> 8 );
-        bytes[3] = ( byte ) ( value );
-
-        return bytes;
+        return ( in[start] << 24 ) +
+            ( ( in[start + 1] & 0xFF ) << 16 ) +
+            ( ( in[start + 2] & 0xFF ) << 8 ) +
+            ( in[start + 3] & 0xFF );
     }
 
 
@@ -114,45 +96,41 @@ public class IntSerializer implements ElementSerializer<Integer>
     /**
      * {@inheritDoc}
      */
-    @Override
-    public int compare( Integer type1, Integer type2 )
+    public byte[] serialize( Integer element )
     {
-        if ( type1 == type2 )
-        {
-            return 0;
-        }
-
-        if ( type1 == null )
-        {
-            if ( type2 == null )
-            {
-                return 0;
-            }
-            else
-            {
-                return -1;
-            }
-        }
-        else
-        {
-            if ( type2 == null )
-            {
-                return 1;
-            }
-            else
-            {
-                return type1.compareTo( type2 );
-            }
-        }
+        return serialize( element.intValue() );
     }
 
 
     /**
-     * {@inheritDoc}
+     * Serialize an int
+     * 
+     * @param value the value to serialize
+     * @return The byte[] containing the serialized int
      */
-    @Override
-    public Comparator<Integer> getComparator()
+    public static byte[] serialize( int value )
     {
-        return comparator;
+        byte[] bytes = new byte[4];
+
+        return serialize( bytes, 0, value );
+    }
+
+
+    /**
+     * Serialize an int
+     * 
+     * @param buffer the Buffer that will contain the serialized value
+     * @param start the position in the buffer we will store the serialized int
+     * @param value the value to serialize
+     * @return The byte[] containing the serialized int
+     */
+    public static byte[] serialize( byte[] buffer, int start, int value )
+    {
+        buffer[start] = ( byte ) ( value >>> 24 );
+        buffer[start + 1] = ( byte ) ( value >>> 16 );
+        buffer[start + 2] = ( byte ) ( value >>> 8 );
+        buffer[start + 3] = ( byte ) ( value );
+
+        return buffer;
     }
 }

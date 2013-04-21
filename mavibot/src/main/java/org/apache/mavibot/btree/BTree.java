@@ -40,8 +40,6 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.mavibot.btree.serializer.BufferHandler;
 import org.apache.mavibot.btree.serializer.ElementSerializer;
 import org.apache.mavibot.btree.serializer.LongSerializer;
-import org.apache.mavibot.btree.store.BTreeHeader;
-import org.apache.mavibot.btree.store.RecordManager;
 
 
 /**
@@ -60,14 +58,14 @@ public class BTree<K, V>
     /** Default page size (number of entries per node) */
     public static final int DEFAULT_PAGE_SIZE = 16;
 
-    /** Default size of the buffer used to write data n disk. Around 1Mb */
+    /** Default size of the buffer used to write data on disk. Around 1Mb */
     public static final int DEFAULT_WRITE_BUFFER_SIZE = 4096 * 250;
 
     /** The default journal name */
     public static final String DEFAULT_JOURNAL = "mavibot.log";
 
     /** The default data file suffix */
-    public static final String DATA_SUFFIX = ".data";
+    public static final String DATA_SUFFIX = ".db";
 
     /** The default journal file suffix */
     public static final String JOURNAL_SUFFIX = ".log";
@@ -125,6 +123,12 @@ public class BTree<K, V>
 
     /** The queue containing all the modifications applied on the bTree */
     private BlockingQueue<Modification<K, V>> modificationsQueue;
+
+    /** Flag to enable duplicate key support */
+    private boolean allowDuplicates;
+
+    /** A flag set to true if we want to keep old revisions */
+    private boolean keepRevisions = false;
 
 
     /**
@@ -320,30 +324,35 @@ public class BTree<K, V>
      */
     public BTree( BTreeConfiguration<K, V> configuration ) throws IOException
     {
-        String fileName = configuration.getFileName();
-        String journalName = configuration.getJournalName();
-
-        if ( fileName == null )
+        String name = configuration.getName();
+        
+        if( name == null )
+        {
+            throw new IllegalArgumentException( "BTree name cannot be null" );
+        }
+        
+        String filePath = configuration.getFilePath();
+        
+        if ( filePath == null )
         {
             type = BTreeTypeEnum.IN_MEMORY;
         }
         else
         {
-            file = new File( configuration.getFilePath(), fileName );
-
-            String journalPath = configuration.getJournalPath();
-
-            if ( journalPath == null )
+            File dir = new File( filePath );
+            if( !dir.exists() )
             {
-                journalPath = configuration.getFilePath();
+                boolean created = dir.mkdirs();
+                if( !created )
+                {
+                    throw new IllegalStateException( "Could not create the directory " + filePath + " for storing data" );
+                }
             }
+            
+            this.file = new File( dir, configuration.getName() + DATA_SUFFIX );
 
-            if ( journalName == null )
-            {
-                journalName = fileName + JOURNAL_SUFFIX;
-            }
+            this.journal = new File( dir, file.getName() + JOURNAL_SUFFIX );
 
-            journal = new File( journalPath, journalName );
             type = BTreeTypeEnum.PERSISTENT;
         }
 
@@ -355,6 +364,7 @@ public class BTree<K, V>
         comparator = keySerializer.getComparator();
         readTimeOut = configuration.getReadTimeOut();
         writeBufferSize = configuration.getWriteBufferSize();
+        allowDuplicates = configuration.isAllowDuplicates();
 
         if ( comparator == null )
         {
@@ -378,7 +388,7 @@ public class BTree<K, V>
     public BTree( String name, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer )
         throws IOException
     {
-        this( name, null, null, keySerializer, valueSerializer, DEFAULT_PAGE_SIZE );
+        this( name, null, keySerializer, valueSerializer, DEFAULT_PAGE_SIZE );
     }
 
 
@@ -390,64 +400,54 @@ public class BTree<K, V>
     public BTree( String name, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer, int pageSize )
         throws IOException
     {
-        this( name, null, null, keySerializer, valueSerializer, pageSize );
+        this( name, null, keySerializer, valueSerializer, pageSize );
     }
 
 
     /**
      * Creates a new BTree with a default page size and a comparator, with an associated file.
-     * 
-     * @param file The file storing the BTree data
      * @param comparator The comparator to use
      * @param serializer The serializer to use
      */
-    public BTree( String name, String path, String file, ElementSerializer<K> keySerializer,
-        ElementSerializer<V> valueSerializer )
+    public BTree( String name, String path, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer )
         throws IOException
     {
-        this( name, path, file, keySerializer, valueSerializer, DEFAULT_PAGE_SIZE );
+        this( name, path, keySerializer, valueSerializer, DEFAULT_PAGE_SIZE );
     }
 
 
     /**
      * Creates a new BTree with a specific page size and a comparator, with an associated file.
-     * 
-     * @param file The file storing the BTree data
+     * @param pageSize The number of elements we can store in a page
      * @param comparator The comparator to use
      * @param serializer The serializer to use
-     * @param pageSize The number of elements we can store in a page
      */
-    public BTree( String name, String path, String file, ElementSerializer<K> keySerializer,
-        ElementSerializer<V> valueSerializer,
+    public BTree( String name, String path, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer,
         int pageSize )
         throws IOException
     {
         btreeHeader = new BTreeHeader();
         btreeHeader.setName( name );
 
-        if ( ( path == null ) && ( file == null ) )
+        if ( path == null )
         {
             type = BTreeTypeEnum.IN_MEMORY;
         }
         else
         {
-            if ( new File( path, file ).exists() )
+            File dir = new File( path );
+            if( !dir.exists() )
             {
-                this.file = new File( path, file );
+                boolean created = dir.mkdirs();
+                if( !created )
+                {
+                    throw new IllegalStateException( "Could not create the directory " + path + " for storing data" );
+                }
             }
-            else
-            {
-                this.file = new File( path, file + DATA_SUFFIX );
-            }
+            
+            this.file = new File( dir, name + DATA_SUFFIX );
 
-            if ( new File( path, file + JOURNAL_SUFFIX ).exists() )
-            {
-                this.journal = new File( path, file );
-            }
-            else
-            {
-                this.journal = new File( path, file + JOURNAL_SUFFIX );
-            }
+            this.journal = new File( dir, file.getName() + JOURNAL_SUFFIX );
 
             type = BTreeTypeEnum.PERSISTENT;
         }
@@ -591,7 +591,7 @@ public class BTree<K, V>
     /**
      * @return the btreeOffset
      */
-    public long getBtreeOffset()
+    /* No qualifier*/long getBtreeOffset()
     {
         return btreeHeader.getBTreeOffset();
     }
@@ -600,7 +600,7 @@ public class BTree<K, V>
     /**
      * @param btreeOffset the btreeOffset to set
      */
-    public void setBtreeOffset( long btreeOffset )
+    /* No qualifier*/void setBtreeOffset( long btreeOffset )
     {
         btreeHeader.setBTreeOffset( btreeOffset );
     }
@@ -609,7 +609,7 @@ public class BTree<K, V>
     /**
      * @return the rootPageOffset
      */
-    public long getRootPageOffset()
+    /* No qualifier*/long getRootPageOffset()
     {
         return btreeHeader.getRootPageOffset();
     }
@@ -618,7 +618,7 @@ public class BTree<K, V>
     /**
      * @param rootPageOffset the rootPageOffset to set
      */
-    public void setRootPageOffset( long rootPageOffset )
+    /* No qualifier*/void setRootPageOffset( long rootPageOffset )
     {
         btreeHeader.setRootPageOffset( rootPageOffset );
     }
@@ -627,7 +627,7 @@ public class BTree<K, V>
     /**
      * @return the nextBTreeOffset
      */
-    public long getNextBTreeOffset()
+    /* No qualifier*/long getNextBTreeOffset()
     {
         return btreeHeader.getNextBTreeOffset();
     }
@@ -636,7 +636,7 @@ public class BTree<K, V>
     /**
      * @param nextBTreeOffset the nextBTreeOffset to set
      */
-    public void setNextBTreeOffset( long nextBTreeOffset )
+    /* No qualifier*/void setNextBTreeOffset( long nextBTreeOffset )
     {
         btreeHeader.setNextBTreeOffset( nextBTreeOffset );
     }
@@ -762,13 +762,6 @@ public class BTree<K, V>
 
             existingValue = insert( key, value, revision );
 
-            // Increase the number of element in the current tree if the insertion is successful
-            // and does not replace an element
-            if ( existingValue == null )
-            {
-                btreeHeader.incrementNbElems();
-            }
-
             // If the BTree is managed, we have to update the rootPage on disk
             if ( isManaged() )
             {
@@ -804,22 +797,18 @@ public class BTree<K, V>
 
         Tuple<K, V> deleted = delete( key, revision );
 
-        // Decrease the number of element in the current tree if the delete is successful
-        if ( deleted != null )
-        {
-            btreeHeader.decrementNbElems();
-        }
-
         return deleted;
     }
 
 
     /**
-     * Delete the value from an entry which key is given as a parameter. If the value
-     * is present, we will return it. If the remaining entry is empty, we will remove it
-     * from the tree.
+     * Delete the value from an entry associated with the given key. If the value
+     * If the value is present, it will be deleted first, later if there are no other 
+     * values associated with this key(which can happen when duplicates are enabled), 
+     * we will remove the key from the tree.
      * 
      * @param key The key for the entry we try to remove
+     * @param value The value to delete (can be null)
      * @return A Tuple<K, V> containing the removed entry, or null if it's not found.
      */
     public Tuple<K, V> delete( K key, V value ) throws IOException
@@ -836,13 +825,7 @@ public class BTree<K, V>
 
         long revision = generateRevision();
 
-        Tuple<K, V> deleted = delete( key, revision );
-
-        // Decrease the number of element in the current tree if the delete is successful
-        if ( deleted != null )
-        {
-            btreeHeader.decrementNbElems();
-        }
+        Tuple<K, V> deleted = delete( key, value, revision );
 
         return deleted;
     }
@@ -857,6 +840,24 @@ public class BTree<K, V>
      */
     private Tuple<K, V> delete( K key, long revision ) throws IOException
     {
+        return delete( key, null, revision );
+    }
+
+
+    /**
+     * 
+     * Deletes the given <key,value> pair if both key and value match. If the given value is null
+     * and there is no null value associated with the given key then the entry with the given key
+     * will be removed.
+     *
+     * @param key The key to be removed 
+     * @param value The value to be removed (can be null, and when no null value exists the key will be removed irrespective of the value)
+     * @param revision The revision to be associated with this operation
+     * @return
+     * @throws IOException
+     */
+    private Tuple<K, V> delete( K key, V value, long revision ) throws IOException
+    {
         writeLock.lock();
 
         try
@@ -867,7 +868,7 @@ public class BTree<K, V>
 
             // Try to delete the entry starting from the root page. Here, the root
             // page may be either a Node or a Leaf
-            DeleteResult<K, V> result = rootPage.delete( revision, key, null, -1 );
+            DeleteResult<K, V> result = rootPage.delete( revision, key, value, null, -1 );
 
             if ( result instanceof NotPresentResult )
             {
@@ -875,15 +876,31 @@ public class BTree<K, V>
                 return null;
             }
 
+            // Keep the oldRootPage so that we can later access it
+            Page<K, V> oldRootPage = rootPage;
+
             if ( result instanceof RemoveResult )
             {
                 // The element was found, and removed
                 RemoveResult<K, V> removeResult = ( RemoveResult<K, V> ) result;
 
-                Page<K, V> newPage = removeResult.getModifiedPage();
+                Page<K, V> modifiedPage = removeResult.getModifiedPage();
+
+                if ( isManaged() )
+                {
+                    // Write the modified page on disk
+                    // Note that we don't use the holder, the new root page will
+                    // remain in memory.
+                    ElementHolder<Page<K, V>, K, V> holder = recordManager.writePage( this, modifiedPage,
+                        revision );
+
+                    // Store the offset on disk in the page in memory
+                    ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holder )
+                        .getOffset() );
+                }
 
                 // This is a new root
-                rootPage = newPage;
+                rootPage = modifiedPage;
                 tuple = removeResult.getRemovedElement();
             }
 
@@ -891,6 +908,32 @@ public class BTree<K, V>
             {
                 // Inject the modification into the modification queue
                 modificationsQueue.add( new Deletion<K, V>( key ) );
+            }
+
+            // Decrease the number of elements in the current tree if the deletion is successful
+            if ( tuple != null )
+            {
+                btreeHeader.decrementNbElems();
+
+                // If the BTree is managed, we have to update the rootPage on disk
+                if ( isManaged() )
+                {
+                    // Update the BTree header now
+                    recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
+                }
+            }
+
+            // Store the created rootPage into the revision BTree
+            if ( keepRevisions )
+            {
+                if ( isManaged() )
+                {
+                    recordManager.storeRootPage( this, rootPage );
+                }
+                else
+                {
+                    // Todo
+                }
             }
 
             // Return the value we have found if it was modified
@@ -901,19 +944,6 @@ public class BTree<K, V>
             // See above
             writeLock.unlock();
         }
-    }
-
-
-    /**
-     * Check if there is an element associated with the given key.
-     * 
-     * @param key The key we are looking at
-     * @return true if the Key exists in the BTree 
-     * @throws IOException 
-     */
-    public boolean exist( K key ) throws IOException
-    {
-        return rootPage.exist( key );
     }
 
 
@@ -934,22 +964,103 @@ public class BTree<K, V>
 
 
     /**
-     * Creates a cursor starting on the given key
-     * 
-     * @param key The key which is the starting point. If the key is not found,
-     * then the cursor will always return null.
-     * @return A cursor on the btree
-     * @throws IOException
+     * @see Page#getValues(Object)
      */
-    public Cursor<K, V> browse( K key ) throws IOException
+    public BTree<V,V> getValues( K key ) throws IOException, KeyNotFoundException
     {
-        Transaction<K, V> transaction = beginReadTransaction();
+        return rootPage.getValues( key );
+    }
+
+    
+    /**
+     * Find a value in the tree, given its key, at a specific revision. If the key is not found,
+     * it will throw a KeyNotFoundException. <br/>
+     * Note that we can get a null value stored, or many values.
+     * 
+     * @param revision The revision for which we want to find a key
+     * @param key The key we are looking at
+     * @return The found value, or null if the key is not present in the tree
+     * @throws KeyNotFoundException If the key is not found in the BTree
+     * @throws IOException If there was an issue while fetching data from the disk
+     */
+    public V get( long revision, K key ) throws IOException, KeyNotFoundException
+    {
+        // Fetch the root page for this revision
+        Page<K, V> revisionRootPage = getRootPage( revision );
+
+        return revisionRootPage.get( key );
+    }
+
+
+    /**
+     * Checks if the given key exists.
+     *  
+     * @param key The key we are looking at
+     * @return true if the key is present, false otherwise
+     * @throws IOException If we have an error while trying to access the page
+     */
+    public boolean hasKey( K key ) throws IOException
+    {
+        if ( key == null )
+        {
+            return false;
+        }
+
+        return rootPage.hasKey( key );
+    }
+
+
+    /**
+     * Checks if the given key exists for a given revision.
+     *  
+     * @param revision The revision for which we want to find a key
+     * @param key The key we are looking at
+     * @return true if the key is present, false otherwise
+     * @throws IOException If we have an error while trying to access the page
+     * @throws KeyNotFoundException If the key is not found in the BTree
+     */
+    public boolean hasKey( long revision, K key ) throws IOException, KeyNotFoundException
+    {
+        if ( key == null )
+        {
+            return false;
+        }
 
         // Fetch the root page for this revision
-        Page<K, V> root = rootPage;
-        Cursor<K, V> cursor = root.browse( key, transaction, new LinkedList<ParentPos<K, V>>() );
+        Page<K, V> revisionRootPage = getRootPage( revision );
 
-        return cursor;
+        return revisionRootPage.hasKey( key );
+    }
+
+
+    /**
+     * Checks if the BTree contains the given key with the given value.
+     * 
+     * @param key The key we are looking for
+     * @param value The value associated with the given key
+     * @return true if the key and value are associated with each other, false otherwise
+     */
+    public boolean contains( K key, V value ) throws IOException
+    {
+        return rootPage.contains( key, value );
+    }
+
+
+    /**
+     * Checks if the BTree contains the given key with the given value for a given revision
+     * 
+     * @param revision The revision we would like to browse
+     * @param key The key we are looking for
+     * @param value The value associated with the given key
+     * @return true if the key and value are associated with each other, false otherwise
+     * @throws KeyNotFoundException If the key is not found in the BTree
+     */
+    public boolean contains( long revision, K key, V value ) throws IOException, KeyNotFoundException
+    {
+        // Fetch the root page for this revision
+        Page<K, V> revisionRootPage = getRootPage( revision );
+
+        return revisionRootPage.contains( key, value );
     }
 
 
@@ -964,10 +1075,76 @@ public class BTree<K, V>
         Transaction<K, V> transaction = beginReadTransaction();
 
         // Fetch the root page for this revision
-        Page<K, V> root = rootPage;
         LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
 
-        Cursor<K, V> cursor = root.browse( transaction, stack );
+        Cursor<K, V> cursor = rootPage.browse( transaction, stack );
+
+        return cursor;
+    }
+
+
+    /**
+     * Creates a cursor starting at the beginning of the tree, for a given revision
+     * 
+     * @param revision The revision we would like to browse
+     * @return A cursor on the btree
+     * @throws IOException If we had an issue while fetching data from the disk
+     * @throws KeyNotFoundException If the key is not found in the BTree
+     */
+    public Cursor<K, V> browse( long revision ) throws IOException, KeyNotFoundException
+    {
+        Transaction<K, V> transaction = beginReadTransaction();
+
+        // Fetch the root page for this revision
+        Page<K, V> revisionRootPage = getRootPage( revision );
+
+        // And get the cursor
+        LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
+        Cursor<K, V> cursor = revisionRootPage.browse( transaction, stack );
+
+        return cursor;
+    }
+
+
+    /**
+     * Creates a cursor starting on the given key
+     * 
+     * @param key The key which is the starting point. If the key is not found,
+     * then the cursor will always return null.
+     * @return A cursor on the btree
+     * @throws IOException
+     */
+    public Cursor<K, V> browseFrom( K key ) throws IOException
+    {
+        Transaction<K, V> transaction = beginReadTransaction();
+
+        // Fetch the root page for this revision
+        Cursor<K, V> cursor = rootPage.browse( key, transaction, new LinkedList<ParentPos<K, V>>() );
+
+        return cursor;
+    }
+
+
+    /**
+     * Creates a cursor starting on the given key at the given revision
+     * 
+     * @param The revision we are looking for
+     * @param key The key which is the starting point. If the key is not found,
+     * then the cursor will always return null.
+     * @return A cursor on the btree
+     * @throws IOException If wxe had an issue reading the BTree from disk
+     * @throws KeyNotFoundException  If we can't find a rootPage for this revision
+     */
+    public Cursor<K, V> browseFrom( long revision, K key ) throws IOException, KeyNotFoundException
+    {
+        Transaction<K, V> transaction = beginReadTransaction();
+
+        // Fetch the rootPage for this revision
+        Page<K, V> revisionRootPage = getRootPage( revision );
+
+        // And get the cursor
+        LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
+        Cursor<K, V> cursor = revisionRootPage.browse( key, transaction, stack );
 
         return cursor;
     }
@@ -986,7 +1163,7 @@ public class BTree<K, V>
      * @param revision The revision to use
      * @return Existing value, if any.
      */
-    private V insert( K key, V value, long revision ) throws IOException
+    /*No qualifier*/V insert( K key, V value, long revision ) throws IOException
     {
         if ( key == null )
         {
@@ -1013,7 +1190,7 @@ public class BTree<K, V>
                 // Write the modified page on disk
                 // Note that we don't use the holder, the new root page will
                 // remain in memory.
-                ElementHolder<Page<K, V>, K, V> holder = recordManager.writePage( this, rootPage, modifiedPage,
+                ElementHolder<Page<K, V>, K, V> holder = recordManager.writePage( this, modifiedPage,
                     revision );
 
                 // Store the offset on disk in the page in memory
@@ -1042,14 +1219,14 @@ public class BTree<K, V>
             // and to keep a track of the two offsets for the upper node
             if ( isManaged() )
             {
-                ElementHolder<Page<K, V>, K, V> holderLeft = recordManager.writePage( this, rootPage,
+                ElementHolder<Page<K, V>, K, V> holderLeft = recordManager.writePage( this,
                     ( ( SplitResult ) result ).getLeftPage(), revision );
 
                 // Store the offset on disk in the page
                 ( ( AbstractPage ) ( ( SplitResult ) result ).getLeftPage() )
                     .setOffset( ( ( ReferenceHolder ) holderLeft ).getOffset() );
 
-                ElementHolder<Page<K, V>, K, V> holderRight = recordManager.writePage( this, rootPage,
+                ElementHolder<Page<K, V>, K, V> holderRight = recordManager.writePage( this,
                     ( ( SplitResult ) result ).getRightPage(),
                     revision );
 
@@ -1071,7 +1248,7 @@ public class BTree<K, V>
             if ( isManaged() )
             {
                 ElementHolder<Page<K, V>, K, V> holder = recordManager
-                    .writePage( this, rootPage, newRootPage, revision );
+                    .writePage( this, newRootPage, revision );
 
                 // Store the offset on disk in the page
                 ( ( AbstractPage<K, V> ) newRootPage ).setOffset( ( ( ReferenceHolder ) holder ).getOffset() );
@@ -1084,6 +1261,26 @@ public class BTree<K, V>
         if ( type == BTreeTypeEnum.PERSISTENT )
         {
             modificationsQueue.add( new Addition<K, V>( key, value ) );
+        }
+
+        // Increase the number of element in the current tree if the insertion is successful
+        // and does not replace an element
+        if ( modifiedValue == null )
+        {
+            btreeHeader.incrementNbElems();
+        }
+
+        // Store the created rootPage into the revision BTree
+        if ( keepRevisions )
+        {
+            if ( isManaged() )
+            {
+                recordManager.storeRootPage( this, rootPage );
+            }
+            else
+            {
+                // Todo
+            }
         }
 
         // Return the value we have found if it was modified
@@ -1110,7 +1307,7 @@ public class BTree<K, V>
     /**
      * @return the type for the keys
      */
-    public Class<?> getKeyType()
+    /* No qualifier*/Class<?> getKeyType()
     {
         return keyType;
     }
@@ -1394,6 +1591,29 @@ public class BTree<K, V>
 
 
     /**
+     * Get the rootPzge associated to a give revision.
+     * 
+     * @param revision The revision we are looking for
+     * @return The rootPage associated to this revision
+     * @throws IOException If we had an issue while accessing the underlying file
+     * @throws KeyNotFoundException If the revision does not exist for this Btree
+     */
+    @SuppressWarnings("unchecked")
+    private Page<K, V> getRootPage( long revision ) throws IOException, KeyNotFoundException
+    {
+        if ( isManaged() )
+        {
+            return recordManager.getRootPage( this, revision );
+        }
+        else
+        {
+            // Atm, the in-memory BTree does not support searches in many revisions
+            return rootPage;
+        }
+    }
+
+
+    /**
      * Flush the latest revision to disk. We will replace the current file by the new one, as
      * we flush in a temporary file.
      */
@@ -1527,16 +1747,26 @@ public class BTree<K, V>
                 return new ReferenceHolder<Page<K, V>, K, V>( this, ( Page<K, V> ) value,
                     ( ( AbstractPage<K, V> ) value ).getOffset() );
             }
+            else if ( isAllowDuplicates() )
+            {
+                return new DuplicateKeyMemoryHolder<K, V>( this, ( V ) value );
+            }
             else
             {
                 // Atm, keep the values in memory
                 return new MemoryHolder<K, V>( this, ( V ) value );
-
             }
         }
         else
         {
-            return new MemoryHolder( this, value );
+            if ( isAllowDuplicates() && !( value instanceof Page ) )
+            {
+                return new DuplicateKeyMemoryHolder<K, V>( this, ( V ) value );
+            }
+            else
+            {
+                return new MemoryHolder( this, value );
+            }
         }
     }
 
@@ -1614,6 +1844,33 @@ public class BTree<K, V>
 
 
     /**
+     * @return true if this BTree allow duplicate values
+     */
+    public boolean isAllowDuplicates()
+    {
+        return allowDuplicates;
+    }
+
+
+    /**
+     * @return the keepRevisions
+     */
+    public boolean isKeepRevisions()
+    {
+        return keepRevisions;
+    }
+
+
+    /**
+     * @param keepRevisions the keepRevisions to set
+     */
+    public void setKeepRevisions( boolean keepRevisions )
+    {
+        this.keepRevisions = keepRevisions;
+    }
+
+
+    /**
      * @see Object#toString()
      */
     public String toString()
@@ -1637,6 +1894,7 @@ public class BTree<K, V>
         }
 
         sb.append( "BTree" );
+        sb.append( "[" ).append( btreeHeader.getName() ).append( "]" );
         sb.append( "( pageSize:" ).append( btreeHeader.getPageSize() );
 
         if ( rootPage != null )
@@ -1658,6 +1916,8 @@ public class BTree<K, V>
         {
             sb.append( comparator.getClass().getSimpleName() );
         }
+
+        sb.append( ", DuplicatesAllowed: " ).append( allowDuplicates );
 
         if ( type == BTreeTypeEnum.PERSISTENT )
         {

@@ -6,54 +6,60 @@
  *  to you under the Apache License, Version 2.0 (the
  *  "License"); you may not use this file except in compliance
  *  with the License.  You may obtain a copy of the License at
- * 
+ *
  *    http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  *  Unless required by applicable law or agreed to in writing,
  *  software distributed under the License is distributed on an
  *  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
  *  KIND, either express or implied.  See the License for the
  *  specific language governing permissions and limitations
  *  under the License.
- * 
+ *
  */
-package org.apache.mavibot.btree.comparator;
+package org.apache.mavibot.btree.serializer;
 
 
 import java.util.Comparator;
 
 
 /**
- * Compares booleans
+ * An abstract ElementSerializer that implements comon methods
  * 
+ * @param <T> The type for the element to serialize and compare
+ *
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class BooleanComparator implements Comparator<Boolean>
+public abstract class AbstractElementSerializer<T> implements ElementSerializer<T>
 {
+    /** The associated comparator */
+    private final Comparator<T> comparator;
+
+
     /**
-     * Compare two booleans.
-     * 
-     * @param boolean1 First boolean
-     * @param boolean2 Second boolean
-     * @return 1 if boolean1 > boolean2, 0 if boolean1 == boolean2, -1 if boolean1 < boolean2
+     * Create a new instance of BooleanSerializer
      */
-    public int compare( Boolean boolean1, Boolean boolean2 )
+    public AbstractElementSerializer( Comparator<T> comparator )
     {
-        if ( boolean1 == boolean2 )
-        {
-            return 0;
-        }
+        this.comparator = comparator;
+    }
 
-        if ( boolean1 == null )
-        {
-            return -1;
-        }
 
-        if ( boolean2 == null )
-        {
-            return 1;
-        }
+    /**
+     * {@inheritDoc}
+     */
+    public int compare( T type1, T type2 )
+    {
+        return comparator.compare( type1, type2 );
+    }
 
-        return boolean1.compareTo( boolean2 );
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Comparator<T> getComparator()
+    {
+        return comparator;
     }
 }

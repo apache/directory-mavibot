@@ -23,8 +23,6 @@ package org.apache.mavibot.btree;
 import java.io.IOException;
 import java.lang.reflect.Array;
 
-import org.apache.mavibot.btree.exception.EndOfFileExceededException;
-
 
 /**
  * A MVCC abstract Page. It stores the field and the methods shared by the Node and Leaf
@@ -35,7 +33,7 @@ import org.apache.mavibot.btree.exception.EndOfFileExceededException;
  *
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public abstract class AbstractPage<K, V> implements Page<K, V>
+/* No qualifier */abstract class AbstractPage<K, V> implements Page<K, V>
 {
     /** Parent B+Tree. */
     protected transient BTree<K, V> btree;
@@ -83,16 +81,15 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
 
 
     /**
-     * Select the sibling (the prev or next page with the same parent) which has
+     * Selects the sibling (the previous or next page with the same parent) which has
      * the more element assuming it's above N/2
      * 
      * @param parent The parent of the current page
      * @param The position of the current page reference in its parent
      * @return The position of the sibling, or -1 if we have'nt found any sibling
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
+     * @throws IOException If we have an error while trying to access the page
      */
-    protected int selectSibling( Node<K, V> parent, int parentPos ) throws EndOfFileExceededException, IOException
+    protected int selectSibling( Node<K, V> parent, int parentPos ) throws IOException
     {
         if ( parentPos == 0 )
         {
@@ -135,7 +132,7 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
 
 
     /**
-     * Find the position of the given key in the page. If we have found the key,
+     * Finds the position of the given key in the page. If we have found the key,
      * we will return its position as a negative value.
      * <p/>
      * Assuming that the array is zero-indexed, the returned value will be : <br/>
@@ -170,7 +167,7 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
      * @param key The key to find
      * @return The position in the page.
      */
-    protected int findPos( K key )
+    public int findPos( K key )
     {
         // Deal with the special key where we have an empty page
         if ( nbElems == 0 )
@@ -227,7 +224,7 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
 
 
     /**
-     * Compare two keys
+     * Compares two keys
      * 
      * @param key1 The first key
      * @param key2 The second key
@@ -281,7 +278,8 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
 
 
     /**
-     * Set the key at a give position
+     * Sets the key at a give position
+     * 
      * @param pos The position in the keys array
      * @param key the key to inject
      */

@@ -23,7 +23,6 @@ package org.apache.mavibot.btree.serializer;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
-import java.util.Comparator;
 
 import org.apache.mavibot.btree.comparator.StringComparator;
 import org.apache.mavibot.btree.util.Strings;
@@ -34,18 +33,108 @@ import org.apache.mavibot.btree.util.Strings;
  * 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class StringSerializer implements ElementSerializer<String>
+public class StringSerializer extends AbstractElementSerializer<String>
 {
-    /** The associated comparator */
-    private final Comparator<String> comparator;
-
-
     /**
      * Create a new instance of StringSerializer
      */
     public StringSerializer()
     {
-        comparator = new StringComparator();
+        super( new StringComparator() );
+    }
+
+
+    /**
+     * A static method used to deserialize a String from a byte array.
+     * @param in The byte array containing the String
+     * @return A String
+     */
+    public static String deserialize( byte[] in )
+    {
+        return deserialize( in, 0 );
+    }
+
+
+    /**
+     * A static method used to deserialize a String from a byte array.
+     * @param in The byte array containing the String
+     * @return A String
+     */
+    public static String deserialize( byte[] in, int start )
+    {
+        int length = IntSerializer.deserialize( in, start );
+
+        if ( length == 0xFFFFFFFF )
+        {
+            return null;
+        }
+
+        if ( in.length < length + 4 + start )
+        {
+            throw new RuntimeException( "Cannot extract a String from a buffer with not enough bytes" );
+        }
+
+        return Strings.utf8ToString( in, start + 4, length );
+    }
+
+
+    /**
+     * Serialize a String. We store the length on 4 bytes, then the String
+     * 
+     * @param buffer the Buffer that will contain the serialized value
+     * @param start the position in the buffer we will store the serialized String
+     * @param value the value to serialize
+     * @return The byte[] containing the serialized String
+     */
+    public static byte[] serialize( byte[] buffer, int start, String element )
+    {
+        int len = -1;
+
+        if ( element != null )
+        {
+            len = element.length();
+        }
+
+        switch ( len )
+        {
+            case 0:
+                buffer[start] = 0x00;
+                buffer[start + 1] = 0x00;
+                buffer[start + 2] = 0x00;
+                buffer[start + 3] = 0x00;
+
+                break;
+
+            case -1:
+                buffer[start] = ( byte ) 0xFF;
+                buffer[start + 1] = ( byte ) 0xFF;
+                buffer[start + 2] = ( byte ) 0xFF;
+                buffer[start + 3] = ( byte ) 0xFF;
+
+                break;
+
+            default:
+                try
+                {
+                    byte[] strBytes = element.getBytes( "UTF-8" );
+
+                    buffer = new byte[strBytes.length + 4];
+
+                    System.arraycopy( strBytes, 0, buffer, 4, strBytes.length );
+
+                    buffer[start] = ( byte ) ( strBytes.length >>> 24 );
+                    buffer[start + 1] = ( byte ) ( strBytes.length >>> 16 );
+                    buffer[start + 2] = ( byte ) ( strBytes.length >>> 8 );
+                    buffer[start + 3] = ( byte ) ( strBytes.length );
+                }
+                catch ( UnsupportedEncodingException uee )
+                {
+                    // if this happens something is really strange
+                    throw new RuntimeException( uee );
+                }
+        }
+
+        return buffer;
     }
 
 
@@ -191,15 +280,5 @@ public class StringSerializer implements ElementSerializer<String>
                 return type1.compareTo( type2 );
             }
         }
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Comparator<String> getComparator()
-    {
-        return comparator;
     }
 }

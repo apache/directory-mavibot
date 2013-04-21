@@ -6,54 +6,51 @@
  *  to you under the Apache License, Version 2.0 (the
  *  "License"); you may not use this file except in compliance
  *  with the License.  You may obtain a copy of the License at
- * 
+ *
  *    http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  *  Unless required by applicable law or agreed to in writing,
  *  software distributed under the License is distributed on an
  *  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
  *  KIND, either express or implied.  See the License for the
  *  specific language governing permissions and limitations
  *  under the License.
- * 
+ *
  */
-package org.apache.mavibot.btree.comparator;
+package org.apache.mavibot.btree;
 
 
 import java.util.Comparator;
 
 
 /**
- * Compares booleans
+ * A comparator for the RevisionName class
  * 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class BooleanComparator implements Comparator<Boolean>
+public class RevisionNameComparator implements Comparator<RevisionName>
 {
     /**
-     * Compare two booleans.
-     * 
-     * @param boolean1 First boolean
-     * @param boolean2 Second boolean
-     * @return 1 if boolean1 > boolean2, 0 if boolean1 == boolean2, -1 if boolean1 < boolean2
+     * {@inheritDoc}
      */
-    public int compare( Boolean boolean1, Boolean boolean2 )
+    public int compare( RevisionName rn1, RevisionName rn2 )
     {
-        if ( boolean1 == boolean2 )
+        if ( rn1 == rn2 )
         {
             return 0;
         }
 
-        if ( boolean1 == null )
+        // First compare the revisions
+        if ( rn1.getRevision() < rn2.getRevision() )
         {
             return -1;
         }
-
-        if ( boolean2 == null )
+        else if ( rn1.getRevision() > rn2.getRevision() )
         {
             return 1;
         }
 
-        return boolean1.compareTo( boolean2 );
+        // The revision are equal : check the name
+        return rn1.getName().compareTo( rn2.getName() );
     }
 }

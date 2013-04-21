@@ -26,6 +26,7 @@ import java.util.LinkedList;
 
 import org.apache.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.mavibot.btree.exception.KeyNotFoundException;
+import static org.apache.mavibot.btree.InternalUtil.*;
 
 
 /**
@@ -36,14 +37,16 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
  *
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class Leaf<K, V> extends AbstractPage<K, V>
+/* No qualifier */class Leaf<K, V> extends AbstractPage<K, V>
 {
     /** Values associated with keys */
     protected ElementHolder<V, K, V>[] values;
 
 
     /**
-     * Empty constructor
+     * Constructor used to create a new Leaf when we read it from a file.
+     * 
+     * @param btree The BTree this page belongs to.
      */
     /* No qualifier */Leaf( BTree<K, V> btree )
     {
@@ -53,6 +56,10 @@ public class Leaf<K, V> extends AbstractPage<K, V>
 
     /**
      * Internal constructor used to create Page instance used when a page is being copied or overflow
+     * 
+     * @param btree The BTree this page belongs to.
+     * @param revision The page revision
+     * @param nbElems The number of elements this page will contain
      */
     @SuppressWarnings("unchecked")
     // Cannot create an array of generic objects
@@ -60,13 +67,20 @@ public class Leaf<K, V> extends AbstractPage<K, V>
     {
         super( btree, revision, nbElems );
 
-        this.values = ( MemoryHolder<K, V>[] ) Array.newInstance( MemoryHolder.class, nbElems );
+        if ( btree.isAllowDuplicates() )
+        {
+            this.values = ( DuplicateKeyMemoryHolder<K, V>[] ) Array.newInstance( DuplicateKeyMemoryHolder.class,
+                nbElems );
+        }
+        else
+        {
+            this.values = ( MemoryHolder<K, V>[] ) Array.newInstance( MemoryHolder.class, nbElems );
+        }
     }
 
 
     /**
      * {@inheritDoc}
-     * @throws IOException 
      */
     public InsertResult<K, V> insert( long revision, K key, V value ) throws IOException
     {
@@ -109,12 +123,10 @@ public class Leaf<K, V> extends AbstractPage<K, V>
 
     /**
      * {@inheritDoc}
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
      */
     @SuppressWarnings("unchecked")
-    public DeleteResult<K, V> delete( long revision, K key, Page<K, V> parent, int parentPos )
-        throws EndOfFileExceededException, IOException
+    public DeleteResult<K, V> delete( long revision, K key, V value, Page<K, V> parent, int parentPos )
+        throws IOException
     {
         // Check that the leaf is not empty
         if ( nbElems == 0 )
@@ -132,17 +144,85 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             return NotPresentResult.NOT_PRESENT;
         }
 
+        // Get the removed element
+        Tuple<K, V> removedElement = null;
+
+        // flag to detect if a key was completely removed
+        boolean keyRemoved = false;
+
         int index = -( pos + 1 );
+
+        if ( btree.isAllowDuplicates() )
+        {
+            if ( value == null )
+                ;
+            BTree<V, V> dups = ( BTree<V, V> ) values[index].getValue( btree );
+
+            if ( dups.hasKey( value ) )
+            {
+                dups.delete( value );
+
+                if ( dups.getNbElems() == 0 )
+                {
+                    keyRemoved = true;
+                }
+
+                removedElement = new Tuple<K, V>( keys[index], value ); // we deleted only one value (even if it is from a tree of size 1)
+            }
+            else if ( value == null ) // this is a case to delete entire <K,dupsTree> 
+            {
+                removedElement = new Tuple<K, V>( keys[index], ( V ) dups ); // the entire tree was removed so pass it as the value
+                keyRemoved = true;
+            }
+            else
+            // value is not found
+            {
+                return NotPresentResult.NOT_PRESENT;
+            }
+        }
+        else
+        {
+            V existing = values[index].getValue( btree );
+
+            if ( ( ( existing == null ) && ( value == null ) ) || ( value == null ) )
+            {
+                removedElement = new Tuple<K, V>( keys[index], existing );
+                keyRemoved = true;
+            }
+            else if ( btree.getValueSerializer().compare( value, existing ) == 0 )
+            {
+                removedElement = new Tuple<K, V>( keys[index], value );
+                keyRemoved = true;
+            }
+            else
+            {
+                return NotPresentResult.NOT_PRESENT;
+            }
+        }
+
+        Leaf<K, V> newLeaf = null;
+
+        if ( keyRemoved )
+        {
+            newLeaf = new Leaf<K, V>( btree, revision, nbElems - 1 );
+        }
+        else
+        {
+            newLeaf = new Leaf<K, V>( btree, revision, nbElems );
+        }
+
+        // Create the result
+        DeleteResult<K, V> defaultResult = new RemoveResult<K, V>( newLeaf, removedElement );
 
         // If the parent is null, then this page is the root page.
         if ( parent == null )
         {
             // Just remove the entry if it's present
-            DeleteResult<K, V> result = removeElement( revision, index );
+            copyAfterRemovingElement( keyRemoved, newLeaf, index );
 
-            return result;
+            return defaultResult;
         }
-        else
+        else if ( keyRemoved )
         {
             // The current page is not the root. Check if the leaf has more than N/2
             // elements
@@ -160,7 +240,8 @@ public class Leaf<K, V> extends AbstractPage<K, V>
                 if ( sibling.getNbElems() == halfSize )
                 {
                     // We will merge the current page with its sibling
-                    DeleteResult<K, V> result = mergeWithSibling( revision, sibling, ( siblingPos < parentPos ), index );
+                    DeleteResult<K, V> result = mergeWithSibling( removedElement, revision, sibling,
+                        ( siblingPos < parentPos ), index );
 
                     return result;
                 }
@@ -169,14 +250,14 @@ public class Leaf<K, V> extends AbstractPage<K, V>
                     // We can borrow the element from the left sibling
                     if ( siblingPos < parentPos )
                     {
-                        DeleteResult<K, V> result = borrowFromLeft( revision, sibling, index );
+                        DeleteResult<K, V> result = borrowFromLeft( removedElement, revision, sibling, index );
 
                         return result;
                     }
                     else
                     {
                         // Borrow from the right sibling
-                        DeleteResult<K, V> result = borrowFromRight( revision, sibling, index );
+                        DeleteResult<K, V> result = borrowFromRight( removedElement, revision, sibling, index );
 
                         return result;
                     }
@@ -188,32 +269,33 @@ public class Leaf<K, V> extends AbstractPage<K, V>
                 // We simply remove the element from the page, and if it was the leftmost,
                 // we return the new pivot (it will replace any instance of the removed
                 // key in its parents)
-                DeleteResult<K, V> result = removeElement( revision, index );
+                copyAfterRemovingElement( keyRemoved, newLeaf, index );
 
-                return result;
+                return defaultResult;
             }
         }
+
+        return defaultResult;
     }
 
 
     /**
-     * Merge the sibling with the current leaf, after having removed the element in the page.
+     * Merges the sibling with the current leaf, after having removed the element in the page.
      * 
      * @param revision The new revision
      * @param sibling The sibling we will merge with
      * @param isLeft Tells if the sibling is on the left or on the right
      * @param pos The position of the removed element
      * @return The new created leaf containing the sibling and the old page.
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
+     * @throws IOException If we have an error while trying to access the page
      */
-    private DeleteResult<K, V> mergeWithSibling( long revision, Leaf<K, V> sibling, boolean isLeft, int pos )
+    private DeleteResult<K, V> mergeWithSibling( Tuple<K, V> removedElement, long revision, Leaf<K, V> sibling,
+        boolean isLeft, int pos )
         throws EndOfFileExceededException, IOException
     {
         // Create the new page. It will contain N - 1 elements (the maximum number)
         // as we merge two pages that contain N/2 elements minus the one we remove
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, btree.getPageSize() - 1 );
-        Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos].getValue( btree ) );
 
         if ( isLeft )
         {
@@ -255,7 +337,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
 
 
     /**
-     * Borrow an element from the left sibling, creating a new sibling with one
+     * Borrows an element from the left sibling, creating a new sibling with one
      * less element and creating a new page where the element to remove has been
      * deleted and the borrowed element added on the left.
      * 
@@ -263,11 +345,10 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      * @param sibling The left sibling
      * @param pos The position of the element to remove
      * @return The resulting pages
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
+     * @throws IOException If we have an error while trying to access the page 
      */
-    private DeleteResult<K, V> borrowFromLeft( long revision, Leaf<K, V> sibling, int pos )
-        throws EndOfFileExceededException, IOException
+    private DeleteResult<K, V> borrowFromLeft( Tuple<K, V> removedElement, long revision, Leaf<K, V> sibling, int pos )
+        throws IOException
     {
         // The sibling is on the left, borrow the rightmost element
         K siblingKey = sibling.keys[sibling.getNbElems() - 1];
@@ -292,9 +373,6 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         System.arraycopy( keys, pos + 1, newLeaf.keys, pos + 1, keys.length - pos - 1 );
         System.arraycopy( values, pos + 1, newLeaf.values, pos + 1, values.length - pos - 1 );
 
-        // Create the result
-        Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos].getValue( btree ) );
-
         DeleteResult<K, V> result = new BorrowedFromLeftResult<K, V>( newLeaf, newSibling, removedElement );
 
         return result;
@@ -302,7 +380,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
 
 
     /**
-     * Borrow an element from the right sibling, creating a new sibling with one
+     * Borrows an element from the right sibling, creating a new sibling with one
      * less element and creating a new page where the element to remove has been
      * deleted and the borrowed element added on the right.
      * 
@@ -310,11 +388,10 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      * @param sibling The right sibling
      * @param pos The position of the element to remove
      * @return The resulting pages
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
+     * @throws IOException If we have an error while trying to access the page 
      */
-    private DeleteResult<K, V> borrowFromRight( long revision, Leaf<K, V> sibling, int pos )
-        throws EndOfFileExceededException, IOException
+    private DeleteResult<K, V> borrowFromRight( Tuple<K, V> removedElement, long revision, Leaf<K, V> sibling, int pos )
+        throws IOException
     {
         // The sibling is on the left, borrow the rightmost element
         K siblingKey = sibling.keys[0];
@@ -343,9 +420,6 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         System.arraycopy( keys, pos + 1, newLeaf.keys, pos, keys.length - pos - 1 );
         System.arraycopy( values, pos + 1, newLeaf.values, pos, values.length - pos - 1 );
 
-        // Create the result
-        Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos].getValue( btree ) );
-
         DeleteResult<K, V> result = new BorrowedFromRightResult<K, V>( newLeaf, newSibling, removedElement );
 
         return result;
@@ -353,26 +427,24 @@ public class Leaf<K, V> extends AbstractPage<K, V>
 
 
     /**
-     * Remove the element at a given position.
-     * 
-     * @param revision The revision of the modified page
+     * Copies the elements of the current page to a new page
+     *
+     * @param keyRemoved a flag stating if the key was removed
+     * @param newLeaf The new page into which the remaining keys and values will be copied
      * @param pos The position into the page of the element to remove
-     * @return The modified page with the <K,V> element added
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
+     * @throws IOException If we have an error while trying to access the page
      */
-    private DeleteResult<K, V> removeElement( long revision, int pos ) throws EndOfFileExceededException, IOException
+    private void copyAfterRemovingElement( boolean keyRemoved, Leaf<K, V> newLeaf, int pos ) throws IOException
     {
-        // First copy the current page, but remove one element in the copied page
-        Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems - 1 );
-
-        // Get the removed element
-        Tuple<K, V> removedElement = new Tuple<K, V>( keys[pos], values[pos].getValue( btree ) );
-
-        // Deal with the special case of an page with only one element by skipping
-        // the copy, as we won't have any remaining  element in the page
-        if ( nbElems > 1 )
+        if ( keyRemoved )
         {
+            // Deal with the special case of a page with only one element by skipping
+            // the copy, as we won't have any remaining  element in the page
+            if ( nbElems == 1 )
+            {
+                return;
+            }
+
             // Copy the keys and the values up to the insertion position
             System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
             System.arraycopy( values, 0, newLeaf.values, 0, pos );
@@ -381,18 +453,72 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             System.arraycopy( keys, pos + 1, newLeaf.keys, pos, keys.length - pos - 1 );
             System.arraycopy( values, pos + 1, newLeaf.values, pos, values.length - pos - 1 );
         }
-
-        // Create the result
-        DeleteResult<K, V> result = new RemoveResult<K, V>( newLeaf, removedElement );
-
-        return result;
+        else
+        // one of the many values of the same key was removed, no change in the number of keys
+        {
+            System.arraycopy( keys, 0, newLeaf.keys, 0, nbElems );
+            System.arraycopy( values, 0, newLeaf.values, 0, nbElems );
+        }
     }
 
 
     /**
      * {@inheritDoc}
      */
-    public boolean exist( K key )
+    public V get( K key ) throws KeyNotFoundException, IOException
+    {
+        int pos = findPos( key );
+
+        if ( pos < 0 )
+        {
+            V v = values[-( pos + 1 )].getValue( btree );
+
+            if ( btree.isAllowDuplicates() )
+            {
+                // always return the first value for get(key) when duplicates are allowed
+                BTree<V, V> dupTree = ( ( BTree<V, V> ) v );
+                return dupTree.rootPage.getLeftMostKey();
+            }
+
+            return v;
+        }
+        else
+        {
+            throw new KeyNotFoundException( "Cannot find an entry for key " + key );
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public BTree<V, V> getValues( K key ) throws KeyNotFoundException, IOException, IllegalArgumentException
+    {
+        if( !btree.isAllowDuplicates() )
+        {
+            throw new IllegalArgumentException( "Duplicates are not allowed in this tree" );
+        }
+        
+        int pos = findPos( key );
+
+        if ( pos < 0 )
+        {
+            V v = values[-( pos + 1 )].getValue( btree );
+
+            return ( ( BTree<V, V> ) v );
+        }
+        else
+        {
+            throw new KeyNotFoundException( "Cannot find an entry for key " + key );
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public boolean hasKey( K key )
     {
         int pos = findPos( key );
 
@@ -400,29 +526,34 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         {
             return true;
         }
-        else
-        {
-            return false;
-        }
+
+        return false;
     }
 
 
-    /**
-     * {@inheritDoc}
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
-     */
-    public V get( K key ) throws KeyNotFoundException, EndOfFileExceededException, IOException
+    @Override
+    public boolean contains( K key, V value ) throws IOException
     {
         int pos = findPos( key );
 
         if ( pos < 0 )
         {
-            return values[-( pos + 1 )].getValue( btree );
+            V v = values[-( pos + 1 )].getValue( btree );
+
+            if ( btree.isAllowDuplicates() )
+            {
+                // always return the first value for get(key) when duplicates are allowed
+                BTree<V, V> dupTree = ( ( BTree<V, V> ) v );
+                return dupTree.hasKey( value );
+            }
+            else
+            {
+                return ( btree.getValueSerializer().compare( value, v ) == 0 );
+            }
         }
         else
         {
-            throw new KeyNotFoundException( "Cannot find an entry for key " + key );
+            return false;
         }
     }
 
@@ -444,7 +575,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
 
 
     /**
-     * Set the value at a give position
+     * Sets the value at a give position
      * @param pos The position in the values array
      * @param value the value to inject
      */
@@ -467,7 +598,9 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             int index = -( pos + 1 );
 
             // The first element has been found. Create the cursor
-            stack.push( new ParentPos<K, V>( this, index ) );
+            ParentPos<K, V> parentPos = new ParentPos<K, V>( this, index );
+            setDupsContainer( parentPos, btree );
+            stack.push( parentPos );
 
             cursor = new Cursor<K, V>( btree, transaction, stack );
         }
@@ -476,14 +609,16 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             // The key has not been found. Select the value just above, if we have one
             if ( pos < nbElems )
             {
-                stack.push( new ParentPos<K, V>( this, pos ) );
+                ParentPos<K, V> parentPos = new ParentPos<K, V>( this, pos );
+                setDupsContainer( parentPos, btree );
+                stack.push( parentPos );
 
                 cursor = new Cursor<K, V>( btree, transaction, stack );
             }
             else
             {
                 // Not found : return a null cursor
-                stack.push( new ParentPos<K, V>( this, -1 ) );
+                stack.push( new ParentPos<K, V>( null, -1 ) );
 
                 return new Cursor<K, V>( btree, transaction, stack );
             }
@@ -511,7 +646,11 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         else
         {
             // Start at the beginning of the page
-            stack.push( new ParentPos<K, V>( this, pos ) );
+            ParentPos<K, V> parentPos = new ParentPos<K, V>( this, pos );
+
+            setDupsContainer( parentPos, btree );
+
+            stack.push( parentPos );
 
             cursor = new Cursor<K, V>( btree, transaction, stack );
         }
@@ -547,11 +686,10 @@ public class Leaf<K, V> extends AbstractPage<K, V>
      * @param value the new value
      * @param pos The position of the key in the page
      * @return The copied page
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
+     * @throws IOException If we have an error while trying to access the page
      */
     private InsertResult<K, V> replaceElement( long revision, K key, V value, int pos )
-        throws EndOfFileExceededException, IOException
+        throws IOException
     {
         Leaf<K, V> newLeaf = this;
 
@@ -561,10 +699,27 @@ public class Leaf<K, V> extends AbstractPage<K, V>
             newLeaf = ( Leaf<K, V> ) copy( revision, nbElems );
         }
 
-        // Now we can inject the value
-        V oldValue = newLeaf.values[pos].getValue( btree );
+        V oldValue = null;
 
-        newLeaf.values[pos] = btree.createHolder( value );
+        if ( btree.isAllowDuplicates() )
+        {
+            BTree<V, V> dupValues = ( BTree<V, V> ) newLeaf.values[pos].getValue( btree );
+            // return value will always be null  here 
+            if ( !dupValues.hasKey( value ) )
+            {
+                dupValues.insert( value, null, 0 );
+            }
+            else
+            {
+                oldValue = value;
+            }
+        }
+        else
+        {
+            // Now we can inject the value
+            oldValue = newLeaf.values[pos].getValue( btree );
+            newLeaf.values[pos] = btree.createHolder( value );
+        }
 
         // Create the result
         InsertResult<K, V> result = new ModifyResult<K, V>( newLeaf, oldValue );
@@ -574,7 +729,7 @@ public class Leaf<K, V> extends AbstractPage<K, V>
 
 
     /**
-     * Add a new <K, V> into a copy of the current page at a given position. We return the
+     * Adds a new <K, V> into a copy of the current page at a given position. We return the
      * modified page. The new page will have one more element than the current page.
      * 
      * @param revision The revision of the modified page
@@ -588,8 +743,19 @@ public class Leaf<K, V> extends AbstractPage<K, V>
         // First copy the current page, but add one element in the copied page
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems + 1 );
 
-        // Atm, store the value in memory 
-        MemoryHolder<K, V> valueHolder = new MemoryHolder<K, V>( btree, value );
+        // Atm, store the value in memory
+
+        ElementHolder valueHolder = null;
+
+        if ( btree.isAllowDuplicates() )
+        {
+            valueHolder = new DuplicateKeyMemoryHolder<K, V>( btree, value );
+        }
+        else
+        {
+            valueHolder = new MemoryHolder<K, V>( btree, value );
+        }
+
         //ValueHolder<K, V> valueHolder = btree.createHolder( value );
 
         // Deal with the special case of an empty page
@@ -713,23 +879,52 @@ public class Leaf<K, V> extends AbstractPage<K, V>
 
     /**
      * {@inheritDoc}
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
      */
-    public Tuple<K, V> findLeftMost() throws EndOfFileExceededException, IOException
+    public K getRightMostKey()
     {
-        return new Tuple<K, V>( keys[0], values[0].getValue( btree ) );
+        return keys[nbElems - 1];
     }
 
 
     /**
      * {@inheritDoc}
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
+     */
+    public Tuple<K, V> findLeftMost() throws IOException
+    {
+        V val = null;
+
+        if ( btree.isAllowDuplicates() )
+        {
+            BTree<V, V> dupTree = ( BTree<V, V> ) values[0].getValue( btree );
+            val = dupTree.rootPage.getLeftMostKey();
+        }
+        else
+        {
+            val = values[0].getValue( btree );
+        }
+
+        return new Tuple<K, V>( keys[0], val );
+    }
+
+
+    /**
+     * {@inheritDoc}
      */
     public Tuple<K, V> findRightMost() throws EndOfFileExceededException, IOException
     {
-        return new Tuple<K, V>( keys[nbElems - 1], values[nbElems - 1].getValue( btree ) );
+        V val = null;
+
+        if ( btree.isAllowDuplicates() )
+        {
+            BTree<V, V> dupTree = ( BTree<V, V> ) values[nbElems - 1].getValue( btree );
+            val = dupTree.rootPage.getRightMostKey();
+        }
+        else
+        {
+            val = values[nbElems - 1].getValue( btree );
+        }
+
+        return new Tuple<K, V>( keys[nbElems - 1], val );
     }
 
 

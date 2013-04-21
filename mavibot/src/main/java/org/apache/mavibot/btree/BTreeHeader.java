@@ -17,7 +17,7 @@
  *  under the License.
  *
  */
-package org.apache.mavibot.btree.store;
+package org.apache.mavibot.btree;
 
 
 import java.util.concurrent.atomic.AtomicLong;
@@ -48,7 +48,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * Each BtreeHeader will be written starting on a new page.
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class BTreeHeader
+/* No qualifier*/class BTreeHeader
 {
     /** The current revision */
     private AtomicLong revision = new AtomicLong( 0L );
@@ -120,7 +120,7 @@ public class BTreeHeader
     /**
      * @param versions the versions to set
      */
-    public void setVersions( long[] versions )
+    /* No qualifier*/void setVersions( long[] versions )
     {
         this.versions = versions;
     }
@@ -129,7 +129,7 @@ public class BTreeHeader
     /**
      * @return the btreeOffset
      */
-    public long getBTreeOffset()
+    /* No qualifier*/long getBTreeOffset()
     {
         return btreeOffset;
     }
@@ -138,7 +138,7 @@ public class BTreeHeader
     /**
      * @param btreeOffset the btreeOffset to set
      */
-    public void setBTreeOffset( long btreeOffset )
+    /* No qualifier*/void setBTreeOffset( long btreeOffset )
     {
         this.btreeOffset = btreeOffset;
     }
@@ -147,7 +147,7 @@ public class BTreeHeader
     /**
      * @return the rootPageOffset
      */
-    public long getRootPageOffset()
+    /* No qualifier*/long getRootPageOffset()
     {
         return rootPageOffset;
     }
@@ -156,7 +156,7 @@ public class BTreeHeader
     /**
      * @param rootPageOffset the rootPageOffset to set
      */
-    public void setRootPageOffset( long rootPageOffset )
+    /* No qualifier*/void setRootPageOffset( long rootPageOffset )
     {
         this.rootPageOffset = rootPageOffset;
     }
@@ -174,7 +174,7 @@ public class BTreeHeader
     /**
      * @param revision the revision to set
      */
-    public void setRevision( long revision )
+    /* No qualifier*/void setRevision( long revision )
     {
         this.revision.set( revision );
     }
@@ -185,7 +185,7 @@ public class BTreeHeader
      * 
      * @return the new revision
      */
-    public long incrementRevision()
+    /* No qualifier*/long incrementRevision()
     {
         return revision.incrementAndGet();
     }
@@ -203,7 +203,7 @@ public class BTreeHeader
     /**
      * Increment the number of elements
      */
-    public void incrementNbElems()
+    /* No qualifier*/void incrementNbElems()
     {
         nbElems.incrementAndGet();
     }
@@ -212,7 +212,7 @@ public class BTreeHeader
     /**
      * Decrement the number of elements
      */
-    public void decrementNbElems()
+    /* No qualifier*/void decrementNbElems()
     {
         nbElems.decrementAndGet();
     }
@@ -230,7 +230,7 @@ public class BTreeHeader
     /**
      * @return the nextBTreeOffset
      */
-    public long getNextBTreeOffset()
+    /* No qualifier*/long getNextBTreeOffset()
     {
         return nextBTreeOffset;
     }
@@ -239,7 +239,7 @@ public class BTreeHeader
     /**
      * @param nextBtreeOffset the nextBtreeOffset to set
      */
-    public void setNextBTreeOffset( long nextBTreeOffset )
+    /* No qualifier*/void setNextBTreeOffset( long nextBTreeOffset )
     {
         this.nextBTreeOffset = nextBTreeOffset;
     }
@@ -266,7 +266,7 @@ public class BTreeHeader
     /**
      * @return the keySerializerFQCN
      */
-    public String getKeySerializerFQCN()
+    /* No qualifier*/String getKeySerializerFQCN()
     {
         return keySerializerFQCN;
     }
@@ -275,7 +275,7 @@ public class BTreeHeader
     /**
      * @param keySerializerFQCN the keySerializerFQCN to set
      */
-    public void setKeySerializerFQCN( String keySerializerFQCN )
+    /* No qualifier*/void setKeySerializerFQCN( String keySerializerFQCN )
     {
         this.keySerializerFQCN = keySerializerFQCN;
     }
@@ -284,7 +284,7 @@ public class BTreeHeader
     /**
      * @return the valueSerializerFQCN
      */
-    public String getValueSerializerFQCN()
+    /* No qualifier*/String getValueSerializerFQCN()
     {
         return valueSerializerFQCN;
     }
@@ -293,7 +293,7 @@ public class BTreeHeader
     /**
      * @param valueSerializerFQCN the valueSerializerFQCN to set
      */
-    public void setValueSerializerFQCN( String valueSerializerFQCN )
+    /* No qualifier*/void setValueSerializerFQCN( String valueSerializerFQCN )
     {
         this.valueSerializerFQCN = valueSerializerFQCN;
     }

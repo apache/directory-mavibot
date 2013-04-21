@@ -22,7 +22,6 @@ package org.apache.mavibot.btree.serializer;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Comparator;
 
 import org.apache.mavibot.btree.comparator.LongComparator;
 
@@ -32,18 +31,14 @@ import org.apache.mavibot.btree.comparator.LongComparator;
  * 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class LongSerializer implements ElementSerializer<Long>
+public class LongSerializer extends AbstractElementSerializer<Long>
 {
-    /** The associated comparator */
-    private final Comparator<Long> comparator;
-
-
     /**
      * Create a new instance of LongSerializer
      */
     public LongSerializer()
     {
-        comparator = new LongComparator();
+        super( new LongComparator() );
     }
 
 
@@ -57,47 +52,75 @@ public class LongSerializer implements ElementSerializer<Long>
 
 
     /**
-     * A static method used to derialize a long into a byte array.
-     * @param in The byte array containing the long
-     * @return A long
+     * Serialize an long
+     * 
+     * @param value the value to serialize
+     * @return The byte[] containing the serialized long
      */
     public static byte[] serialize( long value )
     {
         byte[] bytes = new byte[8];
 
-        bytes[0] = ( byte ) ( value >>> 56 );
-        bytes[1] = ( byte ) ( value >>> 48 );
-        bytes[2] = ( byte ) ( value >>> 40 );
-        bytes[3] = ( byte ) ( value >>> 32 );
-        bytes[4] = ( byte ) ( value >>> 24 );
-        bytes[5] = ( byte ) ( value >>> 16 );
-        bytes[6] = ( byte ) ( value >>> 8 );
-        bytes[7] = ( byte ) ( value );
+        return serialize( bytes, 0, value );
+    }
 
-        return bytes;
+
+    /**
+     * Serialize an long
+     * 
+     * @param buffer the Buffer that will contain the serialized value
+     * @param start the position in the buffer we will store the serialized long
+     * @param value the value to serialize
+     * @return The byte[] containing the serialized long
+     */
+    public static byte[] serialize( byte[] buffer, int start, long value )
+    {
+        buffer[start] = ( byte ) ( value >>> 56 );
+        buffer[start + 1] = ( byte ) ( value >>> 48 );
+        buffer[start + 2] = ( byte ) ( value >>> 40 );
+        buffer[start + 3] = ( byte ) ( value >>> 32 );
+        buffer[start + 4] = ( byte ) ( value >>> 24 );
+        buffer[start + 5] = ( byte ) ( value >>> 16 );
+        buffer[start + 6] = ( byte ) ( value >>> 8 );
+        buffer[start + 7] = ( byte ) ( value );
+
+        return buffer;
     }
 
 
     /**
      * A static method used to deserialize a Long from a byte array.
      * @param in The byte array containing the Long
+     * @param start the position in the byte[] we will deserialize the long from
      * @return A Long
      */
     public static Long deserialize( byte[] in )
     {
-        if ( ( in == null ) || ( in.length < 8 ) )
+        return deserialize( in, 0 );
+    }
+
+
+    /**
+     * A static method used to deserialize an Integer from a byte array.
+     * @param in The byte array containing the Integer
+     * @param start the position in the byte[] we will deserialize the long from
+     * @return An Integer
+     */
+    public static Long deserialize( byte[] in, int start )
+    {
+        if ( ( in == null ) || ( in.length < 8 + start ) )
         {
             throw new RuntimeException( "Cannot extract a Long from a buffer with not enough bytes" );
         }
 
-        long result = ( ( long ) in[0] << 56 ) +
-            ( ( in[1] & 0xFFL ) << 48 ) +
-            ( ( in[2] & 0xFFL ) << 40 ) +
-            ( ( in[3] & 0xFFL ) << 32 ) +
-            ( ( in[4] & 0xFFL ) << 24 ) +
-            ( ( in[5] & 0xFFL ) << 16 ) +
-            ( ( in[6] & 0xFFL ) << 8 ) +
-            ( in[7] & 0xFFL );
+        long result = ( ( long ) in[start] << 56 ) +
+            ( ( in[start + 1] & 0xFFL ) << 48 ) +
+            ( ( in[start + 2] & 0xFFL ) << 40 ) +
+            ( ( in[start + 3] & 0xFFL ) << 32 ) +
+            ( ( in[start + 4] & 0xFFL ) << 24 ) +
+            ( ( in[start + 5] & 0xFFL ) << 16 ) +
+            ( ( in[start + 6] & 0xFFL ) << 8 ) +
+            ( in[start + 7] & 0xFFL );
 
         return result;
     }
@@ -120,51 +143,5 @@ public class LongSerializer implements ElementSerializer<Long>
     public Long deserialize( ByteBuffer buffer ) throws IOException
     {
         return buffer.getLong();
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int compare( Long type1, Long type2 )
-    {
-        if ( type1 == type2 )
-        {
-            return 0;
-        }
-
-        if ( type1 == null )
-        {
-            if ( type2 == null )
-            {
-                return 0;
-            }
-            else
-            {
-                return -1;
-            }
-        }
-        else
-        {
-            if ( type2 == null )
-            {
-                return 1;
-            }
-            else
-            {
-                return type1.compareTo( type2 );
-            }
-        }
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Comparator<Long> getComparator()
-    {
-        return comparator;
     }
 }

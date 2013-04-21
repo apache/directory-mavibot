@@ -114,6 +114,7 @@ public class BTreeConfigurationTest
     public void testConfigurationBasic() throws IOException, KeyNotFoundException
     {
         BTreeConfiguration<Integer, String> config = new BTreeConfiguration<Integer, String>();
+        config.setName( "basic" );
         config.setPageSize( 32 );
         config.setSerializers( new IntSerializer(), new StringSerializer() );
 
@@ -159,7 +160,7 @@ public class BTreeConfigurationTest
             config.setSerializers( new IntSerializer(), new StringSerializer() );
 
             config.setFilePath( parent );
-            config.setFileName( "mavibot" );
+            config.setName( "mavibot" );
 
             // Create the BTree
             BTree<Integer, String> btree = new BTree<Integer, String>( config );

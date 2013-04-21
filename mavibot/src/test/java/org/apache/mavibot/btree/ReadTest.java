@@ -17,7 +17,7 @@
  *  under the License.
  *
  */
-package org.apache.mavibot.btree.store;
+package org.apache.mavibot.btree;
 
 
 import static org.junit.Assert.assertEquals;
@@ -27,6 +27,8 @@ import java.io.File;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 
+import org.apache.mavibot.btree.PageIO;
+import org.apache.mavibot.btree.RecordManager;
 import org.junit.Test;
 
 

@@ -37,14 +37,14 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
  *
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class Node<K, V> extends AbstractPage<K, V>
+/* No qualifier */class Node<K, V> extends AbstractPage<K, V>
 {
     /** Children pages associated with keys. */
     protected ElementHolder<Page<K, V>, K, V>[] children;
 
 
     /**
-     * Create a new Node which will contain only one key, with references to
+     * Creates a new Node which will contain only one key, with references to
      * a left and right page. This is a specific constructor used by the btree
      * when the root was full when we added a new value.
      * 
@@ -63,7 +63,7 @@ public class Node<K, V> extends AbstractPage<K, V>
 
 
     /**
-     * Create a new Node which will contain only one key, with references to
+     * Creates a new Node which will contain only one key, with references to
      * a left and right page. This is a specific constructor used by the btree
      * when the root was full when we added a new value.
      * 
@@ -104,7 +104,7 @@ public class Node<K, V> extends AbstractPage<K, V>
 
 
     /**
-     * Create a new Node which will contain only one key, with references to
+     * Creates a new Node which will contain only one key, with references to
      * a left and right page. This is a specific constructor used by the btree
      * when the root was full when we added a new value.
      * 
@@ -194,9 +194,15 @@ public class Node<K, V> extends AbstractPage<K, V>
 
 
     /**
-     * Modify the current node after a remove has been done in one of its children.
+     * Modifies the current node after a remove has been done in one of its children.
      * The node won't be merged with another node.
-     * @throws IOException 
+     * 
+     * @param removeResult The result of a remove operation
+     * @param index the position of the key, not transformed
+     * @param pos The position of the key, as a positive value
+     * @param found If the key has been found in the page
+     * @return The new result
+     * @throws IOException If we have an error while trying to access the page
      */
     private RemoveResult<K, V> handleRemoveResult( RemoveResult<K, V> removeResult, int index, int pos, boolean found )
         throws IOException
@@ -230,14 +236,14 @@ public class Node<K, V> extends AbstractPage<K, V>
 
 
     /**
-     * Handle the removal of an element from the root page, when two of its children
+     * Handles the removal of an element from the root page, when two of its children
      * have been merged.
      * 
      * @param mergedResult The merge result
      * @param pos The position in the current root
      * @param found Tells if the removed key is present in the root page
      * @return The resulting root page
-     * @throws IOException 
+     * @throws IOException If we have an error while trying to access the page
      */
     private RemoveResult<K, V> handleRootRemove( MergedWithSiblingResult<K, V> mergedResult, int pos, boolean found )
         throws IOException
@@ -262,7 +268,7 @@ public class Node<K, V> extends AbstractPage<K, V>
 
 
     /**
-     * Borrow an element from the right sibling, creating a new sibling with one
+     * Borrows an element from the right sibling, creating a new sibling with one
      * less element and creating a new page where the element to remove has been
      * deleted and the borrowed element added on the right.
      * 
@@ -270,7 +276,7 @@ public class Node<K, V> extends AbstractPage<K, V>
      * @param sibling The right sibling
      * @param pos The position of the element to remove
      * @return The resulting pages
-     * @throws IOException 
+     * @throws IOException If we have an error while trying to access the page
      */
     private DeleteResult<K, V> borrowFromRight( long revision, MergedWithSiblingResult<K, V> mergedResult,
         Node<K, V> sibling, int pos ) throws IOException
@@ -344,7 +350,7 @@ public class Node<K, V> extends AbstractPage<K, V>
 
 
     /**
-     * Borrow an element from the left sibling, creating a new sibling with one
+     * Borrows an element from the left sibling, creating a new sibling with one
      * less element and creating a new page where the element to remove has been
      * deleted and the borrowed element added on the left.
      * 
@@ -352,7 +358,7 @@ public class Node<K, V> extends AbstractPage<K, V>
      * @param sibling The left sibling
      * @param pos The position of the element to remove
      * @return The resulting pages
-     * @throws IOException 
+     * @throws IOException If we have an error while trying to access the page
      */
     private DeleteResult<K, V> borrowFromLeft( long revision, MergedWithSiblingResult<K, V> mergedResult,
         Node<K, V> sibling, int pos ) throws IOException
@@ -428,13 +434,15 @@ public class Node<K, V> extends AbstractPage<K, V>
      * We have to merge the node with its sibling, both have N/2 elements before the element
      * removal.
      * 
-     * @param revision
-     * @param mergedResult
-     * @param pos
-     * @return
-     * @throws IOException 
+     * @param revision The revision
+     * @param mergedResult The result of the merge
+     * @param sibling The Page we will merge the current page with
+     * @param isLeft Tells if the sibling is on the left
+     * @param pos The position of the key that has been removed
+     * @return The page resulting of the merge
+     * @throws IOException If we have an error while trying to access the page
      */
-    public DeleteResult<K, V> mergeWithSibling( long revision, MergedWithSiblingResult<K, V> mergedResult,
+    private DeleteResult<K, V> mergeWithSibling( long revision, MergedWithSiblingResult<K, V> mergedResult,
         Node<K, V> sibling, boolean isLeft, int pos ) throws IOException
     {
         // Create the new node. It will contain N - 1 elements (the maximum number)
@@ -551,9 +559,9 @@ public class Node<K, V> extends AbstractPage<K, V>
 
     /**
      * {@inheritDoc}
-     * @throws IOException 
      */
-    public DeleteResult<K, V> delete( long revision, K key, Page<K, V> parent, int parentPos ) throws IOException
+    public DeleteResult<K, V> delete( long revision, K key, V value, Page<K, V> parent, int parentPos )
+        throws IOException
     {
         // We first try to delete the element from the child it belongs to
         // Find the key in the page
@@ -567,12 +575,12 @@ public class Node<K, V> extends AbstractPage<K, V>
         {
             index = -( pos + 1 );
             child = children[-pos].getValue( btree );
-            deleteResult = child.delete( revision, key, this, -pos );
+            deleteResult = child.delete( revision, key, value, this, -pos );
         }
         else
         {
             child = children[pos].getValue( btree );
-            deleteResult = child.delete( revision, key, this, pos );
+            deleteResult = child.delete( revision, key, value, this, pos );
         }
 
         // If the key is not present in the tree, we simply return
@@ -677,7 +685,7 @@ public class Node<K, V> extends AbstractPage<K, V>
      * @param borrowedResult The result of the deletion from the children
      * @param pos The position the key was found in the current node
      * @return The result
-     * @throws IOException 
+     * @throws IOException If we have an error while trying to access the page
      */
     private RemoveResult<K, V> handleBorrowedResult( BorrowedFromSiblingResult<K, V> borrowedResult, int pos )
         throws IOException
@@ -744,10 +752,11 @@ public class Node<K, V> extends AbstractPage<K, V>
     /**
      * Remove the key at a given position.
      * 
+     * @param mergedResult The page we will remove a key from
      * @param revision The revision of the modified page
      * @param pos The position into the page of the element to remove
      * @return The modified page with the <K,V> element added
-     * @throws IOException 
+     * @throws IOException If we have an error while trying to access the page
      */
     private RemoveResult<K, V> removeKey( MergedWithSiblingResult<K, V> mergedResult, long revision, int pos )
         throws IOException
@@ -801,30 +810,7 @@ public class Node<K, V> extends AbstractPage<K, V>
 
 
     /**
-     * {@inheritDoc} 
-     */
-    public boolean exist( K key ) throws IOException
-    {
-        int pos = findPos( key );
-
-        if ( pos < 0 )
-        {
-            // Here, if we have found the key in the node, then we must go down into
-            // the right child, not the left one
-            return children[-pos].getValue( btree ).exist( key );
-        }
-        else
-        {
-            return children[pos].getValue( btree ).exist( key );
-        }
-    }
-
-
-    /**
      * {@inheritDoc}
-     * @throws IOException 
-     * @throws KeyNotFoundException 
-     * @throws EndOfFileExceededException 
      */
     public V get( K key ) throws IOException, KeyNotFoundException
     {
@@ -844,7 +830,71 @@ public class Node<K, V> extends AbstractPage<K, V>
 
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public BTree<V, V> getValues( K key ) throws KeyNotFoundException, IOException, IllegalArgumentException
+    {
+        int pos = findPos( key );
+
+        if ( pos < 0 )
+        {
+            // Here, if we have found the key in the node, then we must go down into
+            // the right child, not the left one
+            return children[-pos].getValue( btree ).getValues( key );
+        }
+        else
+        {
+            return children[pos].getValue( btree ).getValues( key );
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean hasKey( K key ) throws IOException
+    {
+        int pos = findPos( key );
+
+        if ( pos < 0 )
+        {
+            // Here, if we have found the key in the node, then we must go down into
+            // the right child, not the left one
+            return children[-pos].getValue( btree ).hasKey( key );
+        }
+        else
+        {
+            return children[pos].getValue( btree ).hasKey( key );
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean contains( K key, V value ) throws IOException
+    {
+        int pos = findPos( key );
+
+        if ( pos < 0 )
+        {
+            // Here, if we have found the key in the node, then we must go down into
+            // the right child, not the left one
+            return children[-pos].getValue( btree ).contains( key, value );
+        }
+        else
+        {
+            return children[pos].getValue( btree ).contains( key, value );
+        }
+    }
+
+
+    /**
      * Set the value at a give position
+     * 
      * @param pos The position in the values array
      * @param value the value to inject
      */
@@ -856,10 +906,8 @@ public class Node<K, V> extends AbstractPage<K, V>
 
     /**
      * {@inheritDoc}
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
      */
-    public Page<K, V> getReference( int pos ) throws EndOfFileExceededException, IOException
+    public Page<K, V> getReference( int pos ) throws IOException
     {
         if ( pos < nbElems + 1 )
         {
@@ -874,11 +922,9 @@ public class Node<K, V> extends AbstractPage<K, V>
 
     /**
      * {@inheritDoc}
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
      */
     public Cursor<K, V> browse( K key, Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
-        throws EndOfFileExceededException, IOException
+        throws IOException
     {
         int pos = findPos( key );
 
@@ -896,11 +942,9 @@ public class Node<K, V> extends AbstractPage<K, V>
 
     /**
      * {@inheritDoc}
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
      */
     public Cursor<K, V> browse( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
-        throws EndOfFileExceededException, IOException
+        throws IOException
     {
         stack.push( new ParentPos<K, V>( this, 0 ) );
 
@@ -917,7 +961,7 @@ public class Node<K, V> extends AbstractPage<K, V>
      * @param result The modified page
      * @param pos The position of the found key
      * @return A modified page
-     * @throws IOException 
+     * @throws IOException If we have an error while trying to access the page
      */
     private InsertResult<K, V> replaceChild( long revision, ModifyResult<K, V> result, int pos ) throws IOException
     {
@@ -938,11 +982,18 @@ public class Node<K, V> extends AbstractPage<K, V>
     }
 
 
+    /**
+     * Creates a new holder contaning a reference to a Page
+     * 
+     * @param page The page we will refer to
+     * @return A holder contaning a reference to the child page
+     * @throws IOException If we have an error while trying to access the page
+     */
     private ElementHolder<Page<K, V>, K, V> createHolder( Page<K, V> page ) throws IOException
     {
         if ( btree.isManaged() )
         {
-            ElementHolder<Page<K, V>, K, V> holder = btree.getRecordManager().writePage( btree, this,
+            ElementHolder<Page<K, V>, K, V> holder = btree.getRecordManager().writePage( btree,
                 page,
                 revision );
 
@@ -960,7 +1011,7 @@ public class Node<K, V> extends AbstractPage<K, V>
 
 
     /**
-     * Add a new key into a copy of the current page at a given position. We return the
+     * Adds a new key into a copy of the current page at a given position. We return the
      * modified page. The new page will have one more key than the current page.
      * 
      * @param revision The revision of the modified page
@@ -969,7 +1020,7 @@ public class Node<K, V> extends AbstractPage<K, V>
      * @param rightPage The right child
      * @param pos The position into the page
      * @return The modified page with the <K,V> element added
-     * @throws IOException 
+     * @throws IOException If we have an error while trying to access the page
      */
     private InsertResult<K, V> insertChild( long revision, K key, Page<K, V> leftPage, Page<K, V> rightPage, int pos )
         throws IOException
@@ -1007,7 +1058,7 @@ public class Node<K, V> extends AbstractPage<K, V>
 
 
     /**
-     * Split a full page into two new pages, a left, a right and a pivot element. The new pages will
+     * Splits a full page into two new pages, a left, a right and a pivot element. The new pages will
      * each contains half of the original elements. <br/>
      * The pivot will be computed, depending on the place
      * we will inject the newly added element. <br/>
@@ -1016,12 +1067,12 @@ public class Node<K, V> extends AbstractPage<K, V>
      * on the left, or the first element in the right page if it's added on the right.
      * 
      * @param revision The new revision for all the created pages
-     * @param key The key to add
+     * @param pivot The key that will be move up after the split
      * @param leftPage The left child
      * @param rightPage The right child
      * @param pos The position of the insertion of the new element
      * @return An OverflowPage containing the pivot, and the new left and right pages
-     * @throws IOException 
+     * @throws IOException If we have an error while trying to access the page
      */
     private InsertResult<K, V> addAndSplit( long revision, K pivot, Page<K, V> leftPage, Page<K, V> rightPage, int pos )
         throws IOException
@@ -1106,7 +1157,7 @@ public class Node<K, V> extends AbstractPage<K, V>
 
 
     /**
-     * Copy the current page and all its keys, with a new revision.
+     * Copies the current page and all its keys, with a new revision.
      * 
      * @param revision The new revision
      * @return The copied page
@@ -1127,8 +1178,6 @@ public class Node<K, V> extends AbstractPage<K, V>
 
     /**
      * {@inheritDoc}
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
      */
     public K getLeftMostKey() throws EndOfFileExceededException, IOException
     {
@@ -1138,8 +1187,15 @@ public class Node<K, V> extends AbstractPage<K, V>
 
     /**
      * {@inheritDoc}
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
+     */
+    public K getRightMostKey() throws EndOfFileExceededException, IOException
+    {
+        return children[nbElems - 1].getValue( btree ).getRightMostKey();
+    }
+
+
+    /**
+     * {@inheritDoc}
      */
     public Tuple<K, V> findLeftMost() throws EndOfFileExceededException, IOException
     {
@@ -1149,8 +1205,6 @@ public class Node<K, V> extends AbstractPage<K, V>
 
     /**
      * {@inheritDoc}
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
      */
     public Tuple<K, V> findRightMost() throws EndOfFileExceededException, IOException
     {
@@ -1159,8 +1213,6 @@ public class Node<K, V> extends AbstractPage<K, V>
 
 
     /**
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
      * @see Object#toString()
      */
     public String toString()

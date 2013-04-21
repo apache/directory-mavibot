@@ -215,17 +215,17 @@ public class BTreeFlushTest
         // Create the file, it will be deleted on exit
         File tempFile = File.createTempFile( "testFlush", null );
         String path = tempFile.getParent();
-        String fileName = "mavibot";
         tempFile.delete();
-        File journal = new File( path, fileName + BTree.JOURNAL_SUFFIX );
-        File data = new File( path, fileName + BTree.DATA_SUFFIX );
 
+        BTree<Integer, String> btree = new BTree<Integer, String>( "test", path, new IntSerializer(), new StringSerializer() );
+        btree.setName( "flush" );
+        btree.setPageSize( 8 );
+        
+        File journal = btree.getJournal();
+        File data = btree.getFile();
+        
         try
         {
-            BTree<Integer, String> btree = new BTree<Integer, String>( "test", path, fileName, new IntSerializer(),
-                new StringSerializer() );
-            btree.setPageSize( 8 );
-
             // Inject the values
             for ( int value : sortedValues )
             {
@@ -244,8 +244,7 @@ public class BTreeFlushTest
             assertEquals( 0, journal.length() );
 
             // Load the data into a new tree
-            BTree<Integer, String> btreeLoaded = new BTree<Integer, String>( "test", path, fileName,
-                new IntSerializer(),
+            BTree<Integer, String> btreeLoaded = new BTree<Integer, String>( "test", path, new IntSerializer(),
                 new StringSerializer() );
             btree.setPageSize( 8 );
 
@@ -288,7 +287,6 @@ public class BTreeFlushTest
         BTree<Long, String> btree = new BTree<Long, String>(
             "test",
             dataFile.getParent(),
-            dataFile.getName(),
             new LongSerializer(),
             new StringSerializer() );
         btree.setPageSize( 32 );

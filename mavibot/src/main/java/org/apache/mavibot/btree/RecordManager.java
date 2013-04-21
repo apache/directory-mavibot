@@ -17,7 +17,7 @@
  *  under the License.
  *
  */
-package org.apache.mavibot.btree.store;
+package org.apache.mavibot.btree;
 
 
 import java.io.File;
@@ -32,17 +32,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.mavibot.btree.AbstractPage;
-import org.apache.mavibot.btree.BTree;
-import org.apache.mavibot.btree.BTreeFactory;
-import org.apache.mavibot.btree.ElementHolder;
-import org.apache.mavibot.btree.Leaf;
-import org.apache.mavibot.btree.MemoryHolder;
-import org.apache.mavibot.btree.Node;
-import org.apache.mavibot.btree.Page;
-import org.apache.mavibot.btree.ReferenceHolder;
 import org.apache.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.mavibot.btree.exception.EndOfFileExceededException;
+import org.apache.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.mavibot.btree.serializer.IntSerializer;
 import org.apache.mavibot.btree.serializer.LongArraySerializer;
 import org.apache.mavibot.btree.serializer.LongSerializer;
@@ -89,6 +81,9 @@ public class RecordManager
      * Those page can be reclaimed when the associated version is dead. 
      **/
     private BTree<Integer, long[]> copiedPageBTree;
+
+    /** A BTree used to store all the valid revisions for all the stored BTrees */
+    private BTree<RevisionName, Long> revisionBTree;
 
     /** A constant for an offset on a non existing page */
     private static final long NO_PAGE = -1L;
@@ -235,7 +230,8 @@ public class RecordManager
 
 
     /**
-     * We will create a brand new RecordManager file, containing nothing, but the header and
+     * We will create a brand new RecordManager file, containing nothing, but the header, 
+     * a BTree to manage the old revisions we want to keep and
      * a BTree used to manage pages associated with old versions.
      * <br/>
      * The Header contains the following informations :
@@ -253,6 +249,8 @@ public class RecordManager
      * 
      * We then store the BTree managing the pages that have been copied when we have added
      * or deleted an element in the BTree. They are associated with a version.
+     * 
+     * Last, we add the bTree that keep a track on each revision we can have access to.
      */
     private void initRecordManager() throws IOException
     {
@@ -265,13 +263,18 @@ public class RecordManager
         // Set the offset of the end of the file
         endOfFileOffset = fileChannel.size();
 
-        // Now, initialize the Discarded Page BTree, which is a in-memory BTree
+        // Now, initialize the Copied Page BTree
         copiedPageBTree = new BTree<Integer, long[]>( "copiedPageBTree", new IntSerializer(), new LongArraySerializer() );
 
-        // Inject this BTree into the RecordManager
+        // and initialize the Revision BTree
+        revisionBTree = new BTree<RevisionName, Long>( "revisionBTree", new RevisionNameSerializer(),
+            new LongSerializer() );
+
+        // Inject these BTrees into the RecordManager
         try
         {
             manage( copiedPageBTree );
+            manage( revisionBTree );
         }
         catch ( BTreeAlreadyManagedException btame )
         {
@@ -327,8 +330,17 @@ public class RecordManager
             loadBTree( pageIos, copiedPageBTree );
             long nextBtreeOffset = copiedPageBTree.getNextBTreeOffset();
 
+            // And the Revision BTree
+            pageIos = readPages( nextBtreeOffset, Long.MAX_VALUE );
+
+            revisionBTree = BTreeFactory.createBTree();
+            revisionBTree.setBtreeOffset( nextBtreeOffset );
+
+            loadBTree( pageIos, revisionBTree );
+            nextBtreeOffset = revisionBTree.getNextBTreeOffset();
+
             // Then process the next ones
-            for ( int i = 1; i < nbBtree; i++ )
+            for ( int i = 2; i < nbBtree; i++ )
             {
                 // Create the BTree
                 BTree<?, ?> btree = BTreeFactory.createBTree();
@@ -865,13 +877,14 @@ public class RecordManager
         btree.setBtreeOffset( btreeOffset );
 
         // Now store the BTree data in the pages :
-        // - the BTree name
-        // - the keySerializer FQCN
-        // - the valueSerializer FQCN
-        // - the BTree page size
         // - the BTree revision
         // - the BTree number of elements
         // - The RootPage offset
+        // - The next Btree offset 
+        // - the BTree page size
+        // - the BTree name
+        // - the keySerializer FQCN
+        // - the valueSerializer FQCN
         // Starts at 0
         long position = 0L;
 
@@ -1107,7 +1120,8 @@ public class RecordManager
      * @throws IOException 
      * @throws EndOfFileExceededException 
      */
-    public void updateBtreeHeader( BTree btree, long rootPageOffset ) throws EndOfFileExceededException, IOException
+    /* No qualifier*/void updateBtreeHeader( BTree btree, long rootPageOffset ) throws EndOfFileExceededException,
+        IOException
     {
         // Read the pageIOs associated with this BTree
         long offset = btree.getBtreeOffset();
@@ -1519,7 +1533,7 @@ public class RecordManager
      * @return The offset of the new page
      * @throws IOException 
      */
-    public ElementHolder writePage( BTree btree, Page oldPage, Page newPage, long newRevision )
+    /* No qualifier*/ElementHolder writePage( BTree btree, Page newPage, long newRevision )
         throws IOException
     {
         // We first need to save the new page on disk
@@ -1832,18 +1846,18 @@ public class RecordManager
 
 
     /**
-     * Get the number of managed trees. We don't count the CopiedPage BTree.
+     * Get the number of managed trees. We don't count the CopiedPage BTree. and the Revsion BTree
      * 
      * @return The number of managed BTrees
      */
     public int getNbManagedTrees()
     {
-        return nbBtree - 1;
+        return nbBtree - 2;
     }
 
 
     /**
-     * Get the managed trees. We don't return the CopiedPage BTree.
+     * Get the managed trees. We don't return the CopiedPage BTree nor the Revision BTree.
      * 
      * @return The managed BTrees
      */
@@ -1857,6 +1871,50 @@ public class RecordManager
         }
 
         return btrees;
+    }
+
+
+    /**
+     * Store a reference to an old rootPage into the Revision BTree
+     * 
+     * @param btree The BTree we want to keep an old RootPage for
+     * @param rootPage The old rootPage
+     * @throws IOException If we have an issue while writing on disk
+     */
+    /* No qualifier */void storeRootPage( BTree btree, Page rootPage ) throws IOException
+    {
+        RevisionName revisionName = new RevisionName( rootPage.getRevision(), btree.getName() );
+
+        revisionBTree.insert( revisionName, rootPage.getOffset() );
+    }
+
+
+    /**
+     * Fetch the rootPage of a given BTree for a given revision.
+     * 
+     * @param btree The BTree we are interested in
+     * @param revision The revision we want to get back
+     * @return The rootPage for this BTree and this revision, if any
+     * @throws KeyNotFoundException If we can't find the rootPage for this revision and this BTree
+     * @throws IOException If we had an ise while accessing the data on disk
+     */
+    /* No qualifier */Page getRootPage( BTree btree, long revision ) throws KeyNotFoundException, IOException
+    {
+        if ( btree.getRevision() == revision )
+        {
+            // We are asking for the current revision
+            return btree.rootPage;
+        }
+
+        RevisionName revisionName = new RevisionName( revision, btree.getName() );
+        long rootPageOffset = revisionBTree.get( revisionName );
+
+        // Read the rootPage pages on disk
+        PageIO[] rootPageIos = readPages( rootPageOffset, Long.MAX_VALUE );
+
+        Page btreeRoot = readPage( btree, rootPageIos );
+
+        return btreeRoot;
     }
 
 

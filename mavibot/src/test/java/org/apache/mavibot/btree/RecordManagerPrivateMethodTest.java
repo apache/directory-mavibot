@@ -17,7 +17,7 @@
  *  under the License.
  *
  */
-package org.apache.mavibot.btree.store;
+package org.apache.mavibot.btree;
 
 
 import static org.junit.Assert.assertEquals;
@@ -27,6 +27,8 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
+import org.apache.mavibot.btree.PageIO;
+import org.apache.mavibot.btree.RecordManager;
 import org.junit.Test;
 
 
@@ -51,25 +53,25 @@ public class RecordManagerPrivateMethodTest
         Method getFreePageIOsMethod = RecordManager.class.getDeclaredMethod( "getFreePageIOs", int.class );
         getFreePageIOsMethod.setAccessible( true );
 
-        PageIO[] pages = ( PageIO[] ) getFreePageIOsMethod.invoke( recordManager, 0 );
+        PageIO[] pages = (org.apache.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, 0 );
 
         assertEquals( 0, pages.length );
 
         for ( int i = 1; i < 20; i++ )
         {
-            pages = ( PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
+            pages = (org.apache.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
             assertEquals( 1, pages.length );
         }
 
         for ( int i = 21; i < 44; i++ )
         {
-            pages = ( PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
+            pages = (org.apache.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
             assertEquals( 2, pages.length );
         }
 
         for ( int i = 45; i < 68; i++ )
         {
-            pages = ( PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
+            pages = (org.apache.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
             assertEquals( 3, pages.length );
         }
     }

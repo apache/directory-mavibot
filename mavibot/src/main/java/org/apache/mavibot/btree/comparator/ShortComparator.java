@@ -46,14 +46,36 @@ public class ShortComparator implements Comparator<Short>
 
         if ( short1 == null )
         {
-            throw new IllegalArgumentException( "The first object to compare must not be null" );
+            if ( short2 == null )
+            {
+                return 0;
+            }
+            else
+            {
+                return -1;
+            }
         }
-
-        if ( short2 == null )
+        else
         {
-            throw new IllegalArgumentException( "The second object to compare must not be null" );
+            if ( short2 == null )
+            {
+                return 1;
+            }
+            else
+            {
+                if ( short1 < short2 )
+                {
+                    return -1;
+                }
+                else if ( short1 > short2 )
+                {
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
         }
-
-        return short1.compareTo( short2 );
     }
 }

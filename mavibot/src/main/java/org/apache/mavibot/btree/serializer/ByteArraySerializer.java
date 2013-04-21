@@ -22,7 +22,6 @@ package org.apache.mavibot.btree.serializer;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Comparator;
 
 import org.apache.mavibot.btree.comparator.ByteArrayComparator;
 
@@ -32,18 +31,14 @@ import org.apache.mavibot.btree.comparator.ByteArrayComparator;
  * 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class ByteArraySerializer implements ElementSerializer<byte[]>
+public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
 {
-    /** The associated comparator */
-    private final Comparator<byte[]> comparator;
-
-
     /**
      * Create a new instance of ByteArraySerializer
      */
     public ByteArraySerializer()
     {
-        comparator = new ByteArrayComparator();
+        super( new ByteArrayComparator() );
     }
 
 
@@ -99,6 +94,123 @@ public class ByteArraySerializer implements ElementSerializer<byte[]>
 
 
     /**
+     * Serialize a byte[]
+     * 
+     * @param buffer the Buffer that will contain the serialized value
+     * @param start the position in the buffer we will store the serialized byte[]
+     * @param value the value to serialize
+     * @return The byte[] containing the serialized byte[]
+     */
+    public static byte[] serialize( byte[] buffer, int start, byte[] element )
+    {
+        int len = -1;
+
+        if ( element != null )
+        {
+            len = element.length;
+        }
+
+        switch ( len )
+        {
+            case 0:
+                buffer[start] = 0x00;
+                buffer[start + 1] = 0x00;
+                buffer[start + 2] = 0x00;
+                buffer[start + 3] = 0x00;
+
+                break;
+
+            case -1:
+                buffer[start] = ( byte ) 0xFF;
+                buffer[start + 1] = ( byte ) 0xFF;
+                buffer[start + 2] = ( byte ) 0xFF;
+                buffer[start + 3] = ( byte ) 0xFF;
+
+                break;
+
+            default:
+
+                buffer[start] = ( byte ) ( len >>> 24 );
+                buffer[start + 1] = ( byte ) ( len >>> 16 );
+                buffer[start + 2] = ( byte ) ( len >>> 8 );
+                buffer[start + 3] = ( byte ) ( len );
+
+                System.arraycopy( element, 0, buffer, 4 + start, len );
+        }
+
+        return buffer;
+
+    }
+
+
+    /**
+     * A static method used to deserialize a byte array from a byte array.
+     * 
+     * @param in The byte array containing the byte array
+     * @return A byte[]
+     */
+    public static byte[] deserialize( byte[] in )
+    {
+        if ( ( in == null ) || ( in.length < 4 ) )
+        {
+            throw new RuntimeException( "Cannot extract a byte[] from a buffer with not enough bytes" );
+        }
+
+        int len = IntSerializer.deserialize( in );
+
+        switch ( len )
+        {
+            case 0:
+                return new byte[]
+                    {};
+
+            case -1:
+                return null;
+
+            default:
+                byte[] result = new byte[len];
+                System.arraycopy( in, 4, result, 0, len );
+
+                return result;
+        }
+    }
+
+
+    /**
+     * A static method used to deserialize a byte array from a byte array.
+     * 
+     * @param in The byte array containing the byte array
+     * @param start the position in the byte[] we will deserialize the byte[] from
+     * @return A byte[]
+     */
+    public static byte[] deserialize( byte[] in, int start )
+    {
+        if ( ( in == null ) || ( in.length < 4 + start ) )
+        {
+            throw new RuntimeException( "Cannot extract a byte[] from a buffer with not enough bytes" );
+        }
+
+        int len = IntSerializer.deserialize( in, start );
+
+        switch ( len )
+        {
+            case 0:
+                return new byte[]
+                    {};
+
+            case -1:
+                return null;
+
+            default:
+                byte[] result = new byte[len];
+                System.arraycopy( in, 4 + start, result, 0, len );
+
+                return result;
+        }
+    }
+
+
+    /**
      * {@inheritDoc}
      */
     public byte[] deserialize( BufferHandler bufferHandler ) throws IOException
@@ -147,98 +259,5 @@ public class ByteArraySerializer implements ElementSerializer<byte[]>
 
                 return bytes;
         }
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int compare( byte[] type1, byte[] type2 )
-    {
-        if ( type1 == type2 )
-        {
-            return 0;
-        }
-
-        if ( type1 == null )
-        {
-            if ( type2 == null )
-            {
-                return 0;
-            }
-            else
-            {
-                return -1;
-            }
-        }
-        else
-        {
-            if ( type2 == null )
-            {
-                return 1;
-            }
-            else
-            {
-                if ( type1.length < type2.length )
-                {
-                    int pos = 0;
-
-                    for ( byte b1 : type1 )
-                    {
-                        byte b2 = type2[pos];
-
-                        if ( b1 == b2 )
-                        {
-                            pos++;
-                        }
-                        else if ( b1 < b2 )
-                        {
-                            return -1;
-                        }
-                        else
-                        {
-                            return 1;
-                        }
-                    }
-
-                    return 1;
-                }
-                else
-                {
-                    int pos = 0;
-
-                    for ( byte b2 : type2 )
-                    {
-                        byte b1 = type1[pos];
-
-                        if ( b1 == b2 )
-                        {
-                            pos++;
-                        }
-                        else if ( b1 < b2 )
-                        {
-                            return -1;
-                        }
-                        else
-                        {
-                            return 1;
-                        }
-                    }
-
-                    return -11;
-                }
-            }
-        }
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Comparator<byte[]> getComparator()
-    {
-        return comparator;
     }
 }

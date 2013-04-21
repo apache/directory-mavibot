@@ -20,8 +20,10 @@
 package org.apache.mavibot.btree;
 
 
+import java.io.IOException;
+import java.util.LinkedList;
+
 import org.apache.mavibot.btree.serializer.ElementSerializer;
-import org.apache.mavibot.btree.store.RecordManager;
 
 
 /**
@@ -237,5 +239,47 @@ public class BTreeFactory
     public static void setValue( Node page, int pos, ElementHolder value )
     {
         page.setValue( pos, value );
+    }
+    
+
+    /**
+     * Includes the intermediate nodes in the path up to and including the right most leaf of the tree
+     * 
+     * @param btree the btree
+     * @return a LinkedList of all the nodes and the final leaf
+     * @throws IOException
+     */
+    public static LinkedList getPathToRightMostLeaf( BTree btree ) throws IOException
+    {
+        LinkedList<ParentPos> stack = new LinkedList<ParentPos>();
+        
+        ParentPos last = new ParentPos( btree.rootPage, btree.rootPage.getNbElems() );
+        stack.push( last );
+        
+        
+        if( btree.rootPage instanceof Leaf )
+        {
+            InternalUtil.setLastDupsContainer( last, btree );
+        }
+        else
+        {
+            Node node = ( Node ) btree.rootPage;
+            
+            while( true )
+            {
+                Page p = ( Page ) node.children[node.getNbElems()].getValue( btree );
+                
+                last = new ParentPos( p, p.getNbElems() );
+                stack.push( last );
+                
+                if( p instanceof Leaf )
+                {
+                    InternalUtil.setLastDupsContainer( last, btree );
+                    break;
+                }
+            }
+        }
+        
+        return stack;
     }
 }

@@ -26,7 +26,7 @@ import java.util.Comparator;
 
 
 /**
- * This interface is used by implementations of serializer, deserializr and comparator.
+ * This interface is used by implementations of serializer, deserializer and comparator.
  * 
  * @param <T> The type for the element to serialize and compare
  * 
@@ -44,7 +44,7 @@ public interface ElementSerializer<T>
 
 
     /**
-     * Deserialize an element from a byte[]
+     * Deserialize an element from a BufferHandler
      * 
      * @param bufferHandler The incoming bufferHandler
      * @return The deserialized element
@@ -54,9 +54,9 @@ public interface ElementSerializer<T>
 
 
     /**
-     * Deserialize an element from a byte[]
+     * Deserialize an element from a ByteBuffer
      * 
-     * @param buffer The incoming bufferHandler
+     * @param buffer The incoming ByteBuffer
      * @return The deserialized element
      * @throws IOException If the deserialization failed
      */

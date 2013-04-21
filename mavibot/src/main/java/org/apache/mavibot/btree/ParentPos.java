@@ -37,7 +37,12 @@ package org.apache.mavibot.btree;
     /** The current position in the page */
     /* No qualifier*/int pos;
 
+    /** The current position of the duplicate container in the page */
+    /* No qualifier*/int dupPos;
 
+    /** the container of duplicate key's values. The tuples will be stored as <V,null>*/
+    /* No qualifier*/BTree<V, V> dupsContainer;
+    
     /**
      * Creates a new instance of ParentPos
      * @param page The current Page

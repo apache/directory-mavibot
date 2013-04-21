@@ -17,7 +17,7 @@
  *  under the License.
  *
  */
-package org.apache.mavibot.btree.store;
+package org.apache.mavibot.btree;
 
 
 import java.nio.ByteBuffer;
@@ -55,7 +55,7 @@ import org.apache.mavibot.btree.util.Strings;
  *  
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class PageIO
+/* No qualifier*/class PageIO
 {
     /** The contain data */
     private ByteBuffer data;

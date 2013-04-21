@@ -24,29 +24,29 @@ import java.util.Comparator;
 
 
 /**
- * Compares byte arrays.
+ * Compares char arrays
  * 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class ByteArrayComparator implements Comparator<byte[]>
+public class CharArrayComparator implements Comparator<char[]>
 {
     /**
-     * Compare two byte arrays.
+     * Compare two char arrays.
      * 
-     * @param byteArray1 First byteArray
-     * @param byteArray2 Second byteArray
-     * @return 1 if byteArray1 > byteArray2, 0 if byteArray1 == byteArray2, -1 if byteArray1 < byteArray2
+     * @param charArray1 First char array
+     * @param charArray2 Second char array
+     * @return 1 if charArray1 > charArray2, 0 if charArray1 == charArray2, -1 if charArray1 < charArray2
      */
-    public int compare( byte[] byteArray1, byte[] byteArray2 )
+    public int compare( char[] charArray1, char[] charArray2 )
     {
-        if ( byteArray1 == byteArray2 )
+        if ( charArray1 == charArray2 )
         {
             return 0;
         }
 
-        if ( byteArray1 == null )
+        if ( charArray1 == null )
         {
-            if ( byteArray2 == null )
+            if ( charArray2 == null )
             {
                 return 0;
             }
@@ -57,25 +57,25 @@ public class ByteArrayComparator implements Comparator<byte[]>
         }
         else
         {
-            if ( byteArray2 == null )
+            if ( charArray2 == null )
             {
                 return 1;
             }
             else
             {
-                if ( byteArray1.length < byteArray2.length )
+                if ( charArray1.length < charArray2.length )
                 {
                     int pos = 0;
 
-                    for ( byte b1 : byteArray1 )
+                    for ( char char1 : charArray1 )
                     {
-                        byte b2 = byteArray2[pos];
+                        char char2 = charArray2[pos];
 
-                        if ( b1 == b2 )
+                        if ( char1 == char2 )
                         {
                             pos++;
                         }
-                        else if ( b1 < b2 )
+                        else if ( char1 < char2 )
                         {
                             return -1;
                         }
@@ -91,15 +91,15 @@ public class ByteArrayComparator implements Comparator<byte[]>
                 {
                     int pos = 0;
 
-                    for ( byte b2 : byteArray2 )
+                    for ( char char2 : charArray2 )
                     {
-                        byte b1 = byteArray1[pos];
+                        char char1 = charArray1[pos];
 
-                        if ( b1 == b2 )
+                        if ( char1 == char2 )
                         {
                             pos++;
                         }
-                        else if ( b1 < b2 )
+                        else if ( char1 < char2 )
                         {
                             return -1;
                         }
@@ -109,7 +109,7 @@ public class ByteArrayComparator implements Comparator<byte[]>
                         }
                     }
 
-                    if ( pos < byteArray1.length )
+                    if ( pos < charArray1.length )
                     {
                         return 1;
                     }
@@ -120,5 +120,6 @@ public class ByteArrayComparator implements Comparator<byte[]>
                 }
             }
         }
+
     }
 }

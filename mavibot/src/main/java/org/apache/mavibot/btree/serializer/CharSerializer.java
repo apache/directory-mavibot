@@ -22,7 +22,6 @@ package org.apache.mavibot.btree.serializer;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Comparator;
 
 import org.apache.mavibot.btree.comparator.CharComparator;
 
@@ -32,18 +31,14 @@ import org.apache.mavibot.btree.comparator.CharComparator;
  * 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class CharSerializer implements ElementSerializer<Character>
+public class CharSerializer extends AbstractElementSerializer<Character>
 {
-    /** The associated comparator */
-    private final Comparator<Character> comparator;
-
-
     /**
      * Create a new instance of CharSerializer
      */
     public CharSerializer()
     {
-        comparator = new CharComparator();
+        super( new CharComparator() );
     }
 
 
@@ -53,12 +48,39 @@ public class CharSerializer implements ElementSerializer<Character>
     public byte[] serialize( Character element )
     {
         byte[] bytes = new byte[2];
-        char value = element.charValue();
 
-        bytes[0] = ( byte ) ( value >>> 8 );
-        bytes[1] = ( byte ) ( value );
+        return serialize( bytes, 0, element );
+    }
 
-        return bytes;
+
+    /**
+     * Serialize a char
+     * 
+     * @param value the value to serialize
+     * @return The byte[] containing the serialized char
+     */
+    public static byte[] serialize( char value )
+    {
+        byte[] bytes = new byte[2];
+
+        return serialize( bytes, 0, value );
+    }
+
+
+    /**
+     * Serialize a char
+     * 
+     * @param buffer the Buffer that will contain the serialized value
+     * @param start the position in the buffer we will store the serialized char
+     * @param value the value to serialize
+     * @return The byte[] containing the serialized char
+     */
+    public static byte[] serialize( byte[] buffer, int start, char value )
+    {
+        buffer[start] = ( byte ) ( value >>> 8 );
+        buffer[start + 1] = ( byte ) ( value );
+
+        return buffer;
     }
 
 
@@ -69,13 +91,25 @@ public class CharSerializer implements ElementSerializer<Character>
      */
     public static Character deserialize( byte[] in )
     {
-        if ( ( in == null ) || ( in.length < 2 ) )
+        return deserialize( in, 0 );
+    }
+
+
+    /**
+     * A static method used to deserialize a Character from a byte array.
+     * @param in The byte array containing the Character
+    * @param start the position in the byte[] we will deserialize the char from
+     * @return A Character
+     */
+    public static Character deserialize( byte[] in, int start )
+    {
+        if ( ( in == null ) || ( in.length < 2 + start ) )
         {
             throw new RuntimeException( "Cannot extract a Character from a buffer with not enough bytes" );
         }
 
-        return Character.valueOf( ( char ) ( ( in[0] << 8 ) +
-            ( in[1] & 0xFF ) ) );
+        return Character.valueOf( ( char ) ( ( in[start] << 8 ) +
+            ( in[start + 1] & 0xFF ) ) );
     }
 
 
@@ -96,51 +130,5 @@ public class CharSerializer implements ElementSerializer<Character>
         byte[] in = bufferHandler.read( 2 );
 
         return deserialize( in );
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int compare( Character type1, Character type2 )
-    {
-        if ( type1 == type2 )
-        {
-            return 0;
-        }
-
-        if ( type1 == null )
-        {
-            if ( type2 == null )
-            {
-                return 0;
-            }
-            else
-            {
-                return -1;
-            }
-        }
-        else
-        {
-            if ( type2 == null )
-            {
-                return 1;
-            }
-            else
-            {
-                return type1.compareTo( type2 );
-            }
-        }
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Comparator<Character> getComparator()
-    {
-        return comparator;
     }
 }

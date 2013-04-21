@@ -22,7 +22,6 @@ package org.apache.mavibot.btree.serializer;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Comparator;
 
 import org.apache.mavibot.btree.comparator.ShortComparator;
 
@@ -32,18 +31,14 @@ import org.apache.mavibot.btree.comparator.ShortComparator;
  * 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-public class ShortSerializer implements ElementSerializer<Short>
+public class ShortSerializer extends AbstractElementSerializer<Short>
 {
-    /** The associated comparator */
-    private final Comparator<Short> comparator;
-
-
     /**
      * Create a new instance of ShortSerializer
      */
     public ShortSerializer()
     {
-        comparator = new ShortComparator();
+        super( new ShortComparator() );
     }
 
 
@@ -53,12 +48,39 @@ public class ShortSerializer implements ElementSerializer<Short>
     public byte[] serialize( Short element )
     {
         byte[] bytes = new byte[2];
-        short value = element.shortValue();
 
-        bytes[0] = ( byte ) ( value >>> 8 );
-        bytes[1] = ( byte ) ( value );
+        return serialize( bytes, 0, element );
+    }
 
-        return bytes;
+
+    /**
+     * Serialize a short
+     * 
+     * @param value the value to serialize
+     * @return The byte[] containing the serialized short
+     */
+    public static byte[] serialize( short value )
+    {
+        byte[] bytes = new byte[2];
+
+        return serialize( bytes, 0, value );
+    }
+
+
+    /**
+     * Serialize a short
+     * 
+     * @param buffer the Buffer that will contain the serialized value
+     * @param start the position in the buffer we will store the serialized short
+     * @param value the value to serialize
+     * @return The byte[] containing the serialized short
+     */
+    public static byte[] serialize( byte[] buffer, int start, short value )
+    {
+        buffer[start] = ( byte ) ( value >>> 8 );
+        buffer[start + 1] = ( byte ) ( value );
+
+        return buffer;
     }
 
 
@@ -69,12 +91,24 @@ public class ShortSerializer implements ElementSerializer<Short>
      */
     public static Short deserialize( byte[] in )
     {
-        if ( ( in == null ) || ( in.length < 2 ) )
+        return deserialize( in, 0 );
+    }
+
+
+    /**
+     * A static method used to deserialize a Short from a byte array.
+     * @param in The byte array containing the Short
+    * @param start the position in the byte[] we will deserialize the short from
+     * @return A Short
+     */
+    public static Short deserialize( byte[] in, int start )
+    {
+        if ( ( in == null ) || ( in.length < 2 + start ) )
         {
             throw new RuntimeException( "Cannot extract a Short from a buffer with not enough bytes" );
         }
 
-        return ( short ) ( ( in[0] << 8 ) + ( in[1] & 0xFF ) );
+        return ( short ) ( ( in[start] << 8 ) + ( in[start + 1] & 0xFF ) );
     }
 
 
@@ -95,51 +129,5 @@ public class ShortSerializer implements ElementSerializer<Short>
         byte[] in = bufferHandler.read( 2 );
 
         return deserialize( in );
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int compare( Short type1, Short type2 )
-    {
-        if ( type1 == type2 )
-        {
-            return 0;
-        }
-
-        if ( type1 == null )
-        {
-            if ( type2 == null )
-            {
-                return 0;
-            }
-            else
-            {
-                return -1;
-            }
-        }
-        else
-        {
-            if ( type2 == null )
-            {
-                return 1;
-            }
-            else
-            {
-                return type1.compareTo( type2 );
-            }
-        }
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Comparator<Short> getComparator()
-    {
-        return comparator;
     }
 }
