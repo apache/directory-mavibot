@@ -20,6 +20,9 @@
 package org.apache.mavibot.btree;
 
 
+import java.util.List;
+
+
 /**
  * The result of an insert operation, when the page has been split. It contains
  * the new pivotal value, plus the reference on the two new pages.
@@ -28,7 +31,7 @@ package org.apache.mavibot.btree;
  * @param <V> The type for the stored value
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-/* No qualifier */class SplitResult<K, V> implements InsertResult<K, V>
+/* No qualifier */class SplitResult<K, V> extends AbstractResult<K, V> implements InsertResult<K, V>
 {
     /** The left child */
     protected Page<K, V> leftPage;
@@ -48,6 +51,24 @@ package org.apache.mavibot.btree;
      */
     /* No qualifier */SplitResult( K pivot, Page<K, V> leftPage, Page<K, V> rightPage )
     {
+        super();
+        this.pivot = pivot;
+        this.leftPage = leftPage;
+        this.rightPage = rightPage;
+    }
+
+
+    /**
+     * A constructor for SplitResult with copied pages.
+     * 
+     * @param copiedPages the list of copied pages
+     * @param pivot The new key to insert into the parent
+     * @param leftPage The new left page
+     * @param rightPage The new right page
+     */
+    /* No qualifier */SplitResult( List<Page<K, V>> copiedPages, K pivot, Page<K, V> leftPage, Page<K, V> rightPage )
+    {
+        super( copiedPages );
         this.pivot = pivot;
         this.leftPage = leftPage;
         this.rightPage = rightPage;

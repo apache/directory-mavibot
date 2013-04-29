@@ -20,13 +20,14 @@
 package org.apache.mavibot.btree;
 
 
+import static org.apache.mavibot.btree.InternalUtil.setDupsContainer;
+
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.LinkedList;
 
 import org.apache.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.mavibot.btree.exception.KeyNotFoundException;
-import static org.apache.mavibot.btree.InternalUtil.*;
 
 
 /**
@@ -107,6 +108,7 @@ import static org.apache.mavibot.btree.InternalUtil.*;
             Page<K, V> modifiedPage = addElement( revision, key, value, pos );
 
             InsertResult<K, V> result = new ModifyResult<K, V>( modifiedPage, null );
+            result.addCopiedPage( this );
 
             return result;
         }
@@ -115,6 +117,7 @@ import static org.apache.mavibot.btree.InternalUtil.*;
             // The Page is already full : we split it and return the overflow element,
             // after having created two pages.
             InsertResult<K, V> result = addAndSplit( revision, key, value, pos );
+            result.addCopiedPage( this );
 
             return result;
         }
@@ -154,8 +157,6 @@ import static org.apache.mavibot.btree.InternalUtil.*;
 
         if ( btree.isAllowDuplicates() )
         {
-            if ( value == null )
-                ;
             BTree<V, V> dups = ( BTree<V, V> ) values[index].getValue( btree );
 
             if ( dups.hasKey( value ) )
@@ -220,6 +221,9 @@ import static org.apache.mavibot.btree.InternalUtil.*;
             // Just remove the entry if it's present
             copyAfterRemovingElement( keyRemoved, newLeaf, index );
 
+            // The current page is added in the copied page list
+            defaultResult.addCopiedPage( this );
+
             return defaultResult;
         }
         else if ( keyRemoved )
@@ -270,6 +274,9 @@ import static org.apache.mavibot.btree.InternalUtil.*;
                 // we return the new pivot (it will replace any instance of the removed
                 // key in its parents)
                 copyAfterRemovingElement( keyRemoved, newLeaf, index );
+
+                // The current page is added in the copied page list
+                defaultResult.addCopiedPage( this );
 
                 return defaultResult;
             }
@@ -332,6 +339,9 @@ import static org.apache.mavibot.btree.InternalUtil.*;
         DeleteResult<K, V> result = new MergedWithSiblingResult<K, V>( newLeaf,
             removedElement );
 
+        result.addCopiedPage( this );
+        result.addCopiedPage( sibling );
+
         return result;
     }
 
@@ -374,6 +384,10 @@ import static org.apache.mavibot.btree.InternalUtil.*;
         System.arraycopy( values, pos + 1, newLeaf.values, pos + 1, values.length - pos - 1 );
 
         DeleteResult<K, V> result = new BorrowedFromLeftResult<K, V>( newLeaf, newSibling, removedElement );
+
+        // Add the copied pages to the list
+        result.addCopiedPage( this );
+        result.addCopiedPage( sibling );
 
         return result;
     }
@@ -421,6 +435,10 @@ import static org.apache.mavibot.btree.InternalUtil.*;
         System.arraycopy( values, pos + 1, newLeaf.values, pos, values.length - pos - 1 );
 
         DeleteResult<K, V> result = new BorrowedFromRightResult<K, V>( newLeaf, newSibling, removedElement );
+
+        // Add the copied pages to the list
+        result.addCopiedPage( this );
+        result.addCopiedPage( sibling );
 
         return result;
     }
@@ -495,11 +513,11 @@ import static org.apache.mavibot.btree.InternalUtil.*;
     @Override
     public BTree<V, V> getValues( K key ) throws KeyNotFoundException, IOException, IllegalArgumentException
     {
-        if( !btree.isAllowDuplicates() )
+        if ( !btree.isAllowDuplicates() )
         {
             throw new IllegalArgumentException( "Duplicates are not allowed in this tree" );
         }
-        
+
         int pos = findPos( key );
 
         if ( pos < 0 )
@@ -704,6 +722,7 @@ import static org.apache.mavibot.btree.InternalUtil.*;
         if ( btree.isAllowDuplicates() )
         {
             BTree<V, V> dupValues = ( BTree<V, V> ) newLeaf.values[pos].getValue( btree );
+
             // return value will always be null  here 
             if ( !dupValues.hasKey( value ) )
             {
@@ -723,6 +742,7 @@ import static org.apache.mavibot.btree.InternalUtil.*;
 
         // Create the result
         InsertResult<K, V> result = new ModifyResult<K, V>( newLeaf, oldValue );
+        result.addCopiedPage( this );
 
         return result;
     }

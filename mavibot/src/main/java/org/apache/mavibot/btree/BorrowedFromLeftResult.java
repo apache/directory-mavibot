@@ -20,6 +20,9 @@
 package org.apache.mavibot.btree;
 
 
+import java.util.List;
+
+
 /**
  * The result of a delete operation, when the child has not been merged, and when
  * we have borrowed an element from the left sibling. It contains the
@@ -43,6 +46,23 @@ package org.apache.mavibot.btree;
         Tuple<K, V> removedElement )
     {
         super( modifiedPage, modifiedSibling, removedElement, AbstractBorrowedFromSiblingResult.SiblingPosition.LEFT );
+    }
+
+
+    /**
+     * A constructor for BorrowedFromLeftResult which takes a list of copied pages.
+     * 
+     * @param copiedPages the list of copied pages
+     * @param modifiedPage The modified page
+     * @param modifiedSibling The modified sibling
+     * @param removedElement The removed element (can be null if the key wasn't present in the tree)
+     */
+    /* No qualifier */BorrowedFromLeftResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage,
+        Page<K, V> modifiedSibling,
+        Tuple<K, V> removedElement )
+    {
+        super( copiedPages, modifiedPage, modifiedSibling, removedElement,
+            AbstractBorrowedFromSiblingResult.SiblingPosition.LEFT );
     }
 
 

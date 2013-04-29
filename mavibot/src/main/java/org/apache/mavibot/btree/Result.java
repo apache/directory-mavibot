@@ -20,16 +20,28 @@
 package org.apache.mavibot.btree;
 
 
+import java.util.List;
+
+
 /**
- * The result of an insert operation. This is just a container that stores either
- * the new pivot that has been extracted after a page split, or a modified page if
- * the child page hasn't been split.
+ * The result of an insert or delete operation.
  * 
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-interface InsertResult<K, V> extends Result<K, V>
+/* No qualifier */interface Result<K, V>
 {
+    /**
+     * @return the copiedPage
+     */
+    /* No qualifier */List<Page<K, V>> getCopiedPages();
+
+
+    /**
+     * Add a new copied page
+     * @param copiedPage the added page
+     */
+    /* No qualifier */void addCopiedPage( Page<K, V> copiedPage );
 }

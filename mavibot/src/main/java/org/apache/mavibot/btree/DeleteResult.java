@@ -28,7 +28,7 @@ package org.apache.mavibot.btree;
 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-interface DeleteResult<K, V>
+interface DeleteResult<K, V> extends Result<K, V>
 {
     /**
      * @return the modifiedPage

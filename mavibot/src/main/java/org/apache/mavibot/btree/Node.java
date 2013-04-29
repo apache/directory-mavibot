@@ -23,6 +23,7 @@ package org.apache.mavibot.btree;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.LinkedList;
+import java.util.List;
 
 import org.apache.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.mavibot.btree.exception.KeyNotFoundException;
@@ -180,12 +181,12 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
             if ( nbElems == btree.getPageSize() )
             {
                 // The page is full
-                result = addAndSplit( revision, pivot, leftPage, rightPage, pos );
+                result = addAndSplit( splitResult.getCopiedPages(), revision, pivot, leftPage, rightPage, pos );
             }
             else
             {
                 // The page can contain the new pivot, let's insert it
-                result = insertChild( revision, pivot, leftPage, rightPage, pos );
+                result = insertChild( splitResult.getCopiedPages(), revision, pivot, leftPage, rightPage, pos );
             }
 
             return result;
@@ -230,6 +231,7 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
 
         // Modify the result and return
         removeResult.setModifiedPage( newPage );
+        removeResult.addCopiedPage( this );
 
         return removeResult;
     }
@@ -254,8 +256,10 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
         // the new root. Deal with this case
         if ( nbElems == 1 )
         {
-            removeResult = new RemoveResult<K, V>( mergedResult.getModifiedPage(),
+            removeResult = new RemoveResult<K, V>( mergedResult.getCopiedPages(), mergedResult.getModifiedPage(),
                 mergedResult.getRemovedElement() );
+
+            removeResult.addCopiedPage( this );
         }
         else
         {
@@ -342,8 +346,11 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
         }
 
         // Create the result
-        DeleteResult<K, V> result = new BorrowedFromRightResult<K, V>( newNode, newSibling,
-            mergedResult.getRemovedElement() );
+        DeleteResult<K, V> result = new BorrowedFromRightResult<K, V>( mergedResult.getCopiedPages(), newNode,
+            newSibling, mergedResult.getRemovedElement() );
+
+        result.addCopiedPage( this );
+        result.addCopiedPage( sibling );
 
         return result;
     }
@@ -423,8 +430,12 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
         }
 
         // Create the result
-        DeleteResult<K, V> result = new BorrowedFromLeftResult<K, V>( newNode, newSibling,
+        DeleteResult<K, V> result = new BorrowedFromLeftResult<K, V>( mergedResult.getCopiedPages(), newNode,
+            newSibling,
             mergedResult.getRemovedElement() );
+
+        result.addCopiedPage( this );
+        result.addCopiedPage( sibling );
 
         return result;
     }
@@ -551,7 +562,11 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
         }
 
         // And create the result
-        DeleteResult<K, V> result = new MergedWithSiblingResult<K, V>( newNode, removedElement );
+        DeleteResult<K, V> result = new MergedWithSiblingResult<K, V>( mergedResult.getCopiedPages(), newNode,
+            removedElement );
+
+        result.addCopiedPage( this );
+        result.addCopiedPage( sibling );
 
         return result;
     }
@@ -742,8 +757,10 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
         }
 
         // Modify the result and return
-        RemoveResult<K, V> removeResult = new RemoveResult<K, V>( newPage,
+        RemoveResult<K, V> removeResult = new RemoveResult<K, V>( borrowedResult.getCopiedPages(), newPage,
             borrowedResult.getRemovedElement() );
+
+        removeResult.addCopiedPage( this );
 
         return removeResult;
     }
@@ -803,7 +820,10 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
         }
 
         // Create the result
-        RemoveResult<K, V> result = new RemoveResult<K, V>( newNode, mergedResult.getRemovedElement() );
+        RemoveResult<K, V> result = new RemoveResult<K, V>( mergedResult.getCopiedPages(), newNode,
+            mergedResult.getRemovedElement() );
+
+        result.addCopiedPage( this );
 
         return result;
     }
@@ -978,6 +998,8 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
         // to avoid the creation of a new object
         result.modifiedPage = newPage;
 
+        result.addCopiedPage( this );
+
         return result;
     }
 
@@ -1014,6 +1036,7 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
      * Adds a new key into a copy of the current page at a given position. We return the
      * modified page. The new page will have one more key than the current page.
      * 
+     * @param copiedPages the list of copied pages
      * @param revision The revision of the modified page
      * @param key The key to insert
      * @param leftPage The left child
@@ -1022,7 +1045,8 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
      * @return The modified page with the <K,V> element added
      * @throws IOException If we have an error while trying to access the page
      */
-    private InsertResult<K, V> insertChild( long revision, K key, Page<K, V> leftPage, Page<K, V> rightPage, int pos )
+    private InsertResult<K, V> insertChild( List<Page<K, V>> copiedPages, long revision, K key, Page<K, V> leftPage,
+        Page<K, V> rightPage, int pos )
         throws IOException
     {
         // First copy the current page, but add one element in the copied page
@@ -1051,7 +1075,8 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
         }
 
         // Create the result
-        InsertResult<K, V> result = new ModifyResult<K, V>( newNode, null );
+        InsertResult<K, V> result = new ModifyResult<K, V>( copiedPages, newNode, null );
+        result.addCopiedPage( this );
 
         return result;
     }
@@ -1066,6 +1091,7 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
      * as a pivot. Otherwise, we will use either the last element in the left page if the element is added
      * on the left, or the first element in the right page if it's added on the right.
      * 
+     * @param copiedPages the list of copied pages
      * @param revision The new revision for all the created pages
      * @param pivot The key that will be move up after the split
      * @param leftPage The left child
@@ -1074,8 +1100,8 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
      * @return An OverflowPage containing the pivot, and the new left and right pages
      * @throws IOException If we have an error while trying to access the page
      */
-    private InsertResult<K, V> addAndSplit( long revision, K pivot, Page<K, V> leftPage, Page<K, V> rightPage, int pos )
-        throws IOException
+    private InsertResult<K, V> addAndSplit( List<Page<K, V>> copiedPages, long revision, K pivot, Page<K, V> leftPage,
+        Page<K, V> rightPage, int pos ) throws IOException
     {
         int middle = btree.getPageSize() >> 1;
 
@@ -1106,7 +1132,8 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
             System.arraycopy( children, middle, newRightPage.children, 0, middle + 1 );
 
             // Create the result
-            InsertResult<K, V> result = new SplitResult<K, V>( keys[middle - 1], newLeftPage, newRightPage );
+            InsertResult<K, V> result = new SplitResult<K, V>( copiedPages, keys[middle - 1], newLeftPage, newRightPage );
+            result.addCopiedPage( this );
 
             return result;
         }
@@ -1125,7 +1152,8 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
             newRightPage.children[0] = createHolder( rightPage );
 
             // Create the result
-            InsertResult<K, V> result = new SplitResult<K, V>( pivot, newLeftPage, newRightPage );
+            InsertResult<K, V> result = new SplitResult<K, V>( copiedPages, pivot, newLeftPage, newRightPage );
+            result.addCopiedPage( this );
 
             return result;
         }
@@ -1149,7 +1177,8 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
             System.arraycopy( children, pos + 1, newRightPage.children, pos + 1 - middle, nbElems - pos );
 
             // Create the result
-            InsertResult<K, V> result = new SplitResult<K, V>( keys[middle], newLeftPage, newRightPage );
+            InsertResult<K, V> result = new SplitResult<K, V>( copiedPages, keys[middle], newLeftPage, newRightPage );
+            result.addCopiedPage( this );
 
             return result;
         }

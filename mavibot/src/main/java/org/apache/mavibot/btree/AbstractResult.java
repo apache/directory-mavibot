@@ -20,16 +20,59 @@
 package org.apache.mavibot.btree;
 
 
+import java.util.ArrayList;
+import java.util.List;
+
+
 /**
- * The result of an insert operation. This is just a container that stores either
- * the new pivot that has been extracted after a page split, or a modified page if
- * the child page hasn't been split.
+ * An abstract class to gather common elements of the Result classes
  * 
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-interface InsertResult<K, V> extends Result<K, V>
+/* No qualifier */abstract class AbstractResult<K, V> implements Result<K, V>
 {
+    /** The list of copied page reference */
+    private List<Page<K, V>> copiedPage;
+
+
+    /**
+     * The default constructor for AbstractResult.
+     * 
+     */
+    /* No qualifier */AbstractResult()
+    {
+        copiedPage = new ArrayList<Page<K, V>>();
+    }
+
+
+    /**
+     * Creates an instance of AbstractResult with an initialized list of copied pages.
+     * 
+     * @param copiedPages The list of copied pages to store in this result
+     */
+    /* No qualifier */AbstractResult( List<Page<K, V>> copiedPages )
+    {
+        this.copiedPage = copiedPages;
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public List<Page<K, V>> getCopiedPages()
+    {
+        return copiedPage;
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public void addCopiedPage( Page<K, V> page )
+    {
+        copiedPage.add( page );
+    }
 }

@@ -20,6 +20,9 @@
 package org.apache.mavibot.btree;
 
 
+import java.util.List;
+
+
 /**
  * The result of an insert operation, when the child has not been split. It contains the
  * reference to the modified page.
@@ -29,7 +32,7 @@ package org.apache.mavibot.btree;
 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-/* No qualifier */class ModifyResult<K, V> implements InsertResult<K, V>
+/* No qualifier */class ModifyResult<K, V> extends AbstractResult<K, V> implements InsertResult<K, V>
 {
     /** The modified page reference */
     protected Page<K, V> modifiedPage;
@@ -46,6 +49,22 @@ package org.apache.mavibot.btree;
      */
     /* No qualifier */ModifyResult( Page<K, V> modifiedPage, V modifiedValue )
     {
+        super();
+        this.modifiedPage = modifiedPage;
+        this.modifiedValue = modifiedValue;
+    }
+
+
+    /**
+     * A constructor for ModifyResult which takes a list of copied pages.
+     * 
+     * @param copiedPages the list of copied pages
+     * @param modifiedPage The modified page
+     * @param modifiedvalue The modified value (can be null if the key wasn't present in the tree)
+     */
+    /* No qualifier */ModifyResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage, V modifiedValue )
+    {
+        super( copiedPages );
         this.modifiedPage = modifiedPage;
         this.modifiedValue = modifiedValue;
     }

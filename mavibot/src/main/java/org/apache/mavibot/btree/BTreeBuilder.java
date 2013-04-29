@@ -43,11 +43,11 @@ import org.apache.mavibot.btree.serializer.ElementSerializer;
 public class BTreeBuilder<K, V>
 {
     private String name;
-    
+
     private int numKeysInNode;
-    
+
     private ElementSerializer<K> keySerializer;
-    
+
     private ElementSerializer<V> valueSerializer;
 
 
@@ -67,9 +67,9 @@ public class BTreeBuilder<K, V>
         btree.init();
 
         List<Page<K, V>> lstLeaves = new ArrayList<Page<K, V>>();
-        
+
         int totalTupleCount = 0;
-        
+
         Leaf<K, V> leaf1 = createLeaf( btree, 0, numKeysInNode );
         lstLeaves.add( leaf1 );
 

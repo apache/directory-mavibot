@@ -20,6 +20,9 @@
 package org.apache.mavibot.btree;
 
 
+import java.util.List;
+
+
 /**
  * The result of a delete operation, when the child has not been merged. It contains the
  * reference to the modified page, and the removed element.
@@ -40,6 +43,19 @@ package org.apache.mavibot.btree;
     /* No qualifier */RemoveResult( Page<K, V> modifiedPage, Tuple<K, V> removedElement )
     {
         super( modifiedPage, removedElement );
+    }
+
+
+    /**
+     * A constructor for RemoveResult which takes a list of copied pages.
+     * 
+     * @param copiedPages the list of copied pages
+     * @param modifiedPage The modified page
+     * @param removedElement The removed element (can be null if the key wasn't present in the tree)
+     */
+    /* No qualifier */RemoveResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage, Tuple<K, V> removedElement )
+    {
+        super( copiedPages, modifiedPage, removedElement );
     }
 
 

@@ -28,7 +28,7 @@ package org.apache.mavibot.btree;
 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-/* No qualifier */class NotPresentResult<K, V> implements DeleteResult<K, V>
+/* No qualifier */class NotPresentResult<K, V> extends AbstractResult<K, V> implements DeleteResult<K, V>
 {
     /** The unique instance for this class */
     @SuppressWarnings("rawtypes")

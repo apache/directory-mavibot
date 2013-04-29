@@ -20,6 +20,9 @@
 package org.apache.mavibot.btree;
 
 
+import java.util.List;
+
+
 /**
  * An abstract class to gather common elements of the DeleteResult
  * 
@@ -28,7 +31,7 @@ package org.apache.mavibot.btree;
 
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-/* No qualifier */abstract class AbstractDeleteResult<K, V> implements DeleteResult<K, V>
+/* No qualifier */abstract class AbstractDeleteResult<K, V> extends AbstractResult<K, V> implements DeleteResult<K, V>
 {
     /** The modified page reference */
     private Page<K, V> modifiedPage;
@@ -45,6 +48,23 @@ package org.apache.mavibot.btree;
      */
     /* No qualifier */AbstractDeleteResult( Page<K, V> modifiedPage, Tuple<K, V> removedElement )
     {
+        super();
+        this.modifiedPage = modifiedPage;
+        this.removedElement = removedElement;
+    }
+
+
+    /**
+     * The default constructor for AbstractDeleteResult.
+     * 
+     * @param copiedPages the list of copied pages
+     * @param modifiedPage The modified page
+     * @param removedElement The removed element (can be null if the key wasn't present in the tree)
+     */
+    /* No qualifier */AbstractDeleteResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage,
+        Tuple<K, V> removedElement )
+    {
+        super( copiedPages );
         this.modifiedPage = modifiedPage;
         this.removedElement = removedElement;
     }
