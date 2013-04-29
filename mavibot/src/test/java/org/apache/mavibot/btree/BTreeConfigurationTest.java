@@ -118,26 +118,47 @@ public class BTreeConfigurationTest
         config.setPageSize( 32 );
         config.setSerializers( new IntSerializer(), new StringSerializer() );
 
-        // Create the BTree
-        BTree<Integer, String> btree = new BTree<Integer, String>( config );
-
-        // Inject the values
-        for ( int value : sortedValues )
+        try
         {
-            String strValue = "V" + value;
+            // Create the BTree
+            BTree<Integer, String> btree = new BTree<Integer, String>( config );
 
-            btree.insert( value, strValue );
+            // Inject the values
+            for ( int value : sortedValues )
+            {
+                String strValue = "V" + value;
+
+                btree.insert( value, strValue );
+            }
+
+            // Check that the tree contains all the values
+            for ( int key : sortedValues )
+            {
+                String value = btree.get( key );
+
+                assertNotNull( value );
+            }
+
+            btree.close();
         }
-
-        // Check that the tree contains all the values
-        for ( int key : sortedValues )
+        finally
         {
-            String value = btree.get( key );
+            // Erase the mavibot file now
+            File mavibotFile = new File( "", "mavibot" );
 
-            assertNotNull( value );
+            if ( mavibotFile.exists() )
+            {
+                mavibotFile.delete();
+            }
+
+            // Erase the journal too
+            File mavibotJournal = new File( "", "mavibot.log" );
+
+            if ( mavibotJournal.exists() )
+            {
+                mavibotJournal.delete();
+            }
         }
-
-        btree.close();
     }
 
 
@@ -200,7 +221,7 @@ public class BTreeConfigurationTest
         finally
         {
             // Erase the mavibot file now
-            File mavibotFile = new File( parent, "mavibot" );
+            File mavibotFile = new File( parent, "mavibot.db" );
 
             if ( mavibotFile.exists() )
             {
@@ -208,7 +229,7 @@ public class BTreeConfigurationTest
             }
 
             // Erase the journal too
-            File mavibotJournal = new File( parent, "mavibot.log" );
+            File mavibotJournal = new File( parent, "mavibot.db.log" );
 
             if ( mavibotJournal.exists() )
             {
