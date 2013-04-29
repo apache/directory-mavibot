@@ -760,8 +760,13 @@ public class BTree<K, V>
             // Commented atm, we will have to play around the idea of transactions later
             writeLock.lock();
 
-            existingValue = insert( key, value, revision );
+            InsertResult<K, V> result = insert( key, value, revision );
 
+            if( result instanceof ModifyResult )
+            {
+                existingValue = ( ( ModifyResult<K, V> ) result ).getModifiedValue();
+            }
+            
             // If the BTree is managed, we have to update the rootPage on disk
             if ( isManaged() )
             {
@@ -1161,9 +1166,9 @@ public class BTree<K, V>
      * @param key Inserted key
      * @param value Inserted value
      * @param revision The revision to use
-     * @return Existing value, if any.
+     * @return an instance of the InsertResult.
      */
-    /*No qualifier*/V insert( K key, V value, long revision ) throws IOException
+    /*No qualifier*/InsertResult<K, V> insert( K key, V value, long revision ) throws IOException
     {
         if ( key == null )
         {
@@ -1284,7 +1289,7 @@ public class BTree<K, V>
         }
 
         // Return the value we have found if it was modified
-        return modifiedValue;
+        return result;
     }
 
 
@@ -1869,7 +1874,7 @@ public class BTree<K, V>
         this.keepRevisions = keepRevisions;
     }
 
-
+    
     /**
      * @see Object#toString()
      */
