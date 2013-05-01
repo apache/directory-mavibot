@@ -26,7 +26,7 @@ import org.apache.mavibot.btree.util.Strings;
 
 
 /**
- * A structure containing a Page on disk. It's a byte[PageSize] plus a few informations like
+ * A structure containing a Page on disk. It's a byte[PageSize] plus a few more details like
  * the page offset on disk and a link to the next page.</br>
  * As we may need more than one Page to store some data, the PageIO are linked so that
  * the list of all the PageIO contain the full data.</br>

@@ -130,6 +130,7 @@ public class BTree<K, V>
     /** A flag set to true if we want to keep old revisions */
     private boolean keepRevisions = false;
 
+    private File envDir;
 
     /**
      * Create a thread that is responsible of cleaning the transactions when
@@ -333,31 +334,13 @@ public class BTree<K, V>
         
         String filePath = configuration.getFilePath();
         
-        if ( filePath == null )
+        if ( filePath != null )
         {
-            type = BTreeTypeEnum.IN_MEMORY;
-        }
-        else
-        {
-            File dir = new File( filePath );
-            if( !dir.exists() )
-            {
-                boolean created = dir.mkdirs();
-                if( !created )
-                {
-                    throw new IllegalStateException( "Could not create the directory " + filePath + " for storing data" );
-                }
-            }
-            
-            this.file = new File( dir, configuration.getName() + DATA_SUFFIX );
-
-            this.journal = new File( dir, file.getName() + JOURNAL_SUFFIX );
-
-            type = BTreeTypeEnum.PERSISTENT;
+            envDir = new File( filePath );
         }
 
         btreeHeader = new BTreeHeader();
-        btreeHeader.setName( configuration.getName() );
+        btreeHeader.setName( name );
         btreeHeader.setPageSize( configuration.getPageSize() );
         keySerializer = configuration.getKeySerializer();
         valueSerializer = configuration.getValueSerializer();
@@ -417,41 +400,28 @@ public class BTree<K, V>
 
 
     /**
-     * Creates a new BTree with a specific page size and a comparator, with an associated file.
-     * @param pageSize The number of elements we can store in a page
-     * @param comparator The comparator to use
-     * @param serializer The serializer to use
+     * 
+     * Creates a new instance of BTree with the given name and store it under the given dataDir if provided.
+     *
+     * @param name the name of the BTree
+     * @param dataDir the name of the data directory with absolute path
+     * @param keySerializer key serializer
+     * @param valueSerializer value serializer
+     * @param pageSize size of the page
+     * @throws IOException
      */
-    public BTree( String name, String path, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer,
+    public BTree( String name, String dataDir, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer,
         int pageSize )
         throws IOException
     {
         btreeHeader = new BTreeHeader();
         btreeHeader.setName( name );
 
-        if ( path == null )
+        if( dataDir != null )
         {
-            type = BTreeTypeEnum.IN_MEMORY;
+            envDir = new File( dataDir );
         }
-        else
-        {
-            File dir = new File( path );
-            if( !dir.exists() )
-            {
-                boolean created = dir.mkdirs();
-                if( !created )
-                {
-                    throw new IllegalStateException( "Could not create the directory " + path + " for storing data" );
-                }
-            }
-            
-            this.file = new File( dir, name + DATA_SUFFIX );
-
-            this.journal = new File( dir, file.getName() + JOURNAL_SUFFIX );
-
-            type = BTreeTypeEnum.PERSISTENT;
-        }
-
+        
         setPageSize( pageSize );
         writeBufferSize = DEFAULT_WRITE_BUFFER_SIZE;
 
@@ -481,14 +451,33 @@ public class BTree<K, V>
      */
     public void init() throws IOException
     {
+        if ( envDir == null )
+        {
+            type = BTreeTypeEnum.IN_MEMORY;
+        }
+        else
+        {
+            if( !envDir.exists() )
+            {
+                boolean created = envDir.mkdirs();
+                if( !created )
+                {
+                    throw new IllegalStateException( "Could not create the directory " + envDir + " for storing data" );
+                }
+            }
+            
+            this.file = new File( envDir, btreeHeader.getName() + DATA_SUFFIX );
+
+            // if not in-memory then default to persist mode instead of managed
+            if( type != BTreeTypeEnum.MANAGED )
+            {
+                this.journal = new File( envDir, file.getName() + JOURNAL_SUFFIX );
+                type = BTreeTypeEnum.PERSISTENT;
+            }
+        }
+
         // Create the queue containing the pending read transactions
         readTransactions = new ConcurrentLinkedQueue<Transaction<K, V>>();
-
-        // Create the queue containing the modifications, if it's not a in-memory btree
-        if ( type == BTreeTypeEnum.PERSISTENT )
-        {
-            modificationsQueue = new LinkedBlockingDeque<Modification<K, V>>();
-        }
 
         // We will extract the Type to use for keys, using the comparator for that
         Class<?> comparatorClass = comparator.getClass();
@@ -503,64 +492,32 @@ public class BTree<K, V>
         writeLock = new ReentrantLock();
 
         // Check the files and create them if missing
-        if ( file != null )
+        // Create the queue containing the modifications, if it's not a in-memory btree
+        if ( type == BTreeTypeEnum.PERSISTENT )
         {
-            if ( !file.exists() )
+            modificationsQueue = new LinkedBlockingDeque<Modification<K, V>>();
+            
+            if ( file.length() > 0 )
             {
-                file.createNewFile();
-
-                if ( journal == null )
-                {
-                    journal = new File( file.getParentFile(), BTree.DEFAULT_JOURNAL );
-                }
-
-                journal.createNewFile();
-                withJournal = true;
-
-                // If the journal is not empty, we have to read it
-                // and to apply all the modifications to the current file
-                if ( journal.length() > 0 )
-                {
-                    applyJournal();
-                }
+                // We have some existing file, load it 
+                load( file );
             }
-            else
+            
+            withJournal = true;
+            
+            // If the journal is not empty, we have to read it
+            // and to apply all the modifications to the current file
+            if ( journal.length() > 0 )
             {
-                if ( file.length() > 0 )
-                {
-                    // We have some existing file, load it 
-                    load( file );
-                }
-
-                if ( journal == null )
-                {
-                    journal = new File( file.getParentFile(), BTree.DEFAULT_JOURNAL );
-                }
-
-                journal.createNewFile();
-                withJournal = true;
-
-                // If the journal is not empty, we have to read it
-                // and to apply all the modifications to the current file
-                if ( journal.length() > 0 )
-                {
-                    applyJournal();
-                }
+                applyJournal();
             }
-        }
-        else
-        {
-            withJournal = false;
+            
+            // Initialize the Journal manager thread if it's not a in-memory btree
+            createJournalManager();
         }
 
         // Initialize the txnManager thread
         createTransactionManager();
-
-        // Initialize the Journal manager thread if it's not a in-memory btree
-        if ( ( type == BTreeTypeEnum.PERSISTENT ) && withJournal )
-        {
-            createJournalManager();
-        }
     }
 
 

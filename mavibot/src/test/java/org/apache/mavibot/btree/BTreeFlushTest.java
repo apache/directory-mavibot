@@ -218,7 +218,6 @@ public class BTreeFlushTest
         tempFile.delete();
 
         BTree<Integer, String> btree = new BTree<Integer, String>( "test", path, new IntSerializer(), new StringSerializer() );
-        btree.setName( "flush" );
         btree.setPageSize( 8 );
         
         File journal = btree.getJournal();

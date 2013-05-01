@@ -48,8 +48,8 @@ import org.slf4j.LoggerFactory;
  * A RecordManager will manage more than one BTree.<br/>
  * 
  * It stores data in fixed size pages (default size is 4Kb), which may be linked one to 
- * the other if the data we want to store is too bug for a page.
- * if 
+ * the other if the data we want to store is too big for a page.
+ *  
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
 public class RecordManager
@@ -78,7 +78,7 @@ public class RecordManager
 
     /** 
      * A Btree used to manage the page that has been copied in a new version.
-     * Those page can be reclaimed when the associated version is dead. 
+     * Those pages can be reclaimed when the associated version is dead. 
      **/
     private BTree<Integer, long[]> copiedPageBTree;
 
@@ -134,7 +134,7 @@ public class RecordManager
 
     /**
      * Create a Record manager which will either create the underlying file
-     * or load an existing one. If a folder is provider, then we will create
+     * or load an existing one. If a folder is provided, then we will create
      * a file with a default name : mavibot.db
      * 
      * @param name The file name, or a folder name
@@ -223,8 +223,8 @@ public class RecordManager
         }
         catch ( Exception e )
         {
-            e.printStackTrace();
             LOG.error( "Error while initializing the RecordManager : {}", e.getMessage() );
+            LOG.error( "", e );
         }
     }
 
@@ -234,7 +234,7 @@ public class RecordManager
      * a BTree to manage the old revisions we want to keep and
      * a BTree used to manage pages associated with old versions.
      * <br/>
-     * The Header contains the following informations :
+     * The Header contains the following details :
      * <pre>
      * +-----------+
      * | PageSize  | 4 bytes : The size of a physical page (default to 4096)
@@ -941,7 +941,7 @@ public class RecordManager
 
         lastAddedBTreeOffset = btreeOffset;
 
-        // Last, not last, update the number of managed BTrees in the header
+        // Last, not least, update the number of managed BTrees in the header
         updateRecordManagerHeader();
     }
 
@@ -1590,7 +1590,7 @@ public class RecordManager
 
 
     /**
-     * Get as many pages as needed to store the data which size is provided
+     * Get as many pages as needed to store the data of the given size
      *  
      * @param dataSize The data size
      * @return An array of pages, enough to store the full data
@@ -1624,7 +1624,7 @@ public class RecordManager
 
 
     /**
-     * Return a new Page. We take one of the existing free page, or we create
+     * Return a new Page. We take one of the existing free pages, or we create
      * a new page at the end of the file.
      * 
      * @return The fetched PageIO
