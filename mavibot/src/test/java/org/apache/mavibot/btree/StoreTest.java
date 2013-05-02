@@ -26,8 +26,6 @@ import java.io.File;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 
-import org.apache.mavibot.btree.PageIO;
-import org.apache.mavibot.btree.RecordManager;
 import org.junit.Test;
 
 
@@ -48,7 +46,7 @@ public class StoreTest
         String tempFileName = tempFile.getAbsolutePath();
         tempFile.deleteOnExit();
 
-        RecordManager recordManager = new RecordManager( tempFileName );
+        RecordManager recordManager = new RecordManager( tempFileName, 4 * 1024 );
         Method method = RecordManager.class.getDeclaredMethod( "store", long.class, int.class, PageIO[].class );
         method.setAccessible( true );
 
@@ -137,7 +135,7 @@ public class StoreTest
         String tempFileName = tempFile.getAbsolutePath();
         tempFile.deleteOnExit();
 
-        RecordManager recordManager = new RecordManager( tempFileName );
+        RecordManager recordManager = new RecordManager( tempFileName, 4 * 1024 );
         Method method = RecordManager.class.getDeclaredMethod( "store", long.class, long.class, PageIO[].class );
         method.setAccessible( true );
 
