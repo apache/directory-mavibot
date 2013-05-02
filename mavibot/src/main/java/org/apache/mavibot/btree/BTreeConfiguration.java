@@ -84,6 +84,9 @@ public class BTreeConfiguration<K, V>
     /** Flag to enable duplicate key support */
     private boolean allowDuplicates;
 
+    /** the type of BTree */
+    private BTreeTypeEnum type;
+    
     /**
      * @return the pageSize
      */
@@ -294,6 +297,26 @@ public class BTreeConfiguration<K, V>
     public void setAllowDuplicates( boolean allowDuplicates )
     {
         this.allowDuplicates = allowDuplicates;
+    }
+
+
+    /**
+     * @return the type of BTree
+     */
+    public BTreeTypeEnum getType()
+    {
+        return type;
+    }
+
+
+    /**
+     * Sets the type of the BTree
+     * 
+     * @param type the type of the tree
+     */
+    public void setType( BTreeTypeEnum type )
+    {
+        this.type = type;
     }
 
 }
