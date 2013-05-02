@@ -32,13 +32,17 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import org.apache.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.mavibot.btree.serializer.LongSerializer;
 import org.apache.mavibot.btree.serializer.StringSerializer;
+import org.junit.Before;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 
 /**
@@ -47,32 +51,66 @@ import org.junit.Test;
  */
 public class RecordManagerTest
 {
+    private BTree<Long, String> btree = null;
+
+    private RecordManager recordManager1 = null;
+
+    @Rule
+    public TemporaryFolder tempFolder = new TemporaryFolder();
+
+    private File dataDir = null;
+
+
+    @Before
+    public void createBTree()
+    {
+        dataDir = tempFolder.newFolder( UUID.randomUUID().toString() );
+        
+        openRecordManagerAndBtree();
+
+        try
+        {
+            // Create a new BTree
+            btree = ( BTree<Long, String> ) recordManager1.addBTree( "test", new LongSerializer(), new StringSerializer(), false );
+        }
+        catch( Exception e )
+        {
+            throw new RuntimeException( e );
+        }
+    }
+
+
+    private void openRecordManagerAndBtree()
+    {
+        try
+        {
+            if( recordManager1 != null )
+            {
+                recordManager1.close();
+            }
+            
+            // Now, try to reload the file back
+            recordManager1 = new RecordManager( dataDir.getAbsolutePath() );
+            
+            // load the last created btree
+            if( btree != null )
+            {
+                btree = recordManager1.getManagedTree( btree.getName() );
+            }
+        }
+        catch( Exception e )
+        {
+            throw new RuntimeException( e );
+        }
+    }
+
+
     /**
      * Test the creation of a RecordManager, and that we can read it back.  
      */
     @Test
     public void testRecordManager() throws IOException, BTreeAlreadyManagedException
     {
-        File tempFile = File.createTempFile( "mavibot", ".db" );
-        String tempFileName = tempFile.getAbsolutePath();
-        tempFile.deleteOnExit();
-
-        RecordManager recordManager = new RecordManager( tempFileName, 32 );
-
-        assertNotNull( recordManager );
-
-        // Create a new BTree
-        BTree<Long, String> btree = new BTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
-
-        // And make it managed by the RM
-        recordManager.manage( btree );
-
-        // Close the recordManager
-        recordManager.close();
-
-        // Now, try to reload the file back
-        RecordManager recordManager1 = new RecordManager( tempFileName );
-
         assertEquals( 1, recordManager1.getNbManagedTrees() );
 
         Set<String> managedBTrees = recordManager1.getManagedTrees();
@@ -91,8 +129,6 @@ public class RecordManagerTest
         assertEquals( btree.getPageSize(), btree1.getPageSize() );
         assertEquals( btree.getRevision(), btree1.getRevision() );
         assertEquals( btree.getValueSerializer().getClass().getName(), btree1.getValueSerializer().getClass().getName() );
-
-        recordManager1.close();
     }
 
 
@@ -102,30 +138,13 @@ public class RecordManagerTest
     @Test
     public void testRecordManagerWithBTree() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
-        File tempFile = File.createTempFile( "mavibot", ".db" );
-        String tempFileName = tempFile.getAbsolutePath();
-        tempFile.deleteOnExit();
-
-        RecordManager recordManager = new RecordManager( tempFileName, 32 );
-
-        assertNotNull( recordManager );
-
-        // Create a new BTree
-        BTree<Long, String> btree = new BTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
-
-        // And make it managed by the RM
-        recordManager.manage( btree );
-
         // Now, add some elements in the BTree
         btree.insert( 3L, "V3" );
         btree.insert( 1L, "V1" );
         btree.insert( 5L, "V5" );
 
-        // Close the recordManager
-        recordManager.close();
-
         // Now, try to reload the file back
-        RecordManager recordManager1 = new RecordManager( tempFileName );
+        openRecordManagerAndBtree();
 
         assertEquals( 1, recordManager1.getNbManagedTrees() );
 
@@ -163,31 +182,14 @@ public class RecordManagerTest
     public void testRecordManagerWithBTreeLeafNode() throws IOException, BTreeAlreadyManagedException,
         KeyNotFoundException
     {
-        File tempFile = File.createTempFile( "mavibot", ".db" );
-        String tempFileName = tempFile.getAbsolutePath();
-        tempFile.deleteOnExit();
-
-        RecordManager recordManager = new RecordManager( tempFileName, 32 );
-
-        assertNotNull( recordManager );
-
-        // Create a new BTree
-        BTree<Long, String> btree = new BTree<Long, String>( "test", new LongSerializer(), new StringSerializer(), 4 );
-
-        // And make it managed by the RM
-        recordManager.manage( btree );
-
         // Now, add some elements in the BTree
         for ( long i = 1L; i < 32L; i++ )
         {
             btree.insert( i, "V" + i );
         }
 
-        // Close the recordManager
-        recordManager.close();
-
         // Now, try to reload the file back
-        RecordManager recordManager1 = new RecordManager( tempFileName );
+        openRecordManagerAndBtree();
 
         assertEquals( 1, recordManager1.getNbManagedTrees() );
 
@@ -225,21 +227,6 @@ public class RecordManagerTest
     public void testRecordManagerWithBTreeLeafNode100K() throws IOException, BTreeAlreadyManagedException,
         KeyNotFoundException
     {
-        File tempFile = File.createTempFile( "mavibot", ".db" );
-
-        String tempFileName = tempFile.getAbsolutePath();
-        tempFile.deleteOnExit();
-
-        RecordManager recordManager = new RecordManager( tempFileName, 512 );
-
-        assertNotNull( recordManager );
-
-        // Create a new BTree
-        BTree<Long, String> btree = new BTree<Long, String>( "test", new LongSerializer(), new StringSerializer(), 32 );
-
-        // And make it managed by the RM
-        recordManager.manage( btree );
-
         // Now, add some elements in the BTree
         long t0 = System.currentTimeMillis();
         for ( long i = 0L; i < 100000L; i++ )
@@ -248,13 +235,10 @@ public class RecordManagerTest
         }
         long t1 = System.currentTimeMillis();
 
-        // Close the recordManager
-        recordManager.close();
-
         System.out.println( "Time taken to write 100 000 elements : " + ( t1 - t0 ) );
 
         // Now, try to reload the file back
-        RecordManager recordManager1 = new RecordManager( tempFileName );
+        openRecordManagerAndBtree();
 
         assertEquals( 1, recordManager1.getNbManagedTrees() );
 
@@ -294,8 +278,6 @@ public class RecordManagerTest
         }
         long t5 = System.currentTimeMillis();
         System.out.println( "Time taken to verify 100 000 elements : " + ( t5 - t4 ) );
-
-        System.out.println( "File size : " + tempFile.length() );
     }
 
 
@@ -371,20 +353,7 @@ public class RecordManagerTest
     public void testRecordManagerBrowseWithKeepRevisions() throws IOException, BTreeAlreadyManagedException,
         KeyNotFoundException
     {
-        File tempFile = File.createTempFile( "mavibot", ".db" );
-        String tempFileName = tempFile.getAbsolutePath();
-        tempFile.deleteOnExit();
-
-        RecordManager recordManager = new RecordManager( tempFileName, 32 );
-
-        assertNotNull( recordManager );
-
-        // Create a new BTree
-        BTree<Long, String> btree = new BTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
         btree.setKeepRevisions( true );
-
-        // And make it managed by the RM
-        recordManager.manage( btree );
 
         // Now, add some elements in the BTree
         btree.insert( 3L, "V3" );
@@ -407,7 +376,7 @@ public class RecordManagerTest
         checkBTreeRevisionBrowse( btree, rev3, 1L, 3L, 5L );
 
         // Now, try to reload the file back
-        RecordManager recordManager1 = new RecordManager( tempFileName );
+        openRecordManagerAndBtree();
 
         assertEquals( 1, recordManager1.getNbManagedTrees() );
 
@@ -456,20 +425,7 @@ public class RecordManagerTest
     public void testRecordManagerBrowseFromWithRevision() throws IOException, BTreeAlreadyManagedException,
         KeyNotFoundException
     {
-        File tempFile = File.createTempFile( "mavibot", ".db" );
-        String tempFileName = tempFile.getAbsolutePath();
-        tempFile.deleteOnExit();
-
-        RecordManager recordManager = new RecordManager( tempFileName, 32 );
-
-        assertNotNull( recordManager );
-
-        // Create a new BTree
-        BTree<Long, String> btree = new BTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
         btree.setKeepRevisions( true );
-
-        // And make it managed by the RM
-        recordManager.manage( btree );
 
         // Now, add some elements in the BTree
         btree.insert( 3L, "V3" );
@@ -492,7 +448,7 @@ public class RecordManagerTest
         checkBTreeRevisionBrowseFrom( btree, rev3, 3L, 3L, 5L );
 
         // Now, try to reload the file back
-        RecordManager recordManager1 = new RecordManager( tempFileName );
+        openRecordManagerAndBtree();
 
         assertEquals( 1, recordManager1.getNbManagedTrees() );
 
@@ -540,20 +496,7 @@ public class RecordManagerTest
     public void testGetWithRevision() throws IOException, BTreeAlreadyManagedException,
         KeyNotFoundException
     {
-        File tempFile = File.createTempFile( "mavibot", ".db" );
-        String tempFileName = tempFile.getAbsolutePath();
-        tempFile.deleteOnExit();
-
-        RecordManager recordManager = new RecordManager( tempFileName, 32 );
-
-        assertNotNull( recordManager );
-
-        // Create a new BTree
-        BTree<Long, String> btree = new BTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
         btree.setKeepRevisions( true );
-
-        // And make it managed by the RM
-        recordManager.manage( btree );
 
         // Now, add some elements in the BTree
         btree.insert( 3L, "V3" );
@@ -597,7 +540,7 @@ public class RecordManagerTest
         }
 
         // Now, try to reload the file back
-        RecordManager recordManager1 = new RecordManager( tempFileName );
+        openRecordManagerAndBtree();
 
         assertEquals( 1, recordManager1.getNbManagedTrees() );
 
@@ -661,20 +604,7 @@ public class RecordManagerTest
     public void testContainWithRevision() throws IOException, BTreeAlreadyManagedException,
         KeyNotFoundException
     {
-        File tempFile = File.createTempFile( "mavibot", ".db" );
-        String tempFileName = tempFile.getAbsolutePath();
-        tempFile.deleteOnExit();
-
-        RecordManager recordManager = new RecordManager( tempFileName, 32 );
-
-        assertNotNull( recordManager );
-
-        // Create a new BTree
-        BTree<Long, String> btree = new BTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
         btree.setKeepRevisions( true );
-
-        // And make it managed by the RM
-        recordManager.manage( btree );
 
         // Now, add some elements in the BTree
         btree.insert( 3L, "V3" );
@@ -712,7 +642,7 @@ public class RecordManagerTest
         assertTrue( btree.contains( rev4, 5L, "V5" ) );
 
         // Now, try to reload the file back
-        RecordManager recordManager1 = new RecordManager( tempFileName );
+        openRecordManagerAndBtree();
 
         assertEquals( 1, recordManager1.getNbManagedTrees() );
 
@@ -770,20 +700,7 @@ public class RecordManagerTest
     public void testHasKeyWithRevision() throws IOException, BTreeAlreadyManagedException,
         KeyNotFoundException
     {
-        File tempFile = File.createTempFile( "mavibot", ".db" );
-        String tempFileName = tempFile.getAbsolutePath();
-        tempFile.deleteOnExit();
-
-        RecordManager recordManager = new RecordManager( tempFileName, 32 );
-
-        assertNotNull( recordManager );
-
-        // Create a new BTree
-        BTree<Long, String> btree = new BTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
         btree.setKeepRevisions( true );
-
-        // And make it managed by the RM
-        recordManager.manage( btree );
 
         // Now, add some elements in the BTree
         btree.insert( 3L, "V3" );
@@ -821,7 +738,7 @@ public class RecordManagerTest
         assertTrue( btree.hasKey( rev4, 5L ) );
 
         // Now, try to reload the file back
-        RecordManager recordManager1 = new RecordManager( tempFileName );
+        openRecordManagerAndBtree();
 
         assertEquals( 1, recordManager1.getNbManagedTrees() );
 

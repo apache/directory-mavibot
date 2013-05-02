@@ -26,10 +26,15 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.UUID;
 
-import org.apache.mavibot.btree.PageIO;
-import org.apache.mavibot.btree.RecordManager;
+import org.apache.mavibot.btree.serializer.LongSerializer;
+import org.apache.mavibot.btree.serializer.StringSerializer;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 
 /**
@@ -38,6 +43,37 @@ import org.junit.Test;
  */
 public class RecordManagerPrivateMethodTest
 {
+    
+    private BTree<Long, String> btree = null;
+
+    private RecordManager recordManager = null;
+
+    @Rule
+    public TemporaryFolder tempFolder = new TemporaryFolder();
+
+    private File dataDir = null;
+
+
+    @Before
+    public void createRecordManager() throws Exception
+    {
+        dataDir = tempFolder.newFolder( UUID.randomUUID().toString() );
+        
+        // Now, try to reload the file back
+        recordManager = new RecordManager( dataDir.getAbsolutePath(), 32 );
+
+        // Create a new BTree
+        btree = ( BTree<Long, String> ) recordManager.addBTree( "test", new LongSerializer(), new StringSerializer(), false );
+    }
+
+
+    @After
+    public void closeBTree() throws IOException
+    {
+        recordManager.close();
+    }
+    
+    
     /**
      * Test the getFreePageIOs method
      */
@@ -45,11 +81,6 @@ public class RecordManagerPrivateMethodTest
     public void testGetFreePageIos() throws IOException, NoSuchMethodException, InvocationTargetException,
         IllegalAccessException
     {
-        File tempFile = File.createTempFile( "mavibot", ".db" );
-        String tempFileName = tempFile.getAbsolutePath();
-        tempFile.deleteOnExit();
-
-        RecordManager recordManager = new RecordManager( tempFileName, 32 );
         Method getFreePageIOsMethod = RecordManager.class.getDeclaredMethod( "getFreePageIOs", int.class );
         getFreePageIOsMethod.setAccessible( true );
 
@@ -74,6 +105,8 @@ public class RecordManagerPrivateMethodTest
             pages = (org.apache.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
             assertEquals( 3, pages.length );
         }
+        
+        btree.close();
     }
 
 
@@ -84,11 +117,6 @@ public class RecordManagerPrivateMethodTest
     public void testComputeNbPages() throws IOException, SecurityException, NoSuchMethodException,
         IllegalArgumentException, IllegalAccessException, InvocationTargetException
     {
-        File tempFile = File.createTempFile( "mavibot", ".db" );
-        String tempFileName = tempFile.getAbsolutePath();
-        tempFile.deleteOnExit();
-
-        RecordManager recordManager = new RecordManager( tempFileName, 32 );
         Method computeNbPagesMethod = RecordManager.class.getDeclaredMethod( "computeNbPages", int.class );
         computeNbPagesMethod.setAccessible( true );
 
@@ -108,5 +136,7 @@ public class RecordManagerPrivateMethodTest
         {
             assertEquals( 3, ( ( Integer ) computeNbPagesMethod.invoke( recordManager, i ) ).intValue() );
         }
+        
+        btree.close();
     }
 }

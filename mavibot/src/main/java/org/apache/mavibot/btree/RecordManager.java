@@ -35,6 +35,7 @@ import java.util.Set;
 import org.apache.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.mavibot.btree.exception.KeyNotFoundException;
+import org.apache.mavibot.btree.serializer.ElementSerializer;
 import org.apache.mavibot.btree.serializer.IntSerializer;
 import org.apache.mavibot.btree.serializer.LongArraySerializer;
 import org.apache.mavibot.btree.serializer.LongSerializer;
@@ -56,9 +57,6 @@ public class RecordManager
 {
     /** The LoggerFactory used by this class */
     protected static final Logger LOG = LoggerFactory.getLogger( RecordManager.class );
-
-    /** The file name */
-    private String fileName;
 
     /** The associated file */
     private File file;
@@ -114,13 +112,13 @@ public class RecordManager
     private static final int DEFAULT_PAGE_SIZE = 4 * 1024;
 
     /** The RecordManager underlying page size. */
-    private int pageSize = -1;
+    private int pageSize = DEFAULT_PAGE_SIZE;
 
     /** A buffer used to read a page */
     private ByteBuffer blockBuffer;
 
     /** The set of managed BTrees */
-    private Map<String, BTree<?, ?>> managedBTrees = new LinkedHashMap<String, BTree<?, ?>>();
+    private Map<String, BTree<?, ?>> managedBTrees;
 
     /** The offset on the last added BTree */
     private long lastAddedBTreeOffset = NO_PAGE;
@@ -131,6 +129,10 @@ public class RecordManager
     /** A deserializer for Offsets */
     private static final LongSerializer OFFSET_SERIALIZER = new LongSerializer();
 
+
+    private static final String REVISION_B_TREE_NAME = "_revisionBTree_";
+
+    private static final String COPIED_PAGE_B_TREE_NAME = "_copiedPageBTree_";
 
     /**
      * Create a Record manager which will either create the underlying file
@@ -144,7 +146,6 @@ public class RecordManager
         this( fileName, DEFAULT_PAGE_SIZE );
     }
 
-
     /**
      * Create a Record manager which will either create the underlying file
      * or load an existing one. If a folder is provider, then we will create
@@ -155,8 +156,8 @@ public class RecordManager
      */
     public RecordManager( String fileName, int pageSize )
     {
-        this.fileName = fileName;
-
+        managedBTrees = new LinkedHashMap<String, BTree<?, ?>>();
+        
         // Open the file or create it
         File tmpFile = new File( fileName );
         boolean isNewFile = false;
@@ -172,6 +173,7 @@ public class RecordManager
                 try
                 {
                     mavibotFile.createNewFile();
+                    isNewFile = true;
                 }
                 catch ( IOException ioe )
                 {
@@ -225,6 +227,7 @@ public class RecordManager
         {
             LOG.error( "Error while initializing the RecordManager : {}", e.getMessage() );
             LOG.error( "", e );
+            throw new RuntimeException( e );
         }
     }
 
@@ -264,10 +267,10 @@ public class RecordManager
         endOfFileOffset = fileChannel.size();
 
         // Now, initialize the Copied Page BTree
-        copiedPageBTree = new BTree<Integer, long[]>( "copiedPageBTree", new IntSerializer(), new LongArraySerializer() );
+        copiedPageBTree = new BTree<Integer, long[]>( COPIED_PAGE_B_TREE_NAME, new IntSerializer(), new LongArraySerializer() );
 
         // and initialize the Revision BTree
-        revisionBTree = new BTree<RevisionName, Long>( "revisionBTree", new RevisionNameSerializer(),
+        revisionBTree = new BTree<RevisionName, Long>( REVISION_B_TREE_NAME, new RevisionNameSerializer(),
             new LongSerializer() );
 
         // Inject these BTrees into the RecordManager
@@ -338,6 +341,7 @@ public class RecordManager
 
             loadBTree( pageIos, revisionBTree );
             nextBtreeOffset = revisionBTree.getNextBTreeOffset();
+
 
             // Then process the next ones
             for ( int i = 2; i < nbBtree; i++ )
@@ -446,16 +450,9 @@ public class RecordManager
         byte[] btreeNameBytes = readBytes( pageIos, dataPos );
         dataPos += INT_SIZE;
 
-        if ( btreeNameBytes != null )
-        {
-            dataPos += btreeNameBytes.length;
-            String btreeName = Strings.utf8ToString( btreeNameBytes );
-            BTreeFactory.setName( btree, btreeName );
-        }
-        else
-        {
-            BTreeFactory.setName( btree, "" );
-        }
+        dataPos += btreeNameBytes.length;
+        String btreeName = Strings.utf8ToString( btreeNameBytes );
+        BTreeFactory.setName( btree, btreeName );
 
         // The keySerializer FQCN
         byte[] keySerializerBytes = readBytes( pageIos, dataPos );
@@ -836,7 +833,7 @@ public class RecordManager
      *  
      * @param btree The new BTree to manage.
      */
-    public synchronized void manage( BTree<?, ?> btree ) throws BTreeAlreadyManagedException, IOException
+    private synchronized void manage( BTree<?, ?> btree ) throws BTreeAlreadyManagedException, IOException
     {
         BTreeFactory.setRecordManager( btree, this );
 
@@ -1786,6 +1783,11 @@ public class RecordManager
     {
         // TODO : we must wait for the last write to finish
 
+        for( BTree tree : managedBTrees.values() )
+        {
+            tree.close();
+        }
+        
         // Write the data
         fileChannel.force( true );
 
@@ -1863,13 +1865,11 @@ public class RecordManager
      */
     public Set<String> getManagedTrees()
     {
-        Set<String> btrees = new HashSet<String>();
-
-        for ( String btree : managedBTrees.keySet() )
-        {
-            btrees.add( btree );
-        }
-
+        Set<String> btrees = new HashSet<String>( managedBTrees.keySet() );
+        
+        btrees.remove( COPIED_PAGE_B_TREE_NAME );
+        btrees.remove( REVISION_B_TREE_NAME );
+        
         return btrees;
     }
 
@@ -1926,5 +1926,34 @@ public class RecordManager
     public BTree getManagedTree( String name )
     {
         return managedBTrees.get( name );
+    }
+    
+    
+    /**
+     * Creates a BTree and automatically adds it to the list of managed btrees
+     * 
+     * @param name the name of the BTree
+     * @param keySerializer key serializer
+     * @param valueSerializer value serializer
+     * @param allowDuplicates flag for allowing duplicate keys 
+     * @return a managed BTree
+     * @throws IOException
+     * @throws BTreeAlreadyManagedException
+     */
+    @SuppressWarnings("all")
+    public BTree addBTree( String name, ElementSerializer<?> keySerializer, ElementSerializer<?> valueSerializer, boolean allowDuplicates ) throws IOException, BTreeAlreadyManagedException
+    {
+        BTreeConfiguration config = new BTreeConfiguration();
+        
+        config.setName( name );
+        config.setKeySerializer( keySerializer );
+        config.setValueSerializer( valueSerializer );
+        config.setAllowDuplicates( allowDuplicates );
+        config.setType( BTreeTypeEnum.MANAGED );
+        
+        BTree btree = new BTree( config );
+        manage( btree );
+        
+        return btree;
     }
 }
