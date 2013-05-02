@@ -342,13 +342,19 @@ public class BTree<K, V>
         btreeHeader = new BTreeHeader();
         btreeHeader.setName( name );
         btreeHeader.setPageSize( configuration.getPageSize() );
+        
         keySerializer = configuration.getKeySerializer();
+        btreeHeader.setKeySerializerFQCN( keySerializer.getClass().getName() );
+
         valueSerializer = configuration.getValueSerializer();
+        btreeHeader.setValueSerializerFQCN( valueSerializer.getClass().getName() );
+
         comparator = keySerializer.getComparator();
         readTimeOut = configuration.getReadTimeOut();
         writeBufferSize = configuration.getWriteBufferSize();
         allowDuplicates = configuration.isAllowDuplicates();
-
+        type = configuration.getType();
+        
         if ( comparator == null )
         {
             throw new IllegalArgumentException( "Comparator should not be null" );
@@ -374,7 +380,7 @@ public class BTree<K, V>
         this( name, null, keySerializer, valueSerializer, DEFAULT_PAGE_SIZE );
     }
 
-
+    
     /**
      * Creates a new in-memory BTree with a default page size and key/value serializers.
      * 
@@ -416,7 +422,7 @@ public class BTree<K, V>
     {
         btreeHeader = new BTreeHeader();
         btreeHeader.setName( name );
-
+        
         if( dataDir != null )
         {
             envDir = new File( dataDir );
@@ -451,11 +457,8 @@ public class BTree<K, V>
      */
     public void init() throws IOException
     {
-        if ( envDir == null )
-        {
-            type = BTreeTypeEnum.IN_MEMORY;
-        }
-        else
+        // if not in-memory then default to persist mode instead of managed
+        if( ( envDir != null ) && ( type != BTreeTypeEnum.MANAGED ) )
         {
             if( !envDir.exists() )
             {
@@ -468,12 +471,8 @@ public class BTree<K, V>
             
             this.file = new File( envDir, btreeHeader.getName() + DATA_SUFFIX );
 
-            // if not in-memory then default to persist mode instead of managed
-            if( type != BTreeTypeEnum.MANAGED )
-            {
-                this.journal = new File( envDir, file.getName() + JOURNAL_SUFFIX );
-                type = BTreeTypeEnum.PERSISTENT;
-            }
+            this.journal = new File( envDir, file.getName() + JOURNAL_SUFFIX );
+            type = BTreeTypeEnum.PERSISTENT;
         }
 
         // Create the queue containing the pending read transactions
@@ -515,7 +514,11 @@ public class BTree<K, V>
             // Initialize the Journal manager thread if it's not a in-memory btree
             createJournalManager();
         }
-
+        else if ( type == null )
+        {
+            type = BTreeTypeEnum.IN_MEMORY;
+        }
+        
         // Initialize the txnManager thread
         createTransactionManager();
     }
@@ -540,7 +543,7 @@ public class BTree<K, V>
             // Flush the data
             flush();
         }
-
+        
         rootPage = null;
     }
 
@@ -673,7 +676,8 @@ public class BTree<K, V>
         this.type = BTreeTypeEnum.MANAGED;
     }
 
-
+    
+    
     /**
      * @return the pageSize
      */
