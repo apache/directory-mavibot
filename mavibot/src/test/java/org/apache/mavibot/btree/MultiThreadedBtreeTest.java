@@ -217,7 +217,7 @@ public class MultiThreadedBtreeTest
     @Test
     public void testInsertMultiThreads() throws InterruptedException, IOException
     {
-        int nbThreads = 20;
+        int nbThreads = 100;
         final CountDownLatch latch = new CountDownLatch( nbThreads );
 
         //Thread.sleep( 60000L );
