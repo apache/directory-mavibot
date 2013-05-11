@@ -35,6 +35,8 @@ import org.apache.mavibot.btree.util.Strings;
  */
 public class StringSerializer extends AbstractElementSerializer<String>
 {
+    public static final StringSerializer INSTANCE = new StringSerializer();
+    
     /**
      * Create a new instance of StringSerializer
      */
@@ -236,6 +238,9 @@ public class StringSerializer extends AbstractElementSerializer<String>
         {
             case 0:
                 return "";
+
+            case -1:
+                return null;
 
             default:
                 byte[] bytes = new byte[len];
