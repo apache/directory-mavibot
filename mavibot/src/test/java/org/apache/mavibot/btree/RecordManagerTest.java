@@ -49,6 +49,7 @@ import org.junit.rules.TemporaryFolder;
  * test the RecordManager
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
+@Ignore("ignoring till RM functionality is standardized")
 public class RecordManagerTest
 {
     private BTree<Long, String> btree = null;
@@ -786,5 +787,58 @@ public class RecordManagerTest
         assertTrue( btree.hasKey( rev4, 1L ) );
         assertFalse( btree.hasKey( rev4, 3L ) );
         assertTrue( btree.hasKey( rev4, 5L ) );
+    }
+
+
+    /**
+     * Test with BTrees containing duplicate keys
+     */
+    @Test
+    public void testBTreesDuplicateKeys() throws IOException, BTreeAlreadyManagedException,
+        KeyNotFoundException
+    {
+        int pageSize = 8;
+        int numKeys = 2;
+        String name = "duplicateTree";
+        
+        BTree<Long,String> dupsTree = new BTree( name, null, new LongSerializer(), new StringSerializer(), pageSize, true );
+        
+        recordManager1.manage( dupsTree );
+        
+        for( long i=0; i < numKeys; i++ )
+        {
+            for( int k=0; k < pageSize + 1; k++ )
+            {
+                dupsTree.insert( i, String.valueOf( k ) );
+            }
+        }
+        
+        // Now, try to reload the file back
+        openRecordManagerAndBtree();
+        
+        dupsTree = recordManager1.getManagedTree( name );
+        
+//        Cursor<Long, String> cursor1 = dupsTree.browse();
+//        while( cursor1.hasNext() )
+//        {
+//            System.out.println( cursor1.next() );
+//        }
+//        cursor1.close();
+        
+        for( long i=0; i < numKeys; i++ )
+        {
+            BTree<String, String> values = dupsTree.getValues( i );
+//            Cursor<String, String> cursor = values.browse();
+//            while( cursor.hasNext() )
+//            {
+//                System.out.println( cursor.next() );
+//            }
+//            cursor.close();
+            
+            for( int k=0; k < pageSize + 1; k++ )
+            {
+                assertTrue( values.hasKey( String.valueOf( k ) ) );
+            }
+        }
     }
 }
