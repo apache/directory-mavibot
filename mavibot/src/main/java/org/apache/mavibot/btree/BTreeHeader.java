@@ -81,6 +81,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /** The existing versions */
     private long[] versions;
 
+    private int allowDuplicates = 0;
 
     /**
      * Creates a BTreeHeader instance
@@ -299,6 +300,18 @@ import java.util.concurrent.atomic.AtomicLong;
     }
 
 
+    /* No qualifier*/boolean isAllowDuplicates()
+    {
+        return ( allowDuplicates == 1 );
+    }
+
+
+    /* No qualifier*/void setAllowDuplicates( boolean allowDuplicates )
+    {
+        this.allowDuplicates = ( allowDuplicates ? 1 : 0 );
+    }
+
+
     /**
      * @see Object#toString()
      */
@@ -313,6 +326,7 @@ import java.util.concurrent.atomic.AtomicLong;
         sb.append( ", nextBTree[" ).append( nextBTreeOffset ).append( "]" );
         sb.append( ", nbElems[" ).append( nbElems ).append( "]" );
         sb.append( ", pageSize[" ).append( pageSize ).append( "]" );
+        sb.append( ", hasDuplicates[" ).append( isAllowDuplicates() ).append( "]" );
         sb.append( "{\n" );
         sb.append( "    Key serializer   : " ).append( keySerializerFQCN ).append( "\n" );
         sb.append( "    Value serializer : " ).append( valueSerializerFQCN ).append( "\n" );
