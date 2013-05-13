@@ -124,9 +124,6 @@ public class BTree<K, V>
     /** The queue containing all the modifications applied on the bTree */
     private BlockingQueue<Modification<K, V>> modificationsQueue;
 
-    /** Flag to enable duplicate key support */
-    private boolean allowDuplicates;
-
     /** A flag set to true if we want to keep old revisions */
     private boolean keepRevisions = false;
 
@@ -352,7 +349,7 @@ public class BTree<K, V>
         comparator = keySerializer.getComparator();
         readTimeOut = configuration.getReadTimeOut();
         writeBufferSize = configuration.getWriteBufferSize();
-        allowDuplicates = configuration.isAllowDuplicates();
+        btreeHeader.setAllowDuplicates( configuration.isAllowDuplicates() );
         type = configuration.getType();
         
         if ( comparator == null )
@@ -377,7 +374,14 @@ public class BTree<K, V>
     public BTree( String name, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer )
         throws IOException
     {
-        this( name, null, keySerializer, valueSerializer, DEFAULT_PAGE_SIZE );
+        this( name, keySerializer, valueSerializer, false );
+    }
+    
+    
+    public BTree( String name, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer, boolean allowDuplicates )
+        throws IOException
+    {
+        this( name, null, keySerializer, valueSerializer, DEFAULT_PAGE_SIZE, allowDuplicates );
     }
 
     
@@ -420,9 +424,15 @@ public class BTree<K, V>
         int pageSize )
         throws IOException
     {
+        this( name, dataDir, keySerializer, valueSerializer, pageSize, false );
+    }
+    
+    public BTree( String name, String dataDir, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer,
+        int pageSize, boolean allowDuplicates )
+        throws IOException
+    {
         btreeHeader = new BTreeHeader();
         btreeHeader.setName( name );
-        
         if( dataDir != null )
         {
             envDir = new File( dataDir );
@@ -441,10 +451,12 @@ public class BTree<K, V>
 
         comparator = keySerializer.getComparator();
 
+        btreeHeader.setAllowDuplicates( allowDuplicates );
+
         // Create the first root page, with revision 0L. It will be empty
         // and increment the revision at the same time
         rootPage = new Leaf<K, V>( this );
-
+        
         // Now, call the init() method
         init();
     }
@@ -520,6 +532,7 @@ public class BTree<K, V>
         }
         
         // Initialize the txnManager thread
+        //FIXME we should NOT create a new transaction manager thread for each BTree
         createTransactionManager();
     }
 
@@ -726,13 +739,6 @@ public class BTree<K, V>
             if( result instanceof ModifyResult )
             {
                 existingValue = ( ( ModifyResult<K, V> ) result ).getModifiedValue();
-            }
-            
-            // If the BTree is managed, we have to update the rootPage on disk
-            if ( isManaged() )
-            {
-                // Update the BTree header now
-                recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
             }
         }
         finally
@@ -1234,7 +1240,15 @@ public class BTree<K, V>
         if ( modifiedValue == null )
         {
             btreeHeader.incrementNbElems();
+            
+            // If the BTree is managed, we have to update the rootPage on disk
+            if ( isManaged() )
+            {
+                // Update the BTree header now
+                recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
+            }
         }
+
 
         // Store the created rootPage into the revision BTree
         if ( keepRevisions )
@@ -1814,10 +1828,16 @@ public class BTree<K, V>
      */
     public boolean isAllowDuplicates()
     {
-        return allowDuplicates;
+        return btreeHeader.isAllowDuplicates();
     }
 
 
+    /* No qualifier */void setAllowDuplicates( boolean allowDuplicates )
+    {
+        btreeHeader.setAllowDuplicates( allowDuplicates );
+    }
+
+    
     /**
      * @return the keepRevisions
      */
@@ -1883,7 +1903,7 @@ public class BTree<K, V>
             sb.append( comparator.getClass().getSimpleName() );
         }
 
-        sb.append( ", DuplicatesAllowed: " ).append( allowDuplicates );
+        sb.append( ", DuplicatesAllowed: " ).append( btreeHeader.isAllowDuplicates() );
 
         if ( type == BTreeTypeEnum.PERSISTENT )
         {
