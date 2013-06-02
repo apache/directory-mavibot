@@ -79,7 +79,7 @@ public class RecordManager
      * A Btree used to manage the page that has been copied in a new version.
      * Those pages can be reclaimed when the associated version is dead. 
      **/
-    private BTree<Integer, long[]> copiedPageBTree;
+    private BTree<RevisionName, long[]> copiedPageBTree;
 
     /** A BTree used to store all the valid revisions for all the stored BTrees */
     private BTree<RevisionName, Long> revisionBTree;
@@ -272,7 +272,7 @@ public class RecordManager
         endOfFileOffset = fileChannel.size();
 
         // Now, initialize the Copied Page BTree
-        copiedPageBTree = new BTree<Integer, long[]>( COPIED_PAGE_BTREE_NAME, new IntSerializer(), new LongArraySerializer() );
+        copiedPageBTree = new BTree<RevisionName, long[]>( COPIED_PAGE_BTREE_NAME, new RevisionNameSerializer(), new LongArraySerializer() );
 
         // and initialize the Revision BTree
         revisionBTree = new BTree<RevisionName, Long>( REVISION_BTREE_NAME, new RevisionNameSerializer(),
@@ -974,7 +974,7 @@ public class RecordManager
 
         lastAddedBTreeOffset = btreeOffset;
 
-        offsetBTree.insert( name, btreeOffset );
+        offsetBTree.insert( name, btreeOffset, 0 );
         
         // Last, not least, update the number of managed BTrees in the header
         updateRecordManagerHeader();
@@ -1904,7 +1904,7 @@ public class RecordManager
      */
     public int getNbManagedTrees()
     {
-        return nbBtree - 2;
+        return nbBtree - 3;
     }
 
 
@@ -1919,6 +1919,7 @@ public class RecordManager
         
         btrees.remove( COPIED_PAGE_BTREE_NAME );
         btrees.remove( REVISION_BTREE_NAME );
+        btrees.remove( OFFSET_BTREE_NAME );
         
         return btrees;
     }
@@ -1935,7 +1936,7 @@ public class RecordManager
     {
         RevisionName revisionName = new RevisionName( rootPage.getRevision(), btree.getName() );
 
-        revisionBTree.insert( revisionName, rootPage.getOffset() );
+        revisionBTree.insert( revisionName, rootPage.getOffset(), 0 );
     }
 
 
@@ -2015,6 +2016,129 @@ public class RecordManager
         }
         
         return tree;
+    }
+    
+    
+    /**
+     * 
+     * TODO addFreePages.
+     *
+     * @param btree
+     * @param freePages
+     */
+    public void addFreePages( BTree btree, List<Page> freePages )
+    {
+        if( ( btree == copiedPageBTree ) || ( btree == revisionBTree ) || ( btree == offsetBTree ) )
+        {
+            return;
+        }
+        
+        if( ( freePages == null ) || freePages.isEmpty() )
+        {
+            return;
+        }
+        
+        // if the btree doesn't keep revisions just add them to the free page list
+        if( !btree.isKeepRevisions() )
+        {
+            PageIO[] pages = new PageIO[freePages.size()];
+            
+            int start = 0;
+            PageIO tailPage = null;
+
+            ByteBuffer data = ByteBuffer.allocateDirect( pageSize );
+
+            if( firstFreePage == NO_PAGE )
+            {
+                tailPage = new PageIO( freePages.get( start ).getOffset() );
+
+                firstFreePage = tailPage.getOffset();
+                start = 1;
+            }
+            else if( lastFreePage != NO_PAGE )
+            {
+                tailPage = new PageIO( lastFreePage );
+            }
+            
+            tailPage.setData( data );
+            tailPage.setNextPage( NO_PAGE );
+            tailPage.setSize( 0 );
+            
+            pages[0] = tailPage;
+            
+            if( freePages.size() > start )
+            {
+                for( ; start < freePages.size(); start++ )
+                {
+                    long nextOffset = freePages.get( start ).getOffset();
+                    tailPage.setNextPage( nextOffset );
+                    
+                    PageIO tmp = new PageIO( nextOffset );
+                    tmp.setData( data );
+                    tmp.setNextPage( NO_PAGE );
+                    tmp.setSize( 0 );
+            
+                    pages[start] = tmp;
+                    
+                    tailPage = tmp;
+                }
+            }
+            
+            lastFreePage = tailPage.getOffset();
+            
+            try
+            {
+                flushPages( pages );
+            }
+            catch( IOException e )
+            {
+                throw new RuntimeException( e );
+            }
+        }
+        else
+        {
+            for( Page p : freePages )
+            {
+                addFreePage( btree, p );
+            }
+        }
+    }
+
+    
+    /**
+     * 
+     * TODO addFreePage.
+     *
+     * @param btree
+     * @param freePage
+     */
+    private void addFreePage( BTree btree, Page freePage )
+    {
+        try
+        {
+            RevisionName revision = new RevisionName( freePage.getRevision(), btree.getName() );
+            long[] offsetArray = null;
+            
+            if( copiedPageBTree.hasKey( revision ) )
+            {
+                offsetArray = copiedPageBTree.get( revision );
+                long[] tmp = new long[offsetArray.length + 1];
+                System.arraycopy( offsetArray, 0, tmp, 0, offsetArray.length );
+                offsetArray = tmp;
+            }
+            else
+            {
+                offsetArray = new long[1];
+            }
+            
+            offsetArray[offsetArray.length - 1] = freePage.getOffset();
+            
+            copiedPageBTree.insert( revision, offsetArray, 0 );
+        }
+        catch( Exception e )
+        {
+            throw new RuntimeException( e );
+        }
     }
     
     
