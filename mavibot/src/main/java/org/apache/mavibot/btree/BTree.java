@@ -31,6 +31,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Comparator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -533,7 +534,7 @@ public class BTree<K, V>
         
         // Initialize the txnManager thread
         //FIXME we should NOT create a new transaction manager thread for each BTree
-        createTransactionManager();
+        //createTransactionManager();
     }
 
 
@@ -543,8 +544,8 @@ public class BTree<K, V>
     public void close() throws IOException
     {
         // Stop the readTransaction thread
-        readTransactionsThread.interrupt();
-        readTransactions.clear();
+        // readTransactionsThread.interrupt();
+        // readTransactions.clear();
 
         if ( type == BTreeTypeEnum.PERSISTENT )
         {
@@ -893,6 +894,11 @@ public class BTree<K, V>
                     // Update the BTree header now
                     recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
                 }
+            }
+
+            if ( isManaged() )
+            {
+                recordManager.addFreePages( this, ( List ) result.getCopiedPages() );
             }
 
             // Store the created rootPage into the revision BTree
@@ -1249,7 +1255,11 @@ public class BTree<K, V>
             }
         }
 
-
+        if ( isManaged() )
+        {
+            recordManager.addFreePages( this, ( List ) result.getCopiedPages() );
+        }
+        
         // Store the created rootPage into the revision BTree
         if ( keepRevisions )
         {
