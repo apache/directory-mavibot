@@ -354,7 +354,7 @@ public class RecordManagerTest
     public void testRecordManagerBrowseWithKeepRevisions() throws IOException, BTreeAlreadyManagedException,
         KeyNotFoundException
     {
-        btree.setKeepRevisions( true );
+        recordManager1.setKeepRevisions( true );
 
         // Now, add some elements in the BTree
         btree.insert( 3L, "V3" );
@@ -426,7 +426,7 @@ public class RecordManagerTest
     public void testRecordManagerBrowseFromWithRevision() throws IOException, BTreeAlreadyManagedException,
         KeyNotFoundException
     {
-        btree.setKeepRevisions( true );
+        recordManager1.setKeepRevisions( true );
 
         // Now, add some elements in the BTree
         btree.insert( 3L, "V3" );
@@ -497,7 +497,7 @@ public class RecordManagerTest
     public void testGetWithRevision() throws IOException, BTreeAlreadyManagedException,
         KeyNotFoundException
     {
-        btree.setKeepRevisions( true );
+        recordManager1.setKeepRevisions( true );
 
         // Now, add some elements in the BTree
         btree.insert( 3L, "V3" );
@@ -605,7 +605,7 @@ public class RecordManagerTest
     public void testContainWithRevision() throws IOException, BTreeAlreadyManagedException,
         KeyNotFoundException
     {
-        btree.setKeepRevisions( true );
+        recordManager1.setKeepRevisions( true );
 
         // Now, add some elements in the BTree
         btree.insert( 3L, "V3" );
@@ -701,7 +701,7 @@ public class RecordManagerTest
     public void testHasKeyWithRevision() throws IOException, BTreeAlreadyManagedException,
         KeyNotFoundException
     {
-        btree.setKeepRevisions( true );
+        recordManager1.setKeepRevisions( true );
 
         // Now, add some elements in the BTree
         btree.insert( 3L, "V3" );

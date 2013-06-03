@@ -125,9 +125,6 @@ public class BTree<K, V>
     /** The queue containing all the modifications applied on the bTree */
     private BlockingQueue<Modification<K, V>> modificationsQueue;
 
-    /** A flag set to true if we want to keep old revisions */
-    private boolean keepRevisions = false;
-
     private File envDir;
 
     /**
@@ -899,19 +896,13 @@ public class BTree<K, V>
             if ( isManaged() )
             {
                 recordManager.addFreePages( this, ( List ) result.getCopiedPages() );
+                
+                // Store the created rootPage into the revision BTree, this will be stored in RecordManager only if revisions are set to keep
+                recordManager.storeRootPage( this, rootPage );
             }
-
-            // Store the created rootPage into the revision BTree
-            if ( keepRevisions )
+            else
             {
-                if ( isManaged() )
-                {
-                    recordManager.storeRootPage( this, rootPage );
-                }
-                else
-                {
-                    // Todo
-                }
+                // Todo
             }
 
             // Return the value we have found if it was modified
@@ -1258,21 +1249,14 @@ public class BTree<K, V>
         if ( isManaged() )
         {
             recordManager.addFreePages( this, ( List ) result.getCopiedPages() );
+            // Store the created rootPage into the revision BTree, this will be stored in RecordManager only if revisions are set to keep
+            recordManager.storeRootPage( this, rootPage );
+        }
+        else
+        {
+            // Todo
         }
         
-        // Store the created rootPage into the revision BTree
-        if ( keepRevisions )
-        {
-            if ( isManaged() )
-            {
-                recordManager.storeRootPage( this, rootPage );
-            }
-            else
-            {
-                // Todo
-            }
-        }
-
         // Return the value we have found if it was modified
         return result;
     }
@@ -1845,24 +1829,6 @@ public class BTree<K, V>
     /* No qualifier */void setAllowDuplicates( boolean allowDuplicates )
     {
         btreeHeader.setAllowDuplicates( allowDuplicates );
-    }
-
-    
-    /**
-     * @return the keepRevisions
-     */
-    public boolean isKeepRevisions()
-    {
-        return keepRevisions;
-    }
-
-
-    /**
-     * @param keepRevisions the keepRevisions to set
-     */
-    public void setKeepRevisions( boolean keepRevisions )
-    {
-        this.keepRevisions = keepRevisions;
     }
 
     

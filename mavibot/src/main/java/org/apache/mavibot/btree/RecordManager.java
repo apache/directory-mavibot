@@ -139,6 +139,9 @@ public class RecordManager
     
     private BTree<String, Long> offsetBTree;
     
+    /** A flag set to true if we want to keep old revisions */
+    private boolean keepRevisions;
+    
     /**
      * Create a Record manager which will either create the underlying file
      * or load an existing one. If a folder is provided, then we will create
@@ -1934,6 +1937,16 @@ public class RecordManager
      */
     /* No qualifier */void storeRootPage( BTree btree, Page rootPage ) throws IOException
     {
+        if( !isKeepRevisions() )
+        {
+            return;
+        }
+        
+        if( ( btree == copiedPageBTree ) || ( btree == revisionBTree ) || ( btree == offsetBTree ) )
+        {
+            return;
+        }
+
         RevisionName revisionName = new RevisionName( rootPage.getRevision(), btree.getName() );
 
         revisionBTree.insert( revisionName, rootPage.getOffset(), 0 );
@@ -2039,7 +2052,7 @@ public class RecordManager
         }
         
         // if the btree doesn't keep revisions just add them to the free page list
-        if( !btree.isKeepRevisions() )
+        if( !isKeepRevisions() )
         {
             PageIO[] pages = new PageIO[freePages.size()];
             
@@ -2141,6 +2154,24 @@ public class RecordManager
         }
     }
     
+    
+    /**
+     * @return the keepRevisions
+     */
+    public boolean isKeepRevisions()
+    {
+        return keepRevisions;
+    }
+
+
+    /**
+     * @param keepRevisions the keepRevisions to set
+     */
+    public void setKeepRevisions( boolean keepRevisions )
+    {
+        this.keepRevisions = keepRevisions;
+    }
+
     
     /**
      * Creates a BTree and automatically adds it to the list of managed btrees
