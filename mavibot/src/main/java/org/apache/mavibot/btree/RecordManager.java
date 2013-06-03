@@ -49,7 +49,7 @@ import org.slf4j.LoggerFactory;
  * The RecordManager is used to manage the file in which we will store the BTrees. 
  * A RecordManager will manage more than one BTree.<br/>
  * 
- * It stores data in fixed size pages (default size is 4Kb), which may be linked one to 
+ * It stores data in fixed size pages (default size is 512 bytes), which may be linked one to 
  * the other if the data we want to store is too big for a page.
  *  
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
