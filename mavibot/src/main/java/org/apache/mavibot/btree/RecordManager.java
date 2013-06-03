@@ -2050,12 +2050,10 @@ public class RecordManager
         {
             return;
         }
-        
+
         // if the btree doesn't keep revisions just add them to the free page list
-        if( !isKeepRevisions() )
+        if( !keepRevisions )
         {
-            PageIO[] pages = new PageIO[freePages.size()];
-            
             int start = 0;
             PageIO tailPage = null;
 
@@ -2077,31 +2075,29 @@ public class RecordManager
             tailPage.setNextPage( NO_PAGE );
             tailPage.setSize( 0 );
             
-            pages[0] = tailPage;
-            
-            if( freePages.size() > start )
-            {
-                for( ; start < freePages.size(); start++ )
-                {
-                    long nextOffset = freePages.get( start ).getOffset();
-                    tailPage.setNextPage( nextOffset );
-                    
-                    PageIO tmp = new PageIO( nextOffset );
-                    tmp.setData( data );
-                    tmp.setNextPage( NO_PAGE );
-                    tmp.setSize( 0 );
-            
-                    pages[start] = tmp;
-                    
-                    tailPage = tmp;
-                }
-            }
-            
-            lastFreePage = tailPage.getOffset();
-            
             try
             {
-                flushPages( pages );
+                flushPages( tailPage );
+                
+                if( freePages.size() > start )
+                {
+                    for( ; start < freePages.size(); start++ )
+                    {
+                        long nextOffset = freePages.get( start ).getOffset();
+                        tailPage.setNextPage( nextOffset );
+                        
+                        PageIO next = new PageIO( nextOffset );
+                        data = ByteBuffer.allocateDirect( pageSize );
+                        next.setData( data );
+                        next.setNextPage( NO_PAGE );
+                        next.setSize( 0 );
+                        
+                        flushPages( tailPage, next );
+                        tailPage = next;
+                    }
+                }
+                
+                lastFreePage = tailPage.getOffset();
             }
             catch( IOException e )
             {
