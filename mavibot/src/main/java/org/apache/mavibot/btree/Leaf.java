@@ -108,7 +108,11 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
             Page<K, V> modifiedPage = addElement( revision, key, value, pos );
 
             InsertResult<K, V> result = new ModifyResult<K, V>( modifiedPage, null );
-            result.addCopiedPage( this );
+            // no copy page for first revision
+            if( revision > 1 )
+            {
+                result.addCopiedPage( this );
+            }
 
             return result;
         }
