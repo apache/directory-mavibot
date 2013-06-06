@@ -84,7 +84,7 @@ public class LongArraySerializer implements ElementSerializer<long[]>
                 break;
 
             default:
-                bytes = new byte[len + 4];
+                bytes = new byte[len * 8 + 4];
                 int pos = 0;
 
                 // The number of longs
