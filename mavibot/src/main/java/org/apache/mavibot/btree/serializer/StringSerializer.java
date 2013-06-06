@@ -177,24 +177,39 @@ public class StringSerializer extends AbstractElementSerializer<String>
                 break;
 
             default:
-                try
+                char[] chars = element.toCharArray();
+                byte[] tmpBytes = new byte[chars.length * 2];
+
+                int pos = 0;
+                len = 0;
+
+                for ( char c : chars )
                 {
-                    byte[] strBytes = element.getBytes( "UTF-8" );
-
-                    bytes = new byte[strBytes.length + 4];
-
-                    System.arraycopy( strBytes, 0, bytes, 4, strBytes.length );
-
-                    bytes[0] = ( byte ) ( strBytes.length >>> 24 );
-                    bytes[1] = ( byte ) ( strBytes.length >>> 16 );
-                    bytes[2] = ( byte ) ( strBytes.length >>> 8 );
-                    bytes[3] = ( byte ) ( strBytes.length );
+                    if ( ( c & 0xFF80 ) == 0 )
+                    {
+                        tmpBytes[pos++] = ( byte ) c;
+                    }
+                    else if ( ( c & 0xF800 ) == 0 )
+                    {
+                        tmpBytes[pos++] = ( byte ) ( ( byte ) 0x00C0 | ( byte ) ( ( c & 0x07C0 ) >> 6 ) );
+                        tmpBytes[pos++] = ( byte ) ( ( byte ) 0x80 | ( byte ) ( c & 0x003F ) );
+                    }
+                    else
+                    {
+                        tmpBytes[pos++] = ( byte ) ( ( byte ) 0x80 | ( byte ) ( c & 0x001F ) );
+                        tmpBytes[pos++] = ( byte ) ( ( byte ) 0x80 | ( byte ) ( c & 0x07C0 ) );
+                        tmpBytes[pos++] = ( byte ) ( ( byte ) 0xE0 | ( byte ) ( c & 0x7800 ) );
+                    }
                 }
-                catch ( UnsupportedEncodingException uee )
-                {
-                    // if this happens something is really strange
-                    throw new RuntimeException( uee );
-                }
+
+                bytes = new byte[pos + 4];
+
+                bytes[0] = ( byte ) ( pos >>> 24 );
+                bytes[1] = ( byte ) ( pos >>> 16 );
+                bytes[2] = ( byte ) ( pos >>> 8 );
+                bytes[3] = ( byte ) ( pos );
+
+                System.arraycopy( tmpBytes, 0, bytes, 4, pos );
         }
 
         return bytes;
@@ -246,8 +261,39 @@ public class StringSerializer extends AbstractElementSerializer<String>
                 byte[] bytes = new byte[len];
 
                 buffer.get( bytes );
+                char[] chars = new char[len];
+                int clen = 0;
 
-                return Strings.utf8ToString( bytes );
+                for ( int i = 0; i < len; i++ )
+                {
+                    byte b = bytes[i];
+
+                    if ( b >= 0 )
+                    {
+                        chars[clen++] = ( char ) b;
+                    }
+                    else
+                    {
+                        if ( ( b & 0xE0 ) == 0 )
+                        {
+                            // 3 bytes long char
+                            i++;
+                            byte b2 = bytes[i];
+                            i++;
+                            byte b3 = bytes[i];
+                            chars[clen++] = ( char ) ( ( ( b & 0x000F ) << 12 ) | ( ( b2 & 0x003F ) << 6 ) | ( ( b3 & 0x003F ) ) );
+                        }
+                        else
+                        {
+                            // 2 bytes long char
+                            i++;
+                            byte b2 = bytes[i];
+                            chars[clen++] = ( char ) ( ( ( b & 0x001F ) << 6 ) | ( b2 & 0x003F ) );
+                        }
+                    }
+                }
+
+                return new String( chars, 0, clen );
         }
     }
 

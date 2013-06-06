@@ -97,6 +97,7 @@ import java.util.List;
 
         sb.append( "ModifyResult, old value = " ).append( modifiedValue );
         sb.append( ", modifiedPage = " ).append( modifiedPage );
+        sb.append( super.toString() );
 
         return sb.toString();
     }

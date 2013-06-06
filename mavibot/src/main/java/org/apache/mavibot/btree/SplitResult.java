@@ -112,6 +112,7 @@ import java.util.List;
         sb.append( "SplitResult, new pivot = " ).append( pivot );
         sb.append( "\n    leftPage = " ).append( leftPage );
         sb.append( "\n    rightPage = " ).append( rightPage );
+        sb.append( super.toString() );
 
         return sb.toString();
     }

@@ -75,4 +75,32 @@ import java.util.List;
     {
         copiedPage.add( page );
     }
+
+
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append( "\n    copiedPage = <" );
+
+        boolean isFirst = true;
+
+        for ( Page<K, V> copiedPage : getCopiedPages() )
+        {
+            if ( isFirst )
+            {
+                isFirst = false;
+            }
+            else
+            {
+                sb.append( ", " );
+            }
+
+            sb.append( copiedPage.getOffset() );
+        }
+
+        sb.append( ">" );
+
+        return sb.toString();
+    }
 }

@@ -39,7 +39,6 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.mavibot.btree.serializer.LongSerializer;
 import org.apache.mavibot.btree.serializer.StringSerializer;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -49,7 +48,7 @@ import org.junit.rules.TemporaryFolder;
  * test the RecordManager
  * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  */
-@Ignore("ignoring till RM functionality is standardized")
+//@Ignore("ignoring till RM functionality is standardized")
 public class RecordManagerTest
 {
     private BTree<Long, String> btree = null;
@@ -66,15 +65,15 @@ public class RecordManagerTest
     public void createBTree()
     {
         dataDir = tempFolder.newFolder( UUID.randomUUID().toString() );
-        
+
         openRecordManagerAndBtree();
 
         try
         {
             // Create a new BTree
-            btree = ( BTree<Long, String> ) recordManager1.addBTree( "test", new LongSerializer(), new StringSerializer(), false );
+            btree = recordManager1.addBTree( "test", new LongSerializer(), new StringSerializer(), false );
         }
-        catch( Exception e )
+        catch ( Exception e )
         {
             throw new RuntimeException( e );
         }
@@ -85,21 +84,21 @@ public class RecordManagerTest
     {
         try
         {
-            if( recordManager1 != null )
+            if ( recordManager1 != null )
             {
                 recordManager1.close();
             }
-            
+
             // Now, try to reload the file back
             recordManager1 = new RecordManager( dataDir.getAbsolutePath() );
-            
+
             // load the last created btree
-            if( btree != null )
+            if ( btree != null )
             {
                 btree = recordManager1.getManagedTree( btree.getName() );
             }
         }
-        catch( Exception e )
+        catch ( Exception e )
         {
             throw new RuntimeException( e );
         }
@@ -224,19 +223,51 @@ public class RecordManagerTest
      * Test the creation of a RecordManager with a BTree containing 100 000 elements
      */
     @Test
-    @Ignore("This is a performance test")
+    //@Ignore("This is a performance test")
     public void testRecordManagerWithBTreeLeafNode100K() throws IOException, BTreeAlreadyManagedException,
         KeyNotFoundException
     {
+        // Don't keep any revision
+        recordManager1.setKeepRevisions( false );
+
+        String fileName = dataDir.getAbsolutePath() + "/mavibot.db";
+        File file = new File( fileName );
+        long fileSize = file.length();
+        System.out.println( "----- Size before = " + fileSize );
+
         // Now, add some elements in the BTree
         long t0 = System.currentTimeMillis();
-        for ( long i = 0L; i < 100000L; i++ )
+        for ( Long i = 0L; i < 100000L; i++ )
         {
-            btree.insert( i, "V" + i );
+            String value = "V" + i;
+            btree.insert( i, value );
+
+            /*
+            if ( !recordManager1.check() )
+            {
+                System.out.println( "Failure while adding element " + i );
+                fail();
+            }
+            */
+
+            if ( i % 10000 == 0 )
+            {
+                fileSize = file.length();
+                System.out.println( "----- Size after insertion of " + i + " = " + fileSize );
+                System.out.println( recordManager1 );
+                //System.out.println( btree );
+            }
         }
         long t1 = System.currentTimeMillis();
 
+        fileSize = file.length();
+        System.out.println( "Size after insertion of 100 000 elements : " + fileSize );
         System.out.println( "Time taken to write 100 000 elements : " + ( t1 - t0 ) );
+        System.out.println( "  Nb elem/s : " + ( ( 100000 * 1000 ) / ( t1 - t0 ) ) );
+        System.out.println( "Nb created page " + recordManager1.nbCreatedPages.get() );
+        System.out.println( "Nb allocated page " + recordManager1.nbReusedPages.get() );
+        System.out.println( "Nb page we have freed " + recordManager1.nbFreedPages.get() );
+        System.out.println( recordManager1 );
 
         // Now, try to reload the file back
         openRecordManagerAndBtree();
@@ -800,42 +831,43 @@ public class RecordManagerTest
         int pageSize = 8;
         int numKeys = 2;
         String name = "duplicateTree";
-        
-        BTree<Long,String> dupsTree = new BTree( name, null, new LongSerializer(), new StringSerializer(), pageSize, true );
-        
+
+        BTree<Long, String> dupsTree = new BTree( name, null, new LongSerializer(), new StringSerializer(), pageSize,
+            true );
+
         recordManager1.manage( dupsTree );
-        
-        for( long i=0; i < numKeys; i++ )
+
+        for ( long i = 0; i < numKeys; i++ )
         {
-            for( int k=0; k < pageSize + 1; k++ )
+            for ( int k = 0; k < pageSize + 1; k++ )
             {
                 dupsTree.insert( i, String.valueOf( k ) );
             }
         }
-        
+
         // Now, try to reload the file back
         openRecordManagerAndBtree();
-        
+
         dupsTree = recordManager1.getManagedTree( name );
-        
-//        Cursor<Long, String> cursor1 = dupsTree.browse();
-//        while( cursor1.hasNext() )
-//        {
-//            System.out.println( cursor1.next() );
-//        }
-//        cursor1.close();
-        
-        for( long i=0; i < numKeys; i++ )
+
+        //        Cursor<Long, String> cursor1 = dupsTree.browse();
+        //        while( cursor1.hasNext() )
+        //        {
+        //            System.out.println( cursor1.next() );
+        //        }
+        //        cursor1.close();
+
+        for ( long i = 0; i < numKeys; i++ )
         {
             BTree<String, String> values = dupsTree.getValues( i );
-//            Cursor<String, String> cursor = values.browse();
-//            while( cursor.hasNext() )
-//            {
-//                System.out.println( cursor.next() );
-//            }
-//            cursor.close();
-            
-            for( int k=0; k < pageSize + 1; k++ )
+            //            Cursor<String, String> cursor = values.browse();
+            //            while( cursor.hasNext() )
+            //            {
+            //                System.out.println( cursor.next() );
+            //            }
+            //            cursor.close();
+
+            for ( int k = 0; k < pageSize + 1; k++ )
             {
                 assertTrue( values.hasKey( String.valueOf( k ) ) );
             }

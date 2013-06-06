@@ -31,6 +31,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.mavibot.btree.exception.EndOfFileExceededException;
@@ -71,6 +72,14 @@ public class RecordManager
     /** The first and last free page */
     private long firstFreePage;
     private long lastFreePage;
+
+    /** The list of available free pages */
+    List<PageIO> freePages = new ArrayList<PageIO>();
+
+    /** A counter to track the number of free pages */
+    public AtomicLong nbFreedPages = new AtomicLong( 0 );
+    public AtomicLong nbCreatedPages = new AtomicLong( 0 );
+    public AtomicLong nbReusedPages = new AtomicLong( 0 );
 
     /** The offset of the end of the file */
     private long endOfFileOffset;
@@ -130,18 +139,21 @@ public class RecordManager
     /** A deserializer for Offsets */
     private static final LongSerializer OFFSET_SERIALIZER = new LongSerializer();
 
-
     private static final String REVISION_BTREE_NAME = "_revisionBTree_";
 
     private static final String COPIED_PAGE_BTREE_NAME = "_copiedPageBTree_";
-    
+
     private static final String OFFSET_BTREE_NAME = "_offsetBTree_";
-    
+
     private BTree<String, Long> offsetBTree;
-    
+
     /** A flag set to true if we want to keep old revisions */
     private boolean keepRevisions;
-    
+
+    /** A global buffer used for free pages */
+    private static ByteBuffer FREE_PAGE_BUFFER;
+
+
     /**
      * Create a Record manager which will either create the underlying file
      * or load an existing one. If a folder is provided, then we will create
@@ -154,6 +166,7 @@ public class RecordManager
         this( fileName, DEFAULT_PAGE_SIZE );
     }
 
+
     /**
      * Create a Record manager which will either create the underlying file
      * or load an existing one. If a folder is provider, then we will create
@@ -165,7 +178,9 @@ public class RecordManager
     public RecordManager( String fileName, int pageSize )
     {
         managedBTrees = new LinkedHashMap<String, BTree<?, ?>>();
-        
+
+        FREE_PAGE_BUFFER = ByteBuffer.allocateDirect( pageSize );
+
         // Open the file or create it
         File tmpFile = new File( fileName );
         boolean isNewFile = false;
@@ -275,7 +290,8 @@ public class RecordManager
         endOfFileOffset = fileChannel.size();
 
         // Now, initialize the Copied Page BTree
-        copiedPageBTree = new BTree<RevisionName, long[]>( COPIED_PAGE_BTREE_NAME, new RevisionNameSerializer(), new LongArraySerializer() );
+        copiedPageBTree = new BTree<RevisionName, long[]>( COPIED_PAGE_BTREE_NAME, new RevisionNameSerializer(),
+            new LongArraySerializer() );
 
         // and initialize the Revision BTree
         revisionBTree = new BTree<RevisionName, Long>( REVISION_BTREE_NAME, new RevisionNameSerializer(),
@@ -283,7 +299,7 @@ public class RecordManager
 
         offsetBTree = new BTree<String, Long>( OFFSET_BTREE_NAME, new StringSerializer(),
             new LongSerializer() );
-        
+
         // Inject these BTrees into the RecordManager
         try
         {
@@ -355,29 +371,29 @@ public class RecordManager
             nextBtreeOffset = revisionBTree.getNextBTreeOffset();
 
             pageIos = readPages( nextBtreeOffset, Long.MAX_VALUE );
-            
+
             offsetBTree = BTreeFactory.createBTree();
             offsetBTree.setBtreeOffset( nextBtreeOffset );
 
             loadBTree( pageIos, offsetBTree );
-            
+
             // Then process the next ones
-//            for ( int i = 2; i < nbBtree; i++ )
-//            {
-//                // Create the BTree
-//                BTree<?, ?> btree = BTreeFactory.createBTree();
-//                btree.setBtreeOffset( nextBtreeOffset );
-//
-//                // Read the associated pages
-//                pageIos = readPages( nextBtreeOffset, Long.MAX_VALUE );
-//
-//                // Load the BTree
-//                loadBTree( pageIos, btree );
-//                nextBtreeOffset = btree.getNextBTreeOffset();
-//
-//                // Store it into the managedBtrees map
-//                managedBTrees.put( btree.getName(), btree );
-//            }
+            //            for ( int i = 2; i < nbBtree; i++ )
+            //            {
+            //                // Create the BTree
+            //                BTree<?, ?> btree = BTreeFactory.createBTree();
+            //                btree.setBtreeOffset( nextBtreeOffset );
+            //
+            //                // Read the associated pages
+            //                pageIos = readPages( nextBtreeOffset, Long.MAX_VALUE );
+            //
+            //                // Load the BTree
+            //                loadBTree( pageIos, btree );
+            //                nextBtreeOffset = btree.getNextBTreeOffset();
+            //
+            //                // Store it into the managedBtrees map
+            //                managedBTrees.put( btree.getName(), btree );
+            //            }
 
             // We are done ! Let's finish with the last initilization parts
             endOfFileOffset = fileChannel.size();
@@ -587,22 +603,22 @@ public class RecordManager
             for ( int i = 0; i < nbElems; i++ )
             {
                 ElementHolder valueHolder;
-                
-                if( btree.isAllowDuplicates() )
+
+                if ( btree.isAllowDuplicates() )
                 {
                     String value = StringSerializer.INSTANCE.deserialize( byteBuffer );
                     BTree dupValueContainer = getManagedTree( value );
-                    valueHolder = new DuplicateKeyMemoryHolder( btree, dupValueContainer ); 
+                    valueHolder = new DuplicateKeyMemoryHolder( btree, dupValueContainer );
                 }
                 else
                 {
                     Object value = btree.getValueSerializer().deserialize( byteBuffer );
-                    
+
                     valueHolder = new MemoryHolder( btree, value );
                 }
 
                 BTreeFactory.setValue( ( ( Leaf ) page ), i, valueHolder );
-                
+
                 Object key = btree.getKeySerializer().deserialize( byteBuffer );
 
                 BTreeFactory.setKey( page, i, key );
@@ -956,7 +972,7 @@ public class RecordManager
 
         // The allowDuplicates flag
         position = store( position, ( btree.isAllowDuplicates() ? 1 : 0 ), pageIos );
-        
+
         // And flush the pages to disk now
         flushPages( pageIos );
         flushPages( rootPageIos );
@@ -978,7 +994,7 @@ public class RecordManager
         lastAddedBTreeOffset = btreeOffset;
 
         offsetBTree.insert( name, btreeOffset, 0 );
-        
+
         // Last, not least, update the number of managed BTrees in the header
         updateRecordManagerHeader();
     }
@@ -1077,7 +1093,7 @@ public class RecordManager
                 }
                 else
                 {
-                    if( btree.isAllowDuplicates() )
+                    if ( btree.isAllowDuplicates() )
                     {
                         DuplicateKeyMemoryHolder value = ( DuplicateKeyMemoryHolder ) ( ( Leaf ) page ).getValue( pos );
                         String duplicateContainerName = ( ( BTree ) value.getValue( btree ) ).getName();
@@ -1088,7 +1104,7 @@ public class RecordManager
                         ElementHolder value = ( ( Leaf ) page ).getValue( pos );
                         buffer = btree.getValueSerializer().serialize( value.getValue( btree ) );
                     }
-                    
+
                     serializedData.add( buffer );
                     dataSize += buffer.length;
                 }
@@ -1681,6 +1697,8 @@ public class RecordManager
     {
         if ( firstFreePage == NO_PAGE )
         {
+            nbCreatedPages.incrementAndGet();
+
             // We don't have any free page. Reclaim some new page at the end
             // of the file
             PageIO newPage = new PageIO( endOfFileOffset );
@@ -1693,15 +1711,33 @@ public class RecordManager
             newPage.setNextPage( NO_PAGE );
             newPage.setSize( 0 );
 
+            LOG.debug( "Created a new page at offset {}", newPage.getOffset() );
+
             return newPage;
         }
         else
         {
-            // We have some existing free page. Fetch one from there.
+            nbReusedPages.incrementAndGet();
+
+            // We have some existing free page. Fetch it from disk
             PageIO pageIo = fetchPage( firstFreePage );
 
-            // Point to the next free page
+            // Update the firstFreePage pointer
             firstFreePage = pageIo.getNextPage();
+
+            pageIo.setNextPage( NO_PAGE );
+            pageIo.setSize( 0 );
+
+            LOG.debug( "Reused page at offset {}", pageIo.getOffset() );
+
+            // If we don't have any more free page, update the last free page pointer too
+            if ( firstFreePage == NO_PAGE )
+            {
+                lastFreePage = NO_PAGE;
+            }
+
+            // Update the header
+            updateRecordManagerHeader();
 
             return pageIo;
         }
@@ -1834,13 +1870,13 @@ public class RecordManager
     {
         // TODO : we must wait for the last write to finish
 
-        for( BTree tree : managedBTrees.values() )
+        for ( BTree tree : managedBTrees.values() )
         {
             tree.close();
         }
-        
+
         managedBTrees.clear();
-        
+
         // Write the data
         fileChannel.force( true );
 
@@ -1875,26 +1911,29 @@ public class RecordManager
         long firstFreePage = header.getLong();
         long lastFreePage = header.getLong();
 
-        System.out.println( "RecordManager" );
-        System.out.println( "-------------" );
-        System.out.println( "  Header " );
-        System.out.println( "    '" + Strings.dumpBytes( header.array() ) + "'" );
-        System.out.println( "    page size : " + pageSize );
-        System.out.println( "    nbTree : " + nbBTree );
-        System.out.println( "    firstFreePage : " + firstFreePage );
-        System.out.println( "    lastFreePage : " + lastFreePage );
+        if ( LOG.isDebugEnabled() )
+        {
+            LOG.debug( "RecordManager" );
+            LOG.debug( "-------------" );
+            LOG.debug( "  Header " );
+            LOG.debug( "    '{}'", Strings.dumpBytes( header.array() ) );
+            LOG.debug( "    page size : {}", pageSize );
+            LOG.debug( "    nbTree : {}", nbBTree );
+            LOG.debug( "    firstFreePage : {}", firstFreePage );
+            LOG.debug( "    lastFreePage : {}", lastFreePage );
+        }
 
         long position = HEADER_SIZE;
 
         // Dump the BTrees
         for ( int i = 0; i < nbBTree; i++ )
         {
-            System.out.println( "  Btree[" + i + "]" );
+            LOG.debug( "  Btree[{}]", i );
             PageIO[] pageIos = readPages( position, Long.MAX_VALUE );
 
             for ( PageIO pageIo : pageIos )
             {
-                System.out.println( "    " + pageIo );
+                LOG.debug( "    {}", pageIo );
             }
         }
     }
@@ -1919,11 +1958,11 @@ public class RecordManager
     public Set<String> getManagedTrees()
     {
         Set<String> btrees = new HashSet<String>( managedBTrees.keySet() );
-        
+
         btrees.remove( COPIED_PAGE_BTREE_NAME );
         btrees.remove( REVISION_BTREE_NAME );
         btrees.remove( OFFSET_BTREE_NAME );
-        
+
         return btrees;
     }
 
@@ -1937,12 +1976,12 @@ public class RecordManager
      */
     /* No qualifier */void storeRootPage( BTree btree, Page rootPage ) throws IOException
     {
-        if( !isKeepRevisions() )
+        if ( !isKeepRevisions() )
         {
             return;
         }
-        
-        if( ( btree == copiedPageBTree ) || ( btree == revisionBTree ) || ( btree == offsetBTree ) )
+
+        if ( ( btree == copiedPageBTree ) || ( btree == revisionBTree ) || ( btree == offsetBTree ) )
         {
             return;
         }
@@ -1989,131 +2028,136 @@ public class RecordManager
      */
     public BTree getManagedTree( String name )
     {
-        if( name.startsWith( "1.3.6.1.4.1.18060.0.4.1.2.50" ) )
+        if ( name.startsWith( "1.3.6.1.4.1.18060.0.4.1.2.50" ) )
         {
-            System.out.println("");
+            LOG.debug( "" );
         }
-        
+
         BTree tree = managedBTrees.get( name );
-        
-        if( tree == null )
+
+        if ( tree == null )
         {
             try
             {
-                if( !offsetBTree.hasKey( name ) )
+                if ( !offsetBTree.hasKey( name ) )
                 {
                     return null;
                 }
-                
+
                 long treeOffset = offsetBTree.get( name );
-                
+
                 // Create the BTree
                 BTree<?, ?> btree = BTreeFactory.createBTree();
                 btree.setBtreeOffset( treeOffset );
-                
+
                 // Read the associated pages
                 PageIO[] pageIos = readPages( treeOffset, Long.MAX_VALUE );
 
                 // Load the BTree
                 loadBTree( pageIos, btree );
-                
+
                 // Store it into the managedBtrees map
                 managedBTrees.put( btree.getName(), btree );
-                
+
                 return btree;
             }
-            catch( Exception e )
+            catch ( Exception e )
             {
                 throw new RuntimeException( e );
             }
         }
-        
+
         return tree;
     }
-    
-    
+
+
     /**
-     * 
-     * TODO addFreePages.
-     *
-     * @param btree
-     * @param freePages
+     * Move a list of pages to the free page list. A logical page is associated with on 
+     * or physical PageIO, which are on the disk. We have to move all those PagIO instance
+     * to the free list, and do the same in memory (we try to keep a reference to a set of 
+     * free pages.
+     *  
+     * @param btree The BTree which were owning the pages
+     * @param pages The pages to free
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
      */
-    public void addFreePages( BTree btree, List<Page> freePages )
+    /* Package protected */void addFreePages( BTree btree, List<Page> pages ) throws EndOfFileExceededException,
+        IOException
     {
-        if( ( btree == copiedPageBTree ) || ( btree == revisionBTree ) || ( btree == offsetBTree ) )
-        {
-            return;
-        }
-        
-        if( ( freePages == null ) || freePages.isEmpty() )
+        if ( ( btree == copiedPageBTree ) || ( btree == revisionBTree ) || ( btree == offsetBTree ) )
         {
             return;
         }
 
-        // if the btree doesn't keep revisions just add them to the free page list
-        if( !keepRevisions )
+        if ( ( pages == null ) || pages.isEmpty() )
         {
-            int start = 0;
-            PageIO tailPage = null;
+            return;
+        }
 
-            ByteBuffer data = ByteBuffer.allocateDirect( pageSize );
+        if ( !keepRevisions )
+        {
+            // if the btree doesn't keep revisions, we can safely move
+            // the pages to the free page list.
+            // NOTE : potential improvement : we can update the header only when
+            // we have processed all the logical pages.
+            for ( Page page : pages )
+            {
+                // Retrieve all the PageIO associated with this logical page
+                long pageIoOffset = page.getOffset();
+                long firstPageIoOffset = page.getOffset();
+                long lastPageIoOffset = NO_PAGE;
 
-            if( firstFreePage == NO_PAGE )
-            {
-                tailPage = new PageIO( freePages.get( start ).getOffset() );
-
-                firstFreePage = tailPage.getOffset();
-                start = 1;
-            }
-            else if( lastFreePage != NO_PAGE )
-            {
-                tailPage = new PageIO( lastFreePage );
-            }
-            
-            tailPage.setData( data );
-            tailPage.setNextPage( NO_PAGE );
-            tailPage.setSize( 0 );
-            
-            try
-            {
-                flushPages( tailPage );
-                
-                if( freePages.size() > start )
+                // Iterate on the pageIOs
+                while ( pageIoOffset != NO_PAGE )
                 {
-                    for( ; start < freePages.size(); start++ )
-                    {
-                        long nextOffset = freePages.get( start ).getOffset();
-                        tailPage.setNextPage( nextOffset );
-                        
-                        PageIO next = new PageIO( nextOffset );
-                        data = ByteBuffer.allocateDirect( pageSize );
-                        next.setData( data );
-                        next.setNextPage( NO_PAGE );
-                        next.setSize( 0 );
-                        
-                        flushPages( tailPage, next );
-                        tailPage = next;
-                    }
+                    // Keep a track of the current page
+                    lastPageIoOffset = pageIoOffset;
+
+                    // Retrieve the first physical page from disk
+                    PageIO pageIo = fetchPage( pageIoOffset );
+
+                    // Get the next offset
+                    pageIoOffset = pageIo.getNextPage();
                 }
-                
-                lastFreePage = tailPage.getOffset();
-            }
-            catch( IOException e )
-            {
-                throw new RuntimeException( e );
+
+                // Update the pointers
+                if ( firstFreePage == NO_PAGE )
+                {
+                    firstFreePage = firstPageIoOffset;
+                    lastFreePage = lastPageIoOffset;
+                }
+                else
+                {
+                    // Fetch the last free pageIO
+                    PageIO previousLastFreePage = fetchPage( lastFreePage );
+
+                    // update its pointer to the next free pageIo
+                    previousLastFreePage.setNextPage( firstPageIoOffset );
+
+                    // And flush it to disk
+                    flushPages( previousLastFreePage );
+
+                    // We can update the lastFreePage offset 
+                    lastFreePage = lastPageIoOffset;
+                }
+
+                // Last, not least, flush the header
+                updateRecordManagerHeader();
             }
         }
         else
         {
-            for( Page p : freePages )
+            LOG.debug( "We should not get there" );
+
+            for ( Page p : pages )
             {
                 addFreePage( btree, p );
             }
         }
     }
 
-    
+
     /**
      * 
      * TODO addFreePage.
@@ -2127,8 +2171,8 @@ public class RecordManager
         {
             RevisionName revision = new RevisionName( freePage.getRevision(), btree.getName() );
             long[] offsetArray = null;
-            
-            if( copiedPageBTree.hasKey( revision ) )
+
+            if ( copiedPageBTree.hasKey( revision ) )
             {
                 offsetArray = copiedPageBTree.get( revision );
                 long[] tmp = new long[offsetArray.length + 1];
@@ -2139,18 +2183,18 @@ public class RecordManager
             {
                 offsetArray = new long[1];
             }
-            
+
             offsetArray[offsetArray.length - 1] = freePage.getOffset();
-            
+
             copiedPageBTree.insert( revision, offsetArray, 0 );
         }
-        catch( Exception e )
+        catch ( Exception e )
         {
             throw new RuntimeException( e );
         }
     }
-    
-    
+
+
     /**
      * @return the keepRevisions
      */
@@ -2168,7 +2212,7 @@ public class RecordManager
         this.keepRevisions = keepRevisions;
     }
 
-    
+
     /**
      * Creates a BTree and automatically adds it to the list of managed btrees
      * 
@@ -2181,20 +2225,68 @@ public class RecordManager
      * @throws BTreeAlreadyManagedException
      */
     @SuppressWarnings("all")
-    public BTree addBTree( String name, ElementSerializer<?> keySerializer, ElementSerializer<?> valueSerializer, boolean allowDuplicates ) throws IOException, BTreeAlreadyManagedException
+    public BTree addBTree( String name, ElementSerializer<?> keySerializer, ElementSerializer<?> valueSerializer,
+        boolean allowDuplicates ) throws IOException, BTreeAlreadyManagedException
     {
         BTreeConfiguration config = new BTreeConfiguration();
-        
+
         config.setName( name );
         config.setKeySerializer( keySerializer );
         config.setValueSerializer( valueSerializer );
         config.setAllowDuplicates( allowDuplicates );
         config.setType( BTreeTypeEnum.MANAGED );
-        
+
         BTree btree = new BTree( config );
         manage( btree );
-        
+
         return btree;
     }
 
+
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append( "RM free pages : [" );
+
+        if ( firstFreePage != NO_PAGE )
+        {
+            long current = firstFreePage;
+            boolean isFirst = true;
+
+            while ( current != NO_PAGE )
+            {
+                if ( isFirst )
+                {
+                    isFirst = false;
+                }
+                else
+                {
+                    sb.append( ", " );
+                }
+
+                PageIO pageIo;
+
+                try
+                {
+                    pageIo = fetchPage( current );
+                    sb.append( pageIo.getOffset() );
+                    current = pageIo.getNextPage();
+                }
+                catch ( EndOfFileExceededException e )
+                {
+                    e.printStackTrace();
+                }
+                catch ( IOException e )
+                {
+                    e.printStackTrace();
+                }
+
+            }
+        }
+
+        sb.append( "]" );
+
+        return sb.toString();
+    }
 }

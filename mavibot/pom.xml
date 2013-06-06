@@ -36,6 +36,10 @@
   <properties>
     <junit.version>4.10</junit.version>
     <commons.collections.version>3.2.1</commons.collections.version>
+    <commons.io.version>2.4</commons.io.version>
+    <log4j.version>1.2.17</log4j.version>
+    <slf4j.api.version>1.7.5</slf4j.api.version>
+    <slf4j.log4j12.version>1.7.5</slf4j.log4j12.version>
   </properties>
 
   <dependencies>
@@ -55,10 +59,28 @@
     <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
-      <version>2.4</version>
-      <scope>test</scope>
+      <version>${commons.io.version}</version>
     </dependency>
-    
+
+    <!-- Logging dependencies -->
+
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>${slf4j.api.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-log4j12</artifactId>
+      <version>${slf4j.log4j12.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>log4j</groupId>
+      <artifactId>log4j</artifactId>
+      <version>${log4j.version}</version>
+    </dependency>
   </dependencies>
   
   <build>
