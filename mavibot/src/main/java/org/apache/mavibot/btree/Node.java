@@ -83,12 +83,12 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
         if ( btree.isManaged() )
         {
             children = ( ReferenceHolder<Page<K, V>, K, V>[] ) Array.newInstance( ReferenceHolder.class,
-                btree.getPageSize() );
+                btree.getPageSize() + 1 );
         }
         else
         {
             children = ( MemoryHolder[] ) Array.newInstance( MemoryHolder.class,
-                btree.getPageSize() );
+                btree.getPageSize() + 1 );
         }
 
         children[0] = btree.createHolder( leftPage );
@@ -123,7 +123,7 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
 
         // Create the children array, and store the left and right children
         children = ( ReferenceHolder<Page<K, V>, K, V>[] ) Array.newInstance( ReferenceHolder.class,
-            btree.getPageSize() );
+            btree.getPageSize() + 1 );
 
         children[0] = leftPage;
         children[1] = rightPage;
@@ -1219,7 +1219,14 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
      */
     public K getRightMostKey() throws EndOfFileExceededException, IOException
     {
-        return children[nbElems - 1].getValue( btree ).getRightMostKey();
+        int index = ( nbElems + 1 ) - 1;
+        
+        if( children[index] != null )
+        {
+            return children[ index ].getValue( btree ).getRightMostKey();
+        }
+        
+        return children[ nbElems - 1 ].getValue( btree ).getRightMostKey();
     }
 
 
