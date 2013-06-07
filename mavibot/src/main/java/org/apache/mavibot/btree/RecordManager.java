@@ -1976,15 +1976,18 @@ public class RecordManager
      */
     /* No qualifier */void storeRootPage( BTree btree, Page rootPage ) throws IOException
     {
+        if ( ( btree == copiedPageBTree ) || ( btree == revisionBTree ) || ( btree == offsetBTree ) )
+        {
+            return;
+        }
+        
+        offsetBTree.insert( btree.getName(), rootPage.getOffset(), 0 );
+        
         if ( !isKeepRevisions() )
         {
             return;
         }
 
-        if ( ( btree == copiedPageBTree ) || ( btree == revisionBTree ) || ( btree == offsetBTree ) )
-        {
-            return;
-        }
 
         RevisionName revisionName = new RevisionName( rootPage.getRevision(), btree.getName() );
 
