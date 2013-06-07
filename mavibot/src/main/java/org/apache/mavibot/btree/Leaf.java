@@ -791,6 +791,7 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
         }
         else
         {
+            //FIXME do not copy the duplicate key's value container, this will improve the perf significantly
             // Copy the keys and the values up to the insertion position
             System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
             System.arraycopy( values, 0, newLeaf.values, 0, pos );
