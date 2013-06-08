@@ -2191,7 +2191,6 @@ public class RecordManager
         config.setValueSerializer( valueSerializer );
         config.setAllowDuplicates( allowDuplicates );
         config.setType( BTreeTypeEnum.MANAGED );
-        config.setPageSize( 8 );
 
         BTree btree = new BTree( config );
         manage( btree );
