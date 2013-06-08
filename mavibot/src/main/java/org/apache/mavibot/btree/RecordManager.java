@@ -40,7 +40,6 @@ import org.apache.mavibot.btree.serializer.ElementSerializer;
 import org.apache.mavibot.btree.serializer.IntSerializer;
 import org.apache.mavibot.btree.serializer.LongArraySerializer;
 import org.apache.mavibot.btree.serializer.LongSerializer;
-import org.apache.mavibot.btree.serializer.StringSerializer;
 import org.apache.mavibot.btree.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -142,10 +141,6 @@ public class RecordManager
     private static final String REVISION_BTREE_NAME = "_revisionBTree_";
 
     private static final String COPIED_PAGE_BTREE_NAME = "_copiedPageBTree_";
-
-    private static final String OFFSET_BTREE_NAME = "_offsetBTree_";
-
-    private BTree<String, Long> offsetBTree;
 
     /** A flag set to true if we want to keep old revisions */
     private boolean keepRevisions;
@@ -297,15 +292,11 @@ public class RecordManager
         revisionBTree = new BTree<RevisionName, Long>( REVISION_BTREE_NAME, new RevisionNameSerializer(),
             new LongSerializer() );
 
-        offsetBTree = new BTree<String, Long>( OFFSET_BTREE_NAME, new StringSerializer(),
-            new LongSerializer() );
-
         // Inject these BTrees into the RecordManager
         try
         {
             manage( copiedPageBTree );
             manage( revisionBTree );
-            manage( offsetBTree );
         }
         catch ( BTreeAlreadyManagedException btame )
         {
@@ -370,30 +361,23 @@ public class RecordManager
             loadBTree( pageIos, revisionBTree );
             nextBtreeOffset = revisionBTree.getNextBTreeOffset();
 
-            pageIos = readPages( nextBtreeOffset, Long.MAX_VALUE );
-
-            offsetBTree = BTreeFactory.createBTree();
-            offsetBTree.setBtreeOffset( nextBtreeOffset );
-
-            loadBTree( pageIos, offsetBTree );
-
             // Then process the next ones
-            //            for ( int i = 2; i < nbBtree; i++ )
-            //            {
-            //                // Create the BTree
-            //                BTree<?, ?> btree = BTreeFactory.createBTree();
-            //                btree.setBtreeOffset( nextBtreeOffset );
-            //
-            //                // Read the associated pages
-            //                pageIos = readPages( nextBtreeOffset, Long.MAX_VALUE );
-            //
-            //                // Load the BTree
-            //                loadBTree( pageIos, btree );
-            //                nextBtreeOffset = btree.getNextBTreeOffset();
-            //
-            //                // Store it into the managedBtrees map
-            //                managedBTrees.put( btree.getName(), btree );
-            //            }
+            for ( int i = 2; i < nbBtree; i++ )
+            {
+                // Create the BTree
+                BTree<?, ?> btree = BTreeFactory.createBTree();
+                btree.setBtreeOffset( nextBtreeOffset );
+    
+                // Read the associated pages
+                pageIos = readPages( nextBtreeOffset, Long.MAX_VALUE );
+    
+                // Load the BTree
+                loadBTree( pageIos, btree );
+                nextBtreeOffset = btree.getNextBTreeOffset();
+    
+                // Store it into the managedBtrees map
+                managedBTrees.put( btree.getName(), btree );
+            }
 
             // We are done ! Let's finish with the last initilization parts
             endOfFileOffset = fileChannel.size();
@@ -606,8 +590,22 @@ public class RecordManager
 
                 if ( btree.isAllowDuplicates() )
                 {
-                    String value = StringSerializer.INSTANCE.deserialize( byteBuffer );
-                    BTree dupValueContainer = getManagedTree( value );
+                    long value = OFFSET_SERIALIZER.deserialize( byteBuffer );
+                    // And the Revision BTree
+                    pageIos = readPages( value, Long.MAX_VALUE );
+
+                    BTree dupValueContainer = BTreeFactory.createBTree();
+
+                    try
+                    {
+                        loadBTree( pageIos, revisionBTree );
+                    }
+                    catch( Exception e )
+                    {
+                        // should not happen
+                        throw new RuntimeException( e );
+                    }
+
                     valueHolder = new DuplicateKeyMemoryHolder( btree, dupValueContainer );
                 }
                 else
@@ -993,8 +991,6 @@ public class RecordManager
 
         lastAddedBTreeOffset = btreeOffset;
 
-        offsetBTree.insert( name, btreeOffset, 0 );
-
         // Last, not least, update the number of managed BTrees in the header
         updateRecordManagerHeader();
     }
@@ -1096,8 +1092,8 @@ public class RecordManager
                     if ( btree.isAllowDuplicates() )
                     {
                         DuplicateKeyMemoryHolder value = ( DuplicateKeyMemoryHolder ) ( ( Leaf ) page ).getValue( pos );
-                        String duplicateContainerName = ( ( BTree ) value.getValue( btree ) ).getName();
-                        buffer = StringSerializer.INSTANCE.serialize( duplicateContainerName );
+                        long duplicateContainerOffset = ( ( BTree ) value.getValue( btree ) ).getBtreeOffset();
+                        buffer = OFFSET_SERIALIZER.serialize( duplicateContainerOffset );
                     }
                     else
                     {
@@ -1946,7 +1942,7 @@ public class RecordManager
      */
     public int getNbManagedTrees()
     {
-        return nbBtree - 3;
+        return nbBtree - 2;
     }
 
 
@@ -1961,7 +1957,6 @@ public class RecordManager
 
         btrees.remove( COPIED_PAGE_BTREE_NAME );
         btrees.remove( REVISION_BTREE_NAME );
-        btrees.remove( OFFSET_BTREE_NAME );
 
         return btrees;
     }
@@ -1976,14 +1971,12 @@ public class RecordManager
      */
     /* No qualifier */void storeRootPage( BTree btree, Page rootPage ) throws IOException
     {
-        if ( ( btree == copiedPageBTree ) || ( btree == revisionBTree ) || ( btree == offsetBTree ) )
+        if ( !isKeepRevisions() )
         {
             return;
         }
-
-        offsetBTree.insert( btree.getName(), rootPage.getOffset(), 0 );
-
-        if ( !isKeepRevisions() )
+        
+        if ( ( btree == copiedPageBTree ) || ( btree == revisionBTree ) )
         {
             return;
         }
@@ -2030,46 +2023,7 @@ public class RecordManager
      */
     public BTree getManagedTree( String name )
     {
-        if ( name.startsWith( "1.3.6.1.4.1.18060.0.4.1.2.50" ) )
-        {
-            LOG.debug( "" );
-        }
-
-        BTree tree = managedBTrees.get( name );
-
-        if ( tree == null )
-        {
-            try
-            {
-                if ( !offsetBTree.hasKey( name ) )
-                {
-                    return null;
-                }
-
-                long treeOffset = offsetBTree.get( name );
-
-                // Create the BTree
-                BTree<?, ?> btree = BTreeFactory.createBTree();
-                btree.setBtreeOffset( treeOffset );
-
-                // Read the associated pages
-                PageIO[] pageIos = readPages( treeOffset, Long.MAX_VALUE );
-
-                // Load the BTree
-                loadBTree( pageIos, btree );
-
-                // Store it into the managedBtrees map
-                managedBTrees.put( btree.getName(), btree );
-
-                return btree;
-            }
-            catch ( Exception e )
-            {
-                throw new RuntimeException( e );
-            }
-        }
-
-        return tree;
+        return managedBTrees.get( name );
     }
 
 
@@ -2087,7 +2041,7 @@ public class RecordManager
     /* Package protected */void addFreePages( BTree btree, List<Page> pages ) throws EndOfFileExceededException,
         IOException
     {
-        if ( ( btree == copiedPageBTree ) || ( btree == revisionBTree ) || ( btree == offsetBTree ) )
+        if ( ( btree == copiedPageBTree ) || ( btree == revisionBTree ) )
         {
             return;
         }
@@ -2237,6 +2191,7 @@ public class RecordManager
         config.setValueSerializer( valueSerializer );
         config.setAllowDuplicates( allowDuplicates );
         config.setType( BTreeTypeEnum.MANAGED );
+        config.setPageSize( 8 );
 
         BTree btree = new BTree( config );
         manage( btree );
