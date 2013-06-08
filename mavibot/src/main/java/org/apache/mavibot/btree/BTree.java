@@ -127,6 +127,7 @@ public class BTree<K, V>
 
     private File envDir;
 
+
     /**
      * Create a thread that is responsible of cleaning the transactions when
      * they hit the timeout
@@ -321,14 +322,14 @@ public class BTree<K, V>
     public BTree( BTreeConfiguration<K, V> configuration ) throws IOException
     {
         String name = configuration.getName();
-        
-        if( name == null )
+
+        if ( name == null )
         {
             throw new IllegalArgumentException( "BTree name cannot be null" );
         }
-        
+
         String filePath = configuration.getFilePath();
-        
+
         if ( filePath != null )
         {
             envDir = new File( filePath );
@@ -337,7 +338,7 @@ public class BTree<K, V>
         btreeHeader = new BTreeHeader();
         btreeHeader.setName( name );
         btreeHeader.setPageSize( configuration.getPageSize() );
-        
+
         keySerializer = configuration.getKeySerializer();
         btreeHeader.setKeySerializerFQCN( keySerializer.getClass().getName() );
 
@@ -349,7 +350,7 @@ public class BTree<K, V>
         writeBufferSize = configuration.getWriteBufferSize();
         btreeHeader.setAllowDuplicates( configuration.isAllowDuplicates() );
         type = configuration.getType();
-        
+
         if ( comparator == null )
         {
             throw new IllegalArgumentException( "Comparator should not be null" );
@@ -374,15 +375,16 @@ public class BTree<K, V>
     {
         this( name, keySerializer, valueSerializer, false );
     }
-    
-    
-    public BTree( String name, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer, boolean allowDuplicates )
+
+
+    public BTree( String name, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer,
+        boolean allowDuplicates )
         throws IOException
     {
         this( name, null, keySerializer, valueSerializer, DEFAULT_PAGE_SIZE, allowDuplicates );
     }
 
-    
+
     /**
      * Creates a new in-memory BTree with a default page size and key/value serializers.
      * 
@@ -418,24 +420,27 @@ public class BTree<K, V>
      * @param pageSize size of the page
      * @throws IOException
      */
-    public BTree( String name, String dataDir, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer,
+    public BTree( String name, String dataDir, ElementSerializer<K> keySerializer,
+        ElementSerializer<V> valueSerializer,
         int pageSize )
         throws IOException
     {
         this( name, dataDir, keySerializer, valueSerializer, pageSize, false );
     }
-    
-    public BTree( String name, String dataDir, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer,
+
+
+    public BTree( String name, String dataDir, ElementSerializer<K> keySerializer,
+        ElementSerializer<V> valueSerializer,
         int pageSize, boolean allowDuplicates )
         throws IOException
     {
         btreeHeader = new BTreeHeader();
         btreeHeader.setName( name );
-        if( dataDir != null )
+        if ( dataDir != null )
         {
             envDir = new File( dataDir );
         }
-        
+
         setPageSize( pageSize );
         writeBufferSize = DEFAULT_WRITE_BUFFER_SIZE;
 
@@ -454,7 +459,7 @@ public class BTree<K, V>
         // Create the first root page, with revision 0L. It will be empty
         // and increment the revision at the same time
         rootPage = new Leaf<K, V>( this );
-        
+
         // Now, call the init() method
         init();
     }
@@ -468,17 +473,17 @@ public class BTree<K, V>
     public void init() throws IOException
     {
         // if not in-memory then default to persist mode instead of managed
-        if( ( envDir != null ) && ( type != BTreeTypeEnum.MANAGED ) )
+        if ( ( envDir != null ) && ( type != BTreeTypeEnum.MANAGED ) )
         {
-            if( !envDir.exists() )
+            if ( !envDir.exists() )
             {
                 boolean created = envDir.mkdirs();
-                if( !created )
+                if ( !created )
                 {
                     throw new IllegalStateException( "Could not create the directory " + envDir + " for storing data" );
                 }
             }
-            
+
             this.file = new File( envDir, btreeHeader.getName() + DATA_SUFFIX );
 
             this.journal = new File( envDir, file.getName() + JOURNAL_SUFFIX );
@@ -505,22 +510,22 @@ public class BTree<K, V>
         if ( type == BTreeTypeEnum.PERSISTENT )
         {
             modificationsQueue = new LinkedBlockingDeque<Modification<K, V>>();
-            
+
             if ( file.length() > 0 )
             {
                 // We have some existing file, load it 
                 load( file );
             }
-            
+
             withJournal = true;
-            
+
             // If the journal is not empty, we have to read it
             // and to apply all the modifications to the current file
             if ( journal.length() > 0 )
             {
                 applyJournal();
             }
-            
+
             // Initialize the Journal manager thread if it's not a in-memory btree
             createJournalManager();
         }
@@ -528,7 +533,7 @@ public class BTree<K, V>
         {
             type = BTreeTypeEnum.IN_MEMORY;
         }
-        
+
         // Initialize the txnManager thread
         //FIXME we should NOT create a new transaction manager thread for each BTree
         //createTransactionManager();
@@ -554,7 +559,7 @@ public class BTree<K, V>
             // Flush the data
             flush();
         }
-        
+
         rootPage = null;
     }
 
@@ -687,8 +692,7 @@ public class BTree<K, V>
         this.type = BTreeTypeEnum.MANAGED;
     }
 
-    
-    
+
     /**
      * @return the pageSize
      */
@@ -734,7 +738,7 @@ public class BTree<K, V>
 
             InsertResult<K, V> result = insert( key, value, revision );
 
-            if( result instanceof ModifyResult )
+            if ( result instanceof ModifyResult )
             {
                 existingValue = ( ( ModifyResult<K, V> ) result ).getModifiedValue();
             }
@@ -896,7 +900,7 @@ public class BTree<K, V>
             if ( isManaged() )
             {
                 recordManager.addFreePages( this, ( List ) result.getCopiedPages() );
-                
+
                 // Store the created rootPage into the revision BTree, this will be stored in RecordManager only if revisions are set to keep
                 recordManager.storeRootPage( this, rootPage );
             }
@@ -935,12 +939,12 @@ public class BTree<K, V>
     /**
      * @see Page#getValues(Object)
      */
-    public BTree<V,V> getValues( K key ) throws IOException, KeyNotFoundException
+    public BTree<V, V> getValues( K key ) throws IOException, KeyNotFoundException
     {
         return rootPage.getValues( key );
     }
 
-    
+
     /**
      * Find a value in the tree, given its key, at a specific revision. If the key is not found,
      * it will throw a KeyNotFoundException. <br/>
@@ -1189,18 +1193,17 @@ public class BTree<K, V>
             if ( isManaged() )
             {
                 ElementHolder<Page<K, V>, K, V> holderLeft = recordManager.writePage( this,
-                    ( ( SplitResult ) result ).getLeftPage(), revision );
+                    leftPage, revision );
 
                 // Store the offset on disk in the page
-                ( ( AbstractPage ) ( ( SplitResult ) result ).getLeftPage() )
+                ( ( AbstractPage ) splitResult.getLeftPage() )
                     .setOffset( ( ( ReferenceHolder ) holderLeft ).getOffset() );
 
                 ElementHolder<Page<K, V>, K, V> holderRight = recordManager.writePage( this,
-                    ( ( SplitResult ) result ).getRightPage(),
-                    revision );
+                    rightPage, revision );
 
                 // Store the offset on disk in the page
-                ( ( AbstractPage<K, V> ) ( ( SplitResult ) result ).getRightPage() )
+                ( ( AbstractPage<K, V> ) splitResult.getRightPage() )
                     .setOffset( ( ( ReferenceHolder ) holderRight ).getOffset() );
 
                 // Create the new rootPage
@@ -1237,7 +1240,7 @@ public class BTree<K, V>
         if ( modifiedValue == null )
         {
             btreeHeader.incrementNbElems();
-            
+
             // If the BTree is managed, we have to update the rootPage on disk
             if ( isManaged() )
             {
@@ -1256,7 +1259,7 @@ public class BTree<K, V>
         {
             // Todo
         }
-        
+
         // Return the value we have found if it was modified
         return result;
     }
@@ -1831,7 +1834,7 @@ public class BTree<K, V>
         btreeHeader.setAllowDuplicates( allowDuplicates );
     }
 
-    
+
     /**
      * @see Object#toString()
      */
