@@ -1980,14 +1980,13 @@ public class RecordManager
         {
             return;
         }
-        
+
         offsetBTree.insert( btree.getName(), rootPage.getOffset(), 0 );
-        
+
         if ( !isKeepRevisions() )
         {
             return;
         }
-
 
         RevisionName revisionName = new RevisionName( rootPage.getRevision(), btree.getName() );
 
