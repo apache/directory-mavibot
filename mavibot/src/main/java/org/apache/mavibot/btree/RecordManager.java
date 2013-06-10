@@ -115,16 +115,17 @@ public class RecordManager
     private static final int FIRST_FREE_PAGE_SIZE = 8;
     private static final int LAST_FREE_PAGE_SIZE = 8;
 
+    /** The header size */
     private static final int HEADER_SIZE = NB_TREE_SIZE + PAGE_SIZE + FIRST_FREE_PAGE_SIZE + LAST_FREE_PAGE_SIZE;
+
+    /** A global buffer used to store the header */
+    private static final ByteBuffer HEADER_BUFFER = ByteBuffer.allocate( HEADER_SIZE );
 
     /** The default page size */
     private static final int DEFAULT_PAGE_SIZE = 512;
 
     /** The RecordManager underlying page size. */
     private int pageSize = DEFAULT_PAGE_SIZE;
-
-    /** A buffer used to read a page */
-    private ByteBuffer blockBuffer;
 
     /** The set of managed BTrees */
     private Map<String, BTree<?, ?>> managedBTrees;
@@ -144,9 +145,6 @@ public class RecordManager
 
     /** A flag set to true if we want to keep old revisions */
     private boolean keepRevisions;
-
-    /** A global buffer used for free pages */
-    private static ByteBuffer FREE_PAGE_BUFFER;
 
 
     /**
@@ -173,8 +171,6 @@ public class RecordManager
     public RecordManager( String fileName, int pageSize )
     {
         managedBTrees = new LinkedHashMap<String, BTree<?, ?>>();
-
-        FREE_PAGE_BUFFER = ByteBuffer.allocateDirect( pageSize );
 
         // Open the file or create it
         File tmpFile = new File( fileName );
@@ -1152,27 +1148,25 @@ public class RecordManager
      */
     private void updateRecordManagerHeader() throws IOException
     {
-        // The page size
-        ByteBuffer header = ByteBuffer.allocate( HEADER_SIZE );
+        HEADER_BUFFER.clear();
 
         // The page size
-        header.putInt( pageSize );
+        HEADER_BUFFER.putInt( pageSize );
 
         // The number of managed BTree (currently we have only one : the discardedPage BTree
-        header.putInt( nbBtree );
+        HEADER_BUFFER.putInt( nbBtree );
 
         // The first free page
-        header.putLong( firstFreePage );
+        HEADER_BUFFER.putLong( firstFreePage );
 
         // The last free page
-        header.putLong( lastFreePage );
+        HEADER_BUFFER.putLong( lastFreePage );
 
         // Write the header on disk
-        header.rewind();
+        HEADER_BUFFER.rewind();
 
         LOG.debug( "Update RM header, FF : {}, LF : {}", firstFreePage, lastFreePage );
-        fileChannel.write( header, 0L );
-        //fileChannel.force( false );
+        fileChannel.write( HEADER_BUFFER, 0L );
     }
 
 
