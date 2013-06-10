@@ -233,11 +233,12 @@ public class RecordManagerTest
         String fileName = dataDir.getAbsolutePath() + "/mavibot.db";
         File file = new File( fileName );
         long fileSize = file.length();
+        long nbElems = 100000L;
         System.out.println( "----- Size before = " + fileSize );
 
         // Now, add some elements in the BTree
         long t0 = System.currentTimeMillis();
-        for ( Long i = 0L; i < 100000L; i++ )
+        for ( Long i = 0L; i < nbElems; i++ )
         {
             String value = "V" + i;
             btree.insert( i, value );
@@ -263,7 +264,7 @@ public class RecordManagerTest
         fileSize = file.length();
         System.out.println( "Size after insertion of 100 000 elements : " + fileSize );
         System.out.println( "Time taken to write 100 000 elements : " + ( t1 - t0 ) );
-        System.out.println( "  Nb elem/s : " + ( ( 100000 * 1000 ) / ( t1 - t0 ) ) );
+        System.out.println( "  Nb elem/s : " + ( ( nbElems * 1000 ) / ( t1 - t0 ) ) );
         System.out.println( "Nb created page " + recordManager1.nbCreatedPages.get() );
         System.out.println( "Nb allocated page " + recordManager1.nbReusedPages.get() );
         System.out.println( "Nb page we have freed " + recordManager1.nbFreedPages.get() );
@@ -293,7 +294,7 @@ public class RecordManagerTest
 
         // Check the stored element
         long t2 = System.currentTimeMillis();
-        for ( long i = 0L; i < 100000L; i++ )
+        for ( long i = 0L; i < nbElems; i++ )
         {
             //assertTrue( btree1.exist( i ) );
             assertEquals( "V" + i, btree1.get( i ) );
@@ -303,7 +304,7 @@ public class RecordManagerTest
 
         // Check the stored element a second time
         long t4 = System.currentTimeMillis();
-        for ( long i = 0L; i < 100000L; i++ )
+        for ( long i = 0L; i < nbElems; i++ )
         {
             //assertTrue( btree1.exist( i ) );
             assertEquals( "V" + i, btree1.get( i ) );
