@@ -367,14 +367,14 @@ public class RecordManager
                 // Create the BTree
                 BTree<?, ?> btree = BTreeFactory.createBTree();
                 btree.setBtreeOffset( nextBtreeOffset );
-    
+
                 // Read the associated pages
                 pageIos = readPages( nextBtreeOffset, Long.MAX_VALUE );
-    
+
                 // Load the BTree
                 loadBTree( pageIos, btree );
                 nextBtreeOffset = btree.getNextBTreeOffset();
-    
+
                 // Store it into the managedBtrees map
                 managedBTrees.put( btree.getName(), btree );
             }
@@ -600,7 +600,7 @@ public class RecordManager
                     {
                         loadBTree( pageIos, revisionBTree );
                     }
-                    catch( Exception e )
+                    catch ( Exception e )
                     {
                         // should not happen
                         throw new RuntimeException( e );
@@ -952,6 +952,7 @@ public class RecordManager
         // Now, we can inject the BTree rootPage offset into the BTree header
         position = store( position, rootPageIo.getOffset(), pageIos );
         btree.setRootPageOffset( rootPageIo.getOffset() );
+        ( ( Leaf ) rootPage ).setOffset( rootPageIo.getOffset() );
 
         // The next BTree Header offset (-1L, as it's a new BTree)
         position = store( position, NO_PAGE, pageIos );
@@ -972,7 +973,9 @@ public class RecordManager
         position = store( position, ( btree.isAllowDuplicates() ? 1 : 0 ), pageIos );
 
         // And flush the pages to disk now
+        LOG.debug( "Flushing the newly managed '{}' btree header", btree.getName() );
         flushPages( pageIos );
+        LOG.debug( "Flushing the newly managed '{}' btree rootpage", btree.getName() );
         flushPages( rootPageIos );
 
         nbBtree++;
@@ -986,6 +989,7 @@ public class RecordManager
             store( LONG_SIZE + LONG_SIZE + LONG_SIZE, btreeOffset, pageIos );
 
             // Write the pages on disk
+            LOG.debug( "Updated the previous btree pointer on the added BTree {}", btree.getName() );
             flushPages( pageIos );
         }
 
@@ -1165,7 +1169,10 @@ public class RecordManager
 
         // Write the header on disk
         header.rewind();
+
+        LOG.debug( "Update RM header, FF : {}, LF : {}", firstFreePage, lastFreePage );
         fileChannel.write( header, 0L );
+        //fileChannel.force( false );
     }
 
 
@@ -1196,14 +1203,15 @@ public class RecordManager
         position = store( position, btree.getNbElems(), pageIos );
         position = store( position, rootPageOffset, pageIos );
 
-        // Flush only the needed pages : we have stored the revision, the number of elements 
-        // and the rootPage offset, three longs.
-        int nbPages = computeNbPages( ( int ) headerSize );
-
-        for ( int i = 0; i < nbPages; i++ )
+        // Write the pages on disk
+        if ( LOG.isDebugEnabled() )
         {
-            flushPages( pageIos[i] );
+            LOG.debug( "-----> Flushing the '{}' BTreeHeader", btree.getName() );
+            LOG.debug( "  revision : " + btree.getRevision() + ", NbElems : " + btree.getNbElems() + ", root offset : "
+                + rootPageOffset );
         }
+
+        flushPages( pageIos );
     }
 
 
@@ -1220,17 +1228,23 @@ public class RecordManager
         {
             pageIo.getData().rewind();
 
-            if ( fileChannel.size() <= ( pageIo.getOffset() + pageSize ) )
+            if ( fileChannel.size() < ( pageIo.getOffset() + pageSize ) )
             {
+                LOG.debug( "Adding a page at the end of the file" );
                 // This is a page we have to add to the file
                 fileChannel.write( pageIo.getData(), fileChannel.size() );
+                //fileChannel.force( false );
             }
             else
             {
+                LOG.debug( "Writing a page at position {}", pageIo.getOffset() );
                 fileChannel.write( pageIo.getData(), pageIo.getOffset() );
+                //fileChannel.force( false );
             }
 
             pageIo.getData().rewind();
+
+            LOG.debug( "{}", pageIo );
         }
     }
 
@@ -1599,6 +1613,7 @@ public class RecordManager
         // We first need to save the new page on disk
         PageIO[] pageIos = serializePage( btree, newRevision, newPage );
 
+        LOG.debug( "Write data for '{}' btree ", btree.getName() );
         // Write the page on disk
         flushPages( pageIos );
 
@@ -1707,7 +1722,7 @@ public class RecordManager
             newPage.setNextPage( NO_PAGE );
             newPage.setSize( 0 );
 
-            LOG.debug( "Created a new page at offset {}", newPage.getOffset() );
+            LOG.debug( "Requiring a new page at offset {}", newPage.getOffset() );
 
             return newPage;
         }
@@ -1792,73 +1807,6 @@ public class RecordManager
     }
 
 
-    /** 
-     * Read the header. It will contain all the BTree headers. The header is stored in
-     * the first block, which may be linked to some other blocks. The first block contains 
-     * the header's size on 4 bytes, then the data, and if we have a linked block, the last
-     * 8 bytes contain the reference on the next page.
-     * <br/>
-     * <pre>
-     * +----+--------+-----...---+    +--------+---------...----------+
-     * |Size|NextPage|    data   | -->|NextPage|        data          | --> ...
-     * +----+--------+-----...---+    +--------+---------...----------+
-     *   ^      ^
-     *   |      |
-     *   |      +--- Offset of the next page, or -1 if no linked page
-     *   |
-     *   +----------------------- Size of the header
-     * </pre>
-     * @return
-     */
-    private ByteBuffer readHeader() throws IOException
-    {
-        ByteBuffer dataBuffer = null;
-
-        // Read the first block
-        fileChannel.read( blockBuffer );
-
-        // Now, get its size, and check if we have more pages to read
-        int dataSize = blockBuffer.getInt();
-
-        dataBuffer = ByteBuffer.allocate( dataSize );
-
-        if ( dataSize + DATA_SIZE + LINK_SIZE > pageSize )
-        {
-            // We have more than one page to read
-            long nextPage = blockBuffer.getLong();
-
-            dataBuffer.put( blockBuffer );
-
-            dataSize -= pageSize - DATA_SIZE - LINK_SIZE;
-
-            // Loop on pages
-            while ( dataSize > 0 )
-            {
-                blockBuffer.clear();
-                fileChannel.read( blockBuffer, nextPage );
-
-                nextPage = blockBuffer.getLong();
-                dataSize -= pageSize - LINK_SIZE;
-
-                if ( nextPage == -1L )
-                {
-                    dataBuffer.put( blockBuffer.array(), LINK_SIZE, dataSize );
-                }
-                else
-                {
-                    dataBuffer.put( blockBuffer );
-                }
-            }
-        }
-        else
-        {
-            fileChannel.read( dataBuffer );
-        }
-
-        return dataBuffer;
-    }
-
-
     /**
      * Close the RecordManager and flush everything on disk
      */
@@ -1932,6 +1880,8 @@ public class RecordManager
                 LOG.debug( "    {}", pageIo );
             }
         }
+
+        randomFile.close();
     }
 
 
@@ -1975,7 +1925,7 @@ public class RecordManager
         {
             return;
         }
-        
+
         if ( ( btree == copiedPageBTree ) || ( btree == revisionBTree ) )
         {
             return;
@@ -2090,6 +2040,8 @@ public class RecordManager
 
                     // update its pointer to the next free pageIo
                     previousLastFreePage.setNextPage( firstPageIoOffset );
+
+                    LOG.debug( "Flushing the last free page" );
 
                     // And flush it to disk
                     flushPages( previousLastFreePage );
