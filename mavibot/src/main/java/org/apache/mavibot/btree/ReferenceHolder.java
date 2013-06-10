@@ -115,7 +115,7 @@ public class ReferenceHolder<E, K, V> implements ElementHolder<E, K, V>
 
         if ( element != null )
         {
-            sb.append( element );
+            sb.append( btree.getName() ).append( "[" ).append( offset ).append( "]:" ).append( element );
         }
         else
         {
