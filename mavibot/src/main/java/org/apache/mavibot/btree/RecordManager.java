@@ -594,7 +594,7 @@ public class RecordManager
 
                     try
                     {
-                        loadBTree( pageIos, revisionBTree );
+                        loadBTree( pageIos, dupValueContainer );
                     }
                     catch ( Exception e )
                     {
