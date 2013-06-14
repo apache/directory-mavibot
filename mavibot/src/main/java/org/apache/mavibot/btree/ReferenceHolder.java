@@ -42,8 +42,11 @@ public class ReferenceHolder<E, K, V> implements ElementHolder<E, K, V>
     /** The BTree */
     private BTree<K, V> btree;
 
-    /** The offset for a value stored on disk */
+    /** The offset of the first {@link PageIO} storing the page on disk */
     private long offset;
+
+    /** The offset of the last {@link PageIO} storing the page on disk */
+    private long lastOffset;
 
     /** The reference to the element instance, or null if it's not present */
     private SoftReference<E> reference;
@@ -55,10 +58,11 @@ public class ReferenceHolder<E, K, V> implements ElementHolder<E, K, V>
      * @param offset The offset in disk for this value
      * @param element The element to store into a SoftReference
      */
-    public ReferenceHolder( BTree<K, V> btree, E element, long offset )
+    public ReferenceHolder( BTree<K, V> btree, E element, long offset, long lastOffset )
     {
         this.btree = btree;
         this.offset = offset;
+        this.lastOffset = lastOffset;
         this.reference = new SoftReference<E>( element );
     }
 
@@ -98,9 +102,21 @@ public class ReferenceHolder<E, K, V> implements ElementHolder<E, K, V>
     }
 
 
+    /**
+     * @return The offset of the first {@link PageIO} storing the data on disk
+     */
     /* No qualifier */long getOffset()
     {
         return offset;
+    }
+
+
+    /**
+     * @return The offset of the last {@link PageIO} storing the data on disk
+     */
+    /* No qualifier */long getLastOffset()
+    {
+        return lastOffset;
     }
 
 

@@ -1722,7 +1722,7 @@ public class BTree<K, V>
             if ( value instanceof Page )
             {
                 return new ReferenceHolder<Page<K, V>, K, V>( this, ( Page<K, V> ) value,
-                    ( ( AbstractPage<K, V> ) value ).getOffset() );
+                    ( ( Page ) value ).getOffset(), ( ( Page ) value ).getLastOffset() );
             }
             else if ( isAllowDuplicates() )
             {

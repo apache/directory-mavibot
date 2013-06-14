@@ -630,8 +630,9 @@ public class RecordManager
             {
                 // This is an Offset
                 long offset = OFFSET_SERIALIZER.deserialize( byteBuffer );
+                long lastOffset = OFFSET_SERIALIZER.deserialize( byteBuffer );
 
-                ElementHolder valueHolder = new ReferenceHolder( btree, null, offset );
+                ElementHolder valueHolder = new ReferenceHolder( btree, null, offset, lastOffset );
                 ( ( Node ) page ).setValue( i, valueHolder );
 
                 Object key = btree.getKeySerializer().deserialize( byteBuffer );
@@ -640,8 +641,9 @@ public class RecordManager
 
             // and read the last value, as it's a node
             long offset = OFFSET_SERIALIZER.deserialize( byteBuffer );
+            long lastOffset = OFFSET_SERIALIZER.deserialize( byteBuffer );
 
-            ElementHolder valueHolder = new ReferenceHolder( btree, null, offset );
+            ElementHolder valueHolder = new ReferenceHolder( btree, null, offset, lastOffset );
             ( ( Node ) page ).setValue( nodeNbElems, valueHolder );
         }
 
@@ -928,6 +930,7 @@ public class RecordManager
         // - the BTree name
         // - the keySerializer FQCN
         // - the valueSerializer FQCN
+        // - the flags that tell if the dups are allowed
         // Starts at 0
         long position = 0L;
 
@@ -1083,7 +1086,14 @@ public class RecordManager
                 if ( page instanceof Node )
                 {
                     Page child = ( ( Node ) page ).getReference( pos );
-                    buffer = LongSerializer.serialize( ( ( AbstractPage ) child ).getOffset() );
+
+                    // The first offset
+                    buffer = LongSerializer.serialize( child.getOffset() );
+                    serializedData.add( buffer );
+                    dataSize += buffer.length;
+
+                    // The last offset
+                    buffer = LongSerializer.serialize( child.getLastOffset() );
                     serializedData.add( buffer );
                     dataSize += buffer.length;
                 }
@@ -1115,7 +1125,14 @@ public class RecordManager
             if ( page instanceof Node )
             {
                 Page child = ( ( Node ) page ).getReference( nbElems );
-                buffer = LongSerializer.serialize( ( ( AbstractPage ) child ).getOffset() );
+
+                // The first offset
+                buffer = LongSerializer.serialize( child.getOffset() );
+                serializedData.add( buffer );
+                dataSize += buffer.length;
+
+                // The last offset
+                buffer = LongSerializer.serialize( child.getOffset() );
                 serializedData.add( buffer );
                 dataSize += buffer.length;
             }
@@ -1166,7 +1183,7 @@ public class RecordManager
         HEADER_BUFFER.rewind();
 
         LOG.debug( "Update RM header, FF : {}, LF : {}", firstFreePage, lastFreePage );
-        fileChannel.write( HEADER_BUFFER, 0L );
+        fileChannel.write( HEADER_BUFFER, 0 );
     }
 
 
@@ -1612,7 +1629,9 @@ public class RecordManager
         flushPages( pageIos );
 
         // Build the resulting reference
-        ElementHolder valueHolder = new ReferenceHolder( btree, newPage, pageIos[0].getOffset() );
+        long offset = pageIos[0].getOffset();
+        long lastOffset = pageIos[pageIos.length - 1].getOffset();
+        ElementHolder valueHolder = new ReferenceHolder( btree, newPage, offset, lastOffset );
 
         return valueHolder;
     }
@@ -2004,28 +2023,14 @@ public class RecordManager
             for ( Page page : pages )
             {
                 // Retrieve all the PageIO associated with this logical page
-                long pageIoOffset = page.getOffset();
-                long firstPageIoOffset = page.getOffset();
-                long lastPageIoOffset = NO_PAGE;
-
-                // Iterate on the pageIOs
-                while ( pageIoOffset != NO_PAGE )
-                {
-                    // Keep a track of the current page
-                    lastPageIoOffset = pageIoOffset;
-
-                    // Retrieve the first physical page from disk
-                    PageIO pageIo = fetchPage( pageIoOffset );
-
-                    // Get the next offset
-                    pageIoOffset = pageIo.getNextPage();
-                }
+                long firstOffset = page.getOffset();
+                long lastOffset = page.getLastOffset();
 
                 // Update the pointers
                 if ( firstFreePage == NO_PAGE )
                 {
-                    firstFreePage = firstPageIoOffset;
-                    lastFreePage = lastPageIoOffset;
+                    firstFreePage = firstOffset;
+                    lastFreePage = lastOffset;
                 }
                 else
                 {
@@ -2033,7 +2038,7 @@ public class RecordManager
                     PageIO previousLastFreePage = fetchPage( lastFreePage );
 
                     // update its pointer to the next free pageIo
-                    previousLastFreePage.setNextPage( firstPageIoOffset );
+                    previousLastFreePage.setNextPage( firstOffset );
 
                     LOG.debug( "Flushing the last free page" );
 
@@ -2041,12 +2046,12 @@ public class RecordManager
                     flushPages( previousLastFreePage );
 
                     // We can update the lastFreePage offset 
-                    lastFreePage = lastPageIoOffset;
+                    lastFreePage = lastOffset;
                 }
-
-                // Last, not least, flush the header
-                updateRecordManagerHeader();
             }
+
+            // Last, not least, flush the header
+            updateRecordManagerHeader();
         }
         else
         {

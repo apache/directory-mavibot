@@ -237,11 +237,11 @@ public class LeafTest
         right = insert( right, 13L, "v13" );
 
         parent.children[0] = new ReferenceHolder<Page<Long, String>, Long, String>( null, left,
-            ( ( AbstractPage<Long, String> ) left ).getOffset() );
+            left.getOffset(), left.getLastOffset() );
         parent.children[1] = new ReferenceHolder<Page<Long, String>, Long, String>( null, target,
-            ( ( AbstractPage<Long, String> ) target ).getOffset() );
+            target.getOffset(), target.getLastOffset() );
         parent.children[2] = new ReferenceHolder<Page<Long, String>, Long, String>( null, right,
-            ( ( AbstractPage<Long, String> ) right ).getOffset() );
+            right.getOffset(), right.getLastOffset() );
 
         // Update the parent
         parent.keys[0] = 6L;
@@ -310,11 +310,11 @@ public class LeafTest
         right = insert( right, 14L, "v14" );
 
         parent.children[0] = new ReferenceHolder<Page<Long, String>, Long, String>( null, left,
-            ( ( AbstractPage<Long, String> ) left ).getOffset() );
+            left.getOffset(), left.getLastOffset() );
         parent.children[1] = new ReferenceHolder<Page<Long, String>, Long, String>( null, target,
-            ( ( AbstractPage<Long, String> ) target ).getOffset() );
+            target.getOffset(), target.getLastOffset() );
         parent.children[2] = new ReferenceHolder<Page<Long, String>, Long, String>( null, right,
-            ( ( AbstractPage<Long, String> ) right ).getOffset() );
+            right.getOffset(), right.getLastOffset() );
 
         // Update the parent
         parent.keys[0] = 6L;
@@ -383,11 +383,11 @@ public class LeafTest
         right = insert( right, 12L, "v12" );
 
         parent.children[0] = new ReferenceHolder<Page<Long, String>, Long, String>( null, left,
-            ( ( AbstractPage<Long, String> ) left ).getOffset() );
+            left.getOffset(), left.getLastOffset() );
         parent.children[1] = new ReferenceHolder<Page<Long, String>, Long, String>( null, target,
-            ( ( AbstractPage<Long, String> ) target ).getOffset() );;
+            target.getOffset(), target.getLastOffset() );;
         parent.children[2] = new ReferenceHolder<Page<Long, String>, Long, String>( null, right,
-            ( ( AbstractPage<Long, String> ) right ).getOffset() );
+            right.getOffset(), right.getLastOffset() );
 
         // Update the parent
         parent.keys[0] = 5L;

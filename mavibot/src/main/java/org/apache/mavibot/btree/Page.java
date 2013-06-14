@@ -29,7 +29,9 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
 
 /**
  * A MVCC Page interface. A Page can be either a Leaf (containing keys and values) or a Node
- * (containing keys and references to child pages).
+ * (containing keys and references to child pages).<br/>
+ * A Page can be stored on disk. If so, we store the serialized value of this Page into
+ * one or more {@link PageIO} (they will be linked)
  * 
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
@@ -95,7 +97,7 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
      */
     V get( K key ) throws KeyNotFoundException, IOException;
 
-    
+
     /**
      * Gets the values associated with the given key, if any. If we don't have 
      * the key, this method will throw a KeyNotFoundException.<br/>
@@ -108,9 +110,9 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
      * @throws IOException If we have an error while trying to access the page
      * @throws IllegalArgumentException If duplicates are not enabled 
      */
-    BTree<V,V> getValues( K key ) throws KeyNotFoundException, IOException, IllegalArgumentException;
+    BTree<V, V> getValues( K key ) throws KeyNotFoundException, IOException, IllegalArgumentException;
 
-    
+
     /**
      * Checks if the page contains the given key with the given value.
      * 
@@ -260,7 +262,13 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
 
 
     /**
-     * @return the offset
+     * @return the offset of the first {@link PageIO} which stores the Page on disk.
      */
     long getOffset();
+
+
+    /**
+     * @return the offset of the last {@link PageIO} which stores the Page on disk.
+     */
+    long getLastOffset();
 }

@@ -1019,9 +1019,11 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
                 page,
                 revision );
 
-            // Store the offset on disk in the page in memory
+            // Store the offsets on disk in the page in memory
             ( ( AbstractPage<K, V> ) page ).setOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holder )
                 .getOffset() );
+            ( ( AbstractPage<K, V> ) page ).setLastOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holder )
+                .getLastOffset() );
 
             return holder;
         }
@@ -1220,13 +1222,13 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
     public K getRightMostKey() throws EndOfFileExceededException, IOException
     {
         int index = ( nbElems + 1 ) - 1;
-        
-        if( children[index] != null )
+
+        if ( children[index] != null )
         {
-            return children[ index ].getValue( btree ).getRightMostKey();
+            return children[index].getValue( btree ).getRightMostKey();
         }
-        
-        return children[ nbElems - 1 ].getValue( btree ).getRightMostKey();
+
+        return children[nbElems - 1].getValue( btree ).getRightMostKey();
     }
 
 

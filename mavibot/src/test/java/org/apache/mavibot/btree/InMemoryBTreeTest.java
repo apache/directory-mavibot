@@ -238,7 +238,7 @@ public class InMemoryBTreeTest
         long l2 = System.currentTimeMillis();
 
         System.out.println( "Delta : " + ( l2 - l1 ) + ", nbError = " + nbError
-            + ", Nb insertion per second : " + ( nbTrees * nbElems ) / ( ( l2 - l1 ) / 1000 ) );
+            + ", Nb insertion per second : " + ( nbTrees * nbElems * 1000 ) / ( l2 - l1 ) );
     }
 
 
@@ -360,7 +360,7 @@ public class InMemoryBTreeTest
         long l2 = System.currentTimeMillis();
 
         System.out.println( "Delta : " + ( l2 - l1 ) + ", nbError = " + nbError
-            + ", Nb deletion per second : " + ( nbTrees * nbElems ) / ( ( l2 - l1 ) / 1000 ) );
+            + ", Nb deletion per second : " + ( nbTrees * nbElems * 1000 ) / ( l2 - l1 ) );
     }
 
 
@@ -1804,7 +1804,7 @@ public class InMemoryBTreeTest
         long l2 = System.currentTimeMillis();
 
         System.out.println( "Delta : " + ( l2 - l1 ) + ", nbError = " + nbError
-            + ", Nb searches per second : " + ( ( nbElems ) / ( l2 - l1 ) ) * 1000 );
+            + ", Nb searches per second : " + ( ( nbElems * 1000 ) / ( l2 - l1 ) ) );
     }
 
 
@@ -1834,7 +1834,8 @@ public class InMemoryBTreeTest
             // expected
         }
     }
-    
+
+
     /**
      * Test a browse forward and backward
      */
@@ -1873,7 +1874,7 @@ public class InMemoryBTreeTest
 
         assertFalse( cursor.hasNext() );
         assertTrue( cursor.hasPrev() );
-        
+
         // Lets go backward. We should get the same value, as the next() call have incremented the counter
         assertEquals( 12, cursor.prev().getKey().intValue() );
 
@@ -1889,12 +1890,13 @@ public class InMemoryBTreeTest
         // Get 8
         assertEquals( 8, cursor.prev().getKey().intValue() );
 
-        assertFalse(cursor.hasPrev());
-        assertTrue(cursor.hasNext());
-        
+        assertFalse( cursor.hasPrev() );
+        assertTrue( cursor.hasNext() );
+
         cursor.close();
         btree.close();
     }
+
 
     @Test
     public void testNextAfterPrev() throws Exception
@@ -1908,19 +1910,19 @@ public class InMemoryBTreeTest
         BTree<Integer, Integer> btree = new BTree<Integer, Integer>( config );
 
         int i = 7;
-        for ( int k=0; k < i; k++ )
+        for ( int k = 0; k < i; k++ )
         {
             btree.insert( k, k );
         }
-        
+
         // 3 is the last element of the first leaf
-        Cursor<Integer, Integer> cursor = btree.browseFrom(4);
+        Cursor<Integer, Integer> cursor = btree.browseFrom( 4 );
 
         assertTrue( cursor.hasNext() );
         Tuple<Integer, Integer> tuple = cursor.next();
         assertEquals( Integer.valueOf( 4 ), tuple.getKey() );
         assertEquals( Integer.valueOf( 4 ), tuple.getValue() );
-        
+
         assertTrue( cursor.hasPrev() );
         tuple = cursor.prev();
         assertEquals( Integer.valueOf( 4 ), tuple.getKey() );
@@ -1931,6 +1933,6 @@ public class InMemoryBTreeTest
         assertEquals( Integer.valueOf( 4 ), tuple.getKey() );
         assertEquals( Integer.valueOf( 4 ), tuple.getValue() );
         cursor.close();
-    }    
-    
+    }
+
 }

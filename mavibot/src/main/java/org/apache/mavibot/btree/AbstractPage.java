@@ -47,8 +47,11 @@ import java.lang.reflect.Array;
     /** The number of current values in the Page */
     protected int nbElems;
 
-    /** The Page offset on disk if the BTree is managed */
+    /** The first {@link PageIO} storing the serialized Page on disk */
     private long offset;
+
+    /** The last {@link PageIO} storing the serialized Page on disk */
+    private long lastOffset;
 
 
     /**
@@ -290,7 +293,7 @@ import java.lang.reflect.Array;
 
 
     /**
-     * @return the offset
+     * {@inheritDoc}
      */
     public long getOffset()
     {
@@ -304,6 +307,24 @@ import java.lang.reflect.Array;
     /* No qualifier */void setOffset( long offset )
     {
         this.offset = offset;
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public long getLastOffset()
+    {
+        return lastOffset;
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    /* No qualifier */void setLastOffset( long lastOffset )
+    {
+        this.lastOffset = lastOffset;
     }
 
 
