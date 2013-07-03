@@ -100,7 +100,7 @@ public class RecordManagerFreePageTest
     }
 
 
-    private int nbElems = 200;//00;
+    private int nbElems = 100000;
     
     /**
      * Test the creation of a RecordManager, and that we can read it back.  
@@ -160,22 +160,23 @@ public class RecordManagerFreePageTest
         
         openRecordManagerAndBtree();
         
+        assertEquals( 1, recordManager1.getNbManagedTrees() );
+        
         assertTrue( nbElems == btree.getNbElems() );
         
-        //FIXME the total number of elements read are not same as the number of elements stored
         Cursor<Long, String> cursor = btree.browse();
         
         long i = 0;
         while( cursor.hasNext() )
         {
             Tuple<Long, String> t = cursor.next();
-//            assertEquals( ( Long ) i, t.getKey() );
-//            assertEquals( String.valueOf( i ), t.getValue() );
+            assertEquals( ( Long ) i, t.getKey() );
+            assertEquals( String.valueOf( i ), t.getValue() );
             i++;
         }
 
         cursor.close();
 
-        System.out.println( "Total number of tuples " + i);
+        assertEquals( nbElems, i );
     }
 }
