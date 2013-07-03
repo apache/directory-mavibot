@@ -496,11 +496,19 @@ public class BTree<K, V>
         // We will extract the Type to use for keys, using the comparator for that
         Class<?> comparatorClass = comparator.getClass();
         Type[] types = comparatorClass.getGenericInterfaces();
-        Type[] argumentTypes = ( ( ParameterizedType ) types[0] ).getActualTypeArguments();
-
-        if ( ( argumentTypes != null ) && ( argumentTypes.length > 0 ) && ( argumentTypes[0] instanceof Class<?> ) )
+        
+        if ( types[0] instanceof Class )
         {
-            keyType = ( Class<?> ) argumentTypes[0];
+        	keyType = ( Class<?> ) types[0];
+        }
+        else
+        {
+        	Type[] argumentTypes = ( ( ParameterizedType ) types[0] ).getActualTypeArguments();
+        	
+        	if ( ( argumentTypes != null ) && ( argumentTypes.length > 0 ) && ( argumentTypes[0] instanceof Class<?> ) )
+        	{
+        		keyType = ( Class<?> ) argumentTypes[0];
+        	}
         }
 
         writeLock = new ReentrantLock();
@@ -1314,6 +1322,7 @@ public class BTree<K, V>
     public void setKeySerializer( ElementSerializer<K> keySerializer )
     {
         this.keySerializer = keySerializer;
+        this.comparator = keySerializer.getComparator();
         btreeHeader.setKeySerializerFQCN( keySerializer.getClass().getName() );
     }
 
