@@ -22,6 +22,7 @@ package org.apache.mavibot.btree.serializer;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Comparator;
 
 import org.apache.mavibot.btree.comparator.ByteArrayComparator;
 
@@ -42,6 +43,15 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
     }
 
 
+    /**
+     * Create a new instance of ByteArraySerializer with custom comparator
+     */
+    public ByteArraySerializer( Comparator comparator )
+    {
+        super( comparator );
+    }
+
+    
     /**
      * {@inheritDoc}
      */

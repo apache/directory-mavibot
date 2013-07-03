@@ -23,6 +23,7 @@ package org.apache.mavibot.btree.serializer;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
+import java.util.Comparator;
 
 import org.apache.mavibot.btree.comparator.StringComparator;
 import org.apache.mavibot.btree.util.Strings;
@@ -46,6 +47,15 @@ public class StringSerializer extends AbstractElementSerializer<String>
     }
 
 
+    /**
+     * Create a new instance of StringSerializer with custom comparator
+     */
+    public StringSerializer( Comparator comparator )
+    {
+        super( comparator );
+    }
+
+    
     /**
      * A static method used to deserialize a String from a byte array.
      * @param in The byte array containing the String
