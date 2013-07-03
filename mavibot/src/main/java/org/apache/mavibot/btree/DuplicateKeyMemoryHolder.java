@@ -71,7 +71,7 @@ public class DuplicateKeyMemoryHolder<K, V> implements ElementHolder<V, K, V>
                 
                 try
                 {
-                    btree.getRecordManager().manage( valueContainer );
+                    btree.getRecordManager().manage( valueContainer, true );
                 }
                 catch( BTreeAlreadyManagedException e )
                 {

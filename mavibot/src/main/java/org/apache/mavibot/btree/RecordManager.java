@@ -882,6 +882,21 @@ public class RecordManager
      */
     public synchronized void manage( BTree<?, ?> btree ) throws BTreeAlreadyManagedException, IOException
     {
+        manage( btree, false );
+    }
+    
+    /**
+     * works the same as @see #manage(BTree) except the given tree will not be linked to top level trees that will be
+     * loaded initially if the internalTree flag is set to true
+     * 
+     * @param btree The new BTree to manage.
+     * @param internalTree flag indicating if this is an internal tree
+     * 
+     * @throws BTreeAlreadyManagedException
+     * @throws IOException
+     */
+    public synchronized void manage( BTree<?, ?> btree, boolean internalTree ) throws BTreeAlreadyManagedException, IOException
+    {
         BTreeFactory.setRecordManager( btree, this );
 
         String name = btree.getName();
@@ -977,25 +992,29 @@ public class RecordManager
         LOG.debug( "Flushing the newly managed '{}' btree rootpage", btree.getName() );
         flushPages( rootPageIos );
 
-        nbBtree++;
-
         // Now, if this added BTree is not the first BTree, we have to link it with the 
         // latest added BTree
-        if ( lastAddedBTreeOffset != NO_PAGE )
+        if( !internalTree )
         {
-            // We have to update the nextBtreeOffset from the previous BTreeHeader
-            pageIos = readPages( lastAddedBTreeOffset, LONG_SIZE + LONG_SIZE + LONG_SIZE + LONG_SIZE );
-            store( LONG_SIZE + LONG_SIZE + LONG_SIZE, btreeOffset, pageIos );
-
-            // Write the pages on disk
-            LOG.debug( "Updated the previous btree pointer on the added BTree {}", btree.getName() );
-            flushPages( pageIos );
+            nbBtree++;
+            
+            if ( lastAddedBTreeOffset != NO_PAGE )
+            {
+                // We have to update the nextBtreeOffset from the previous BTreeHeader
+                pageIos = readPages( lastAddedBTreeOffset, LONG_SIZE + LONG_SIZE + LONG_SIZE + LONG_SIZE );
+                store( LONG_SIZE + LONG_SIZE + LONG_SIZE, btreeOffset, pageIos );
+                
+                // Write the pages on disk
+                LOG.debug( "Updated the previous btree pointer on the added BTree {}", btree.getName() );
+                flushPages( pageIos );
+            }
+            
+            lastAddedBTreeOffset = btreeOffset;
+            
+            // Last, not least, update the number of managed BTrees in the header
+            updateRecordManagerHeader();
         }
 
-        lastAddedBTreeOffset = btreeOffset;
-
-        // Last, not least, update the number of managed BTrees in the header
-        updateRecordManagerHeader();
     }
 
 
@@ -2024,6 +2043,15 @@ public class RecordManager
             {
                 // Retrieve all the PageIO associated with this logical page
                 long firstOffset = page.getOffset();
+
+                // skip the page with offset 0, this is the first in-memory root page that
+                // was copied during first insert in a BTree.
+                // a Node or Leaf will *never* have 0 as its offset 
+                if ( firstOffset == 0 )
+                {
+                	continue;
+                }
+                
                 long lastOffset = page.getLastOffset();
 
                 // Update the pointers
