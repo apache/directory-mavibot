@@ -461,13 +461,18 @@ public class Cursor<K, V>
             // parent, and down to the leaf
             // increment the position cause findNextParentPos checks "parentPos.pos == parentPos.page.getNbElems()"
             parentPos.pos++;
-            parentPos = findNextParentPos();
+            ParentPos<K, V> nextPos = findNextParentPos();
             
-            // if the returned value is a Node that means cursor is already at the last position
+            // if the returned value is a Node OR if it is same as the parentPos
+            // that means cursor is already at the last position
             // call afterLast() to restore the stack with the path to the right most element
-            if( parentPos.page instanceof Node )
+            if( ( nextPos.page instanceof Node ) || ( nextPos == parentPos ) )
             {
                 afterLast();
+            }
+            else
+            {
+            	parentPos = nextPos;
             }
         }
         else

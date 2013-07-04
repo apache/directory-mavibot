@@ -617,4 +617,81 @@ public class BTreeDuplicateKeyTest
         cursor.close();
 
     }
+    
+    
+    /**
+     * Test for moving after a key and traversing backwards.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testMoveToNextAndTraverseBackward() throws Exception
+    {
+        IntSerializer serializer = new IntSerializer();
+
+        BTreeConfiguration<Integer, Integer> config = new BTreeConfiguration<Integer, Integer>();
+        config.setAllowDuplicates( true );
+        config.setName( "master" );
+        config.setPageSize( 8 );
+        config.setSerializers( serializer, serializer );
+        BTree<Integer, Integer> btree = new BTree<Integer, Integer>( config );
+
+        int i = 5;
+        for ( int k=0; k < i; k++ )
+        {
+            btree.insert( k, k );
+        }
+        
+        // 4 is the last element in the tree
+        Cursor<Integer, Integer> cursor = btree.browseFrom(4);
+        cursor.moveToNextNonDuplicateKey();
+        
+        int currentKey = 4;
+        while( cursor.hasPrev() )
+        {
+        	assertEquals( Integer.valueOf( currentKey ), cursor.prev().getKey() );
+        	currentKey--;
+        }
+        
+        cursor.close();
+    }
+    
+    
+    /**
+     * Test for moving after a key and traversing backwards.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testMoveToPrevAndTraverseForward() throws Exception
+    {
+        IntSerializer serializer = new IntSerializer();
+
+        BTreeConfiguration<Integer, Integer> config = new BTreeConfiguration<Integer, Integer>();
+        config.setAllowDuplicates( true );
+        config.setName( "master" );
+        config.setPageSize( 8 );
+        config.setSerializers( serializer, serializer );
+        BTree<Integer, Integer> btree = new BTree<Integer, Integer>( config );
+
+        int i = 5;
+        for ( int k=0; k < i; k++ )
+        {
+            btree.insert( k, k );
+        }
+        
+        // 4 is the last element in the tree
+        Cursor<Integer, Integer> cursor = btree.browseFrom(0);
+        cursor.moveToPrevNonDuplicateKey();
+        
+        int currentKey = 0;
+        while( cursor.hasNext() )
+        {
+        	assertEquals( Integer.valueOf( currentKey ), cursor.next().getKey() );
+        	currentKey++;
+        }
+        
+        cursor.close();
+    }
+
 }
