@@ -363,6 +363,7 @@ public class RecordManager
                 // Create the BTree
                 BTree<?, ?> btree = BTreeFactory.createBTree();
                 btree.setBtreeOffset( nextBtreeOffset );
+                lastAddedBTreeOffset = nextBtreeOffset;
 
                 // Read the associated pages
                 pageIos = readPages( nextBtreeOffset, Long.MAX_VALUE );
@@ -587,10 +588,11 @@ public class RecordManager
                 if ( btree.isAllowDuplicates() )
                 {
                     long value = OFFSET_SERIALIZER.deserialize( byteBuffer );
-                    // And the Revision BTree
+
                     pageIos = readPages( value, Long.MAX_VALUE );
 
                     BTree dupValueContainer = BTreeFactory.createBTree();
+                    dupValueContainer.setBtreeOffset(value);
 
                     try
                     {
@@ -1768,6 +1770,10 @@ public class RecordManager
             // Update the firstFreePage pointer
             firstFreePage = pageIo.getNextPage();
 
+            // overwrite the data of old page
+            ByteBuffer data = ByteBuffer.allocateDirect( pageSize );
+            pageIo.setData( data );
+            
             pageIo.setNextPage( NO_PAGE );
             pageIo.setSize( 0 );
 
