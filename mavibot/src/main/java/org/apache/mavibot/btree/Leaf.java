@@ -281,8 +281,18 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
                 return defaultResult;
             }
         }
+        else
+        {
+            // Last, not least : we can copy the full page
+            // Copy the keys and the values
+            System.arraycopy( keys, 0, newLeaf.keys, 0, nbElems );
+            System.arraycopy( values, 0, newLeaf.values, 0, nbElems );
 
-        return defaultResult;
+            // The current page is added in the copied page list
+            defaultResult.addCopiedPage( this );
+
+            return defaultResult;
+        }
     }
 
 
