@@ -338,7 +338,7 @@ public class RecordManager
             // the RecordManager.
             long btreeOffset = HEADER_SIZE;
 
-            PageIO[] pageIos = readPages( HEADER_SIZE, Long.MAX_VALUE );
+            PageIO[] pageIos = readPageIOs( HEADER_SIZE, Long.MAX_VALUE );
             long position = pageIos.length * pageSize + HEADER_SIZE;
 
             // Create the BTree
@@ -349,7 +349,7 @@ public class RecordManager
             long nextBtreeOffset = copiedPageBTree.getNextBTreeOffset();
 
             // And the Revision BTree
-            pageIos = readPages( nextBtreeOffset, Long.MAX_VALUE );
+            pageIos = readPageIOs( nextBtreeOffset, Long.MAX_VALUE );
 
             revisionBTree = BTreeFactory.createBTree();
             revisionBTree.setBtreeOffset( nextBtreeOffset );
@@ -366,7 +366,7 @@ public class RecordManager
                 lastAddedBTreeOffset = nextBtreeOffset;
 
                 // Read the associated pages
-                pageIos = readPages( nextBtreeOffset, Long.MAX_VALUE );
+                pageIos = readPageIOs( nextBtreeOffset, Long.MAX_VALUE );
 
                 // Load the BTree
                 loadBTree( pageIos, btree );
@@ -383,13 +383,13 @@ public class RecordManager
 
 
     /**
-     * Reads all the pages that are linked to the page at the given position, including
+     * Reads all the PageIOs that are linked to the page at the given position, including
      * the first page.
      * 
      * @param position The position of the first page
      * @return An array of pages
      */
-    private PageIO[] readPages( long position, long limit ) throws IOException, EndOfFileExceededException
+    private PageIO[] readPageIOs( long position, long limit ) throws IOException, EndOfFileExceededException
     {
         if ( limit <= 0 )
         {
@@ -518,7 +518,7 @@ public class RecordManager
         // it's a Node, otherwise it's a Leaf
 
         // Read the rootPage pages on disk
-        PageIO[] rootPageIos = readPages( rootPageOffset, Long.MAX_VALUE );
+        PageIO[] rootPageIos = readPageIOs( rootPageOffset, Long.MAX_VALUE );
 
         Page btreeRoot = readPage( btree, rootPageIos );
         BTreeFactory.setRecordManager( btree, this );
@@ -532,7 +532,7 @@ public class RecordManager
         Page node = BTreeFactory.createNode( btree, revision, nbElems );
 
         // Read the rootPage pages on disk
-        PageIO[] pageIos = readPages( offset, Long.MAX_VALUE );
+        PageIO[] pageIos = readPageIOs( offset, Long.MAX_VALUE );
 
         return node;
     }
@@ -540,7 +540,7 @@ public class RecordManager
 
     public Page deserialize( BTree btree, long offset ) throws EndOfFileExceededException, IOException
     {
-        PageIO[] rootPageIos = readPages( offset, Long.MAX_VALUE );
+        PageIO[] rootPageIos = readPageIOs( offset, Long.MAX_VALUE );
 
         Page page = readPage( btree, rootPageIos );
 
@@ -589,7 +589,7 @@ public class RecordManager
                 {
                     long value = OFFSET_SERIALIZER.deserialize( byteBuffer );
 
-                    pageIos = readPages( value, Long.MAX_VALUE );
+                    pageIos = readPageIOs( value, Long.MAX_VALUE );
 
                     BTree dupValueContainer = BTreeFactory.createBTree();
                     dupValueContainer.setBtreeOffset(value);
@@ -1003,7 +1003,7 @@ public class RecordManager
             if ( lastAddedBTreeOffset != NO_PAGE )
             {
                 // We have to update the nextBtreeOffset from the previous BTreeHeader
-                pageIos = readPages( lastAddedBTreeOffset, LONG_SIZE + LONG_SIZE + LONG_SIZE + LONG_SIZE );
+                pageIos = readPageIOs( lastAddedBTreeOffset, LONG_SIZE + LONG_SIZE + LONG_SIZE + LONG_SIZE );
                 store( LONG_SIZE + LONG_SIZE + LONG_SIZE, btreeOffset, pageIos );
                 
                 // Write the pages on disk
@@ -1226,7 +1226,7 @@ public class RecordManager
         long offset = btree.getBtreeOffset();
         long headerSize = LONG_SIZE + LONG_SIZE + LONG_SIZE;
 
-        PageIO[] pageIos = readPages( offset, headerSize );
+        PageIO[] pageIos = readPageIOs( offset, headerSize );
 
         // Now, update the revision
         long position = 0;
@@ -1911,7 +1911,7 @@ public class RecordManager
         for ( int i = 0; i < nbBTree; i++ )
         {
             LOG.debug( "  Btree[{}]", i );
-            PageIO[] pageIos = readPages( position, Long.MAX_VALUE );
+            PageIO[] pageIos = readPageIOs( position, Long.MAX_VALUE );
 
             for ( PageIO pageIo : pageIos )
             {
@@ -1996,7 +1996,7 @@ public class RecordManager
         long rootPageOffset = revisionBTree.get( revisionName );
 
         // Read the rootPage pages on disk
-        PageIO[] rootPageIos = readPages( rootPageOffset, Long.MAX_VALUE );
+        PageIO[] rootPageIos = readPageIOs( rootPageOffset, Long.MAX_VALUE );
 
         Page btreeRoot = readPage( btree, rootPageIos );
 
