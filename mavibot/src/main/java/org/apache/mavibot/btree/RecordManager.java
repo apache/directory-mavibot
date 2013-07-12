@@ -1153,7 +1153,7 @@ public class RecordManager
                 dataSize += buffer.length;
 
                 // The last offset
-                buffer = LongSerializer.serialize( child.getOffset() );
+                buffer = LongSerializer.serialize( child.getLastOffset() );
                 serializedData.add( buffer );
                 dataSize += buffer.length;
             }
