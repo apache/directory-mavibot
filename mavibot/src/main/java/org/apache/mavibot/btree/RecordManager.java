@@ -580,6 +580,9 @@ public class RecordManager
             // Its a leaf
             page = BTreeFactory.createLeaf( btree, revision, nbElems );
 
+            ( ( AbstractPage ) page ).setOffset( pageIos[0].getOffset() );
+            ( ( AbstractPage ) page ).setLastOffset( pageIos[pageIos.length - 1].getOffset() );
+            
             // Read each value and key
             for ( int i = 0; i < nbElems; i++ )
             {
