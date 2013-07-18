@@ -59,6 +59,9 @@ public class RecordManager
     /** The LoggerFactory used by this class */
     protected static final Logger LOG = LoggerFactory.getLogger( RecordManager.class );
 
+    /** A dedicated logger for the check */
+    protected static final Logger LOG_CHECK = LoggerFactory.getLogger( "RM_CHECK" );
+
     /** The associated file */
     private File file;
 
@@ -391,6 +394,8 @@ public class RecordManager
      */
     private PageIO[] readPageIOs( long position, long limit ) throws IOException, EndOfFileExceededException
     {
+        LOG.debug( "Read PageIOs at position {}", position );
+
         if ( limit <= 0 )
         {
             limit = Long.MAX_VALUE;
@@ -403,18 +408,26 @@ public class RecordManager
         long dataRead = pageSize - LONG_SIZE - INT_SIZE;
 
         // Iterate on the pages, if needed
-        if ( dataRead < limit )
-        {
-            long nextPage = firstPage.getNextPage();
+        long nextPage = firstPage.getNextPage();
 
-            while ( ( nextPage != NO_PAGE ) && ( dataRead < limit ) )
+        if ( ( dataRead < limit ) && ( nextPage != NO_PAGE ) )
+        {
+            while ( dataRead < limit )
             {
                 PageIO page = fetchPage( nextPage );
                 listPages.add( page );
                 nextPage = page.getNextPage();
                 dataRead += pageSize - LONG_SIZE;
+
+                if ( nextPage == NO_PAGE )
+                {
+                    page.setNextPage( NO_PAGE );
+                    break;
+                }
             }
         }
+
+        LOG.debug( "Nb of PageIOs read : {}", listPages.size() );
 
         // Return 
         return listPages.toArray( new PageIO[]
@@ -582,7 +595,7 @@ public class RecordManager
 
             ( ( AbstractPage ) page ).setOffset( pageIos[0].getOffset() );
             ( ( AbstractPage ) page ).setLastOffset( pageIos[pageIos.length - 1].getOffset() );
-            
+
             // Read each value and key
             for ( int i = 0; i < nbElems; i++ )
             {
@@ -595,7 +608,7 @@ public class RecordManager
                     pageIos = readPageIOs( value, Long.MAX_VALUE );
 
                     BTree dupValueContainer = BTreeFactory.createBTree();
-                    dupValueContainer.setBtreeOffset(value);
+                    dupValueContainer.setBtreeOffset( value );
 
                     try
                     {
@@ -889,7 +902,8 @@ public class RecordManager
     {
         manage( btree, false );
     }
-    
+
+
     /**
      * works the same as @see #manage(BTree) except the given tree will not be linked to top level trees that will be
      * loaded initially if the internalTree flag is set to true
@@ -900,8 +914,10 @@ public class RecordManager
      * @throws BTreeAlreadyManagedException
      * @throws IOException
      */
-    public synchronized void manage( BTree<?, ?> btree, boolean internalTree ) throws BTreeAlreadyManagedException, IOException
+    public synchronized void manage( BTree<?, ?> btree, boolean internalTree ) throws BTreeAlreadyManagedException,
+        IOException
     {
+        LOG.debug( "Managing the btree {} which is an internam tree : {}", btree.getName(), internalTree );
         BTreeFactory.setRecordManager( btree, this );
 
         String name = btree.getName();
@@ -999,27 +1015,31 @@ public class RecordManager
 
         // Now, if this added BTree is not the first BTree, we have to link it with the 
         // latest added BTree
-        if( !internalTree )
+        if ( !internalTree )
         {
             nbBtree++;
-            
+
             if ( lastAddedBTreeOffset != NO_PAGE )
             {
                 // We have to update the nextBtreeOffset from the previous BTreeHeader
                 pageIos = readPageIOs( lastAddedBTreeOffset, LONG_SIZE + LONG_SIZE + LONG_SIZE + LONG_SIZE );
                 store( LONG_SIZE + LONG_SIZE + LONG_SIZE, btreeOffset, pageIos );
-                
+
                 // Write the pages on disk
                 LOG.debug( "Updated the previous btree pointer on the added BTree {}", btree.getName() );
                 flushPages( pageIos );
             }
-            
+
             lastAddedBTreeOffset = btreeOffset;
-            
+
             // Last, not least, update the number of managed BTrees in the header
             updateRecordManagerHeader();
         }
 
+        if ( LOG_CHECK.isDebugEnabled() )
+        {
+            check();
+        }
     }
 
 
@@ -1247,6 +1267,11 @@ public class RecordManager
         }
 
         flushPages( pageIos );
+
+        if ( LOG_CHECK.isDebugEnabled() )
+        {
+            check();
+        }
     }
 
 
@@ -1278,8 +1303,6 @@ public class RecordManager
             }
 
             pageIo.getData().rewind();
-
-            LOG.debug( "{}", pageIo );
         }
     }
 
@@ -1657,6 +1680,11 @@ public class RecordManager
         long lastOffset = pageIos[pageIos.length - 1].getOffset();
         ElementHolder valueHolder = new ReferenceHolder( btree, newPage, offset, lastOffset );
 
+        if ( LOG_CHECK.isDebugEnabled() )
+        {
+            check();
+        }
+
         return valueHolder;
     }
 
@@ -1776,7 +1804,7 @@ public class RecordManager
             // overwrite the data of old page
             ByteBuffer data = ByteBuffer.allocateDirect( pageSize );
             pageIo.setData( data );
-            
+
             pageIo.setNextPage( NO_PAGE );
             pageIo.setSize( 0 );
 
@@ -1975,6 +2003,11 @@ public class RecordManager
         RevisionName revisionName = new RevisionName( rootPage.getRevision(), btree.getName() );
 
         revisionBTree.insert( revisionName, rootPage.getOffset(), 0 );
+
+        if ( LOG_CHECK.isDebugEnabled() )
+        {
+            check();
+        }
     }
 
 
@@ -2048,6 +2081,7 @@ public class RecordManager
             // the pages to the free page list.
             // NOTE : potential improvement : we can update the header only when
             // we have processed all the logical pages.
+
             for ( Page page : pages )
             {
                 // Retrieve all the PageIO associated with this logical page
@@ -2058,32 +2092,43 @@ public class RecordManager
                 // a Node or Leaf will *never* have 0 as its offset 
                 if ( firstOffset == 0 )
                 {
-                	continue;
+                    continue;
                 }
-                
+
                 long lastOffset = page.getLastOffset();
 
                 // Update the pointers
                 if ( firstFreePage == NO_PAGE )
                 {
+                    // We don't have yet any free pageIos. The
+                    // PageIOs for this Page will be used
                     firstFreePage = firstOffset;
                     lastFreePage = lastOffset;
                 }
                 else
                 {
-                    // Fetch the last free pageIO
-                    PageIO previousLastFreePage = fetchPage( lastFreePage );
+                    // We add the Page's PageIOs before the 
+                    // existing free pages.
+                    long offset = page.getLastOffset();
 
-                    // update its pointer to the next free pageIo
-                    previousLastFreePage.setNextPage( firstOffset );
+                    if ( offset == NO_PAGE )
+                    {
+                        offset = page.getOffset();
+                    }
 
-                    LOG.debug( "Flushing the last free page" );
+                    // Fetch the pageIO
+                    PageIO pageIo = fetchPage( offset );
+
+                    // Link it to the first free page
+                    pageIo.setNextPage( firstFreePage );
+
+                    LOG.debug( "Flushing the first free page" );
 
                     // And flush it to disk
-                    flushPages( previousLastFreePage );
+                    flushPages( pageIo );
 
                     // We can update the lastFreePage offset 
-                    lastFreePage = lastOffset;
+                    firstFreePage = firstOffset;
                 }
             }
 
@@ -2183,10 +2228,85 @@ public class RecordManager
         BTree btree = new BTree( config );
         manage( btree );
 
+        if ( LOG_CHECK.isDebugEnabled() )
+        {
+            check();
+        }
+
         return btree;
     }
 
 
+    /**
+     * Check the whole file
+     */
+    private void check()
+    {
+        try
+        {
+            System.out.println( "Checking..." );
+            // First check the header
+            ByteBuffer header = ByteBuffer.allocate( HEADER_SIZE );
+            long fileSize = fileChannel.size();
+
+            if ( fileSize < HEADER_SIZE )
+            {
+                throw new RuntimeException( "File size too small : " + fileSize );
+            }
+
+            // Read the header
+            fileChannel.read( header, 0L );
+            header.flip();
+
+            // The page size. It must be a power of 2, and above 16.
+            int pageSize = header.getInt();
+
+            if ( ( pageSize < 0 ) || ( pageSize < 32 ) || ( ( pageSize & ( ~pageSize + 1 ) ) != pageSize ) )
+            {
+                throw new RuntimeException( "Wrong page size : " + pageSize );
+            }
+
+            // The number of trees. It must be at least 2 and > 0
+            int nbTrees = header.getInt();
+
+            if ( nbTrees < 0 )
+            {
+                throw new RuntimeException( "Wrong nb trees : " + nbTrees );
+            }
+
+            // The first free page offset. It must be either -1 or below file size
+            // and its value must be a modulo of pageSize
+            long firstFreePage = header.getLong();
+
+            if ( firstFreePage > fileSize )
+            {
+                throw new RuntimeException( "First free page pointing after the end of the file : " + firstFreePage );
+            }
+
+            if ( ( firstFreePage != NO_PAGE ) && ( ( ( firstFreePage - HEADER_SIZE ) % pageSize ) != 0 ) )
+            {
+                throw new RuntimeException( "First free page not pointing to a correct offset : " + firstFreePage );
+            }
+
+            // The last free page offset. It must be -1
+            long lastFreePage = header.getLong();
+
+            if ( ( ( lastFreePage != NO_PAGE ) && ( ( ( lastFreePage - HEADER_SIZE ) % pageSize ) != 0 ) ) )
+            //|| ( lastFreePage != 0 ) )
+            {
+                throw new RuntimeException( "Invalid last free page : " + lastFreePage );
+            }
+        }
+        catch ( IOException ioe )
+        {
+            throw new RuntimeException( "Error : " + ioe.getMessage() );
+        }
+    }
+
+
+    /**
+     * @see Object#toString()
+     */
     public String toString()
     {
         StringBuilder sb = new StringBuilder();
