@@ -54,21 +54,21 @@ public class RecordManagerFreePageTest
     {
         dataDir = new File( System.getProperty( "java.io.tmpdir" ) + "/recordman" );
 
-        if( dataDir.exists() )
+        if ( dataDir.exists() )
         {
             FileUtils.deleteDirectory( dataDir );
         }
-        
+
         dataDir.mkdirs();
-        
+
         openRecordManagerAndBtree();
 
         try
         {
             // Create a new BTree
-            btree = ( BTree<Long, String> ) recordManager1.addBTree( "test", new LongSerializer(), new StringSerializer(), false );
+            btree = recordManager1.addBTree( "test", new LongSerializer(), new StringSerializer(), false );
         }
-        catch( Exception e )
+        catch ( Exception e )
         {
             throw new RuntimeException( e );
         }
@@ -79,29 +79,29 @@ public class RecordManagerFreePageTest
     {
         try
         {
-            if( recordManager1 != null )
+            if ( recordManager1 != null )
             {
                 recordManager1.close();
             }
-            
+
             // Now, try to reload the file back
             recordManager1 = new RecordManager( dataDir.getAbsolutePath() );
-            
+
             // load the last created btree
-            if( btree != null )
+            if ( btree != null )
             {
                 btree = recordManager1.getManagedTree( btree.getName() );
             }
         }
-        catch( Exception e )
+        catch ( Exception e )
         {
             throw new RuntimeException( e );
         }
     }
 
-
     private int nbElems = 100000;
-    
+
+
     /**
      * Test the creation of a RecordManager, and that we can read it back.  
      */
@@ -127,6 +127,7 @@ public class RecordManagerFreePageTest
             String value = Long.toString( key );
 
             btree.insert( key, value );
+
             if ( i % 10000 == 0 )
             {
                 if ( n > 0 )
@@ -145,29 +146,29 @@ public class RecordManagerFreePageTest
         System.out.println( "Delta : " + ( l2 - l1 ) + ", nbError = " + nbError
             + ", Nb insertion per second : " + ( ( nbElems ) / ( l2 - l1 ) ) * 1000 );
 
-        long length = new File( dataDir, "mavibot.db").length();
+        long length = new File( dataDir, "mavibot.db" ).length();
         String units = "MB";
 
-        long size = length / (1024 * 1024 );
+        long size = length / ( 1024 * 1024 );
 
-        if( size == 0 )
+        if ( size == 0 )
         {
             size = length / 1024;
             units = "KB";
         }
-        
+
         System.out.println( size + units );
-        
+
         openRecordManagerAndBtree();
-        
+
         assertEquals( 1, recordManager1.getNbManagedTrees() );
-        
+
         assertTrue( nbElems == btree.getNbElems() );
-        
+
         Cursor<Long, String> cursor = btree.browse();
-        
+
         long i = 0;
-        while( cursor.hasNext() )
+        while ( cursor.hasNext() )
         {
             Tuple<Long, String> t = cursor.next();
             assertEquals( ( Long ) i, t.getKey() );
