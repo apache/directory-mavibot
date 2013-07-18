@@ -2238,6 +2238,81 @@ public class RecordManager
 
 
     /**
+     * Check the free pages
+     * 
+     * @param checkedPages
+     * @throws IOException 
+     */
+    private void checkFreePages( long[] checkedPages, int pageSize, long firstFreePage, long lastFreePage )
+        throws IOException
+    {
+        if ( firstFreePage == NO_PAGE )
+        {
+            if ( lastFreePage == NO_PAGE )
+            {
+                return;
+            }
+            else
+            {
+                throw new RuntimeException( "Wrong last free page : " + lastFreePage );
+            }
+        }
+
+        if ( lastFreePage != NO_PAGE )
+        {
+            throw new RuntimeException( "Wrong last free page : " + lastFreePage );
+        }
+
+        // Now, read all the free pages
+        long currentOffset = firstFreePage;
+        long fileSize = fileChannel.size();
+
+        while ( currentOffset != NO_PAGE )
+        {
+            if ( currentOffset > fileSize )
+            {
+                throw new RuntimeException( "Wrong free page offset, above file size : " + currentOffset );
+            }
+
+            try
+            {
+                PageIO pageIo = fetchPage( currentOffset );
+
+                if ( currentOffset != pageIo.getOffset() )
+                {
+                    throw new RuntimeException( "PageIO offset is incorrect : " + currentOffset + "-"
+                        + pageIo.getOffset() );
+                }
+
+                int index = ( int ) ( ( currentOffset - HEADER_SIZE ) / ( pageSize * 64 ) );
+                long mask = ( 1L << ( ( ( currentOffset - HEADER_SIZE ) / pageSize ) % 64L ) );
+                long bits = checkedPages[index];
+
+                if ( ( bits & mask ) == 1 )
+                {
+                    throw new RuntimeException( "The page at : " + currentOffset + " has already been checked" );
+                }
+
+                checkedPages[index] |= mask;
+
+                long newOffset = pageIo.getNextPage();
+                currentOffset = newOffset;
+            }
+            catch ( IOException ioe )
+            {
+                throw new RuntimeException( "Cannot fetch page at : " + currentOffset );
+            }
+        }
+    }
+
+
+    private void checkBTrees( long[] checkedPages, int pageSize )
+    {
+
+    }
+
+
+    /**
      * Check the whole file
      */
     private void check()
@@ -2245,6 +2320,8 @@ public class RecordManager
         try
         {
             System.out.println( "Checking..." );
+
+            // First the header
             // First check the header
             ByteBuffer header = ByteBuffer.allocate( HEADER_SIZE );
             long fileSize = fileChannel.size();
@@ -2265,6 +2342,9 @@ public class RecordManager
             {
                 throw new RuntimeException( "Wrong page size : " + pageSize );
             }
+
+            // Compute the number of pages in this file
+            long nbPages = ( fileSize - HEADER_SIZE ) / pageSize;
 
             // The number of trees. It must be at least 2 and > 0
             int nbTrees = header.getInt();
@@ -2296,6 +2376,19 @@ public class RecordManager
             {
                 throw new RuntimeException( "Invalid last free page : " + lastFreePage );
             }
+
+            int nbPageBits = ( int ) ( nbPages / 64 );
+
+            // Create an array of pages to be checked
+            // We use one bit per page. It's 0 when the page
+            // hasn't been checked, 1 otherwise.
+            long[] checkedPages = new long[nbPageBits + 1];
+
+            // Then the free files
+            checkFreePages( checkedPages, pageSize, firstFreePage, lastFreePage );
+
+            // The BTrees
+            checkBTrees( checkedPages, pageSize );
         }
         catch ( IOException ioe )
         {
