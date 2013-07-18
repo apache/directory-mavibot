@@ -342,7 +342,6 @@ public class RecordManager
             long btreeOffset = HEADER_SIZE;
 
             PageIO[] pageIos = readPageIOs( HEADER_SIZE, Long.MAX_VALUE );
-            long position = pageIos.length * pageSize + HEADER_SIZE;
 
             // Create the BTree
             copiedPageBTree = BTreeFactory.createBTree();
@@ -2237,6 +2236,23 @@ public class RecordManager
     }
 
 
+    private void setCheckedPage( long[] checkedPages, long offset, int pageSize )
+    {
+        long pageOffset = ( offset - HEADER_SIZE ) / pageSize;
+        int index = ( int ) ( pageOffset / 64L );
+        long mask = ( 1L << ( pageOffset % 64L ) );
+        long bits = checkedPages[index];
+
+        if ( ( bits & mask ) == 1 )
+        {
+            throw new RuntimeException( "The page at : " + offset + " has already been checked" );
+        }
+
+        checkedPages[index] |= mask;
+
+    }
+
+
     /**
      * Check the free pages
      * 
@@ -2284,16 +2300,7 @@ public class RecordManager
                         + pageIo.getOffset() );
                 }
 
-                int index = ( int ) ( ( currentOffset - HEADER_SIZE ) / ( pageSize * 64 ) );
-                long mask = ( 1L << ( ( ( currentOffset - HEADER_SIZE ) / pageSize ) % 64L ) );
-                long bits = checkedPages[index];
-
-                if ( ( bits & mask ) == 1 )
-                {
-                    throw new RuntimeException( "The page at : " + currentOffset + " has already been checked" );
-                }
-
-                checkedPages[index] |= mask;
+                setCheckedPage( checkedPages, currentOffset, pageSize );
 
                 long newOffset = pageIo.getNextPage();
                 currentOffset = newOffset;
@@ -2306,9 +2313,162 @@ public class RecordManager
     }
 
 
-    private void checkBTrees( long[] checkedPages, int pageSize )
+    private long checkBTree( long[] checkedPages, PageIO[] pageIos, int pageSize, boolean isLast )
+        throws EndOfFileExceededException, IOException
     {
+        long dataPos = 0L;
 
+        // The BTree current revision
+        long revision = readLong( pageIos, dataPos );
+        dataPos += LONG_SIZE;
+
+        // The nb elems in the tree
+        long nbElems = readLong( pageIos, dataPos );
+        dataPos += LONG_SIZE;
+
+        // The BTree rootPage offset
+        long rootPageOffset = readLong( pageIos, dataPos );
+
+        if ( ( rootPageOffset < 0 ) || ( rootPageOffset > fileChannel.size() ) )
+        {
+            throw new RuntimeException( "The rootpage is incorrect : " + rootPageOffset );
+        }
+
+        dataPos += LONG_SIZE;
+
+        // The next BTree offset
+        long nextBTreeOffset = readLong( pageIos, dataPos );
+
+        if ( ( ( rootPageOffset < 0 ) && ( !isLast ) ) || ( nextBTreeOffset > fileChannel.size() ) )
+        {
+            throw new RuntimeException( "The rootpage is incorrect : " + rootPageOffset );
+        }
+
+        dataPos += LONG_SIZE;
+
+        // The BTree page size
+        int btreePageSize = readInt( pageIos, dataPos );
+
+        if ( ( btreePageSize < 2 ) || ( ( btreePageSize & ( ~btreePageSize + 1 ) ) != btreePageSize ) )
+        {
+            throw new RuntimeException( "The BTree page size is not a power of 2 : " + btreePageSize );
+        }
+
+        dataPos += INT_SIZE;
+
+        // The tree name
+        byte[] btreeNameBytes = readBytes( pageIos, dataPos );
+        dataPos += INT_SIZE;
+
+        dataPos += btreeNameBytes.length;
+        String btreeName = Strings.utf8ToString( btreeNameBytes );
+
+        // The keySerializer FQCN
+        byte[] keySerializerBytes = readBytes( pageIos, dataPos );
+
+        String keySerializerFqcn = null;
+        dataPos += INT_SIZE;
+
+        if ( keySerializerBytes != null )
+        {
+            dataPos += keySerializerBytes.length;
+            keySerializerFqcn = Strings.utf8ToString( keySerializerBytes );
+        }
+        else
+        {
+            keySerializerFqcn = "";
+        }
+
+        // The valueSerialier FQCN
+        byte[] valueSerializerBytes = readBytes( pageIos, dataPos );
+
+        String valueSerializerFqcn = null;
+        dataPos += INT_SIZE;
+
+        if ( valueSerializerBytes != null )
+        {
+            dataPos += valueSerializerBytes.length;
+            valueSerializerFqcn = Strings.utf8ToString( valueSerializerBytes );
+        }
+        else
+        {
+            valueSerializerFqcn = "";
+        }
+
+        // The BTree allowDuplicates flag
+        int allowDuplicates = readInt( pageIos, dataPos );
+        dataPos += INT_SIZE;
+
+        // Now, load the rootPage, which can be a Leaf or a Node, depending 
+        // on the number of elements in the tree : if it's above the pageSize,
+        // it's a Node, otherwise it's a Leaf
+
+        // Read the rootPage pages on disk
+        //PageIO[] rootPageIos = readPageIOs( rootPageOffset, Long.MAX_VALUE );
+
+        return nextBTreeOffset;
+    }
+
+
+    /**
+     * Check each BTree we manage
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
+     */
+    private void checkBTrees( long[] checkedPages, int pageSize, int nbBTrees ) throws EndOfFileExceededException,
+        IOException
+    {
+        // Iterate on each BTree until we have exhausted all of them. The number
+        // of btrees is just used to check that we have the correct number
+        // of stored BTrees, as they are all linked.
+        long position = HEADER_SIZE;
+
+        for ( int i = 0; i < nbBTrees; i++ )
+        {
+            // Load the pageIOs containing the BTree
+            PageIO[] pageIos = readPageIOs( position, Long.MAX_VALUE );
+
+            // Check that they are correctly linked and not already used
+            int pageNb = 0;
+
+            for ( PageIO currentPageIo : pageIos )
+            {
+                // 
+                long nextPageOffset = currentPageIo.getNextPage();
+
+                if ( pageNb == pageIos.length - 1 )
+                {
+                    if ( nextPageOffset != NO_PAGE )
+                    {
+                        throw new RuntimeException( "The pointer to the next page is not valid, expected NO_PAGE" );
+                    }
+                }
+                else
+                {
+                    if ( nextPageOffset == NO_PAGE )
+                    {
+                        throw new RuntimeException( "The pointer to the next page is not valid, NO_PAGE" );
+                    }
+                }
+
+                if ( ( nextPageOffset != NO_PAGE ) && ( ( nextPageOffset - HEADER_SIZE ) % pageSize != 0 ) )
+                {
+                    throw new RuntimeException( "The pointer to the next page is not valid" );
+                }
+
+                // Update the array of processed pages
+                setCheckedPage( checkedPages, currentPageIo.getOffset(), pageSize );
+            }
+
+            // Now check the BTree
+            long nextBTree = checkBTree( checkedPages, pageIos, pageSize, i == nbBTrees - 1 );
+
+            if ( ( nextBTree == NO_PAGE ) && ( i < nbBTrees - 1 ) )
+            {
+                throw new RuntimeException( "The pointer to the next BTree is incorrect" );
+            }
+            position = nextBTree;
+        }
     }
 
 
@@ -2347,11 +2507,11 @@ public class RecordManager
             long nbPages = ( fileSize - HEADER_SIZE ) / pageSize;
 
             // The number of trees. It must be at least 2 and > 0
-            int nbTrees = header.getInt();
+            int nbBTrees = header.getInt();
 
-            if ( nbTrees < 0 )
+            if ( nbBTrees < 0 )
             {
-                throw new RuntimeException( "Wrong nb trees : " + nbTrees );
+                throw new RuntimeException( "Wrong nb trees : " + nbBTrees );
             }
 
             // The first free page offset. It must be either -1 or below file size
@@ -2388,11 +2548,14 @@ public class RecordManager
             checkFreePages( checkedPages, pageSize, firstFreePage, lastFreePage );
 
             // The BTrees
-            checkBTrees( checkedPages, pageSize );
+            checkBTrees( checkedPages, pageSize, nbBTrees );
         }
-        catch ( IOException ioe )
+        catch ( Exception e )
         {
-            throw new RuntimeException( "Error : " + ioe.getMessage() );
+            // We catch the exception and rethrow it immediately to be able to
+            // put a breakpoint here
+            e.printStackTrace();
+            throw new RuntimeException( "Error : " + e.getMessage() );
         }
     }
 
