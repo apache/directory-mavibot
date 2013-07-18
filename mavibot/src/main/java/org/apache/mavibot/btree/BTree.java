@@ -41,6 +41,8 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.mavibot.btree.serializer.BufferHandler;
 import org.apache.mavibot.btree.serializer.ElementSerializer;
 import org.apache.mavibot.btree.serializer.LongSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -53,7 +55,10 @@ import org.apache.mavibot.btree.serializer.LongSerializer;
  */
 public class BTree<K, V>
 {
-    /** The Hader for a managed BTree */
+    /** The LoggerFactory used by this class */
+    protected static final Logger LOG = LoggerFactory.getLogger( BTree.class );
+
+    /** The Header for a managed BTree */
     private BTreeHeader btreeHeader;
 
     /** Default page size (number of entries per node) */
@@ -496,19 +501,19 @@ public class BTree<K, V>
         // We will extract the Type to use for keys, using the comparator for that
         Class<?> comparatorClass = comparator.getClass();
         Type[] types = comparatorClass.getGenericInterfaces();
-        
+
         if ( types[0] instanceof Class )
         {
-        	keyType = ( Class<?> ) types[0];
+            keyType = ( Class<?> ) types[0];
         }
         else
         {
-        	Type[] argumentTypes = ( ( ParameterizedType ) types[0] ).getActualTypeArguments();
-        	
-        	if ( ( argumentTypes != null ) && ( argumentTypes.length > 0 ) && ( argumentTypes[0] instanceof Class<?> ) )
-        	{
-        		keyType = ( Class<?> ) argumentTypes[0];
-        	}
+            Type[] argumentTypes = ( ( ParameterizedType ) types[0] ).getActualTypeArguments();
+
+            if ( ( argumentTypes != null ) && ( argumentTypes.length > 0 ) && ( argumentTypes[0] instanceof Class<?> ) )
+            {
+                keyType = ( Class<?> ) argumentTypes[0];
+            }
         }
 
         writeLock = new ReentrantLock();

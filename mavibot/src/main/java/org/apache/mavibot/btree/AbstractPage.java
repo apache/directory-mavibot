@@ -48,10 +48,10 @@ import java.lang.reflect.Array;
     protected int nbElems;
 
     /** The first {@link PageIO} storing the serialized Page on disk */
-    private long offset;
+    private long offset = -1L;
 
     /** The last {@link PageIO} storing the serialized Page on disk */
-    private long lastOffset;
+    private long lastOffset = -1L;
 
 
     /**
