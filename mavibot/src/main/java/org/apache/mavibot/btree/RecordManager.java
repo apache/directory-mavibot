@@ -111,6 +111,7 @@ public class RecordManager
     private static final int LINK_SIZE = 8;
 
     /** Some constants */
+    private static final int BYTE_SIZE = 1;
     private static final int INT_SIZE = 4;
     private static final int LONG_SIZE = 8;
 
@@ -478,17 +479,15 @@ public class RecordManager
 
         // The tree name
         byte[] btreeNameBytes = readBytes( pageIos, dataPos );
-        dataPos += INT_SIZE;
-
-        dataPos += btreeNameBytes.length;
+        dataPos += INT_SIZE + btreeNameBytes.length;
         String btreeName = Strings.utf8ToString( btreeNameBytes );
         BTreeFactory.setName( btree, btreeName );
 
         // The keySerializer FQCN
         byte[] keySerializerBytes = readBytes( pageIos, dataPos );
+        dataPos += INT_SIZE + keySerializerBytes.length;
 
         String keySerializerFqcn = null;
-        dataPos += INT_SIZE;
 
         if ( keySerializerBytes != null )
         {
@@ -506,11 +505,10 @@ public class RecordManager
         byte[] valueSerializerBytes = readBytes( pageIos, dataPos );
 
         String valueSerializerFqcn = null;
-        dataPos += INT_SIZE;
+        dataPos += INT_SIZE + valueSerializerBytes.length;
 
         if ( valueSerializerBytes != null )
         {
-            dataPos += valueSerializerBytes.length;
             valueSerializerFqcn = Strings.utf8ToString( valueSerializerBytes );
         }
         else
@@ -521,9 +519,9 @@ public class RecordManager
         BTreeFactory.setValueSerializer( btree, valueSerializerFqcn );
 
         // The BTree allowDuplicates flag
-        int allowDuplicates = readInt( pageIos, dataPos );
-        btree.setAllowDuplicates( allowDuplicates == 1 );
-        dataPos += INT_SIZE;
+        byte allowDuplicates = readByte( pageIos, dataPos );
+        btree.setAllowDuplicates( allowDuplicates != 0 );
+        dataPos += BYTE_SIZE;
 
         // Now, init the BTree
         btree.init();
@@ -793,6 +791,30 @@ public class RecordManager
                     break;
             }
         }
+
+        return value;
+    }
+
+
+    /**
+     * Read a byte from pages 
+     * @param pageIos The pages we want to read the byte from
+     * @param position The position in the data stored in those pages
+     * @return The byte we have read
+     */
+    private byte readByte( PageIO[] pageIos, long position )
+    {
+        // Compute the page in which we will store the data given the 
+        // current position
+        int pageNb = computePageNb( position );
+
+        // Compute the position in the current page
+        int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * pageSize;
+
+        ByteBuffer pageData = pageIos[pageNb].getData();
+        byte value = 0;
+
+        value = pageData.get( pagePos );
 
         return value;
     }
