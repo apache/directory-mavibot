@@ -118,14 +118,14 @@ public class RecordManager
     private static final int FIRST_FREE_PAGE_SIZE = 8;
     private static final int LAST_FREE_PAGE_SIZE = 8;
 
-    /** The header size */
-    private static final int HEADER_SIZE = NB_TREE_SIZE + PAGE_SIZE + FIRST_FREE_PAGE_SIZE + LAST_FREE_PAGE_SIZE;
-
-    /** A global buffer used to store the header */
-    private static final ByteBuffer HEADER_BUFFER = ByteBuffer.allocate( HEADER_SIZE );
-
     /** The default page size */
     private static final int DEFAULT_PAGE_SIZE = 512;
+
+    /** The header size */
+    private static int HEADER_SIZE = DEFAULT_PAGE_SIZE;
+
+    /** A global buffer used to store the header */
+    private static ByteBuffer HEADER_BUFFER;
 
     /** The RecordManager underlying page size. */
     private int pageSize = DEFAULT_PAGE_SIZE;
@@ -174,6 +174,9 @@ public class RecordManager
     public RecordManager( String fileName, int pageSize )
     {
         managedBTrees = new LinkedHashMap<String, BTree<?, ?>>();
+
+        HEADER_BUFFER = ByteBuffer.allocate( pageSize );
+        HEADER_SIZE = pageSize;
 
         // Open the file or create it
         File tmpFile = new File( fileName );
@@ -1221,6 +1224,9 @@ public class RecordManager
 
         // The last free page
         HEADER_BUFFER.putLong( lastFreePage );
+
+        // Set the limit to the end of the page
+        HEADER_BUFFER.limit( pageSize );
 
         // Write the header on disk
         HEADER_BUFFER.rewind();
@@ -2313,8 +2319,134 @@ public class RecordManager
     }
 
 
-    private long checkBTree( long[] checkedPages, PageIO[] pageIos, int pageSize, boolean isLast )
+    /**
+     * Check the root page for a given BTree
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
+     */
+    private void checkRoot( long[] checkedPages, long offset, int pageSize, long nbBTreeElems,
+        ElementSerializer keySerializer, ElementSerializer valueSerializer, boolean allowDuplicates )
         throws EndOfFileExceededException, IOException
+    {
+        // Read the rootPage pages on disk
+        PageIO[] rootPageIos = readPageIOs( offset, Long.MAX_VALUE );
+
+        // Deserialize the rootPage now
+        long position = 0L;
+
+        // The revision
+        long revision = readLong( rootPageIos, position );
+        position += LONG_SIZE;
+
+        // The number of elements in the page
+        int nbElems = readInt( rootPageIos, position );
+        position += INT_SIZE;
+
+        // The size of the data containing the keys and values
+        ByteBuffer byteBuffer = null;
+
+        // Reads the bytes containing all the keys and values, if we have some
+        byte[] data = readBytes( rootPageIos, position );
+
+        if ( data != null )
+        {
+            byteBuffer = ByteBuffer.allocate( data.length );
+            byteBuffer.put( data );
+            byteBuffer.rewind();
+        }
+
+        if ( nbElems >= 0 )
+        {
+            // Its a leaf
+
+            // Check the page offset
+            long pageOffset = rootPageIos[0].getOffset();
+
+            if ( ( pageOffset < 0 ) || ( pageOffset > fileChannel.size() ) )
+            {
+                throw new RuntimeException( "The page offset is incorrect : " + pageOffset );
+            }
+
+            // Check the page last offset
+            long pageLastOffset = rootPageIos[rootPageIos.length - 1].getOffset();
+
+            if ( ( pageLastOffset <= 0 ) || ( pageLastOffset > fileChannel.size() ) )
+            {
+                throw new RuntimeException( "The page last offset is incorrect : " + pageLastOffset );
+            }
+
+            // Read each value and key
+            for ( int i = 0; i < nbElems; i++ )
+            {
+                // Just deserialize all the keys and values
+                if ( allowDuplicates )
+                {
+                    /*
+                    long value = OFFSET_SERIALIZER.deserialize( byteBuffer );
+
+                    rootPageIos = readPageIOs( value, Long.MAX_VALUE );
+
+                    BTree dupValueContainer = BTreeFactory.createBTree();
+                    dupValueContainer.setBtreeOffset( value );
+
+                    try
+                    {
+                        loadBTree( pageIos, dupValueContainer );
+                    }
+                    catch ( Exception e )
+                    {
+                        // should not happen
+                        throw new RuntimeException( e );
+                    }
+                    */
+                }
+                else
+                {
+                    valueSerializer.deserialize( byteBuffer );
+                }
+
+                keySerializer.deserialize( byteBuffer );
+            }
+        }
+        else
+        {
+            /*
+            // It's a node
+            int nodeNbElems = -nbElems;
+
+            // Read each value and key
+            for ( int i = 0; i < nodeNbElems; i++ )
+            {
+                // This is an Offset
+                long offset = OFFSET_SERIALIZER.deserialize( byteBuffer );
+                long lastOffset = OFFSET_SERIALIZER.deserialize( byteBuffer );
+
+                ElementHolder valueHolder = new ReferenceHolder( btree, null, offset, lastOffset );
+                ( ( Node ) page ).setValue( i, valueHolder );
+
+                Object key = btree.getKeySerializer().deserialize( byteBuffer );
+                BTreeFactory.setKey( page, i, key );
+            }
+
+            // and read the last value, as it's a node
+            long offset = OFFSET_SERIALIZER.deserialize( byteBuffer );
+            long lastOffset = OFFSET_SERIALIZER.deserialize( byteBuffer );
+
+            ElementHolder valueHolder = new ReferenceHolder( btree, null, offset, lastOffset );
+            ( ( Node ) page ).setValue( nodeNbElems, valueHolder );*/
+        }
+    }
+
+
+    /**
+     * Check a BTree
+     * @throws IllegalAccessException 
+     * @throws InstantiationException 
+     * @throws ClassNotFoundException 
+     */
+    private long checkBTree( long[] checkedPages, PageIO[] pageIos, int pageSize, boolean isLast )
+        throws EndOfFileExceededException, IOException, InstantiationException, IllegalAccessException,
+        ClassNotFoundException
     {
         long dataPos = 0L;
 
@@ -2399,12 +2531,15 @@ public class RecordManager
         int allowDuplicates = readInt( pageIos, dataPos );
         dataPos += INT_SIZE;
 
-        // Now, load the rootPage, which can be a Leaf or a Node, depending 
+        // Now, check the rootPage, which can be a Leaf or a Node, depending 
         // on the number of elements in the tree : if it's above the pageSize,
         // it's a Node, otherwise it's a Leaf
+        Class<?> valueSerializer = Class.forName( valueSerializerFqcn );
+        Class<?> keySerializer = Class.forName( keySerializerFqcn );
 
-        // Read the rootPage pages on disk
-        //PageIO[] rootPageIos = readPageIOs( rootPageOffset, Long.MAX_VALUE );
+        checkRoot( checkedPages, rootPageOffset, pageSize, nbElems,
+            ( ElementSerializer<?> ) keySerializer.newInstance(),
+            ( ElementSerializer<?> ) valueSerializer.newInstance(), allowDuplicates != 0 );
 
         return nextBTreeOffset;
     }
@@ -2414,9 +2549,12 @@ public class RecordManager
      * Check each BTree we manage
      * @throws IOException 
      * @throws EndOfFileExceededException 
+     * @throws ClassNotFoundException 
+     * @throws IllegalAccessException 
+     * @throws InstantiationException 
      */
     private void checkBTrees( long[] checkedPages, int pageSize, int nbBTrees ) throws EndOfFileExceededException,
-        IOException
+        IOException, InstantiationException, IllegalAccessException, ClassNotFoundException
     {
         // Iterate on each BTree until we have exhausted all of them. The number
         // of btrees is just used to check that we have the correct number
@@ -2467,6 +2605,7 @@ public class RecordManager
             {
                 throw new RuntimeException( "The pointer to the next BTree is incorrect" );
             }
+
             position = nextBTree;
         }
     }
