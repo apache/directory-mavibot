@@ -518,9 +518,9 @@ public class RecordManager
         BTreeFactory.setValueSerializer( btree, valueSerializerFqcn );
 
         // The BTree allowDuplicates flag
-        byte allowDuplicates = readByte( pageIos, dataPos );
+        int allowDuplicates = readInt( pageIos, dataPos );
         btree.setAllowDuplicates( allowDuplicates != 0 );
-        dataPos += BYTE_SIZE;
+        dataPos += INT_SIZE;
 
         // Now, init the BTree
         btree.init();
@@ -2115,8 +2115,8 @@ public class RecordManager
 
                 // skip the page with offset 0, this is the first in-memory root page that
                 // was copied during first insert in a BTree.
-                // a Node or Leaf will *never* have 0 as its offset 
-                if ( firstOffset == 0 )
+                // a Node or Leaf will *never* have 0 or -1 as its offset 
+                if ( firstOffset == NO_PAGE )
                 {
                     continue;
                 }
