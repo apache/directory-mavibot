@@ -34,7 +34,6 @@ import org.apache.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.mavibot.btree.serializer.LongSerializer;
 import org.apache.mavibot.btree.serializer.StringSerializer;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -133,7 +132,6 @@ public class RecordManagerWithDuplicatesTest
      * Test the creation of a RecordManager with a BTree containing data.
      */
     @Test
-    @Ignore("This test is failing atm...")
     public void testRecordManagerWithBTree() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
         // Now, add some elements in the BTree
