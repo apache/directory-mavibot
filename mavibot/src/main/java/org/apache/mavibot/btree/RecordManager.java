@@ -491,7 +491,6 @@ public class RecordManager
 
         if ( keySerializerBytes != null )
         {
-            dataPos += keySerializerBytes.length;
             keySerializerFqcn = Strings.utf8ToString( keySerializerBytes );
         }
         else
