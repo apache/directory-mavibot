@@ -88,10 +88,7 @@ public class RecordManagerWithDuplicatesTest
             recordManager = new RecordManager( dataDir.getAbsolutePath() );
 
             // load the last created btree
-            if ( btree != null )
-            {
-                btree = recordManager.getManagedTree( btree.getName() );
-            }
+            btree = recordManager.getManagedTree( "test" );
         }
         catch ( Exception e )
         {
@@ -132,12 +129,62 @@ public class RecordManagerWithDuplicatesTest
      * Test the creation of a RecordManager with a BTree containing data.
      */
     @Test
-    public void testRecordManagerWithBTree() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
+    public void testRecordManagerWithBTreeSameValue() throws IOException, BTreeAlreadyManagedException,
+        KeyNotFoundException
     {
         // Now, add some elements in the BTree
         btree.insert( 3L, "V3" );
+        btree.insert( 3L, "V5" );
+
+        assertTrue( btree.contains( 3L, "V3" ) );
+        assertTrue( btree.contains( 3L, "V5" ) );
 
         // Now, try to reload the file back
         openRecordManagerAndBtree();
+        assertNotNull( btree );
+
+        assertTrue( btree.contains( 3L, "V3" ) );
+        assertTrue( btree.contains( 3L, "V5" ) );
+    }
+
+
+    /**
+     * Test the creation of a RecordManager with a BTree containing data.
+     */
+    @Test
+    public void testRecordManagerWithBTreeVariousValues() throws IOException, BTreeAlreadyManagedException,
+        KeyNotFoundException
+    {
+        // Now, add some elements in the BTree
+        for ( long i = 1; i < 128; i++ )
+        {
+            String v1 = "V" + i;
+            btree.insert( i, v1 );
+
+            String v2 = "V" + i + 1;
+            btree.insert( i, v2 );
+        }
+
+        for ( long i = 1; i < 128; i++ )
+        {
+            String v1 = "V" + i;
+            String v2 = "V" + i + 1;
+            assertTrue( btree.contains( i, v1 ) );
+            assertTrue( btree.contains( i, v2 ) );
+
+        }
+
+        // Now, try to reload the file back
+        openRecordManagerAndBtree();
+        assertNotNull( btree );
+
+        for ( long i = 1; i < 128; i++ )
+        {
+            String v1 = "V" + i;
+            String v2 = "V" + i + 1;
+            assertTrue( btree.contains( i, v1 ) );
+            assertTrue( btree.contains( i, v2 ) );
+
+        }
     }
 }
