@@ -2129,7 +2129,6 @@ public class RecordManager
                     // We don't have yet any free pageIos. The
                     // PageIOs for this Page will be used
                     firstFreePage = firstOffset;
-                    lastFreePage = lastOffset;
                 }
                 else
                 {
@@ -2558,9 +2557,11 @@ public class RecordManager
         Class<?> valueSerializer = Class.forName( valueSerializerFqcn );
         Class<?> keySerializer = Class.forName( keySerializerFqcn );
 
+        /*
         checkRoot( checkedPages, rootPageOffset, pageSize, nbElems,
             ( ElementSerializer<?> ) keySerializer.newInstance(),
             ( ElementSerializer<?> ) valueSerializer.newInstance(), allowDuplicates != 0 );
+        */
 
         return nextBTreeOffset;
     }
@@ -2639,9 +2640,6 @@ public class RecordManager
     {
         try
         {
-            System.out.println( "Checking..." );
-
-            // First the header
             // First check the header
             ByteBuffer header = ByteBuffer.allocate( HEADER_SIZE );
             long fileSize = fileChannel.size();

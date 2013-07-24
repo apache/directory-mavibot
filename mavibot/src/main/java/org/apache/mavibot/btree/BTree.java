@@ -884,6 +884,11 @@ public class BTree<K, V>
                     // Store the offset on disk in the page in memory
                     ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holder )
                         .getOffset() );
+
+                    // Store the last offset on disk in the page in memory
+                    ( ( AbstractPage<K, V> ) modifiedPage )
+                        .setLastOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holder )
+                            .getLastOffset() );
                 }
 
                 // This is a new root
@@ -1182,6 +1187,10 @@ public class BTree<K, V>
                 // Store the offset on disk in the page in memory
                 ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holder )
                     .getOffset() );
+
+                // Store the last offset on disk in the page in memory
+                ( ( AbstractPage<K, V> ) modifiedPage ).setLastOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holder )
+                    .getLastOffset() );
             }
 
             // The root has just been modified, we haven't split it
@@ -1212,12 +1221,20 @@ public class BTree<K, V>
                 ( ( AbstractPage ) splitResult.getLeftPage() )
                     .setOffset( ( ( ReferenceHolder ) holderLeft ).getOffset() );
 
+                // Store the last offset on disk in the page
+                ( ( AbstractPage ) splitResult.getLeftPage() )
+                    .setLastOffset( ( ( ReferenceHolder ) holderLeft ).getLastOffset() );
+
                 ElementHolder<Page<K, V>, K, V> holderRight = recordManager.writePage( this,
                     rightPage, revision );
 
                 // Store the offset on disk in the page
                 ( ( AbstractPage<K, V> ) splitResult.getRightPage() )
                     .setOffset( ( ( ReferenceHolder ) holderRight ).getOffset() );
+
+                // Store the last offset on disk in the page
+                ( ( AbstractPage<K, V> ) splitResult.getRightPage() )
+                    .setLastOffset( ( ( ReferenceHolder ) holderRight ).getLastOffset() );
 
                 // Create the new rootPage
                 newRootPage = new Node<K, V>( this, revision, pivot, holderLeft, holderRight );
@@ -1237,6 +1254,9 @@ public class BTree<K, V>
 
                 // Store the offset on disk in the page
                 ( ( AbstractPage<K, V> ) newRootPage ).setOffset( ( ( ReferenceHolder ) holder ).getOffset() );
+
+                // Store the last offset on disk in the page
+                ( ( AbstractPage<K, V> ) newRootPage ).setLastOffset( ( ( ReferenceHolder ) holder ).getLastOffset() );
             }
 
             rootPage = newRootPage;
@@ -1253,18 +1273,17 @@ public class BTree<K, V>
         if ( modifiedValue == null )
         {
             btreeHeader.incrementNbElems();
-
-            // If the BTree is managed, we have to update the rootPage on disk
-            if ( isManaged() )
-            {
-                // Update the BTree header now
-                recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
-            }
         }
 
+        // If the BTree is managed, we have to update the rootPage on disk
         if ( isManaged() )
         {
+            // Update the BTree header now
+            recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
+
+            // Moved the free pages into the list of free pages
             recordManager.addFreePages( this, ( List ) result.getCopiedPages() );
+
             // Store the created rootPage into the revision BTree, this will be stored in RecordManager only if revisions are set to keep
             recordManager.storeRootPage( this, rootPage );
         }
