@@ -28,7 +28,8 @@ import org.apache.mavibot.btree.exception.BTreeAlreadyManagedException;
 
 
 /**
- * A In-Memory holder for values of duplicate keys. The values are always present in memory.
+ * A holder for values of duplicate keys. The values are either present in memory
+ * or loaded on the fly from disk when needed.
  * 
  * @param <K> The type of the BTree key
  * @param <V> The type of the BTree value
@@ -40,9 +41,9 @@ public class DuplicateKeyMemoryHolder<K, V> implements ElementHolder<V, K, V>
     /** The BTree */
     private BTree<K, V> btree;
 
-    /** the name of the value container btree. This value is set only when the parent BTree is in managed mode */
-    private String name;
-
+    /** the offset of the value container btree. This value is set only when the parent BTree is in managed mode */
+    private long valContainerOffset = -1;
+    
     /** The reference to the Value instance, or null if it's not present. This will be null when the parent BTree is in managed mode */
     private BTree<V, V> valueContainer;
 
@@ -67,11 +68,10 @@ public class DuplicateKeyMemoryHolder<K, V> implements ElementHolder<V, K, V>
 
             if ( btree.isManaged() )
             {
-                name = valueContainer.getName();
-
                 try
                 {
                     btree.getRecordManager().manage( valueContainer, true );
+                    valContainerOffset = valueContainer.getBtreeOffset();
                 }
                 catch ( BTreeAlreadyManagedException e )
                 {
@@ -95,13 +95,25 @@ public class DuplicateKeyMemoryHolder<K, V> implements ElementHolder<V, K, V>
     }
 
 
+    /**
+     * 
+     * Creates a new instance of DuplicateKeyMemoryHolder.
+     * 
+     * Note: the valueContainer should have a valid offset, in other words
+     *       the valueContainer should always be the one that is already
+     *       managed by RecordManager
+     * 
+     * @param btree the parent BTree
+     * @param valueContainer the BTree holding the values of a duplicate key
+     *        present in the parent tree
+     */
     /* No qualifier */DuplicateKeyMemoryHolder( BTree<K, V> btree, BTree<V, V> valueContainer )
     {
         this.btree = btree;
 
         if ( btree.isManaged() )
         {
-            name = valueContainer.getName();
+            valContainerOffset = valueContainer.getBtreeOffset();
             reference = new SoftReference<BTree<V, V>>( valueContainer );
         }
         else
@@ -119,15 +131,15 @@ public class DuplicateKeyMemoryHolder<K, V> implements ElementHolder<V, K, V>
     {
         if ( !btree.isManaged() )
         {
+            // wrong cast to please compiler
             return ( V ) valueContainer;
         }
 
-        // wrong cast to please compiler
         BTree<V, V> valueContainer = reference.get();
 
         if ( valueContainer == null )
         {
-            valueContainer = btree.getRecordManager().getManagedTree( name );
+            valueContainer = btree.getRecordManager().loadDupsBTree( valContainerOffset );
             reference = new SoftReference<BTree<V, V>>( valueContainer );
         }
 

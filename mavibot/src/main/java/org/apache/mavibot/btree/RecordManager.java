@@ -603,21 +603,8 @@ public class RecordManager
                 if ( btree.isAllowDuplicates() )
                 {
                     long value = OFFSET_SERIALIZER.deserialize( byteBuffer );
-
-                    pageIos = readPageIOs( value, Long.MAX_VALUE );
-
-                    BTree dupValueContainer = BTreeFactory.createBTree();
-                    dupValueContainer.setBtreeOffset( value );
-
-                    try
-                    {
-                        loadBTree( pageIos, dupValueContainer );
-                    }
-                    catch ( Exception e )
-                    {
-                        // should not happen
-                        throw new RuntimeException( e );
-                    }
+                    
+                    BTree dupValueContainer = loadDupsBTree(value);
 
                     valueHolder = new DuplicateKeyMemoryHolder( btree, dupValueContainer );
                 }
@@ -2718,6 +2705,35 @@ public class RecordManager
     }
 
 
+    /**
+     * Loads a BTree holding the values of a duplicate key
+     * This tree is also called as dups tree or sub tree
+     * 
+     * @param offset the offset of the BTree header
+     * @return the deserialized BTree
+     */
+    /* No qualifier */BTree loadDupsBTree( long offset )
+    {
+        try
+        {
+            PageIO[] pageIos = readPageIOs( offset, Long.MAX_VALUE );
+            
+            BTree dupValueContainer = BTreeFactory.createBTree();
+            dupValueContainer.setBtreeOffset( offset );
+
+            loadBTree( pageIos, dupValueContainer );
+            
+            return dupValueContainer;
+        }
+        catch ( Exception e )
+        {
+            // should not happen
+            throw new RuntimeException( e );
+        }
+        
+    }
+    
+    
     /**
      * @see Object#toString()
      */
