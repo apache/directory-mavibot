@@ -23,7 +23,7 @@
   <parent>
     <groupId>org.apache.directory.project</groupId>
     <artifactId>project</artifactId>
-    <version>29</version>
+    <version>31</version>
   </parent>
 
   <groupId>org.apache.directory.mavibot</groupId>
@@ -35,8 +35,8 @@
   <description>A MVCC BTree Implementation</description>
 
   <properties>
-    <junit.version>4.10</junit.version>
-    <slf4j.version>1.7.2</slf4j.version>
+    <junit.version>4.11</junit.version>
+    <slf4j.version>1.7.5</slf4j.version>
   </properties>
 
   <modules>
@@ -65,8 +65,8 @@
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-compiler-plugin</artifactId>
           <configuration>
-            <source>1.6</source>
-            <target>1.6</target>
+            <source>1.7</source>
+            <target>1.7</target>
             <optimize>true</optimize>
             <showDeprecations>true</showDeprecations>
             <encoding>ISO-8859-1</encoding>
@@ -114,5 +114,53 @@
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <profile>
+      <id>apache-release</id>
+
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <executions>
+              <execution>
+                <phase>install</phase>
+
+                <goals>
+                  <goal>javadoc</goal>
+                </goals>
+                <configuration>
+                  <aggregate>true</aggregate>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+
+          <plugin>
+            <artifactId>maven-jxr-plugin</artifactId>
+            <configuration>
+              <aggregate>true</aggregate>
+            </configuration>
+
+            <executions>
+              <execution>
+                <phase>install</phase>
+
+                <goals>
+                  <goal>jxr</goal>
+                  <goal>test-jxr</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+
+      <modules>
+        <module>distribution</module>
+      </modules>
+    </profile>
+  </profiles>
 </project>
 
