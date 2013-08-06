@@ -43,6 +43,12 @@
     <module>mavibot</module>
   </modules>
 
+  <scm>
+    <connection>scm:svn:http://svn.apache.org/repos/asf/directory/mavibot/trunk</connection>
+    <developerConnection>scm:svn:https://svn.apache.org/repos/asf/directory/mavibot/trunk</developerConnection>
+    <url>http://svn.apache.org/viewvc/directory/mavibot/trunk</url>
+  </scm>
+
   <dependencies>
     <dependency>
       <groupId>junit</groupId>
@@ -75,10 +81,22 @@
         <plugin>
           <groupId>org.apache.rat</groupId>
           <artifactId>apache-rat-plugin</artifactId>
+          <version>0.9</version>
           <configuration>
             <excludeSubProjects>false</excludeSubProjects>
             <excludes>
-              <exclude>**/*</exclude>
+              <!-- project excludes -->
+              <exclude>**/resources/svn_ignore.txt</exclude>
+              <exclude>**/resources/Reveal in Finder.launch</exclude>
+              <exclude>.git/**</exclude>
+              <exclude>**/.*</exclude>
+              <exclude>**/.classpath</exclude>
+              <exclude>**/.project</exclude>
+              <exclude>**/.settings/**</exclude>
+              <exclude>**/target/**</exclude>
+              <exclude>**/LICENSE.*</exclude>
+              <exclude>**/NOTICE*.txt</exclude>
+              <exclude>**/mavibot/img/**</exclude>
             </excludes>
           </configuration>
          </plugin>
