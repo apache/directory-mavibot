@@ -28,7 +28,7 @@
 
   <artifactId>mavibot</artifactId>
   <name>ApacheDS MVCC BTree implementation</name>
-  <packaging>bundle</packaging>
+  <packaging>jar</packaging>
 
   <description>A MVCC BTree Implementation</description>
 
