@@ -100,6 +100,12 @@
             </excludes>
           </configuration>
          </plugin>
+
+         <plugin>
+          <groupId>org.apache.geronimo.genesis.plugins</groupId>
+          <artifactId>tools-maven-plugin</artifactId>
+          <version>1.4</version>
+        </plugin>
       </plugins>
     </pluginManagement>
 
