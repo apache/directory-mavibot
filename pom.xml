@@ -227,7 +227,6 @@
         <inherited>true</inherited>
         <extensions>true</extensions>
         <configuration>
-          <manifestLocation>META-INF</manifestLocation>
           <instructions>
             <Bundle-SymbolicName>${project.groupId}</Bundle-SymbolicName>
             <Export-Package>
