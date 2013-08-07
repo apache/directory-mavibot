@@ -26,22 +26,28 @@
     <version>31</version>
   </parent>
 
+  <organization>
+    <name>Apache Mavibot Project</name>
+    <url>http://directory.apache.org/mavibot/</url>
+  </organization>
+
   <groupId>org.apache.directory.mavibot</groupId>
+  <version>1.0.0-M1-SNAPSHOT</version>
   <artifactId>mavibot-parent</artifactId>
   <name>ApacheDS MVCC BTree implementation</name>
   <packaging>pom</packaging>
-  <version>1.0.0-M1-SNAPSHOT</version>
 
-  <description>A MVCC BTree Implementation</description>
+  <prerequisites>
+    <maven>3.0.0</maven>
+  </prerequisites>
 
-  <properties>
-    <junit.version>4.11</junit.version>
-    <slf4j.version>1.7.5</slf4j.version>
-  </properties>
+  <url>http://directory.apache.org/mavibot</url>
+  <inceptionYear>2012</inceptionYear>
 
-  <modules>
-    <module>mavibot</module>
-  </modules>
+  <issueManagement>
+    <system>jira</system>
+    <url>http://issues.apache.org/jira/browse/MAVIBOT</url>
+  </issueManagement>
 
   <scm>
     <connection>scm:svn:http://svn.apache.org/repos/asf/directory/mavibot/trunk</connection>
@@ -49,18 +55,80 @@
     <url>http://svn.apache.org/viewvc/directory/mavibot/trunk</url>
   </scm>
 
-  <dependencies>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>${junit.version}</version>
-      <scope>test</scope>
-    </dependency>
+  <ciManagement>
+    <notifiers>
+      <notifier>
+        <type>mail</type>
+        <address>dev@directory.apache.org</address>
+      </notifier>
+    </notifiers>
+  </ciManagement>
+  
+  <description>A MVCC BTree Implementation</description>
 
+  <licenses>
+    <license>
+      <name>Apache 2.0 License</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <properties>
+    <!-- Dependencies versions ========================================== -->
+    <junit.version>4.11</junit.version>
+    <slf4j.version>1.7.5</slf4j.version>
+
+    <!-- Plugins versions =============================================== -->
+    <version.findbugs.maven.plugin>2.5.2</version.findbugs.maven.plugin>
+    <version.maven.bundle.plugin>2.3.5</version.maven.bundle.plugin>
+    <version.maven.compiler.plugin>3.1</version.maven.compiler.plugin>
+    <version.maven.javadoc.plugin>2.8</version.maven.javadoc.plugin>
+    <version.maven.jxr.plugin>2.3</version.maven.jxr.plugin>
+    <version.maven.release.plugin>2.2.1</version.maven.release.plugin>
+    <version.maven.source.plugin>2.1.2</version.maven.source.plugin>
+    <version.maven.eclipse.plugin>2.8</version.maven.eclipse.plugin>
+  </properties>
+
+  <modules>
+    <module>mavibot</module>
+  </modules>
+
+  <dependencyManagement>
+    <dependencies>
+      <!-- Testing -->
+      <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <version>${junit.version}</version>
+        <scope>test</scope>
+      </dependency>
+
+      <!-- Logging -->
+      <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-api</artifactId>
+        <version>${slf4j.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+  
+  <!-- ==================================== -->
+  <!-- Common dependencies for all projects -->
+  <!-- ==================================== -->
+  <dependencies>
+    <!-- common logging interface -->
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
-      <version>${slf4j.version}</version>
+    </dependency>
+
+    <!-- logging implementation used for unit tests -->
+
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <scope>test</scope>
     </dependency>
   </dependencies>
   
@@ -69,33 +137,40 @@
       <plugins>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-compiler-plugin</artifactId>
+          <artifactId>maven-assembly-plugin</artifactId>
+          <version>2.4</version>
+        </plugin>
+
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-release-plugin</artifactId>
           <configuration>
-            <source>1.7</source>
-            <target>1.7</target>
-            <optimize>true</optimize>
-            <showDeprecations>true</showDeprecations>
-            <encoding>ISO-8859-1</encoding>
+            <tagNameFormat>@{project.version}</tagNameFormat>
           </configuration>
         </plugin>
+
         <plugin>
           <groupId>org.apache.rat</groupId>
           <artifactId>apache-rat-plugin</artifactId>
-          <version>0.9</version>
           <configuration>
             <excludeSubProjects>false</excludeSubProjects>
             <excludes>
-              <!-- project excludes -->
-              <exclude>**/resources/svn_ignore.txt</exclude>
-              <exclude>**/resources/Reveal in Finder.launch</exclude>
-              <exclude>.git/**</exclude>
-              <exclude>**/.*</exclude>
+              <!-- MAVEN_DEFAULT_EXCLUDES -->
+              <exclude>**/target/**/*</exclude>
+              <!-- ECLIPSE_DEFAULT_EXCLUDES -->
               <exclude>**/.classpath</exclude>
               <exclude>**/.project</exclude>
-              <exclude>**/.settings/**</exclude>
-              <exclude>**/target/**</exclude>
+              <exclude>**/.settings/**/*</exclude>
+              <!-- IDEA_DEFAULT_EXCLUDES -->
+              <exclude>**/*.iml</exclude>
+              <exclude>**/*.ipr</exclude>
+              <exclude>**/*.iws</exclude>
+              <!-- MANIFEST_MF_EXCLUDES -->
+              <exclude>**/MANIFEST.MF</exclude>
+              <!-- Licences files -->
               <exclude>**/LICENSE.*</exclude>
               <exclude>**/NOTICE*.txt</exclude>
+              <!-- Images and binary files -->
               <exclude>**/mavibot/img/**</exclude>
             </excludes>
           </configuration>
@@ -112,12 +187,37 @@
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
+        <artifactId>maven-compiler-plugin</artifactId>
         <configuration>
-          <archive>
-            <manifestFile>META-INF/MANIFEST.MF</manifestFile>
-            <addMavenDescriptor>false</addMavenDescriptor>
-          </archive>
+          <source>1.7</source>
+          <target>1.7</target>
+          <optimize>true</optimize>
+		  <debug>true</debug>
+          <showDeprecations>true</showDeprecations>
+          <encoding>UTF-8</encoding>
+        </configuration>
+      </plugin>
+	  
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>attach-source</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-release-plugin</artifactId>
+        <configuration>
+          <tagBase>
+            https://svn.apache.org/repos/asf/directory/mavibot/tags
+          </tagBase>
         </configuration>
       </plugin>
     
@@ -135,6 +235,35 @@
             </Export-Package>
           </instructions>
         </configuration>
+      </plugin>
+
+      <plugin>
+           <groupId>org.codehaus.mojo</groupId>
+           <artifactId>findbugs-maven-plugin</artifactId>
+           <configuration>
+              <findbugsXmlOutput>true</findbugsXmlOutput>
+              <findbugsXmlWithMessages>true</findbugsXmlWithMessages>
+              <xmlOutput>true</xmlOutput>
+           </configuration>
+      </plugin>
+
+      <plugin>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>enforce-java-17</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <requireJavaVersion>
+                  <version>1.7.0</version>
+                </requireJavaVersion>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
