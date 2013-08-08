@@ -78,16 +78,6 @@
     <!-- Dependencies versions ========================================== -->
     <junit.version>4.11</junit.version>
     <slf4j.version>1.7.5</slf4j.version>
-
-    <!-- Plugins versions =============================================== -->
-    <version.findbugs.maven.plugin>2.5.2</version.findbugs.maven.plugin>
-    <version.maven.bundle.plugin>2.3.5</version.maven.bundle.plugin>
-    <version.maven.compiler.plugin>3.1</version.maven.compiler.plugin>
-    <version.maven.javadoc.plugin>2.8</version.maven.javadoc.plugin>
-    <version.maven.jxr.plugin>2.3</version.maven.jxr.plugin>
-    <version.maven.release.plugin>2.2.1</version.maven.release.plugin>
-    <version.maven.source.plugin>2.1.2</version.maven.source.plugin>
-    <version.maven.eclipse.plugin>2.8</version.maven.eclipse.plugin>
   </properties>
 
   <modules>
