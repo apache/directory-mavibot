@@ -24,7 +24,7 @@
   <parent>
     <groupId>org.apache.directory.mavibot</groupId>
     <artifactId>mavibot-parent</artifactId>
-    <version>1.0.0-M1-SNAPSHOT</version>
+    <version>1.0.0-M1</version>
   </parent>
  
   <artifactId>distribution</artifactId>
@@ -36,30 +36,7 @@
   </properties>
 
   <build>
-    <finalName>mavibot-${project.version}</finalName>
-
-    <!-- Here, we create the src and bin packages -->
-    <plugins>
-      <plugin>
-        <artifactId>maven-assembly-plugin</artifactId>
-        <configuration>
-          <descriptors>
-            <descriptor>src/main/assembly/bin.xml</descriptor>
-            <descriptor>src/main/assembly/src.xml</descriptor>
-          </descriptors>
-          <tarLongFileMode>gnu</tarLongFileMode>
-        </configuration>
-
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>single</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-  
+    <plugins> 
       <plugin>
         <artifactId>maven-deploy-plugin</artifactId>
         <configuration>
@@ -76,6 +53,38 @@
       <version>${project.version}</version>
     </dependency>
   </dependencies>
+
+  <profiles>
+    <profile>
+      <id>apache-release</id>
+
+      <build>
+        <finalName>mavibot-${project.version}</finalName>
+       
+        <plugins>
+          <plugin>
+            <artifactId>maven-assembly-plugin</artifactId>
+            <configuration>
+              <descriptors>
+                <descriptor>src/main/assembly/bin.xml</descriptor>
+                <descriptor>src/main/assembly/src.xml</descriptor>
+              </descriptors>
+              <tarLongFileMode>gnu</tarLongFileMode>
+            </configuration>
+
+            <executions>
+              <execution>
+                <phase>package</phase>
+                <goals>
+                  <goal>single</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 
 </project>
 
