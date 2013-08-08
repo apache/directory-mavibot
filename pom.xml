@@ -144,9 +144,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-release-plugin</artifactId>
-          <configuration>
-            <tagNameFormat>@{project.version}</tagNameFormat>
-          </configuration>
+          <version>2.4.1</version>
         </plugin>
 
         <plugin>
@@ -216,6 +214,9 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-release-plugin</artifactId>
         <configuration>
+          <tagNameFormat>
+            @{project.version}
+          </tagNameFormat>
           <tagBase>
             https://svn.apache.org/repos/asf/directory/mavibot/tags
           </tagBase>
