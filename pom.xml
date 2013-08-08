@@ -27,14 +27,14 @@
   </parent>
 
   <organization>
-    <name>Apache Mavibot Project</name>
+    <name>Apache Mavibot Project Parent</name>
     <url>http://directory.apache.org/mavibot/</url>
   </organization>
 
   <groupId>org.apache.directory.mavibot</groupId>
   <version>1.0.0-M1-SNAPSHOT</version>
   <artifactId>mavibot-parent</artifactId>
-  <name>ApacheDS MVCC BTree implementation</name>
+  <name>ApacheDS Mavibot Parent</name>
   <packaging>pom</packaging>
 
   <prerequisites>
@@ -126,18 +126,6 @@
     <pluginManagement>
       <plugins>
         <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-assembly-plugin</artifactId>
-          <version>2.4</version>
-        </plugin>
-
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-release-plugin</artifactId>
-          <version>2.4.1</version>
-        </plugin>
-
-        <plugin>
           <groupId>org.apache.rat</groupId>
           <artifactId>apache-rat-plugin</artifactId>
           <configuration>
@@ -163,12 +151,6 @@
             </excludes>
           </configuration>
          </plugin>
-
-         <plugin>
-          <groupId>org.apache.geronimo.genesis.plugins</groupId>
-          <artifactId>tools-maven-plugin</artifactId>
-          <version>1.4</version>
-        </plugin>
       </plugins>
     </pluginManagement>
 
@@ -252,6 +234,24 @@
                   <version>1.7.0</version>
                 </requireJavaVersion>
               </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.geronimo.genesis.plugins</groupId>
+        <artifactId>tools-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>verify-legal-files</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>verify-legal-files</goal>
+            </goals>
+            <configuration>
+              <!-- Fail the build if no legal files were found -->
+              <strict>false</strict>
             </configuration>
           </execution>
         </executions>
