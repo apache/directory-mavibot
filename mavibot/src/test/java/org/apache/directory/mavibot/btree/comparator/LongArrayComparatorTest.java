@@ -22,14 +22,13 @@ package org.apache.directory.mavibot.btree.comparator;
 
 import static org.junit.Assert.assertEquals;
 
-import org.apache.directory.mavibot.btree.comparator.LongArrayComparator;
 import org.junit.Test;
 
 
 /**
  * Test the LongArrayComparator class
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class LongArrayComparatorTest
 {

@@ -38,7 +38,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 /**
  * A BTree builder that builds a tree from the bottom.
  *
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class BTreeBuilder<K, V>
 {
@@ -148,7 +148,7 @@ public class BTreeBuilder<K, V>
         {
             if ( i != 0 )
             {
-                setKey( node, i-1, p.getLeftMostKey() );
+                setKey( node, i - 1, p.getLeftMostKey() );
             }
 
             node.children[i] = btree.createHolder( p );

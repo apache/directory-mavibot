@@ -26,15 +26,13 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.util.Arrays;
 
-import org.apache.directory.mavibot.btree.serializer.BufferHandler;
-import org.apache.directory.mavibot.btree.serializer.ByteArraySerializer;
 import org.junit.Test;
 
 
 /**
  * Test the BytesSerializer class
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class ByteArraySerializerTest
 {

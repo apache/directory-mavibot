@@ -28,7 +28,8 @@ package org.apache.directory.mavibot.btree;
  * <li>MANAGED : the BTree is managed by a RecordManager, and some pages may
  * be swapped out from memory on demand</li>
  * </ul>
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * 
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public enum BTreeTypeEnum
 {

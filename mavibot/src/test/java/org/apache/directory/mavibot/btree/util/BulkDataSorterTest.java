@@ -19,6 +19,7 @@
  */
 package org.apache.directory.mavibot.btree.util;
 
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -32,9 +33,8 @@ import java.util.Iterator;
 import java.util.Random;
 
 import org.apache.directory.mavibot.btree.Tuple;
-import org.apache.directory.mavibot.btree.util.BulkDataSorter;
-import org.apache.directory.mavibot.btree.util.IntTupleReaderWriter;
 import org.junit.Test;
+
 
 /**
  * Test cases for BulkDataSorter.
@@ -46,7 +46,7 @@ public class BulkDataSorterTest
 
     private Comparator<Tuple<Integer, Integer>> tupleComp = new Comparator<Tuple<Integer, Integer>>()
     {
-        
+
         @Override
         public int compare( Tuple<Integer, Integer> o1, Tuple<Integer, Integer> o2 )
         {
@@ -54,42 +54,43 @@ public class BulkDataSorterTest
         }
     };
 
-    
+
     @Test
     public void testSortedFileCount() throws IOException
     {
         int count = 7;
         IntTupleReaderWriter itrw = new IntTupleReaderWriter();
         Random random = new Random();
-        
+
         File dataFile = File.createTempFile( "tuple", ".data" );
         dataFile.deleteOnExit();
         DataOutputStream out = new DataOutputStream( new FileOutputStream( dataFile ) );
-        
-        Tuple<Integer, Integer>[] arr = (Tuple<Integer, Integer>[]) Array.newInstance( Tuple.class, count );
-        
+
+        Tuple<Integer, Integer>[] arr = ( Tuple<Integer, Integer>[] ) Array.newInstance( Tuple.class, count );
+
         for ( int i = 0; i < count; i++ )
         {
-            int x = random.nextInt(100);
+            int x = random.nextInt( 100 );
             //System.out.println(x);
 
             Tuple<Integer, Integer> t = new Tuple<Integer, Integer>( x, x );
-            
+
             arr[i] = t;
-            
+
             itrw.writeTuple( t, out );
         }
 
         out.close();
-        
+
         BulkDataSorter<Integer, Integer> bds = new BulkDataSorter<Integer, Integer>( itrw, tupleComp, 4 );
         bds.sort( dataFile );
-        
-        assertEquals(2, bds.getWorkDir().list().length);
-        
+
+        assertEquals( 2, bds.getWorkDir().list().length );
+
         deleteDir( bds.getWorkDir() );
     }
-    
+
+
     @Test
     public void testSortedFileMerge() throws IOException
     {
@@ -100,50 +101,51 @@ public class BulkDataSorterTest
         testSortedFileMerge( 10000, 101 );
         testSortedFileMerge( 100000, 501 );
     }
-    
-    public void testSortedFileMerge(int count, int splitAfter) throws IOException
+
+
+    public void testSortedFileMerge( int count, int splitAfter ) throws IOException
     {
         IntTupleReaderWriter itrw = new IntTupleReaderWriter();
         Random random = new Random();
-        
+
         File dataFile = File.createTempFile( "tuple", ".data" );
         dataFile.deleteOnExit();
-        
+
         DataOutputStream out = new DataOutputStream( new FileOutputStream( dataFile ) );
-        
-        Tuple<Integer, Integer>[] arr = (Tuple<Integer, Integer>[]) Array.newInstance( Tuple.class, count );
-        
+
+        Tuple<Integer, Integer>[] arr = ( Tuple<Integer, Integer>[] ) Array.newInstance( Tuple.class, count );
+
         int randUpper = count;
-        if(count < 100)
+        if ( count < 100 )
         {
             randUpper = 100;
         }
-        
+
         for ( int i = 0; i < count; i++ )
         {
-            int x = random.nextInt(randUpper);
+            int x = random.nextInt( randUpper );
             //System.out.println(x);
 
             Tuple<Integer, Integer> t = new Tuple<Integer, Integer>( x, x );
-            
+
             arr[i] = t;
-            
+
             itrw.writeTuple( t, out );
         }
 
         out.close();
-        
+
         BulkDataSorter<Integer, Integer> bds = new BulkDataSorter<Integer, Integer>( itrw, tupleComp, splitAfter );
         bds.sort( dataFile );
-        
-        Iterator<Tuple<Integer,Integer>> itr = bds.getMergeSortedTuples();
-        
+
+        Iterator<Tuple<Integer, Integer>> itr = bds.getMergeSortedTuples();
+
         Integer prev = null;
-        while(itr.hasNext())
+        while ( itr.hasNext() )
         {
-            Tuple<Integer,Integer> t = itr.next();
-            
-            if(prev == null)
+            Tuple<Integer, Integer> t = itr.next();
+
+            if ( prev == null )
             {
                 prev = t.getKey();
             }
@@ -151,28 +153,28 @@ public class BulkDataSorterTest
             {
                 assertTrue( prev <= t.getKey() );
             }
-            
+
             //System.out.println(t);
         }
-        
+
         deleteDir( bds.getWorkDir() );
     }
-    
-    
-    private void deleteDir(File dir)
+
+
+    private void deleteDir( File dir )
     {
-        if(dir.isFile())
+        if ( dir.isFile() )
         {
             dir.delete();
         }
-        
+
         File[] files = dir.listFiles();
-        
-        for(File f: files)
+
+        for ( File f : files )
         {
             f.delete();
         }
-        
+
         dir.delete();
     }
 }

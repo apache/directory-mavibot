@@ -28,7 +28,7 @@ import java.io.IOException;
  * 
  * @param <T> The type for the element to serialize
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public interface Serializer<T>
 {

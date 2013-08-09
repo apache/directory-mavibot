@@ -29,7 +29,7 @@ import org.apache.directory.mavibot.btree.comparator.ByteComparator;
 /**
  * The Byte serializer.
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class ByteSerializer extends AbstractElementSerializer<Byte>
 {

@@ -30,7 +30,7 @@ import org.apache.directory.mavibot.btree.comparator.LongArrayComparator;
 /**
  * A serializer for a Long[].
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class LongArraySerializer implements ElementSerializer<long[]>
 {

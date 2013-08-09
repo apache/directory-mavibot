@@ -29,8 +29,8 @@ import java.util.List;
  * 
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
-
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ *
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 /* No qualifier */abstract class AbstractResult<K, V> implements Result<K, V>
 {

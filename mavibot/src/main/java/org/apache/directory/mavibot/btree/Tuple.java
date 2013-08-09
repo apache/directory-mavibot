@@ -24,7 +24,7 @@ package org.apache.directory.mavibot.btree;
  * The Tuple class is used when we browse a btree, it will contain the results
  * fetched from the btree.
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  *
  * @param <K> The type for the Key
  * @param <V> The type for the stored value

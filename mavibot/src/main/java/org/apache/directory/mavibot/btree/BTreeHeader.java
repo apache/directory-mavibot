@@ -46,7 +46,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * +--------------------+-------------+
  * </pre>
  * Each BtreeHeader will be written starting on a new page.
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * 
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 /* No qualifier*/class BTreeHeader
 {
@@ -82,6 +83,7 @@ import java.util.concurrent.atomic.AtomicLong;
     private long[] versions;
 
     private int allowDuplicates = 0;
+
 
     /**
      * Creates a BTreeHeader instance

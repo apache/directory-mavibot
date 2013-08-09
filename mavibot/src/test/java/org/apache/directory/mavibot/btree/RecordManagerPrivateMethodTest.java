@@ -28,9 +28,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.UUID;
 
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.PageIO;
-import org.apache.directory.mavibot.btree.RecordManager;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
 import org.junit.After;
@@ -42,11 +39,12 @@ import org.junit.rules.TemporaryFolder;
 
 /**
  * Test some of the RecordManager prvate methods
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * 
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class RecordManagerPrivateMethodTest
 {
-    
+
     private BTree<Long, String> btree = null;
 
     private RecordManager recordManager = null;
@@ -61,12 +59,12 @@ public class RecordManagerPrivateMethodTest
     public void createRecordManager() throws Exception
     {
         dataDir = tempFolder.newFolder( UUID.randomUUID().toString() );
-        
+
         // Now, try to reload the file back
         recordManager = new RecordManager( dataDir.getAbsolutePath(), 32 );
 
         // Create a new BTree
-        btree = ( BTree<Long, String> ) recordManager.addBTree( "test", new LongSerializer(), new StringSerializer(), false );
+        btree = recordManager.addBTree( "test", new LongSerializer(), new StringSerializer(), false );
     }
 
 
@@ -75,8 +73,8 @@ public class RecordManagerPrivateMethodTest
     {
         recordManager.close();
     }
-    
-    
+
+
     /**
      * Test the getFreePageIOs method
      */
@@ -87,28 +85,28 @@ public class RecordManagerPrivateMethodTest
         Method getFreePageIOsMethod = RecordManager.class.getDeclaredMethod( "getFreePageIOs", int.class );
         getFreePageIOsMethod.setAccessible( true );
 
-        PageIO[] pages = (org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, 0 );
+        PageIO[] pages = ( org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, 0 );
 
         assertEquals( 0, pages.length );
 
         for ( int i = 1; i < 20; i++ )
         {
-            pages = (org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
+            pages = ( org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
             assertEquals( 1, pages.length );
         }
 
         for ( int i = 21; i < 44; i++ )
         {
-            pages = (org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
+            pages = ( org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
             assertEquals( 2, pages.length );
         }
 
         for ( int i = 45; i < 68; i++ )
         {
-            pages = (org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
+            pages = ( org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
             assertEquals( 3, pages.length );
         }
-        
+
         btree.close();
     }
 
@@ -139,7 +137,7 @@ public class RecordManagerPrivateMethodTest
         {
             assertEquals( 3, ( ( Integer ) computeNbPagesMethod.invoke( recordManager, i ) ).intValue() );
         }
-        
+
         btree.close();
     }
 }

@@ -34,7 +34,7 @@ import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException
  * @param <K> The type of the BTree key
  * @param <V> The type of the BTree value
  *
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class DuplicateKeyMemoryHolder<K, V> implements ElementHolder<V, K, V>
 {
@@ -43,7 +43,7 @@ public class DuplicateKeyMemoryHolder<K, V> implements ElementHolder<V, K, V>
 
     /** the offset of the value container btree. This value is set only when the parent BTree is in managed mode */
     private long valContainerOffset = -1;
-    
+
     /** The reference to the Value instance, or null if it's not present. This will be null when the parent BTree is in managed mode */
     private BTree<V, V> valueContainer;
 

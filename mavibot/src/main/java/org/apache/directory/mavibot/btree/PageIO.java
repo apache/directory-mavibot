@@ -53,7 +53,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
  * In any case, the page length is always PageSize.
  * </pre>
  *  
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 /* No qualifier*/class PageIO
 {

@@ -32,12 +32,13 @@ import org.apache.directory.mavibot.btree.util.Strings;
 /**
  * The String serializer.
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class StringSerializer extends AbstractElementSerializer<String>
 {
     public static final StringSerializer INSTANCE = new StringSerializer();
-    
+
+
     /**
      * Create a new instance of StringSerializer
      */
@@ -55,7 +56,7 @@ public class StringSerializer extends AbstractElementSerializer<String>
         super( comparator );
     }
 
-    
+
     /**
      * A static method used to deserialize a String from a byte array.
      * @param in The byte array containing the String

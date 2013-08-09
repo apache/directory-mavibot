@@ -35,7 +35,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
  * @param <K> The type of the BTree key
  * @param <V> The type of the BTree value
  *
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class ReferenceHolder<E, K, V> implements ElementHolder<E, K, V>
 {

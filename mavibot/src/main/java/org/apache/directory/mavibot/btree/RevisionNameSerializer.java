@@ -36,7 +36,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
  * A serializer for the RevisionName object. The RevisionName will be serialized 
  * as a long (the revision), followed by the String.
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class RevisionNameSerializer extends AbstractElementSerializer<RevisionName>
 {

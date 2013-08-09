@@ -26,7 +26,7 @@ import java.util.Comparator;
 /**
  * Compares short arrays
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class ShortArrayComparator implements Comparator<short[]>
 {

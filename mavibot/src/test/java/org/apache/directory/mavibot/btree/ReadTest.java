@@ -27,15 +27,13 @@ import java.io.File;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 
-import org.apache.directory.mavibot.btree.PageIO;
-import org.apache.directory.mavibot.btree.RecordManager;
 import org.junit.Test;
 
 
 /**
  * Test the RecordManager.readXXX() methods using reflection
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class ReadTest
 {

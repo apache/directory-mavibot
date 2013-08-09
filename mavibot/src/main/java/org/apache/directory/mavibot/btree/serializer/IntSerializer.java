@@ -29,7 +29,7 @@ import org.apache.directory.mavibot.btree.comparator.IntComparator;
 /**
  * The Integer serializer.
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class IntSerializer extends AbstractElementSerializer<Integer>
 {

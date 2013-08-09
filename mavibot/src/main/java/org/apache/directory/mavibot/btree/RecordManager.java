@@ -52,7 +52,7 @@ import org.slf4j.LoggerFactory;
  * It stores data in fixed size pages (default size is 512 bytes), which may be linked one to 
  * the other if the data we want to store is too big for a page.
  *  
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class RecordManager
 {

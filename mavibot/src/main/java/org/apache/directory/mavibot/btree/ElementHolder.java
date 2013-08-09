@@ -30,11 +30,11 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
  * BTree), we will use a SoftReference to keep a reference to a Value, and if it's null,
  * then we will load the Value from the underlying physical support, using the offset. 
  * 
- * @param <E> The type for the stored element (either a value or a page)
+ * @param <E> The type for the stored element (either a V or a Page<K, V>)
  * @param <K> The type of the BTree key
  * @param <V> The type of the BTree value
  *
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public interface ElementHolder<E, K, V>
 {

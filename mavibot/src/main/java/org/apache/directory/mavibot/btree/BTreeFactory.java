@@ -27,12 +27,12 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 
 /**
- * This cless construct a BTree from a serialized version of a BTree. We need it
+ * This class construct a BTree from a serialized version of a BTree. We need it
  * to avoid exposing all the methods of the BTree class.<br>
  * 
  * All its methods are static.
  *  
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class BTreeFactory
 {
@@ -240,7 +240,7 @@ public class BTreeFactory
     {
         page.setValue( pos, value );
     }
-    
+
 
     /**
      * Includes the intermediate nodes in the path up to and including the right most leaf of the tree
@@ -252,34 +252,33 @@ public class BTreeFactory
     public static LinkedList getPathToRightMostLeaf( BTree btree ) throws IOException
     {
         LinkedList<ParentPos> stack = new LinkedList<ParentPos>();
-        
+
         ParentPos last = new ParentPos( btree.rootPage, btree.rootPage.getNbElems() );
         stack.push( last );
-        
-        
-        if( btree.rootPage instanceof Leaf )
+
+        if ( btree.rootPage instanceof Leaf )
         {
             InternalUtil.setLastDupsContainer( last, btree );
         }
         else
         {
             Node node = ( Node ) btree.rootPage;
-            
-            while( true )
+
+            while ( true )
             {
                 Page p = ( Page ) node.children[node.getNbElems()].getValue( btree );
-                
+
                 last = new ParentPos( p, p.getNbElems() );
                 stack.push( last );
-                
-                if( p instanceof Leaf )
+
+                if ( p instanceof Leaf )
                 {
                     InternalUtil.setLastDupsContainer( last, btree );
                     break;
                 }
             }
         }
-        
+
         return stack;
     }
 }

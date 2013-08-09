@@ -29,9 +29,6 @@ import java.io.IOException;
 import java.util.Random;
 import java.util.Set;
 
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.Cursor;
-import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
@@ -42,7 +39,7 @@ import org.junit.Test;
 /**
  * A unit test class for BTree flush() operation
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class BTreeFlushTest
 {
@@ -220,12 +217,13 @@ public class BTreeFlushTest
         String path = tempFile.getParent();
         tempFile.delete();
 
-        BTree<Integer, String> btree = new BTree<Integer, String>( "test", path, new IntSerializer(), new StringSerializer() );
+        BTree<Integer, String> btree = new BTree<Integer, String>( "test", path, new IntSerializer(),
+            new StringSerializer() );
         btree.setPageSize( 8 );
-        
+
         File journal = btree.getJournal();
         File data = btree.getFile();
-        
+
         try
         {
             // Inject the values

@@ -26,20 +26,6 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.BorrowedFromLeftResult;
-import org.apache.directory.mavibot.btree.BorrowedFromRightResult;
-import org.apache.directory.mavibot.btree.DeleteResult;
-import org.apache.directory.mavibot.btree.InsertResult;
-import org.apache.directory.mavibot.btree.Leaf;
-import org.apache.directory.mavibot.btree.MergedWithSiblingResult;
-import org.apache.directory.mavibot.btree.ModifyResult;
-import org.apache.directory.mavibot.btree.Node;
-import org.apache.directory.mavibot.btree.NotPresentResult;
-import org.apache.directory.mavibot.btree.Page;
-import org.apache.directory.mavibot.btree.ReferenceHolder;
-import org.apache.directory.mavibot.btree.RemoveResult;
-import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
@@ -51,7 +37,7 @@ import org.junit.Test;
 /**
  * A unit test class for Leaf
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class LeafTest
 {

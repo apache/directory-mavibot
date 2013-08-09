@@ -31,7 +31,7 @@ import java.util.Set;
  * string operations: all is done in the same buffer without creating a bunch of
  * string objects.
  *
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public final class Strings
 {

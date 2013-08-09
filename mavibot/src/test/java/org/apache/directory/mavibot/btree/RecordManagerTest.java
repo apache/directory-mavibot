@@ -34,10 +34,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.Cursor;
-import org.apache.directory.mavibot.btree.RecordManager;
-import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
@@ -50,9 +46,9 @@ import org.junit.rules.TemporaryFolder;
 
 /**
  * test the RecordManager
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * 
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-//@Ignore("ignoring till RM functionality is standardized")
 public class RecordManagerTest
 {
     private BTree<Long, String> btree = null;

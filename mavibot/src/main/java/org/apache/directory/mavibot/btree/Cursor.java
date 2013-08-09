@@ -20,24 +20,27 @@
 package org.apache.directory.mavibot.btree;
 
 
+import static org.apache.directory.mavibot.btree.InternalUtil.changeNextDupsContainer;
+import static org.apache.directory.mavibot.btree.InternalUtil.changePrevDupsContainer;
+import static org.apache.directory.mavibot.btree.InternalUtil.setDupsContainer;
+
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.NoSuchElementException;
 
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
-import static org.apache.directory.mavibot.btree.InternalUtil.*;
 
 /**
  * A Cursor is used to fetch elements in a BTree and is returned by the
  * @see BTree#browse method. The cursor <strng>must</strong> be closed
  * when the user is done with it.
  * <p>
- * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  *
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
+ * 
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class Cursor<K, V>
 {
@@ -54,9 +57,10 @@ public class Cursor<K, V>
     private BTree<K, V> btree;
 
     private boolean allowDuplicates;
-    
+
     /** a copy of the stack given at the time of initializing the cursor. This is used for moving the cursor to start position */
     private LinkedList<ParentPos<K, V>> _initialStack;
+
 
     /**
      * Creates a new instance of Cursor, starting on a page at a given position.
@@ -70,12 +74,12 @@ public class Cursor<K, V>
         this.stack = stack;
         this.btree = btree;
         this.allowDuplicates = btree.isAllowDuplicates();
-        
-        _initialStack = new LinkedList<ParentPos<K,V>>();
-        
+
+        _initialStack = new LinkedList<ParentPos<K, V>>();
+
         cloneStack( stack, _initialStack );
     }
-    
+
 
     /**
      * Find the next key/value
@@ -114,24 +118,24 @@ public class Cursor<K, V>
         {
             parentPos.pos = 0;
         }
-        
+
         Leaf<K, V> leaf = ( Leaf<K, V> ) ( parentPos.page );
         tuple.setKey( leaf.keys[parentPos.pos] );
-        
-        if( allowDuplicates )
+
+        if ( allowDuplicates )
         {
             setDupsContainer( parentPos, btree );
-        
+
             // can happen if next() is called after prev()
             if ( parentPos.dupPos < 0 )
             {
                 parentPos.dupPos = 0;
             }
-            
+
             tuple.setValue( parentPos.dupsContainer.rootPage.getKey( parentPos.dupPos ) );
             parentPos.dupPos++;
-            
-            if( parentPos.dupsContainer.getNbElems() ==  parentPos.dupPos )
+
+            if ( parentPos.dupsContainer.getNbElems() == parentPos.dupPos )
             {
                 parentPos.pos++;
                 changeNextDupsContainer( parentPos, btree );
@@ -146,7 +150,7 @@ public class Cursor<K, V>
         return tuple;
     }
 
-    
+
     /**
      * Find the leaf containing the following elements.
      * 
@@ -157,7 +161,7 @@ public class Cursor<K, V>
     private ParentPos<K, V> findNextParentPos() throws EndOfFileExceededException, IOException
     {
         ParentPos<K, V> lastParentPos = null;
-        
+
         while ( true )
         {
             // We first go up the tree, until we reach a page whose current position
@@ -192,7 +196,7 @@ public class Cursor<K, V>
                     newPos = 0;
                 }
 
-                if( allowDuplicates )
+                if ( allowDuplicates )
                 {
                     changeNextDupsContainer( newParentPos, btree );
                 }
@@ -213,7 +217,7 @@ public class Cursor<K, V>
     private ParentPos<K, V> findPreviousParentPos() throws EndOfFileExceededException, IOException
     {
         ParentPos<K, V> lastParentPos = null;
-        
+
         while ( true )
         {
             // We first go up the tree, until we reach a page which current position
@@ -249,7 +253,7 @@ public class Cursor<K, V>
                     newPos = node.getNbElems();
                 }
 
-                if( allowDuplicates )
+                if ( allowDuplicates )
                 {
                     changePrevDupsContainer( newParentPos, btree );
                 }
@@ -293,22 +297,22 @@ public class Cursor<K, V>
         }
 
         Leaf<K, V> leaf = ( Leaf<K, V> ) ( parentPos.page );
-        
-        if( allowDuplicates )
+
+        if ( allowDuplicates )
         {
             setDupsContainer( parentPos, btree );
-            
+
             // can happen if prev() was called after next()
-            if( parentPos.pos == parentPos.page.getNbElems() )
+            if ( parentPos.pos == parentPos.page.getNbElems() )
             {
                 parentPos.pos--;
             }
-            
-            if( parentPos.dupPos == parentPos.dupsContainer.getNbElems() )
+
+            if ( parentPos.dupPos == parentPos.dupsContainer.getNbElems() )
             {
                 parentPos.dupPos--;
             }
-            else if( parentPos.dupPos == 0 )
+            else if ( parentPos.dupPos == 0 )
             {
                 changePrevDupsContainer( parentPos, btree );
                 parentPos.pos--;
@@ -318,7 +322,7 @@ public class Cursor<K, V>
             {
                 parentPos.dupPos--;
             }
-            
+
             tuple.setKey( leaf.keys[parentPos.pos] );
             tuple.setValue( parentPos.dupsContainer.rootPage.getKey( parentPos.dupPos ) );
         }
@@ -328,7 +332,7 @@ public class Cursor<K, V>
             tuple.setKey( leaf.keys[parentPos.pos] );
             tuple.setValue( leaf.values[parentPos.pos].getValue( btree ) );
         }
-        
+
         return tuple;
     }
 
@@ -348,12 +352,12 @@ public class Cursor<K, V>
             return false;
         }
 
-        for( ParentPos<K, V> p : stack )
+        for ( ParentPos<K, V> p : stack )
         {
-            if( allowDuplicates && ( p.page instanceof Leaf ) )
+            if ( allowDuplicates && ( p.page instanceof Leaf ) )
             {
-                if ( ( p.dupPos != p.dupsContainer.getNbElems() ) 
-                     && ( p.pos != p.page.getNbElems() ) )
+                if ( ( p.dupPos != p.dupsContainer.getNbElems() )
+                    && ( p.pos != p.page.getNbElems() ) )
                 {
                     return true;
                 }
@@ -363,7 +367,7 @@ public class Cursor<K, V>
                 return true;
             }
         }
-        
+
         return false;
     }
 
@@ -383,14 +387,14 @@ public class Cursor<K, V>
             return false;
         }
 
-        for( ParentPos<K, V> p : stack )
+        for ( ParentPos<K, V> p : stack )
         {
-            if( allowDuplicates && ( p.page instanceof Leaf ) )
+            if ( allowDuplicates && ( p.page instanceof Leaf ) )
             {
-                if( ( p.dupPos != 0 ) 
+                if ( ( p.dupPos != 0 )
                     || ( p.pos != 0 ) )
                 {
-                    return true;    
+                    return true;
                 }
             }
             else if ( p.pos != 0 )
@@ -398,7 +402,7 @@ public class Cursor<K, V>
                 return true;
             }
         }
-        
+
         return false;
     }
 
@@ -428,8 +432,8 @@ public class Cursor<K, V>
     {
         return transaction.getCreationDate();
     }
-    
-    
+
+
     /**
      * Moves the cursor to the next non-duplicate key.
 
@@ -463,17 +467,17 @@ public class Cursor<K, V>
             // increment the position cause findNextParentPos checks "parentPos.pos == parentPos.page.getNbElems()"
             parentPos.pos++;
             ParentPos<K, V> nextPos = findNextParentPos();
-            
+
             // if the returned value is a Node OR if it is same as the parentPos
             // that means cursor is already at the last position
             // call afterLast() to restore the stack with the path to the right most element
-            if( ( nextPos.page instanceof Node ) || ( nextPos == parentPos ) )
+            if ( ( nextPos.page instanceof Node ) || ( nextPos == parentPos ) )
             {
                 afterLast();
             }
             else
             {
-            	parentPos = nextPos;
+                parentPos = nextPos;
             }
         }
         else
@@ -481,7 +485,7 @@ public class Cursor<K, V>
             parentPos.pos++;
             changeNextDupsContainer( parentPos, btree );
         }
-    }    
+    }
 
 
     /**
@@ -515,10 +519,10 @@ public class Cursor<K, V>
             // End of the leaf. We have to go back into the stack up to the
             // parent, and down to the leaf
             parentPos = findPreviousParentPos();
-            
+
             // if the returned value is a Node that means cursor is already at the first position
             // call beforeFirst() to restore the stack to the initial state
-            if( parentPos.page instanceof Node )
+            if ( parentPos.page instanceof Node )
             {
                 beforeFirst();
             }
@@ -529,8 +533,8 @@ public class Cursor<K, V>
             parentPos.pos--;
         }
     }
-    
-    
+
+
     /**
      * moves the cursor to the same position that was given at the time of instantiating the cursor.
      * 
@@ -544,8 +548,8 @@ public class Cursor<K, V>
     {
         cloneStack( _initialStack, stack );
     }
-    
-    
+
+
     /**
      * Places the cursor at the end of the last position
      * 
@@ -554,10 +558,10 @@ public class Cursor<K, V>
     public void afterLast() throws IOException
     {
         stack.clear();
-        stack = ( LinkedList<ParentPos<K, V>> ) BTreeFactory.getPathToRightMostLeaf( btree );
+        stack = BTreeFactory.getPathToRightMostLeaf( btree );
     }
-    
-    
+
+
     /**
      * clones the original stack of ParentPos objects
      * 
@@ -567,9 +571,9 @@ public class Cursor<K, V>
     private void cloneStack( LinkedList<ParentPos<K, V>> original, LinkedList<ParentPos<K, V>> clone )
     {
         clone.clear();
-        
+
         // preserve the first position
-        for( ParentPos<K, V> o : original )
+        for ( ParentPos<K, V> o : original )
         {
             ParentPos<K, V> tmp = new ParentPos<K, V>( o.page, o.pos );
             tmp.dupPos = o.dupPos;
@@ -577,5 +581,5 @@ public class Cursor<K, V>
             clone.add( tmp );
         }
     }
-    
+
 }

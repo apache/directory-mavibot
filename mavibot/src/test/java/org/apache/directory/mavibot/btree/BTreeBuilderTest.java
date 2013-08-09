@@ -21,17 +21,14 @@
 package org.apache.directory.mavibot.btree;
 
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.BTreeBuilder;
-import org.apache.directory.mavibot.btree.Cursor;
-import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.junit.Test;
-import static org.junit.Assert.*;
 
 
 /**
@@ -58,11 +55,11 @@ public class BTreeBuilderTest
         BTree btree = bb.build( sortedTuple.iterator() );
 
         assertEquals( 1, btree.rootPage.getNbElems() );
-        
+
         assertEquals( 7, btree.rootPage.findRightMost().getKey() );
-        
+
         assertEquals( 1, btree.rootPage.findLeftMost().getKey() );
-        
+
         Cursor<Integer, Integer> cursor = btree.browse();
         int i = 0;
         while ( cursor.hasNext() )
@@ -72,7 +69,7 @@ public class BTreeBuilderTest
             assertEquals( expected.getKey(), actual.getKey() );
             assertEquals( expected.getValue(), actual.getValue() );
         }
-        
+
         cursor.close();
         btree.close();
     }

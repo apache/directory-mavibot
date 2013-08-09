@@ -27,7 +27,7 @@ import java.util.Comparator;
  * Compares boolean arrays. A boolean is considered as below the other one if the first boolean
  * is false when the second one is true.
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class BooleanArrayComparator implements Comparator<boolean[]>
 {

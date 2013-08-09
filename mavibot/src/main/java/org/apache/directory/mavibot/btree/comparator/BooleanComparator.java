@@ -26,7 +26,7 @@ import java.util.Comparator;
 /**
  * Compares booleans
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class BooleanComparator implements Comparator<Boolean>
 {

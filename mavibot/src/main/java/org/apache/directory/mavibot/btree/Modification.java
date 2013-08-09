@@ -23,10 +23,10 @@ package org.apache.directory.mavibot.btree;
 /**
  * An abstract class used to store a modification done on a BTree.
  *  
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
- *
  * @param <K> The key type
  * @param <V> The value type
+ * 
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public abstract class Modification<K, V> extends Tuple<K, V>
 {

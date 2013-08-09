@@ -36,7 +36,7 @@ import java.util.Date;
  * a browse against a big BTree. At some point, transactions which are pending
  * for too long will be closed by the transaction manager.
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  *
  * @param <K> The type for the Key
  * @param <V> The type for the stored value

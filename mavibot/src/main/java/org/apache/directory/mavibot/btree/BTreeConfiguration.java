@@ -27,10 +27,10 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
  * The B+Tree Configuration. This class can be used to store all the configurable
  * parameters used by the BTree class
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
- * 
  * @param <K> The type for the keys
  * @param <V> The type for the stored values
+ * 
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class BTreeConfiguration<K, V>
 {
@@ -86,7 +86,8 @@ public class BTreeConfiguration<K, V>
 
     /** the type of BTree */
     private BTreeTypeEnum type;
-    
+
+
     /**
      * @return the pageSize
      */
@@ -277,7 +278,7 @@ public class BTreeConfiguration<K, V>
         this.name = name.trim();
     }
 
-    
+
     /**
      * @return true if duplicate key support is enabled
      */

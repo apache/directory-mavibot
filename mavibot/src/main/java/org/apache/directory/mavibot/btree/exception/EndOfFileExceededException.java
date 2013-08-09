@@ -26,7 +26,7 @@ import java.io.IOException;
 /**
  * An exception thrown when we try to access a page beyond the file's size.
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class EndOfFileExceededException extends IOException
 {

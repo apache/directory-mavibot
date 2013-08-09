@@ -25,7 +25,7 @@ package org.apache.directory.mavibot.btree.exception;
  * when it's already set.
  * already managed by the RecordManager
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class PageSizeAlreadySetException extends Exception
 {

@@ -29,7 +29,7 @@ import org.apache.directory.mavibot.btree.comparator.CharArrayComparator;
 /**
  * A serializer for a char[].
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class CharArraySerializer extends AbstractElementSerializer<char[]>
 {

@@ -28,7 +28,7 @@ import java.util.Comparator;
  * 
  * @param <T> The type for the element to serialize and compare
  *
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public abstract class AbstractElementSerializer<T> implements ElementSerializer<T>
 {

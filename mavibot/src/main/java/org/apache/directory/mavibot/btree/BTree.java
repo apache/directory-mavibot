@@ -31,7 +31,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Comparator;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -51,7 +50,7 @@ import org.slf4j.LoggerFactory;
  * @param <K> The type for the keys
  * @param <V> The type for the stored values
  *
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class BTree<K, V>
 {
@@ -917,7 +916,7 @@ public class BTree<K, V>
 
             if ( isManaged() )
             {
-                recordManager.addFreePages( this, ( List ) result.getCopiedPages() );
+                recordManager.addFreePages( this, result.getCopiedPages() );
 
                 // Store the created rootPage into the revision BTree, this will be stored in RecordManager only if revisions are set to keep
                 recordManager.storeRootPage( this, rootPage );
@@ -1282,7 +1281,7 @@ public class BTree<K, V>
             recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
 
             // Moved the free pages into the list of free pages
-            recordManager.addFreePages( this, ( List ) result.getCopiedPages() );
+            recordManager.addFreePages( this, result.getCopiedPages() );
 
             // Store the created rootPage into the revision BTree, this will be stored in RecordManager only if revisions are set to keep
             recordManager.storeRootPage( this, rootPage );

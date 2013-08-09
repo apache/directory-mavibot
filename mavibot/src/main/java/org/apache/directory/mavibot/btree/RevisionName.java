@@ -24,7 +24,7 @@ package org.apache.directory.mavibot.btree;
  * A data structure that stores a revision associated to a BTree name. We use
  * it to allow the access to old revisions.
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class RevisionName
 {

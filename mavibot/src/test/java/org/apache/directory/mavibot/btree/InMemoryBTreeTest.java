@@ -35,14 +35,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.BTreeConfiguration;
-import org.apache.directory.mavibot.btree.Cursor;
-import org.apache.directory.mavibot.btree.Leaf;
-import org.apache.directory.mavibot.btree.MemoryHolder;
-import org.apache.directory.mavibot.btree.Node;
-import org.apache.directory.mavibot.btree.Page;
-import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
@@ -55,7 +47,7 @@ import org.junit.Test;
 /**
  * A unit test class for in-memory BTree
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class InMemoryBTreeTest
 {

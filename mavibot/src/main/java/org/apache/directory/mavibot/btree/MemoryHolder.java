@@ -26,7 +26,7 @@ package org.apache.directory.mavibot.btree;
  * @param <K> The type of the BTree key
  * @param <V> The type of the BTree value
  *
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class MemoryHolder<K, V> implements ElementHolder<V, K, V>
 {

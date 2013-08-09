@@ -29,7 +29,7 @@ import java.nio.channels.FileChannel;
 /**
  * A class used to hide the buffer read from the underlying file.
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class BufferHandler
 {

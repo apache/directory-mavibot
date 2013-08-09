@@ -23,7 +23,7 @@ package org.apache.directory.mavibot.btree.exception;
 /**
  * An exception thrown when we can't find a key in the BTree.
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class KeyNotFoundException extends Exception
 {

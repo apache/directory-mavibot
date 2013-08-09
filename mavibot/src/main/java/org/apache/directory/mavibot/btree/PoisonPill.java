@@ -23,11 +23,11 @@ package org.apache.directory.mavibot.btree;
 /**
  * This is special class which is injected into the journal queue to tell
  * the journal thread that it should stop.
- *  
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
  *
  * @param <K> The key type
  * @param <V> The value type
+ * 
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class PoisonPill<K, V> extends Modification<K, V>
 {

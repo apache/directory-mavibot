@@ -24,15 +24,13 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 
-import org.apache.directory.mavibot.btree.serializer.BufferHandler;
-import org.apache.directory.mavibot.btree.serializer.CharSerializer;
 import org.junit.Test;
 
 
 /**
  * Test the CharSerializer class
  * 
- * @author <a href="mailto:labs@labs.apache.org">Mavibot labs Project</a>
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class CharSerializerTest
 {
