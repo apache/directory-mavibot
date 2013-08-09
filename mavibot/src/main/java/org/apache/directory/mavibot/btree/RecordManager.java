@@ -132,7 +132,7 @@ public class RecordManager
     private int pageSize = DEFAULT_PAGE_SIZE;
 
     /** The set of managed BTrees */
-    private Map<String, BTree<?, ?>> managedBTrees;
+    private Map<String, BTree<Object, Object>> managedBTrees;
 
     /** The offset on the last added BTree */
     private long lastAddedBTreeOffset = NO_PAGE;
@@ -174,7 +174,7 @@ public class RecordManager
      */
     public RecordManager( String fileName, int pageSize )
     {
-        managedBTrees = new LinkedHashMap<String, BTree<?, ?>>();
+        managedBTrees = new LinkedHashMap<String, BTree<Object, Object>>();
 
         HEADER_BUFFER = ByteBuffer.allocate( pageSize );
         HEADER_SIZE = pageSize;
@@ -348,7 +348,7 @@ public class RecordManager
             PageIO[] pageIos = readPageIOs( HEADER_SIZE, Long.MAX_VALUE );
 
             // Create the BTree
-            copiedPageBTree = BTreeFactory.createBTree();
+            copiedPageBTree = BTreeFactory.<RevisionName, long[]> createBTree();
             copiedPageBTree.setBtreeOffset( btreeOffset );
 
             loadBTree( pageIos, copiedPageBTree );
@@ -357,7 +357,7 @@ public class RecordManager
             // And the Revision BTree
             pageIos = readPageIOs( nextBtreeOffset, Long.MAX_VALUE );
 
-            revisionBTree = BTreeFactory.createBTree();
+            revisionBTree = BTreeFactory.<RevisionName, Long> createBTree();
             revisionBTree.setBtreeOffset( nextBtreeOffset );
 
             loadBTree( pageIos, revisionBTree );
@@ -367,7 +367,7 @@ public class RecordManager
             for ( int i = 2; i < nbBtree; i++ )
             {
                 // Create the BTree
-                BTree<?, ?> btree = BTreeFactory.createBTree();
+                BTree<Object, Object> btree = BTreeFactory.createBTree();
                 btree.setBtreeOffset( nextBtreeOffset );
                 lastAddedBTreeOffset = nextBtreeOffset;
 
@@ -447,7 +447,7 @@ public class RecordManager
      * @throws IllegalAccessException 
      * @throws ClassNotFoundException 
      */
-    private void loadBTree( PageIO[] pageIos, BTree<?, ?> btree ) throws EndOfFileExceededException,
+    private <K, V> void loadBTree( PageIO[] pageIos, BTree<K, V> btree ) throws EndOfFileExceededException,
         IOException, ClassNotFoundException, IllegalAccessException, InstantiationException
     {
         long dataPos = 0L;
@@ -487,15 +487,11 @@ public class RecordManager
         byte[] keySerializerBytes = readBytes( pageIos, dataPos );
         dataPos += INT_SIZE + keySerializerBytes.length;
 
-        String keySerializerFqcn = null;
+        String keySerializerFqcn = "";
 
         if ( keySerializerBytes != null )
         {
             keySerializerFqcn = Strings.utf8ToString( keySerializerBytes );
-        }
-        else
-        {
-            keySerializerFqcn = "";
         }
 
         BTreeFactory.setKeySerializer( btree, keySerializerFqcn );
@@ -503,16 +499,12 @@ public class RecordManager
         // The valueSerialier FQCN
         byte[] valueSerializerBytes = readBytes( pageIos, dataPos );
 
-        String valueSerializerFqcn = null;
+        String valueSerializerFqcn = "";
         dataPos += INT_SIZE + valueSerializerBytes.length;
 
         if ( valueSerializerBytes != null )
         {
             valueSerializerFqcn = Strings.utf8ToString( valueSerializerBytes );
-        }
-        else
-        {
-            valueSerializerFqcn = "";
         }
 
         BTreeFactory.setValueSerializer( btree, valueSerializerFqcn );
@@ -532,16 +524,16 @@ public class RecordManager
         // Read the rootPage pages on disk
         PageIO[] rootPageIos = readPageIOs( rootPageOffset, Long.MAX_VALUE );
 
-        Page btreeRoot = readPage( btree, rootPageIos );
+        Page<K, V> btreeRoot = readPage( btree, rootPageIos );
         BTreeFactory.setRecordManager( btree, this );
 
         BTreeFactory.setRoot( btree, btreeRoot );
     }
 
 
-    private Page readNode( BTree btree, long offset, long revision, int nbElems ) throws IOException
+    private <K, V> Page<K, V> readNode( BTree<K, V> btree, long offset, long revision, int nbElems ) throws IOException
     {
-        Page node = BTreeFactory.createNode( btree, revision, nbElems );
+        Page<K, V> node = BTreeFactory.createNode( btree, revision, nbElems );
 
         // Read the rootPage pages on disk
         PageIO[] pageIos = readPageIOs( offset, Long.MAX_VALUE );
@@ -550,17 +542,18 @@ public class RecordManager
     }
 
 
-    public Page deserialize( BTree btree, long offset ) throws EndOfFileExceededException, IOException
+    public <K, V> Page<K, V> deserialize( BTree<K, V> btree, long offset ) throws EndOfFileExceededException,
+        IOException
     {
         PageIO[] rootPageIos = readPageIOs( offset, Long.MAX_VALUE );
 
-        Page page = readPage( btree, rootPageIos );
+        Page<K, V> page = readPage( btree, rootPageIos );
 
         return page;
     }
 
 
-    private Page readPage( BTree btree, PageIO[] pageIos ) throws IOException
+    private <K, V> Page<K, V> readPage( BTree<K, V> btree, PageIO[] pageIos ) throws IOException
     {
         // Deserialize the rootPage now
         long position = 0L;
@@ -574,7 +567,7 @@ public class RecordManager
         position += INT_SIZE;
 
         // The size of the data containing the keys and values
-        Page page = null;
+        Page<K, V> page = null;
         ByteBuffer byteBuffer = null;
 
         // Reads the bytes containing all the keys and values, if we have some
@@ -592,19 +585,19 @@ public class RecordManager
             // Its a leaf
             page = BTreeFactory.createLeaf( btree, revision, nbElems );
 
-            ( ( AbstractPage ) page ).setOffset( pageIos[0].getOffset() );
-            ( ( AbstractPage ) page ).setLastOffset( pageIos[pageIos.length - 1].getOffset() );
+            ( ( AbstractPage<K, V> ) page ).setOffset( pageIos[0].getOffset() );
+            ( ( AbstractPage<K, V> ) page ).setLastOffset( pageIos[pageIos.length - 1].getOffset() );
 
             // Read each value and key
             for ( int i = 0; i < nbElems; i++ )
             {
-                ElementHolder valueHolder;
+                ElementHolder<V, K, V> valueHolder;
 
                 if ( btree.isAllowDuplicates() )
                 {
                     long value = OFFSET_SERIALIZER.deserialize( byteBuffer );
-                    
-                    BTree dupValueContainer = loadDupsBTree(value);
+
+                    BTree<K, V> dupValueContainer = loadDupsBTree( value );
 
                     valueHolder = new DuplicateKeyMemoryHolder( btree, dupValueContainer );
                 }
@@ -615,9 +608,9 @@ public class RecordManager
                     valueHolder = new MemoryHolder( btree, value );
                 }
 
-                BTreeFactory.setValue( ( ( Leaf ) page ), i, valueHolder );
+                BTreeFactory.setValue( ( ( Leaf<K, V> ) page ), i, valueHolder );
 
-                Object key = btree.getKeySerializer().deserialize( byteBuffer );
+                K key = btree.getKeySerializer().deserialize( byteBuffer );
 
                 BTreeFactory.setKey( page, i, key );
             }
@@ -637,9 +630,9 @@ public class RecordManager
                 long lastOffset = OFFSET_SERIALIZER.deserialize( byteBuffer );
 
                 ElementHolder valueHolder = new ReferenceHolder( btree, null, offset, lastOffset );
-                ( ( Node ) page ).setValue( i, valueHolder );
+                ( ( Node<K, V> ) page ).setValue( i, valueHolder );
 
-                Object key = btree.getKeySerializer().deserialize( byteBuffer );
+                K key = btree.getKeySerializer().deserialize( byteBuffer );
                 BTreeFactory.setKey( page, i, key );
             }
 
@@ -648,7 +641,7 @@ public class RecordManager
             long lastOffset = OFFSET_SERIALIZER.deserialize( byteBuffer );
 
             ElementHolder valueHolder = new ReferenceHolder( btree, null, offset, lastOffset );
-            ( ( Node ) page ).setValue( nodeNbElems, valueHolder );
+            ( ( Node<K, V> ) page ).setValue( nodeNbElems, valueHolder );
         }
 
         return page;
@@ -908,9 +901,9 @@ public class RecordManager
      *  
      * @param btree The new BTree to manage.
      */
-    public synchronized void manage( BTree<?, ?> btree ) throws BTreeAlreadyManagedException, IOException
+    public synchronized <K, V> void manage( BTree<K, V> btree ) throws BTreeAlreadyManagedException, IOException
     {
-        manage( btree, false );
+        manage( ( BTree<Object, Object> ) btree, false );
     }
 
 
@@ -924,7 +917,8 @@ public class RecordManager
      * @throws BTreeAlreadyManagedException
      * @throws IOException
      */
-    public synchronized void manage( BTree<?, ?> btree, boolean internalTree ) throws BTreeAlreadyManagedException,
+    public synchronized <K, V> void manage( BTree<K, V> btree, boolean internalTree )
+        throws BTreeAlreadyManagedException,
         IOException
     {
         LOG.debug( "Managing the btree {} which is an internam tree : {}", btree.getName(), internalTree );
@@ -939,7 +933,7 @@ public class RecordManager
             throw new BTreeAlreadyManagedException( name );
         }
 
-        managedBTrees.put( name, btree );
+        managedBTrees.put( name, ( BTree<Object, Object> ) btree );
 
         // We will add the newly managed BTree at the end of the header.
         byte[] btreeNameBytes = Strings.getBytesUtf8( name );
@@ -987,7 +981,7 @@ public class RecordManager
         position = store( position, btree.getNbElems(), pageIos );
 
         // Serialize the BTree root page
-        Page rootPage = BTreeFactory.getRoot( btree );
+        Page<K, V> rootPage = BTreeFactory.getRoot( btree );
 
         PageIO[] rootPageIos = serializePage( btree, btree.getRevision(), rootPage );
 
@@ -997,7 +991,7 @@ public class RecordManager
         // Now, we can inject the BTree rootPage offset into the BTree header
         position = store( position, rootPageIo.getOffset(), pageIos );
         btree.setRootPageOffset( rootPageIo.getOffset() );
-        ( ( Leaf ) rootPage ).setOffset( rootPageIo.getOffset() );
+        ( ( Leaf<K, V> ) rootPage ).setOffset( rootPageIo.getOffset() );
 
         // The next BTree Header offset (-1L, as it's a new BTree)
         position = store( position, NO_PAGE, pageIos );
@@ -1071,7 +1065,7 @@ public class RecordManager
      * @return An array of pages containing the serialized node
      * @throws IOException
      */
-    private PageIO[] serializePage( BTree btree, long revision, Page page ) throws IOException
+    private <K, V> PageIO[] serializePage( BTree<K, V> btree, long revision, Page<K, V> page ) throws IOException
     {
         int nbElems = page.getNbElems();
 
@@ -1139,7 +1133,7 @@ public class RecordManager
                 // Start with the value
                 if ( page instanceof Node )
                 {
-                    Page child = ( ( Node ) page ).getReference( pos );
+                    Page<K, V> child = ( ( Node<K, V> ) page ).getReference( pos );
 
                     // The first offset
                     buffer = LongSerializer.serialize( child.getOffset() );
@@ -1155,13 +1149,14 @@ public class RecordManager
                 {
                     if ( btree.isAllowDuplicates() )
                     {
-                        DuplicateKeyMemoryHolder value = ( DuplicateKeyMemoryHolder ) ( ( Leaf ) page ).getValue( pos );
-                        long duplicateContainerOffset = ( ( BTree ) value.getValue( btree ) ).getBtreeOffset();
-                        buffer = OFFSET_SERIALIZER.serialize( duplicateContainerOffset );
+                        DuplicateKeyMemoryHolder<K, V> value = ( DuplicateKeyMemoryHolder<K, V> ) ( ( Leaf<K, V> ) page )
+                            .getValue( pos );
+                        long duplicateContainerOffset = ( ( BTree<K, V> ) value.getValue( btree ) ).getBtreeOffset();
+                        buffer = LongSerializer.serialize( duplicateContainerOffset );
                     }
                     else
                     {
-                        ElementHolder value = ( ( Leaf ) page ).getValue( pos );
+                        ElementHolder<V, K, V> value = ( ( Leaf<K, V> ) page ).getValue( pos );
                         buffer = btree.getValueSerializer().serialize( value.getValue( btree ) );
                     }
 
@@ -1178,7 +1173,7 @@ public class RecordManager
             // Nodes have one more value to serialize
             if ( page instanceof Node )
             {
-                Page child = ( ( Node ) page ).getReference( nbElems );
+                Page<K, V> child = ( ( Node<K, V> ) page ).getReference( nbElems );
 
                 // The first offset
                 buffer = LongSerializer.serialize( child.getOffset() );
@@ -1255,7 +1250,8 @@ public class RecordManager
      * @throws IOException 
      * @throws EndOfFileExceededException 
      */
-    /* No qualifier*/void updateBtreeHeader( BTree btree, long rootPageOffset ) throws EndOfFileExceededException,
+    /* No qualifier*/<K, V> void updateBtreeHeader( BTree<K, V> btree, long rootPageOffset )
+        throws EndOfFileExceededException,
         IOException
     {
         // Read the pageIOs associated with this BTree
@@ -1678,7 +1674,8 @@ public class RecordManager
      * @return The offset of the new page
      * @throws IOException 
      */
-    /* No qualifier*/ElementHolder writePage( BTree btree, Page newPage, long newRevision )
+    /* No qualifier*/<K, V> ElementHolder<Page<K, V>, K, V> writePage( BTree<K, V> btree, Page<K, V> newPage,
+        long newRevision )
         throws IOException
     {
         // We first need to save the new page on disk
@@ -1691,7 +1688,8 @@ public class RecordManager
         // Build the resulting reference
         long offset = pageIos[0].getOffset();
         long lastOffset = pageIos[pageIos.length - 1].getOffset();
-        ElementHolder valueHolder = new ReferenceHolder( btree, newPage, offset, lastOffset );
+        ElementHolder<Page<K, V>, K, V> valueHolder = new ReferenceHolder<Page<K, V>, K, V>( btree, newPage, offset,
+            lastOffset );
 
         if ( LOG_CHECK.isDebugEnabled() )
         {
@@ -1896,7 +1894,7 @@ public class RecordManager
     {
         // TODO : we must wait for the last write to finish
 
-        for ( BTree tree : managedBTrees.values() )
+        for ( BTree<Object, Object> tree : managedBTrees.values() )
         {
             tree.close();
         }
@@ -2001,7 +1999,7 @@ public class RecordManager
      * @param rootPage The old rootPage
      * @throws IOException If we have an issue while writing on disk
      */
-    /* No qualifier */void storeRootPage( BTree btree, Page rootPage ) throws IOException
+    /* No qualifier */<K, V> void storeRootPage( BTree<K, V> btree, Page<K, V> rootPage ) throws IOException
     {
         if ( !isKeepRevisions() )
         {
@@ -2033,7 +2031,8 @@ public class RecordManager
      * @throws KeyNotFoundException If we can't find the rootPage for this revision and this BTree
      * @throws IOException If we had an ise while accessing the data on disk
      */
-    /* No qualifier */Page getRootPage( BTree btree, long revision ) throws KeyNotFoundException, IOException
+    /* No qualifier */<K, V> Page<K, V> getRootPage( BTree<K, V> btree, long revision ) throws KeyNotFoundException,
+        IOException
     {
         if ( btree.getRevision() == revision )
         {
@@ -2047,7 +2046,7 @@ public class RecordManager
         // Read the rootPage pages on disk
         PageIO[] rootPageIos = readPageIOs( rootPageOffset, Long.MAX_VALUE );
 
-        Page btreeRoot = readPage( btree, rootPageIos );
+        Page<K, V> btreeRoot = readPage( btree, rootPageIos );
 
         return btreeRoot;
     }
@@ -2058,9 +2057,9 @@ public class RecordManager
      * 
      * @return The managed BTrees
      */
-    public BTree getManagedTree( String name )
+    public <K, V> BTree<K, V> getManagedTree( String name )
     {
-        return managedBTrees.get( name );
+        return ( BTree<K, V> ) managedBTrees.get( name );
     }
 
 
@@ -2075,7 +2074,8 @@ public class RecordManager
      * @throws IOException 
      * @throws EndOfFileExceededException 
      */
-    /* Package protected */void addFreePages( BTree btree, List<Page> pages ) throws EndOfFileExceededException,
+    /* Package protected */<K, V> void addFreePages( BTree<K, V> btree, List<Page<K, V>> pages )
+        throws EndOfFileExceededException,
         IOException
     {
         if ( ( btree == copiedPageBTree ) || ( btree == revisionBTree ) )
@@ -2095,7 +2095,7 @@ public class RecordManager
             // NOTE : potential improvement : we can update the header only when
             // we have processed all the logical pages.
 
-            for ( Page page : pages )
+            for ( Page<K, V> page : pages )
             {
                 // Retrieve all the PageIO associated with this logical page
                 long firstOffset = page.getOffset();
@@ -2151,7 +2151,7 @@ public class RecordManager
         {
             LOG.debug( "We should not get there" );
 
-            for ( Page p : pages )
+            for ( Page<K, V> p : pages )
             {
                 addFreePage( btree, p );
             }
@@ -2166,7 +2166,7 @@ public class RecordManager
      * @param btree
      * @param freePage
      */
-    private void addFreePage( BTree btree, Page freePage )
+    private <K, V> void addFreePage( BTree<K, V> btree, Page<K, V> freePage )
     {
         try
         {
@@ -2226,7 +2226,8 @@ public class RecordManager
      * @throws BTreeAlreadyManagedException
      */
     @SuppressWarnings("all")
-    public BTree addBTree( String name, ElementSerializer<?> keySerializer, ElementSerializer<?> valueSerializer,
+    public <K, V> BTree<K, V> addBTree( String name, ElementSerializer<K> keySerializer,
+        ElementSerializer<V> valueSerializer,
         boolean allowDuplicates ) throws IOException, BTreeAlreadyManagedException
     {
         BTreeConfiguration config = new BTreeConfiguration();
@@ -2712,17 +2713,17 @@ public class RecordManager
      * @param offset the offset of the BTree header
      * @return the deserialized BTree
      */
-    /* No qualifier */BTree loadDupsBTree( long offset )
+    /* No qualifier */<K, V> BTree<K, V> loadDupsBTree( long offset )
     {
         try
         {
             PageIO[] pageIos = readPageIOs( offset, Long.MAX_VALUE );
-            
-            BTree dupValueContainer = BTreeFactory.createBTree();
+
+            BTree<K, V> dupValueContainer = BTreeFactory.createBTree();
             dupValueContainer.setBtreeOffset( offset );
 
             loadBTree( pageIos, dupValueContainer );
-            
+
             return dupValueContainer;
         }
         catch ( Exception e )
@@ -2730,10 +2731,9 @@ public class RecordManager
             // should not happen
             throw new RuntimeException( e );
         }
-        
     }
-    
-    
+
+
     /**
      * @see Object#toString()
      */
