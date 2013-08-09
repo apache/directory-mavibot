@@ -80,11 +80,15 @@ public class ReferenceHolder<E, K, V> implements ElementHolder<E, K, V>
         if ( element == null )
         {
             // We have to fetch the element from disk, using the offset now
-            element = fetchElement( btree );
-            reference = new SoftReference( element );
-        }
+            Page<K, V> page = fetchElement( btree );
+            reference = ( SoftReference<E> ) new SoftReference<Page<K, V>>( page );
 
-        return element;
+            return ( E ) page;
+        }
+        else
+        {
+            return element;
+        }
     }
 
 
@@ -94,9 +98,9 @@ public class ReferenceHolder<E, K, V> implements ElementHolder<E, K, V>
      * @throws IOException 
      * @throws EndOfFileExceededException 
      */
-    private E fetchElement( BTree<K, V> btree ) throws EndOfFileExceededException, IOException
+    private Page<K, V> fetchElement( BTree<K, V> btree ) throws EndOfFileExceededException, IOException
     {
-        E element = ( E ) btree.getRecordManager().deserialize( btree, offset );
+        Page<K, V> element = btree.getRecordManager().deserialize( btree, offset );
 
         return element;
     }

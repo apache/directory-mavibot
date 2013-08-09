@@ -51,7 +51,7 @@ public class StringSerializer extends AbstractElementSerializer<String>
     /**
      * Create a new instance of StringSerializer with custom comparator
      */
-    public StringSerializer( Comparator comparator )
+    public StringSerializer( Comparator<String> comparator )
     {
         super( comparator );
     }

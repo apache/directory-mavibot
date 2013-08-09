@@ -129,7 +129,7 @@ public class BTreeBuilder<K, V>
     }
 
 
-    private Page<K, V> attachNodes( List<Page<K, V>> children, BTree btree ) throws IOException
+    private Page<K, V> attachNodes( List<Page<K, V>> children, BTree<K, V> btree ) throws IOException
     {
         if ( children.size() == 1 )
         {

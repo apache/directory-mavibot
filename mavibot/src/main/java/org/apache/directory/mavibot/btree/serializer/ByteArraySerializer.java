@@ -46,7 +46,7 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
     /**
      * Create a new instance of ByteArraySerializer with custom comparator
      */
-    public ByteArraySerializer( Comparator comparator )
+    public ByteArraySerializer( Comparator<byte[]> comparator )
     {
         super( comparator );
     }

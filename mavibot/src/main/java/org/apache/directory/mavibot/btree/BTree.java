@@ -1217,11 +1217,11 @@ public class BTree<K, V>
                     leftPage, revision );
 
                 // Store the offset on disk in the page
-                ( ( AbstractPage ) splitResult.getLeftPage() )
+                ( ( AbstractPage<K, V> ) splitResult.getLeftPage() )
                     .setOffset( ( ( ReferenceHolder ) holderLeft ).getOffset() );
 
                 // Store the last offset on disk in the page
-                ( ( AbstractPage ) splitResult.getLeftPage() )
+                ( ( AbstractPage<K, V> ) splitResult.getLeftPage() )
                     .setLastOffset( ( ( ReferenceHolder ) holderLeft ).getLastOffset() );
 
                 ElementHolder<Page<K, V>, K, V> holderRight = recordManager.writePage( this,
@@ -1607,7 +1607,6 @@ public class BTree<K, V>
      * @throws IOException If we had an issue while accessing the underlying file
      * @throws KeyNotFoundException If the revision does not exist for this Btree
      */
-    @SuppressWarnings("unchecked")
     private Page<K, V> getRootPage( long revision ) throws IOException, KeyNotFoundException
     {
         if ( isManaged() )
@@ -1754,7 +1753,7 @@ public class BTree<K, V>
             if ( value instanceof Page )
             {
                 return new ReferenceHolder<Page<K, V>, K, V>( this, ( Page<K, V> ) value,
-                    ( ( Page ) value ).getOffset(), ( ( Page ) value ).getLastOffset() );
+                    ( ( Page<K, V> ) value ).getOffset(), ( ( Page<K, V> ) value ).getLastOffset() );
             }
             else if ( isAllowDuplicates() )
             {

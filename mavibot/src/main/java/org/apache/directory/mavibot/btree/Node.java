@@ -886,7 +886,15 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
         else
         {
-            return children[pos].getValue( btree ).hasKey( key );
+            Page<K, V> page = children[pos].getValue( btree );
+
+            if ( page == null )
+            {
+                System.out.println( "Page is null for pos = " + pos + ", children = " + children[pos] );
+                System.out.println( "Key = " + key );
+            }
+
+            return page.hasKey( key );
         }
     }
 

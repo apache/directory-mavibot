@@ -41,9 +41,9 @@ public class BTreeFactory
      * 
      * @return The created BTree
      */
-    public static BTree createBTree()
+    public static <K, V> BTree<K, V> createBTree()
     {
-        BTree btree = new BTree();
+        BTree<K, V> btree = new BTree<K, V>();
 
         return btree;
     }
@@ -57,9 +57,9 @@ public class BTreeFactory
      * @param nbElems The number or elements in this node
      * @return A Node instance
      */
-    public static Node createNode( BTree btree, long revision, int nbElems )
+    public static <K, V> Node<K, V> createNode( BTree<K, V> btree, long revision, int nbElems )
     {
-        Node node = new Node( btree, revision, nbElems );
+        Node<K, V> node = new Node<K, V>( btree, revision, nbElems );
 
         return node;
     }
@@ -73,9 +73,9 @@ public class BTreeFactory
      * @param nbElems The number or elements in this leaf
      * @return A Leaf instance
      */
-    public static Leaf createLeaf( BTree btree, long revision, int nbElems )
+    public static <K, V> Leaf<K, V> createLeaf( BTree<K, V> btree, long revision, int nbElems )
     {
-        Leaf leaf = new Leaf( btree, revision, nbElems );
+        Leaf<K, V> leaf = new Leaf<K, V>( btree, revision, nbElems );
 
         return leaf;
     }
@@ -87,7 +87,7 @@ public class BTreeFactory
      * 
      * @param root the new root page.
      */
-    public static void setRoot( BTree<?, ?> btree, Page root )
+    public static <K, V> void setRoot( BTree<K, V> btree, Page<K, V> root )
     {
         btree.setRoot( root );
     }
@@ -99,7 +99,7 @@ public class BTreeFactory
      * @param btree The Btree we want to root page from
      * @return The root page
      */
-    public static Page getRoot( BTree<?, ?> btree )
+    public static <K, V> Page<K, V> getRoot( BTree<K, V> btree )
     {
         return btree.rootPage;
     }
@@ -108,7 +108,7 @@ public class BTreeFactory
     /**
      * @param nbElems the nbElems to set
      */
-    public static void setNbElems( BTree<?, ?> btree, long nbElems )
+    public static <K, V> void setNbElems( BTree<K, V> btree, long nbElems )
     {
         btree.setNbElems( nbElems );
     }
@@ -117,7 +117,7 @@ public class BTreeFactory
     /**
      * @param revision the revision to set
      */
-    public static void setRevision( BTree<?, ?> btree, long revision )
+    public static <K, V> void setRevision( BTree<K, V> btree, long revision )
     {
         btree.setRevision( revision );
     }
@@ -126,7 +126,7 @@ public class BTreeFactory
     /**
      * @param rootPageOffset the rootPageOffset to set
      */
-    public static void setRootPageOffset( BTree<?, ?> btree, long rootPageOffset )
+    public static <K, V> void setRootPageOffset( BTree<K, V> btree, long rootPageOffset )
     {
         btree.setRootPageOffset( rootPageOffset );
     }
@@ -135,7 +135,7 @@ public class BTreeFactory
     /**
      * @param nextBTreeOffset the nextBTreeOffset to set
      */
-    public static void setNextBTreeOffset( BTree<?, ?> btree, long nextBTreeOffset )
+    public static <K, V> void setNextBTreeOffset( BTree<K, V> btree, long nextBTreeOffset )
     {
         btree.setNextBTreeOffset( nextBTreeOffset );
     }
@@ -144,7 +144,7 @@ public class BTreeFactory
     /**
      * @param name the name to set
      */
-    public static void setName( BTree<?, ?> btree, String name )
+    public static <K, V> void setName( BTree<K, V> btree, String name )
     {
         btree.setName( name );
     }
@@ -159,7 +159,7 @@ public class BTreeFactory
      * @throws InstantiationException 
      * @throws IllegalAccessException
      */
-    public static void setKeySerializer( BTree<?, ?> btree, String keySerializerFqcn )
+    public static <K, V> void setKeySerializer( BTree<K, V> btree, String keySerializerFqcn )
         throws ClassNotFoundException, IllegalAccessException, InstantiationException
     {
         Class<?> keySerializer = Class.forName( keySerializerFqcn );
@@ -179,7 +179,7 @@ public class BTreeFactory
      * @throws InstantiationException 
      * @throws IllegalAccessException
      */
-    public static void setValueSerializer( BTree<?, ?> btree, String valueSerializerFqcn )
+    public static <K, V> void setValueSerializer( BTree<K, V> btree, String valueSerializerFqcn )
         throws ClassNotFoundException, IllegalAccessException, InstantiationException
     {
         Class<?> valueSerializer = Class.forName( valueSerializerFqcn );
@@ -192,7 +192,7 @@ public class BTreeFactory
      * 
      * @param pageSize The requested page size
      */
-    public static void setPageSize( BTree<?, ?> btree, int pageSize )
+    public static <K, V> void setPageSize( BTree<K, V> btree, int pageSize )
     {
         btree.setPageSize( pageSize );
     }
@@ -203,7 +203,7 @@ public class BTreeFactory
      * 
      * @param recordManager The injected RecordManager
      */
-    public static void setRecordManager( BTree<?, ?> btree, RecordManager recordManager )
+    public static <K, V> void setRecordManager( BTree<K, V> btree, RecordManager recordManager )
     {
         btree.setRecordManager( recordManager );
     }
@@ -214,9 +214,9 @@ public class BTreeFactory
      * @param pos The position in the keys array
      * @param key the key to inject
      */
-    public static void setKey( Page page, int pos, Object key )
+    public static <K, V> void setKey( Page<K, V> page, int pos, K key )
     {
-        ( ( AbstractPage ) page ).setKey( pos, key );
+        ( ( AbstractPage<K, V> ) page ).setKey( pos, key );
     }
 
 
