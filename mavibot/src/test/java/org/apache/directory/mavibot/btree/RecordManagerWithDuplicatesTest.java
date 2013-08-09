@@ -110,7 +110,7 @@ public class RecordManagerWithDuplicatesTest
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        BTree btree1 = recordManager.getManagedTree( "test" );
+        BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
         assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );

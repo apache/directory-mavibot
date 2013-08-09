@@ -118,7 +118,7 @@ public class RecordManagerTest
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        BTree btree1 = recordManager1.getManagedTree( "test" );
+        BTree<Long, String> btree1 = recordManager1.getManagedTree( "test" );
 
         assertNotNull( btree1 );
         assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
@@ -314,7 +314,8 @@ public class RecordManagerTest
     }
 
 
-    private void checkBTreeRevisionBrowse( BTree btree, long revision, long... values ) throws IOException,
+    private void checkBTreeRevisionBrowse( BTree<Long, String> btree, long revision, long... values )
+        throws IOException,
         KeyNotFoundException
     {
         Cursor<Long, String> cursor = btree.browse( revision );
@@ -345,7 +346,7 @@ public class RecordManagerTest
     }
 
 
-    private void checkBTreeRevisionBrowseFrom( BTree btree, long revision, long from, long... values )
+    private void checkBTreeRevisionBrowseFrom( BTree<Long, String> btree, long revision, long from, long... values )
         throws IOException,
         KeyNotFoundException
     {
@@ -833,7 +834,8 @@ public class RecordManagerTest
         int numKeys = 2;
         String name = "duplicateTree";
 
-        BTree<Long, String> dupsTree = new BTree( name, null, new LongSerializer(), new StringSerializer(), pageSize,
+        BTree<Long, String> dupsTree = new BTree<Long, String>( name, null, new LongSerializer(),
+            new StringSerializer(), pageSize,
             true );
 
         recordManager1.manage( dupsTree );

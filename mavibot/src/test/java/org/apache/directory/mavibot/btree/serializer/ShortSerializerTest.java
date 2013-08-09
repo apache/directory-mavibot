@@ -41,7 +41,7 @@ public class ShortSerializerTest
     public void testShortSerializer() throws IOException
     {
         short value = 0x0000;
-        byte[] result = serializer.serialize( value );
+        byte[] result = ShortSerializer.serialize( value );
 
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
@@ -50,7 +50,7 @@ public class ShortSerializerTest
 
         // ------------------------------------------------------------------
         value = 0x0001;
-        result = serializer.serialize( value );
+        result = ShortSerializer.serialize( value );
 
         assertEquals( ( byte ) 0x01, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
@@ -59,7 +59,7 @@ public class ShortSerializerTest
 
         // ------------------------------------------------------------------
         value = 0x00FF;
-        result = serializer.serialize( value );
+        result = ShortSerializer.serialize( value );
 
         assertEquals( ( byte ) 0xFF, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
@@ -68,7 +68,7 @@ public class ShortSerializerTest
 
         // ------------------------------------------------------------------
         value = 0x0100;
-        result = serializer.serialize( value );
+        result = ShortSerializer.serialize( value );
 
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x01, result[0] );
@@ -77,7 +77,7 @@ public class ShortSerializerTest
 
         // ------------------------------------------------------------------
         value = 0x7FFF;
-        result = serializer.serialize( value );
+        result = ShortSerializer.serialize( value );
 
         assertEquals( ( byte ) 0xFF, result[1] );
         assertEquals( ( byte ) 0x7F, result[0] );
@@ -86,7 +86,7 @@ public class ShortSerializerTest
 
         // ------------------------------------------------------------------
         value = ( short ) 0x8000;
-        result = serializer.serialize( value );
+        result = ShortSerializer.serialize( value );
 
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x80, result[0] );
@@ -95,7 +95,7 @@ public class ShortSerializerTest
 
         // ------------------------------------------------------------------
         value = ( short ) 0xFFFF;
-        result = serializer.serialize( value );
+        result = ShortSerializer.serialize( value );
 
         assertEquals( ( byte ) 0xFF, result[1] );
         assertEquals( ( byte ) 0xFF, result[0] );

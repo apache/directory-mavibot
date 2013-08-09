@@ -128,12 +128,7 @@ public class MultiThreadedBtreeTest
             }
         }
 
-        long revision = cursor.getRevision();
-
         cursor.close();
-
-        //System.out.println( Thread.currentThread().getName() + " Nb elements read : " + nb + " on revision : "
-        //    + revision );
 
         return nb;
     }

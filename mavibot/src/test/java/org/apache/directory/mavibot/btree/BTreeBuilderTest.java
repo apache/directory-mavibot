@@ -52,13 +52,13 @@ public class BTreeBuilderTest
         BTreeBuilder<Integer, Integer> bb = new BTreeBuilder<Integer, Integer>( "master", 4, ser, ser );
 
         // contains 1, 2, 3, 4, 5, 6, 7
-        BTree btree = bb.build( sortedTuple.iterator() );
+        BTree<Integer, Integer> btree = bb.build( sortedTuple.iterator() );
 
         assertEquals( 1, btree.rootPage.getNbElems() );
 
-        assertEquals( 7, btree.rootPage.findRightMost().getKey() );
+        assertEquals( 7, btree.rootPage.findRightMost().getKey().intValue() );
 
-        assertEquals( 1, btree.rootPage.findLeftMost().getKey() );
+        assertEquals( 1, btree.rootPage.findLeftMost().getKey().intValue() );
 
         Cursor<Integer, Integer> cursor = btree.browse();
         int i = 0;

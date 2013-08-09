@@ -401,8 +401,6 @@ public class InMemoryBTreeTest
             }
         }
 
-        int i = 0;
-
         long[] deletes = new long[]
             {
                 1,
@@ -415,8 +413,6 @@ public class InMemoryBTreeTest
 
         for ( long value : deletes )
         {
-            //System.out.println( "Deleting #" + i + " : " + value );
-            i++;
             Tuple<Long, String> tuple = btree.delete( value );
 
             if ( tuple != null )

@@ -256,7 +256,7 @@ public class ReadTest
             { 0x01, 0x23, 0x45, 0x67 };
 
         // Set the bytes at the beginning
-        long position = ( Long ) storeMethod.invoke( recordManager, 0L, bytes, pageIos );
+        storeMethod.invoke( recordManager, 0L, bytes, pageIos );
 
         // Read the bytes back
         byte[] readBytes = ( byte[] ) readBytesMethod.invoke( recordManager, pageIos, 0L );
@@ -272,7 +272,7 @@ public class ReadTest
         assertEquals( 0x67, readBytes[pos++] );
 
         // Set the bytes at the end of the first page
-        position = ( Long ) storeMethod.invoke( recordManager, 12L, bytes, pageIos );
+        storeMethod.invoke( recordManager, 12L, bytes, pageIos );
 
         // Read the bytes back
         readBytes = ( byte[] ) readBytesMethod.invoke( recordManager, pageIos, 12L );
@@ -295,7 +295,7 @@ public class ReadTest
             bytes[i] = ( byte ) ( i + 1 );
         }
 
-        position = ( Long ) storeMethod.invoke( recordManager, 0L, bytes, pageIos );
+        storeMethod.invoke( recordManager, 0L, bytes, pageIos );
 
         // Read the bytes back
         readBytes = ( byte[] ) readBytesMethod.invoke( recordManager, pageIos, 0L );
@@ -304,6 +304,7 @@ public class ReadTest
         pos = 0;
         assertNotNull( readBytes );
         assertEquals( 16, readBytes.length );
+
         // The data
         for ( int i = 0; i < 16; i++ )
         {
@@ -311,7 +312,7 @@ public class ReadTest
         }
 
         // Write the bytes over 2 pages
-        position = ( Long ) storeMethod.invoke( recordManager, 15L, bytes, pageIos );
+        storeMethod.invoke( recordManager, 15L, bytes, pageIos );
 
         // Read the bytes back
         readBytes = ( byte[] ) readBytesMethod.invoke( recordManager, pageIos, 15L );
@@ -334,7 +335,7 @@ public class ReadTest
             bytes[i] = ( byte ) ( i + 1 );
         }
 
-        position = ( Long ) storeMethod.invoke( recordManager, 2L, bytes, pageIos );
+        storeMethod.invoke( recordManager, 2L, bytes, pageIos );
 
         // Read the bytes back
         readBytes = ( byte[] ) readBytesMethod.invoke( recordManager, pageIos, 2L );

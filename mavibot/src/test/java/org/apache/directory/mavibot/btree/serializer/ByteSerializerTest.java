@@ -41,7 +41,7 @@ public class ByteSerializerTest
     public void testByteSerializer() throws IOException
     {
         byte value = 0x00;
-        byte[] result = serializer.serialize( value );
+        byte[] result = ByteSerializer.serialize( value );
 
         assertEquals( ( byte ) 0x00, result[0] );
 
@@ -49,7 +49,7 @@ public class ByteSerializerTest
 
         // ------------------------------------------------------------------
         value = 0x01;
-        result = serializer.serialize( value );
+        result = ByteSerializer.serialize( value );
 
         assertEquals( ( byte ) 0x01, result[0] );
 
@@ -57,7 +57,7 @@ public class ByteSerializerTest
 
         // ------------------------------------------------------------------
         value = 0x7F;
-        result = serializer.serialize( value );
+        result = ByteSerializer.serialize( value );
 
         assertEquals( ( byte ) 0x7F, result[0] );
 
@@ -65,7 +65,7 @@ public class ByteSerializerTest
 
         // ------------------------------------------------------------------
         value = ( byte ) 0x80;
-        result = serializer.serialize( value );
+        result = ByteSerializer.serialize( value );
 
         assertEquals( ( byte ) 0x80, result[0] );
 
@@ -73,7 +73,7 @@ public class ByteSerializerTest
 
         // ------------------------------------------------------------------
         value = ( byte ) 0xFF;
-        result = serializer.serialize( value );
+        result = ByteSerializer.serialize( value );
 
         assertEquals( ( byte ) 0xFF, result[0] );
 
