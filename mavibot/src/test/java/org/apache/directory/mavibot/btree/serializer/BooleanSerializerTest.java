@@ -41,7 +41,7 @@ public class BooleanSerializerTest
     public void testBooleanSerializer() throws IOException
     {
         boolean value = true;
-        byte[] result = serializer.serialize( value );
+        byte[] result = BooleanSerializer.serialize( value );
 
         assertEquals( ( byte ) 0x01, result[0] );
 
@@ -49,7 +49,7 @@ public class BooleanSerializerTest
 
         // ------------------------------------------------------------------
         value = false;
-        result = serializer.serialize( value );
+        result = BooleanSerializer.serialize( value );
 
         assertEquals( ( byte ) 0x00, result[0] );
 
