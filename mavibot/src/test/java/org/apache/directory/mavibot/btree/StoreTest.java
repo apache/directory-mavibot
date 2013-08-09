@@ -26,7 +26,9 @@ import java.io.File;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 
 /**
@@ -36,15 +38,17 @@ import org.junit.Test;
  */
 public class StoreTest
 {
+    @Rule
+    public TemporaryFolder tempFolder = new TemporaryFolder();
+
     /**
      * Test the store( int ) method
      */
     @Test
     public void testInjectInt() throws Exception
     {
-        File tempFile = File.createTempFile( "mavibot", ".db" );
+        File tempFile = tempFolder.newFile( "mavibot.db" );
         String tempFileName = tempFile.getAbsolutePath();
-        tempFile.deleteOnExit();
 
         RecordManager recordManager = new RecordManager( tempFileName, 4 * 1024 );
         Method method = RecordManager.class.getDeclaredMethod( "store", long.class, int.class, PageIO[].class );
@@ -131,9 +135,8 @@ public class StoreTest
     @Test
     public void testInjectLong() throws Exception
     {
-        File tempFile = File.createTempFile( "mavibot", ".db" );
+        File tempFile = tempFolder.newFile( "mavibot.db" );
         String tempFileName = tempFile.getAbsolutePath();
-        tempFile.deleteOnExit();
 
         RecordManager recordManager = new RecordManager( tempFileName, 4 * 1024 );
         Method method = RecordManager.class.getDeclaredMethod( "store", long.class, long.class, PageIO[].class );
@@ -308,9 +311,8 @@ public class StoreTest
     @Test
     public void testInjectBytes() throws Exception
     {
-        File tempFile = File.createTempFile( "mavibot", ".db" );
+        File tempFile = tempFolder.newFile( "mavibot.db" );
         String tempFileName = tempFile.getAbsolutePath();
-        tempFile.deleteOnExit();
 
         // We use smaller pages
         RecordManager recordManager = new RecordManager( tempFileName, 32 );

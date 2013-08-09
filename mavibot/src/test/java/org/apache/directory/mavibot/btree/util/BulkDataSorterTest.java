@@ -33,7 +33,9 @@ import java.util.Iterator;
 import java.util.Random;
 
 import org.apache.directory.mavibot.btree.Tuple;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 
 /**
@@ -43,6 +45,8 @@ import org.junit.Test;
  */
 public class BulkDataSorterTest
 {
+    @Rule
+    public TemporaryFolder tempFolder = new TemporaryFolder();
 
     private Comparator<Tuple<Integer, Integer>> tupleComp = new Comparator<Tuple<Integer, Integer>>()
     {
@@ -62,8 +66,7 @@ public class BulkDataSorterTest
         IntTupleReaderWriter itrw = new IntTupleReaderWriter();
         Random random = new Random();
 
-        File dataFile = File.createTempFile( "tuple", ".data" );
-        dataFile.deleteOnExit();
+        File dataFile = tempFolder.newFile( "tuple.data" );
         DataOutputStream out = new DataOutputStream( new FileOutputStream( dataFile ) );
 
         Tuple<Integer, Integer>[] arr = ( Tuple<Integer, Integer>[] ) Array.newInstance( Tuple.class, count );
@@ -108,8 +111,7 @@ public class BulkDataSorterTest
         IntTupleReaderWriter itrw = new IntTupleReaderWriter();
         Random random = new Random();
 
-        File dataFile = File.createTempFile( "tuple", ".data" );
-        dataFile.deleteOnExit();
+        File dataFile = tempFolder.newFile( "tuple.data" );
 
         DataOutputStream out = new DataOutputStream( new FileOutputStream( dataFile ) );
 

@@ -28,7 +28,9 @@ import java.io.IOException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 
 /**
@@ -38,6 +40,9 @@ import org.junit.Test;
  */
 public class BTreeConfigurationTest
 {
+    @Rule
+    public TemporaryFolder tempFolder = new TemporaryFolder();
+
     // Some values to inject in a btree
     private static int[] sortedValues = new int[]
         {
@@ -170,8 +175,7 @@ public class BTreeConfigurationTest
     public void testConfigurationFlushReload() throws IOException, KeyNotFoundException
     {
         // Create a temporary file
-        File file = File.createTempFile( "testFlush", "data" );
-        file.deleteOnExit();
+        File file = tempFolder.newFile( "testFlush.data" );
         String parent = file.getParent();
 
         try

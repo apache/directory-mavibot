@@ -33,7 +33,9 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 
 /**
@@ -43,6 +45,9 @@ import org.junit.Test;
  */
 public class BTreeFlushTest
 {
+    @Rule
+    public TemporaryFolder tempFolder = new TemporaryFolder();
+
     // Some values to inject in a btree
     private static int[] sortedValues = new int[]
         {
@@ -165,8 +170,7 @@ public class BTreeFlushTest
 
         // Now, flush the btree
 
-        File tempFile = File.createTempFile( "mavibot", ".tmp" );
-        tempFile.deleteOnExit();
+        File tempFile = tempFolder.newFile( "mavibot.tmp" );
 
         long t0 = System.currentTimeMillis();
 
@@ -212,10 +216,7 @@ public class BTreeFlushTest
     public void testFlushBTree() throws Exception
     {
         // Create a BTree with pages containing 8 elements
-        // Create the file, it will be deleted on exit
-        File tempFile = File.createTempFile( "testFlush", null );
-        String path = tempFile.getParent();
-        tempFile.delete();
+        String path = tempFolder.getRoot().getCanonicalPath();
 
         BTree<Integer, String> btree = new BTree<Integer, String>( "test", path, new IntSerializer(),
             new StringSerializer() );

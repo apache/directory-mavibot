@@ -27,7 +27,9 @@ import java.io.File;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 
 /**
@@ -37,15 +39,17 @@ import org.junit.Test;
  */
 public class ReadTest
 {
+    @Rule
+    public TemporaryFolder tempFolder = new TemporaryFolder();
+
     /**
      * Test the readInt method
      */
     @Test
     public void testReadInt() throws Exception
     {
-        File tempFile = File.createTempFile( "mavibot", ".db" );
+        File tempFile = tempFolder.newFile( "mavibot.db" );
         String tempFileName = tempFile.getAbsolutePath();
-        tempFile.deleteOnExit();
 
         // Create page size of 32 only
         RecordManager recordManager = new RecordManager( tempFileName, 32 );
@@ -118,9 +122,8 @@ public class ReadTest
     @Test
     public void testReadLong() throws Exception
     {
-        File tempFile = File.createTempFile( "mavibot", ".db" );
+        File tempFile = tempFolder.newFile( "mavibot.db" );
         String tempFileName = tempFile.getAbsolutePath();
-        tempFile.deleteOnExit();
 
         // Create page size of 32 only
         RecordManager recordManager = new RecordManager( tempFileName, 32 );
@@ -229,9 +232,8 @@ public class ReadTest
     @Test
     public void testReadBytes() throws Exception
     {
-        File tempFile = File.createTempFile( "mavibot", ".db" );
+        File tempFile = tempFolder.newFile( "mavibot.db" );
         String tempFileName = tempFile.getAbsolutePath();
-        tempFile.deleteOnExit();
 
         // We use smaller pages
         RecordManager recordManager = new RecordManager( tempFileName, 32 );
