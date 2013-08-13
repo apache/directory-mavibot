@@ -163,6 +163,7 @@ public class BTreeFactory
         throws ClassNotFoundException, IllegalAccessException, InstantiationException
     {
         Class<?> keySerializer = Class.forName( keySerializerFqcn );
+        @SuppressWarnings("unchecked")
         ElementSerializer<K> instance = ( ElementSerializer<K> ) keySerializer.newInstance();
         btree.setKeySerializer( instance );
 
@@ -183,7 +184,9 @@ public class BTreeFactory
         throws ClassNotFoundException, IllegalAccessException, InstantiationException
     {
         Class<?> valueSerializer = Class.forName( valueSerializerFqcn );
-        btree.setValueSerializer( ( ElementSerializer<V> ) valueSerializer.newInstance() );
+        @SuppressWarnings("unchecked")
+        ElementSerializer<V> instance = ( ElementSerializer<V> ) valueSerializer.newInstance();
+        btree.setValueSerializer( instance );
     }
 
 

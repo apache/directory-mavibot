@@ -599,7 +599,7 @@ public class RecordManager
 
                     BTree<K, V> dupValueContainer = loadDupsBTree( value );
 
-                    valueHolder = new DuplicateKeyMemoryHolder( btree, dupValueContainer );
+                    valueHolder = new MultipleMemoryHolder( btree, dupValueContainer );
                 }
                 else
                 {
@@ -1149,7 +1149,7 @@ public class RecordManager
                 {
                     if ( btree.isAllowDuplicates() )
                     {
-                        DuplicateKeyMemoryHolder<K, V> value = ( DuplicateKeyMemoryHolder<K, V> ) ( ( Leaf<K, V> ) page )
+                        MultipleMemoryHolder<K, V> value = ( MultipleMemoryHolder<K, V> ) ( ( Leaf<K, V> ) page )
                             .getValue( pos );
                         long duplicateContainerOffset = ( ( BTree<K, V> ) value.getValue( btree ) ).getBtreeOffset();
                         buffer = LongSerializer.serialize( duplicateContainerOffset );

@@ -70,7 +70,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         if ( btree.isAllowDuplicates() )
         {
-            this.values = ( DuplicateKeyMemoryHolder<K, V>[] ) Array.newInstance( DuplicateKeyMemoryHolder.class,
+            this.values = ( MultipleMemoryHolder<K, V>[] ) Array.newInstance( MultipleMemoryHolder.class,
                 nbElems );
         }
         else
@@ -779,7 +779,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         if ( btree.isAllowDuplicates() )
         {
-            valueHolder = new DuplicateKeyMemoryHolder<K, V>( btree, value );
+            valueHolder = new MultipleMemoryHolder<K, V>( btree, value );
         }
         else
         {

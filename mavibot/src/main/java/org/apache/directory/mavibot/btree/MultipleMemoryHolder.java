@@ -36,7 +36,7 @@ import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class DuplicateKeyMemoryHolder<K, V> implements ElementHolder<V, K, V>
+public class MultipleMemoryHolder<K, V> implements ElementHolder<V, K, V>
 {
     /** The BTree */
     private BTree<K, V> btree;
@@ -57,7 +57,7 @@ public class DuplicateKeyMemoryHolder<K, V> implements ElementHolder<V, K, V>
      * @param offset The offset in disk for this value
      * @param value The value to store into a SoftReference
      */
-    public DuplicateKeyMemoryHolder( BTree<K, V> btree, V value )
+    public MultipleMemoryHolder( BTree<K, V> btree, V value )
     {
         this.btree = btree;
 
@@ -107,7 +107,7 @@ public class DuplicateKeyMemoryHolder<K, V> implements ElementHolder<V, K, V>
      * @param valueContainer the BTree holding the values of a duplicate key
      *        present in the parent tree
      */
-    /* No qualifier */DuplicateKeyMemoryHolder( BTree<K, V> btree, BTree<V, V> valueContainer )
+    MultipleMemoryHolder( BTree<K, V> btree, BTree<V, V> valueContainer )
     {
         this.btree = btree;
 

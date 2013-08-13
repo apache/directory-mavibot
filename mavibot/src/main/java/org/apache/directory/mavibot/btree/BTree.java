@@ -1634,7 +1634,7 @@ public class BTree<K, V>
         {
             if ( isAllowDuplicates() )
             {
-                return new DuplicateKeyMemoryHolder<K, V>( this, value );
+                return new MultipleMemoryHolder<K, V>( this, value );
             }
             else
             {
@@ -1646,7 +1646,7 @@ public class BTree<K, V>
         {
             if ( isAllowDuplicates() )
             {
-                return new DuplicateKeyMemoryHolder<K, V>( this, value );
+                return new MultipleMemoryHolder<K, V>( this, value );
             }
             else
             {
