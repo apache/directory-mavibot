@@ -20,6 +20,7 @@
 package org.apache.directory.mavibot.btree;
 
 
+import java.io.Closeable;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -50,7 +51,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class BTree<K, V>
+public class BTree<K, V> implements Closeable
 {
     /** The LoggerFactory used by this class */
     protected static final Logger LOG = LoggerFactory.getLogger( BTree.class );
