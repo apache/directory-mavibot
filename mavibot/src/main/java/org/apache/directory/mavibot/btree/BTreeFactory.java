@@ -163,7 +163,7 @@ public class BTreeFactory
         throws ClassNotFoundException, IllegalAccessException, InstantiationException
     {
         Class<?> keySerializer = Class.forName( keySerializerFqcn );
-        ElementSerializer instance = ( ElementSerializer ) keySerializer.newInstance();
+        ElementSerializer<K> instance = ( ElementSerializer<K> ) keySerializer.newInstance();
         btree.setKeySerializer( instance );
 
         btree.setComparator( instance.getComparator() );
@@ -183,7 +183,7 @@ public class BTreeFactory
         throws ClassNotFoundException, IllegalAccessException, InstantiationException
     {
         Class<?> valueSerializer = Class.forName( valueSerializerFqcn );
-        btree.setValueSerializer( ( ElementSerializer ) valueSerializer.newInstance() );
+        btree.setValueSerializer( ( ElementSerializer<V> ) valueSerializer.newInstance() );
     }
 
 
@@ -225,7 +225,7 @@ public class BTreeFactory
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    public static void setValue( Leaf page, int pos, ElementHolder value )
+    public static <K, V> void setValue( Leaf<K, V> page, int pos, ElementHolder<V, K, V> value )
     {
         page.setValue( pos, value );
     }
@@ -236,7 +236,7 @@ public class BTreeFactory
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    public static void setValue( Node page, int pos, ElementHolder value )
+    public static <K, V> void setValue( Node<K, V> page, int pos, ElementHolder<Page<K, V>, K, V> value )
     {
         page.setValue( pos, value );
     }
@@ -249,11 +249,11 @@ public class BTreeFactory
      * @return a LinkedList of all the nodes and the final leaf
      * @throws IOException
      */
-    public static LinkedList getPathToRightMostLeaf( BTree btree ) throws IOException
+    public static <K, V> LinkedList<ParentPos<K, V>> getPathToRightMostLeaf( BTree<K, V> btree ) throws IOException
     {
-        LinkedList<ParentPos> stack = new LinkedList<ParentPos>();
+        LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
 
-        ParentPos last = new ParentPos( btree.rootPage, btree.rootPage.getNbElems() );
+        ParentPos<K, V> last = new ParentPos<K, V>( btree.rootPage, btree.rootPage.getNbElems() );
         stack.push( last );
 
         if ( btree.rootPage instanceof Leaf )
@@ -262,13 +262,13 @@ public class BTreeFactory
         }
         else
         {
-            Node node = ( Node ) btree.rootPage;
+            Node<K, V> node = ( Node<K, V> ) btree.rootPage;
 
             while ( true )
             {
-                Page p = ( Page ) node.children[node.getNbElems()].getValue( btree );
+                Page<K, V> p = node.children[node.getNbElems()].getValue( btree );
 
-                last = new ParentPos( p, p.getNbElems() );
+                last = new ParentPos<K, V>( p, p.getNbElems() );
                 stack.push( last );
 
                 if ( p instanceof Leaf )
