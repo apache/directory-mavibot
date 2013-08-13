@@ -91,8 +91,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 btree.getPageSize() + 1 );
         }
 
-        children[0] = btree.createHolder( leftPage );
-        children[1] = btree.createHolder( rightPage );
+        children[0] = btree.createPageHolder( leftPage );
+        children[1] = btree.createPageHolder( rightPage );
 
         // Create the keys array and store the pivot into it
         // We get the type of array to create from the btree
@@ -1037,7 +1037,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
         else
         {
-            return btree.createHolder( page );
+            return btree.createPageHolder( page );
         }
     }
 

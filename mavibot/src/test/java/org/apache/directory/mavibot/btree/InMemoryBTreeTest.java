@@ -1042,7 +1042,7 @@ public class InMemoryBTreeTest
         for ( Tuple<Integer, String> tuple : tuples )
         {
             leaf.keys[pos] = tuple.getKey();
-            leaf.values[pos] = btree.createHolder( tuple.getValue() );
+            leaf.values[pos] = btree.createValueHolder( tuple.getValue() );
             pos++;
         }
 
@@ -1060,7 +1060,7 @@ public class InMemoryBTreeTest
             node.keys[pos - 1] = leftmost.getKey();
         }
 
-        node.children[pos] = btree.createHolder( page );
+        node.children[pos] = btree.createPageHolder( page );
     }
 
 

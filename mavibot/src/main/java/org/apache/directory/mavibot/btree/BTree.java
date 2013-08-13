@@ -31,9 +31,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Comparator;
 import java.util.LinkedList;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
@@ -117,9 +115,6 @@ public class BTree<K, V>
     /** The thread responsible for the cleanup of timed out reads */
     private Thread readTransactionsThread;
 
-    /** The thread responsible for the journal updates */
-    private Thread journalManagerThread;
-
     /** Define a default delay for a read transaction. This is 10 seconds */
     public static final long DEFAULT_READ_TIMEOUT = 10 * 1000L;
 
@@ -129,6 +124,7 @@ public class BTree<K, V>
     private File envDir;
 
     private FileChannel journalChannel = null;
+
 
     /**
      * Create a thread that is responsible of cleaning the transactions when
@@ -461,7 +457,6 @@ public class BTree<K, V>
             journalChannel.close();
         }
 
-        
         rootPage = null;
     }
 
@@ -1108,22 +1103,22 @@ public class BTree<K, V>
 
                 // Store the offset on disk in the page
                 ( ( AbstractPage<K, V> ) splitResult.getLeftPage() )
-                    .setOffset( ( ( ReferenceHolder ) holderLeft ).getOffset() );
+                    .setOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holderLeft ).getOffset() );
 
                 // Store the last offset on disk in the page
                 ( ( AbstractPage<K, V> ) splitResult.getLeftPage() )
-                    .setLastOffset( ( ( ReferenceHolder ) holderLeft ).getLastOffset() );
+                    .setLastOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holderLeft ).getLastOffset() );
 
                 ElementHolder<Page<K, V>, K, V> holderRight = recordManager.writePage( this,
                     rightPage, revision );
 
                 // Store the offset on disk in the page
                 ( ( AbstractPage<K, V> ) splitResult.getRightPage() )
-                    .setOffset( ( ( ReferenceHolder ) holderRight ).getOffset() );
+                    .setOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holderRight ).getOffset() );
 
                 // Store the last offset on disk in the page
                 ( ( AbstractPage<K, V> ) splitResult.getRightPage() )
-                    .setLastOffset( ( ( ReferenceHolder ) holderRight ).getLastOffset() );
+                    .setLastOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holderRight ).getLastOffset() );
 
                 // Create the new rootPage
                 newRootPage = new Node<K, V>( this, revision, pivot, holderLeft, holderRight );
@@ -1142,10 +1137,12 @@ public class BTree<K, V>
                     .writePage( this, newRootPage, revision );
 
                 // Store the offset on disk in the page
-                ( ( AbstractPage<K, V> ) newRootPage ).setOffset( ( ( ReferenceHolder ) holder ).getOffset() );
+                ( ( AbstractPage<K, V> ) newRootPage ).setOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holder )
+                    .getOffset() );
 
                 // Store the last offset on disk in the page
-                ( ( AbstractPage<K, V> ) newRootPage ).setLastOffset( ( ( ReferenceHolder ) holder ).getLastOffset() );
+                ( ( AbstractPage<K, V> ) newRootPage ).setLastOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holder )
+                    .getLastOffset() );
             }
 
             rootPage = newRootPage;
@@ -1631,35 +1628,50 @@ public class BTree<K, V>
      * @param value The value to store
      * @return The value holder
      */
-    /* no qualifier */ElementHolder createHolder( Object value )
+    /* no qualifier */ElementHolder<V, K, V> createValueHolder( V value )
     {
         if ( type == BTreeTypeEnum.MANAGED )
         {
-            if ( value instanceof Page )
+            if ( isAllowDuplicates() )
             {
-                return new ReferenceHolder<Page<K, V>, K, V>( this, ( Page<K, V> ) value,
-                    ( ( Page<K, V> ) value ).getOffset(), ( ( Page<K, V> ) value ).getLastOffset() );
-            }
-            else if ( isAllowDuplicates() )
-            {
-                return new DuplicateKeyMemoryHolder<K, V>( this, ( V ) value );
+                return new DuplicateKeyMemoryHolder<K, V>( this, value );
             }
             else
             {
                 // Atm, keep the values in memory
-                return new MemoryHolder<K, V>( this, ( V ) value );
+                return new MemoryHolder<K, V>( this, value );
             }
         }
         else
         {
-            if ( isAllowDuplicates() && !( value instanceof Page ) )
+            if ( isAllowDuplicates() )
             {
-                return new DuplicateKeyMemoryHolder<K, V>( this, ( V ) value );
+                return new DuplicateKeyMemoryHolder<K, V>( this, value );
             }
             else
             {
                 return new MemoryHolder( this, value );
             }
+        }
+    }
+
+
+    /**
+     * Create a ValueHolder depending on the kind of holder we want.
+     * 
+     * @param value The value to store
+     * @return The value holder
+     */
+    /* no qualifier */ElementHolder<Page<K, V>, K, V> createPageHolder( Page<K, V> value )
+    {
+        if ( type == BTreeTypeEnum.MANAGED )
+        {
+            return new ReferenceHolder<Page<K, V>, K, V>( this, value,
+                value.getOffset(), value.getLastOffset() );
+        }
+        else
+        {
+            return new MemoryHolder( this, value );
         }
     }
 
@@ -1750,7 +1762,7 @@ public class BTree<K, V>
         btreeHeader.setAllowDuplicates( allowDuplicates );
     }
 
-    
+
     private void writeToJournal( Modification<K, V> modification )
         throws IOException
     {
@@ -1786,7 +1798,7 @@ public class BTree<K, V>
         journalChannel.force( true );
     }
 
-    
+
     /**
      * @see Object#toString()
      */

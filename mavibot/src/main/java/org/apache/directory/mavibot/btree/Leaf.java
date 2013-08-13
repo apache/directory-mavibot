@@ -747,7 +747,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         {
             // Now we can inject the value
             oldValue = newLeaf.values[pos].getValue( btree );
-            newLeaf.values[pos] = btree.createHolder( value );
+            newLeaf.values[pos] = btree.createValueHolder( value );
         }
 
         // Create the result
@@ -835,7 +835,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         int middle = btree.getPageSize() >> 1;
         Leaf<K, V> leftLeaf = null;
         Leaf<K, V> rightLeaf = null;
-        ElementHolder<V, K, V> valueHolder = btree.createHolder( value );
+        ElementHolder<V, K, V> valueHolder = btree.createValueHolder( value );
 
         // Determinate where to store the new value
         if ( pos <= middle )

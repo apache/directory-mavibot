@@ -61,6 +61,7 @@ public class BTreeBuilder<K, V>
     }
 
 
+    @SuppressWarnings("unchecked")
     public BTree<K, V> build( Iterator<Tuple<K, V>> sortedTupleItr ) throws IOException
     {
         BTree<K, V> btree = new BTree<K, V>( name, keySerializer, valueSerializer );
@@ -129,6 +130,7 @@ public class BTreeBuilder<K, V>
     }
 
 
+    @SuppressWarnings("unchecked")
     private Page<K, V> attachNodes( List<Page<K, V>> children, BTree<K, V> btree ) throws IOException
     {
         if ( children.size() == 1 )
@@ -144,6 +146,7 @@ public class BTreeBuilder<K, V>
         lstNodes.add( node );
         int i = 0;
         int totalNodes = 0;
+
         for ( Page<K, V> p : children )
         {
             if ( i != 0 )
@@ -151,7 +154,7 @@ public class BTreeBuilder<K, V>
                 setKey( node, i - 1, p.getLeftMostKey() );
             }
 
-            node.children[i] = btree.createHolder( p );
+            node.children[i] = btree.createPageHolder( p );
 
             i++;
             totalNodes++;
@@ -166,6 +169,7 @@ public class BTreeBuilder<K, V>
 
         // remove null keys and values from the last node and resize
         AbstractPage<K, V> lastNode = ( AbstractPage<K, V> ) lstNodes.get( lstNodes.size() - 1 );
+
         for ( int j = 0; j < lastNode.nbElems; j++ )
         {
             if ( lastNode.keys[j] == null )
