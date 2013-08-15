@@ -257,6 +257,151 @@
           </execution>
         </executions>
       </plugin>
+
+      <!-- The Javadoc and xref generation plugin -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-site-plugin</artifactId>
+        <dependencies>
+          <!-- Add support for 'scp'/'sftp' -->
+          <dependency>
+            <groupId>org.apache.maven.wagon</groupId>
+            <artifactId>wagon-ssh</artifactId>
+            <version>2.1</version>
+          </dependency>
+        
+          <!-- Add support for 'scpexe' -->
+          <dependency>
+            <groupId>org.apache.maven.wagon</groupId>
+            <artifactId>wagon-ssh-external</artifactId>
+            <version>2.1</version>
+          </dependency>
+        </dependencies>
+        
+        <configuration>
+          <reportPlugins>
+            <!-- JXR plugin generates cross-references -->
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-jxr-plugin</artifactId>
+              <configuration>
+                  <aggregate>true</aggregate>
+              </configuration>
+            </plugin>
+
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-surefire-report-plugin</artifactId>
+              <configuration>
+                <aggregate>true</aggregate>
+              </configuration>
+            </plugin>
+
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-project-info-reports-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+              <groupId>org.codehaus.mojo</groupId>
+              <artifactId>taglist-maven-plugin</artifactId>
+              <configuration>
+                <tags>
+                  <tag>TODO</tag>
+                  <tag>@todo</tag>
+                  <tag>@deprecated</tag>
+                  <tag>FIXME</tag>
+                </tags>
+              </configuration>
+            </plugin>
+
+            <!-- The Javadoc generation plugin -->
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-javadoc-plugin</artifactId>
+              <configuration>
+                <minmemory>512m</minmemory>
+                <maxmemory>1g</maxmemory>
+                <linksource>true</linksource>
+                <tags>
+                  <tag>
+                    <name>todo</name>
+                    <!-- todo tag for all places -->
+                    <placement>a</placement>
+                    <head>To do:</head>
+                  </tag>
+                </tags>
+                <source>1.6</source>
+              </configuration>
+              <reportSets>
+                <reportSet>
+                  <reports>
+                    <report>aggregate</report>
+                    <report>test-aggregate</report>
+                  </reports>
+                </reportSet>
+              </reportSets>
+            </plugin>
+
+            <plugin>
+              <groupId>org.codehaus.mojo</groupId>
+              <artifactId>versions-maven-plugin</artifactId>
+              <reportSets>
+                <reportSet>
+                  <reports>
+                    <report>dependency-updates-report</report>
+                    <report>plugin-updates-report</report>
+                    <report>property-updates-report</report>
+                  </reports>
+                </reportSet>
+              </reportSets>
+            </plugin>
+
+            <plugin>
+              <groupId>org.apache.rat</groupId>
+              <artifactId>apache-rat-plugin</artifactId>
+              <!-- must add configuration here too, it isn't inherited from <pluginConfiguration> :-( -->
+              <configuration>
+                <excludeSubProjects>false</excludeSubProjects>
+                <excludes>
+                  <!-- MAVEN_DEFAULT_EXCLUDES -->
+                  <exclude>**/target/**/*</exclude>
+                  <exclude>**/cobertura.ser</exclude>
+                  <!-- ECLIPSE_DEFAULT_EXCLUDES -->
+                  <exclude>**/.classpath</exclude>
+                  <exclude>**/.project</exclude>
+                  <exclude>**/.settings/**/*</exclude>
+                  <!-- IDEA_DEFAULT_EXCLUDES -->
+                  <exclude>**/*.iml</exclude>
+                  <exclude>**/*.ipr</exclude>
+                  <exclude>**/*.iws</exclude>
+                  <!-- MANIFEST_MF_EXCLUDES -->
+                  <exclude>**/MANIFEST.MF</exclude>
+                  <!-- 3RD_PARTY_LICENSES -->
+                  <exclude>distribution/src/main/release/licenses/*</exclude>
+                  <exclude>src/main/release/licenses/*</exclude>
+                  <!-- Missing license header in dependency reduced pom, see http://jira.codehaus.org/browse/MSHADE-48 -->
+                  <exclude>**/dependency-reduced-pom.xml</exclude>
+                  <!-- Images files -->
+                  <exclude>**/img/*.png</exclude>
+                  <exclude>**/img/*.graphml</exclude>
+                </excludes>
+              </configuration>
+            </plugin>
+
+            <plugin>
+              <groupId>org.codehaus.mojo</groupId>
+              <artifactId>javancss-maven-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+              <groupId>org.codehaus.mojo</groupId>
+              <artifactId>jdepend-maven-plugin</artifactId>
+            </plugin>
+
+          </reportPlugins>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 
