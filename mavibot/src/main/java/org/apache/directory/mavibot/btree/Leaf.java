@@ -157,28 +157,60 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         if ( btree.isAllowDuplicates() )
         {
-            BTree<V, V> dups = ( BTree<V, V> ) values[index].getValue( btree );
+            MultipleMemoryHolder<K, V> mvHolder = ( MultipleMemoryHolder<K, V> ) values[index];
 
-            if ( dups.hasKey( value ) )
+            //FIXME should the internal sub-tree should be deleted from RM?
+            
+            V existingVal = mvHolder.getValue( btree );
+            
+            if ( value == null ) // this is a case to delete entire <K,sub-BTree> or <K,single-V>
             {
-                dups.delete( value );
-
-                if ( dups.getNbElems() == 0 )
-                {
-                    keyRemoved = true;
-                }
-
-                removedElement = new Tuple<K, V>( keys[index], value ); // we deleted only one value (even if it is from a tree of size 1)
-            }
-            else if ( value == null ) // this is a case to delete entire <K,dupsTree> 
-            {
-                removedElement = new Tuple<K, V>( keys[index], ( V ) dups ); // the entire tree was removed so pass it as the value
+                removedElement = new Tuple<K, V>( keys[index], existingVal ); // the entire value was removed
                 keyRemoved = true;
             }
             else
-            // value is not found
             {
-                return NotPresentResult.NOT_PRESENT;
+                if( mvHolder.isSingleValue() )
+                {
+                    if ( btree.getValueSerializer().compare( value, existingVal ) == 0 )
+                    {
+                        removedElement = new Tuple<K, V>( keys[index], existingVal ); // the entire value was removed
+                        keyRemoved = true;
+                    }
+                    else // value is not found
+                    {
+                        return NotPresentResult.NOT_PRESENT;
+                    }
+                }
+                else
+                {
+                    BTree<V, V> dups = ( BTree<V, V> ) existingVal;
+                    
+                    if ( dups.hasKey( value ) )
+                    {
+                        dups.delete( value );
+                        
+                        if ( dups.getNbElems() == 0 )
+                        {
+                            keyRemoved = true;
+                        }
+                        else
+                        {
+                            if ( dups.getNbElems() == 1 )
+                            {
+                                //FIXME switch to single value mode
+                                mvHolder.switchToSingleValMode();
+                            }
+                        }
+                        
+                        removedElement = new Tuple<K, V>( keys[index], value ); // we deleted only one value (even if it is from a tree of size 1)
+                    }
+                    else
+                        // value is not found
+                    {
+                        return NotPresentResult.NOT_PRESENT;
+                    }
+                }
             }
         }
         else
@@ -499,15 +531,23 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         if ( pos < 0 )
         {
-            V v = values[-( pos + 1 )].getValue( btree );
-
             if ( btree.isAllowDuplicates() )
             {
-                // always return the first value for get(key) when duplicates are allowed
-                BTree<V, V> dupTree = ( ( BTree<V, V> ) v );
-                return dupTree.rootPage.getLeftMostKey();
+                MultipleMemoryHolder<K, V>  mvHolder = ( MultipleMemoryHolder<K, V> ) values[-( pos + 1 )];
+                if ( mvHolder.isSingleValue() )
+                {
+                    return mvHolder.getValue( btree );
+                }
+                else
+                {
+                    // always return the first value for get(key) when duplicates are allowed
+                    BTree<V, V> dupTree = ( BTree<V, V> ) mvHolder.getValue( btree );
+                    return dupTree.rootPage.getLeftMostKey();
+                }
             }
 
+            V v = values[-( pos + 1 )].getValue( btree );
+            
             return v;
         }
         else
@@ -521,7 +561,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * {@inheritDoc}
      */
     @Override
-    public BTree<V, V> getValues( K key ) throws KeyNotFoundException, IOException, IllegalArgumentException
+    public DuplicateKeyVal<V> getValues( K key ) throws KeyNotFoundException, IOException, IllegalArgumentException
     {
         if ( !btree.isAllowDuplicates() )
         {
@@ -532,9 +572,14 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         if ( pos < 0 )
         {
-            V v = values[-( pos + 1 )].getValue( btree );
+            MultipleMemoryHolder<K, V> mvHolder = ( MultipleMemoryHolder<K, V> ) values[-( pos + 1 )];
 
-            return ( ( BTree<V, V> ) v );
+            if( mvHolder.isSingleValue() )
+            {
+                return new DuplicateKeyVal<V>( mvHolder.getValue( btree ) );
+            }
+            
+            return new DuplicateKeyVal<V>( ( BTree<V, V> ) mvHolder.getValue( btree ) );
         }
         else
         {
@@ -566,16 +611,23 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         if ( pos < 0 )
         {
-            V v = values[-( pos + 1 )].getValue( btree );
-
             if ( btree.isAllowDuplicates() )
             {
-                // always return the first value for get(key) when duplicates are allowed
-                BTree<V, V> dupTree = ( ( BTree<V, V> ) v );
-                return dupTree.hasKey( value );
+                MultipleMemoryHolder<K,V> mvHolder = ( MultipleMemoryHolder<K,V> ) values[-( pos + 1 )];
+                if( mvHolder.isSingleValue() )
+                {
+                    return ( btree.getValueSerializer().compare( value, mvHolder.getValue( btree ) ) == 0 );
+                }
+                else
+                {
+                    // always return the first value for get(key) when duplicates are allowed
+                    BTree<V, V> dupTree = ( ( BTree<V, V> ) mvHolder.getValue( btree ) );
+                    return dupTree.hasKey( value );
+                }
             }
             else
             {
+                V v = values[-( pos + 1 )].getValue( btree );
                 return ( btree.getValueSerializer().compare( value, v ) == 0 );
             }
         }
@@ -731,16 +783,38 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         if ( btree.isAllowDuplicates() )
         {
-            BTree<V, V> dupValues = ( BTree<V, V> ) newLeaf.values[pos].getValue( btree );
-
-            // return value will always be null  here 
-            if ( !dupValues.hasKey( value ) )
+            MultipleMemoryHolder<K,V> mvHolder = ( MultipleMemoryHolder<K,V> ) newLeaf.values[pos];
+            
+            if ( mvHolder.isSingleValue() )
             {
-                dupValues.insert( value, null, 0 );
+                V singleVal = mvHolder.getValue( btree );
+                
+                // see if the given value already matches
+                if( btree.getValueSerializer().compare( value, singleVal ) == 0 )
+                {
+                    oldValue = value;
+                }
+                else // create a sub-tree
+                {
+                    mvHolder.createAndSwitchToSubTree();
+                }
             }
-            else
+
+            // if oldValue is null then the given 'value' is different and needs to be added
+            // ('oldValue' will be not null if it matched with the 'singleValue', see above nested if block )
+            if( oldValue == null )
             {
-                oldValue = value;
+                BTree<V, V> dupValues = ( BTree<V, V> ) mvHolder.getValue( btree );
+                
+                // return value will always be null  here 
+                if ( !dupValues.hasKey( value ) )
+                {
+                    dupValues.insert( value, null, 0 );
+                }
+                else
+                {
+                    oldValue = value;
+                }
             }
         }
         else
@@ -797,7 +871,6 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
         else
         {
-            //FIXME do not copy the duplicate key's value container, this will improve the perf significantly
             // Copy the keys and the values up to the insertion position
             System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
             System.arraycopy( values, 0, newLeaf.values, 0, pos );

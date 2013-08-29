@@ -853,7 +853,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * {@inheritDoc}
      */
     @Override
-    public BTree<V, V> getValues( K key ) throws KeyNotFoundException, IOException, IllegalArgumentException
+    public DuplicateKeyVal<V> getValues( K key ) throws KeyNotFoundException, IOException, IllegalArgumentException
     {
         int pos = findPos( key );
 

@@ -124,21 +124,31 @@ public class Cursor<K, V>
 
         if ( allowDuplicates )
         {
-            setDupsContainer( parentPos, btree );
-
-            // can happen if next() is called after prev()
-            if ( parentPos.dupPos < 0 )
+            MultipleMemoryHolder<K,V> mvHolder = ( MultipleMemoryHolder<K,V> ) leaf.values[parentPos.pos];
+            
+            if( mvHolder.isSingleValue() )
             {
-                parentPos.dupPos = 0;
-            }
-
-            tuple.setValue( parentPos.dupsContainer.rootPage.getKey( parentPos.dupPos ) );
-            parentPos.dupPos++;
-
-            if ( parentPos.dupsContainer.getNbElems() == parentPos.dupPos )
-            {
+                tuple.setValue( mvHolder.getValue( btree ) );
                 parentPos.pos++;
-                changeNextDupsContainer( parentPos, btree );
+            }
+            else
+            {
+                setDupsContainer( parentPos, btree );
+                
+                // can happen if next() is called after prev()
+                if ( parentPos.dupPos < 0 )
+                {
+                    parentPos.dupPos = 0;
+                }
+                
+                tuple.setValue( parentPos.dupsContainer.rootPage.getKey( parentPos.dupPos ) );
+                parentPos.dupPos++;
+                
+                if ( parentPos.dupsContainer.getNbElems() == parentPos.dupPos )
+                {
+                    parentPos.pos++;
+                    changeNextDupsContainer( parentPos, btree );
+                }
             }
         }
         else
@@ -300,31 +310,76 @@ public class Cursor<K, V>
 
         if ( allowDuplicates )
         {
-            setDupsContainer( parentPos, btree );
-
+            boolean posDecremented = false;
+            
             // can happen if prev() was called after next()
             if ( parentPos.pos == parentPos.page.getNbElems() )
             {
                 parentPos.pos--;
+                posDecremented = true;
             }
 
-            if ( parentPos.dupPos == parentPos.dupsContainer.getNbElems() )
+            MultipleMemoryHolder<K,V> mvHolder = ( MultipleMemoryHolder<K,V> ) leaf.values[parentPos.pos];
+
+            boolean prevHasSubtree = false;
+            // if the current key has only one value then advance to previous position
+            if( mvHolder.isSingleValue() )
             {
-                parentPos.dupPos--;
-            }
-            else if ( parentPos.dupPos == 0 )
-            {
-                changePrevDupsContainer( parentPos, btree );
-                parentPos.pos--;
-                parentPos.dupPos--;
+                if( !posDecremented )
+                {
+                    parentPos.pos--;
+                    mvHolder = ( MultipleMemoryHolder<K,V> ) leaf.values[parentPos.pos];
+                    posDecremented = true;
+                }
+                
+                if( mvHolder.isSingleValue() )
+                {
+                    tuple.setKey( leaf.keys[parentPos.pos] );
+                    tuple.setValue( mvHolder.getValue( btree ) );
+                }
+                else
+                {
+                    prevHasSubtree = true;
+                }
             }
             else
             {
-                parentPos.dupPos--;
+                prevHasSubtree = true;
             }
-
-            tuple.setKey( leaf.keys[parentPos.pos] );
-            tuple.setValue( parentPos.dupsContainer.rootPage.getKey( parentPos.dupPos ) );
+            
+            if( prevHasSubtree )
+            {
+                setDupsContainer( parentPos, btree );
+                
+                if ( parentPos.dupPos == parentPos.dupsContainer.getNbElems() )
+                {
+                    parentPos.dupPos--;
+                }
+                else if ( parentPos.dupPos == 0 )
+                {
+                    changePrevDupsContainer( parentPos, btree );
+                    parentPos.pos--;
+                    
+                    if( parentPos.dupsContainer != null )
+                    {
+                        parentPos.dupPos--;
+                    }
+                }
+                else
+                {
+                    parentPos.dupPos--;
+                }
+                
+                tuple.setKey( leaf.keys[parentPos.pos] );
+                if( parentPos.dupsContainer != null )
+                {
+                    tuple.setValue( parentPos.dupsContainer.rootPage.getKey( parentPos.dupPos ) );
+                }
+                else
+                {
+                    tuple.setValue( leaf.values[parentPos.pos].getValue( btree ) );
+                }
+            }
         }
         else
         {
@@ -356,8 +411,12 @@ public class Cursor<K, V>
         {
             if ( allowDuplicates && ( p.page instanceof Leaf ) )
             {
-                if ( ( p.dupPos != p.dupsContainer.getNbElems() )
-                    && ( p.pos != p.page.getNbElems() ) )
+                if( ( p.dupsContainer == null ) && ( p.pos != p.page.getNbElems() ) )
+                {
+                    return true;
+                }
+                else if ( ( p.dupsContainer != null ) && ( p.dupPos != p.dupsContainer.getNbElems() )
+                            && ( p.pos != p.page.getNbElems() ) )
                 {
                     return true;
                 }
@@ -391,8 +450,12 @@ public class Cursor<K, V>
         {
             if ( allowDuplicates && ( p.page instanceof Leaf ) )
             {
-                if ( ( p.dupPos != 0 )
-                    || ( p.pos != 0 ) )
+                if( ( p.dupsContainer == null ) && ( p.pos != 0 ) )
+                {
+                    return true;
+                }
+                else if ( ( p.dupsContainer != null ) && 
+                        ( ( p.dupPos != 0 ) || ( p.pos != 0 ) ) )
                 {
                     return true;
                 }

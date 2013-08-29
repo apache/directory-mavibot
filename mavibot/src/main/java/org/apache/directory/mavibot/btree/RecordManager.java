@@ -595,11 +595,25 @@ public class RecordManager
 
                 if ( btree.isAllowDuplicates() )
                 {
-                    long value = OFFSET_SERIALIZER.deserialize( byteBuffer );
-
-                    BTree<K, V> dupValueContainer = loadDupsBTree( value );
-
-                    valueHolder = new MultipleMemoryHolder( btree, dupValueContainer );
+                    byte flag = byteBuffer.get();
+                    
+                    if( flag == 0 )
+                    {
+                        V singleValue = btree.getValueSerializer().deserialize( byteBuffer );
+                        valueHolder = new MultipleMemoryHolder( btree, singleValue );
+                    }
+                    else if( flag == 1 )
+                    {
+                        long value = OFFSET_SERIALIZER.deserialize( byteBuffer );
+                            
+                        BTree<K, V> dupValueContainer = loadDupsBTree( value );
+                        
+                        valueHolder = new MultipleMemoryHolder( btree, dupValueContainer );
+                    }
+                    else
+                    {
+                        throw new IllegalStateException( "Unknown multiple value holder flag " + flag );
+                    }
                 }
                 else
                 {
@@ -1149,10 +1163,25 @@ public class RecordManager
                 {
                     if ( btree.isAllowDuplicates() )
                     {
-                        MultipleMemoryHolder<K, V> value = ( MultipleMemoryHolder<K, V> ) ( ( Leaf<K, V> ) page )
+                        MultipleMemoryHolder<K, V> mvHolder = ( MultipleMemoryHolder<K, V> ) ( ( Leaf<K, V> ) page )
                             .getValue( pos );
-                        long duplicateContainerOffset = ( ( BTree<K, V> ) value.getValue( btree ) ).getBtreeOffset();
-                        buffer = LongSerializer.serialize( duplicateContainerOffset );
+                        if( mvHolder.isSingleValue() )
+                        {
+                            buffer = btree.getValueSerializer().serialize( mvHolder.getValue( btree ) );
+                            
+                            //FIXME find a better way to avoid the copying
+                            byte[] tmp = new byte[ buffer.length + 1 ];
+                            tmp[0] = 0; // single value flag
+                            System.arraycopy( buffer, 0, tmp, 1, buffer.length );
+                            buffer = tmp;
+                        }
+                        else
+                        {
+                            long duplicateContainerOffset = ( ( BTree<K, V> ) mvHolder.getValue( btree ) ).getBtreeOffset();
+                            buffer = new byte[ 8 + 1 ];
+                            buffer[0] = 1; // sub-tree flag
+                            buffer = LongSerializer.serialize( buffer, 1, duplicateContainerOffset );
+                        }
                     }
                     else
                     {

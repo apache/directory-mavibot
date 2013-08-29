@@ -49,18 +49,15 @@ import java.io.IOException;
             return;
         }
 
-        try
+        if ( parentPos.dupsContainer == null )
         {
-            if ( parentPos.dupsContainer == null )
+            Leaf leaf = ( Leaf ) ( parentPos.page );
+            MultipleMemoryHolder mvHolder = ( MultipleMemoryHolder ) leaf.values[parentPos.pos];
+            if( !mvHolder.isSingleValue() )
             {
-                Leaf leaf = ( Leaf ) ( parentPos.page );
-                BTree dupsContainer = ( BTree ) leaf.values[parentPos.pos].getValue( btree );
+                BTree dupsContainer = ( BTree ) mvHolder.getValue( btree );
                 parentPos.dupsContainer = dupsContainer;
             }
-        }
-        catch ( IOException e )
-        {
-            throw new RuntimeException( e );
         }
     }
 
@@ -83,9 +80,13 @@ import java.io.IOException;
         if ( parentPos.pos < parentPos.page.getNbElems() )
         {
             Leaf leaf = ( Leaf ) ( parentPos.page );
-            BTree dupsContainer = ( BTree ) leaf.values[parentPos.pos].getValue( btree );
-            parentPos.dupsContainer = dupsContainer;
-            parentPos.dupPos = 0;
+            MultipleMemoryHolder mvHolder = ( MultipleMemoryHolder ) leaf.values[parentPos.pos];
+            if( !mvHolder.isSingleValue() )
+            {
+                BTree dupsContainer = ( BTree ) mvHolder.getValue( btree );
+                parentPos.dupsContainer = dupsContainer;
+                parentPos.dupPos = 0;
+            }
         }
     }
 
@@ -109,9 +110,18 @@ import java.io.IOException;
         if ( index >= 0 )
         {
             Leaf leaf = ( Leaf ) ( parentPos.page );
-            BTree dupsContainer = ( BTree ) leaf.values[index].getValue( btree );
-            parentPos.dupsContainer = dupsContainer;
-            parentPos.dupPos = ( int ) parentPos.dupsContainer.getNbElems();
+            MultipleMemoryHolder mvHolder = ( MultipleMemoryHolder ) leaf.values[index];
+            if( !mvHolder.isSingleValue() )
+            {
+                BTree dupsContainer = ( BTree ) mvHolder.getValue( btree );
+                parentPos.dupsContainer = dupsContainer;
+                parentPos.dupPos = ( int ) parentPos.dupsContainer.getNbElems();
+            }
+            else
+            {
+                parentPos.dupsContainer = null;
+                parentPos.dupPos = -1;
+            }
         }
     }
 

@@ -842,7 +842,7 @@ public class BTree<K, V> implements Closeable
     /**
      * @see Page#getValues(Object)
      */
-    public BTree<V, V> getValues( K key ) throws IOException, KeyNotFoundException
+    public DuplicateKeyVal<V> getValues( K key ) throws IOException, KeyNotFoundException
     {
         return rootPage.getValues( key );
     }

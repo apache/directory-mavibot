@@ -110,7 +110,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @throws IOException If we have an error while trying to access the page
      * @throws IllegalArgumentException If duplicates are not enabled 
      */
-    BTree<V, V> getValues( K key ) throws KeyNotFoundException, IOException, IllegalArgumentException;
+    DuplicateKeyVal<V> getValues( K key ) throws KeyNotFoundException, IOException, IllegalArgumentException;
 
 
     /**

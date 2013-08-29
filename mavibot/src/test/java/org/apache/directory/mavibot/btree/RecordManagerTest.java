@@ -862,7 +862,7 @@ public class RecordManagerTest
 
         for ( long i = 0; i < numKeys; i++ )
         {
-            BTree<String, String> values = dupsTree.getValues( i );
+            DuplicateKeyVal<String> dupVal = dupsTree.getValues( i );
             //            Cursor<String, String> cursor = values.browse();
             //            while( cursor.hasNext() )
             //            {
@@ -870,6 +870,8 @@ public class RecordManagerTest
             //            }
             //            cursor.close();
 
+            BTree<String, String> values = dupVal.getSubTree();
+            
             for ( int k = 0; k < pageSize + 1; k++ )
             {
                 assertTrue( values.hasKey( String.valueOf( k ) ) );

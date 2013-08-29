@@ -50,6 +50,8 @@ public class MultipleMemoryHolder<K, V> implements ElementHolder<V, K, V>
     /** This value is set only when the parent BTree is in managed mode */
     private SoftReference<BTree<V, V>> reference;
 
+    /** the single value of the key when only one value exists for the key */
+    private V singleValue;
 
     /**
      * Create a new holder storing an offset and a SoftReference containing the value.
@@ -60,38 +62,7 @@ public class MultipleMemoryHolder<K, V> implements ElementHolder<V, K, V>
     public MultipleMemoryHolder( BTree<K, V> btree, V value )
     {
         this.btree = btree;
-
-        try
-        {
-            BTree<V, V> valueContainer = new BTree<V, V>( UUID.randomUUID().toString(), btree.getValueSerializer(),
-                btree.getValueSerializer() );
-
-            if ( btree.isManaged() )
-            {
-                try
-                {
-                    btree.getRecordManager().manage( valueContainer, true );
-                    valContainerOffset = valueContainer.getBtreeOffset();
-                }
-                catch ( BTreeAlreadyManagedException e )
-                {
-                    // should never happen
-                    throw new RuntimeException( e );
-                }
-
-                reference = new SoftReference<BTree<V, V>>( valueContainer );
-            }
-            else
-            {
-                this.valueContainer = valueContainer;
-            }
-
-            valueContainer.insert( value, null, 0 );
-        }
-        catch ( IOException e )
-        {
-            throw new RuntimeException( e );
-        }
+        this.singleValue = value;
     }
 
 
@@ -122,7 +93,7 @@ public class MultipleMemoryHolder<K, V> implements ElementHolder<V, K, V>
         }
     }
 
-
+    
     /**
      * {@inheritDoc}
      */
@@ -131,22 +102,126 @@ public class MultipleMemoryHolder<K, V> implements ElementHolder<V, K, V>
     {
         if ( !btree.isManaged() )
         {
-            // wrong cast to please compiler
+            if( valueContainer != null )
+            {
+                // wrong cast to please compiler
+                return ( V ) valueContainer;
+            }
+            else
+            {
+                return singleValue;
+            }
+        }
+
+        if( reference != null )
+        {
+            BTree<V, V> valueContainer = reference.get();
+            
+            if ( valueContainer == null )
+            {
+                valueContainer = btree.getRecordManager().loadDupsBTree( valContainerOffset );
+                reference = new SoftReference<BTree<V, V>>( valueContainer );
+            }
+            
             return ( V ) valueContainer;
         }
 
-        BTree<V, V> valueContainer = reference.get();
-
-        if ( valueContainer == null )
-        {
-            valueContainer = btree.getRecordManager().loadDupsBTree( valContainerOffset );
-            reference = new SoftReference<BTree<V, V>>( valueContainer );
-        }
-
-        return ( V ) valueContainer;
+        return singleValue;
     }
 
+    
+    void switchToSingleValMode()
+    {
+        if( ( valueContainer == null ) || ( reference == null ) )
+        {
+            return;
+        }
+        
+        try
+        {
+            //delete the btree using offset
+            if( !btree.isManaged() )
+            {
+                singleValue = valueContainer.rootPage.getLeftMostKey();
+                valueContainer = null;
+            }
+            else
+            {
+                BTree<V,V> values = ( BTree<V,V> ) getValue( btree );
+                singleValue = values.rootPage.getLeftMostKey();
+                reference = null;
+                valContainerOffset = -1;
+                valueContainer = null;
+                //FIXME reclaim the free space of the sub-tree
+                //btree.getRecordManager().freeBtree(values);
+            }
+        }
+        catch( IOException e )
+        {
+            throw new RuntimeException( e );
+        }
+    }
+    
+    
+    BTree<V,V> createAndSwitchToSubTree()
+    {
+        if( reference != null )
+        {
+            throw new IllegalStateException( "Subtree was already created with offset " + valContainerOffset );
+        }
+        
+        try
+        {
+            BTree<V, V> valueContainer = new BTree<V, V>( UUID.randomUUID().toString(), btree.getValueSerializer(),
+                btree.getValueSerializer() );
 
+            if ( btree.isManaged() )
+            {
+                try
+                {
+                    btree.getRecordManager().manage( valueContainer, true );
+                    valContainerOffset = valueContainer.getBtreeOffset();
+                }
+                catch ( BTreeAlreadyManagedException e )
+                {
+                    // should never happen
+                    throw new RuntimeException( e );
+                }
+
+                reference = new SoftReference<BTree<V, V>>( valueContainer );
+            }
+            else
+            {
+                this.valueContainer = valueContainer;
+            }
+
+            valueContainer.insert( singleValue, null, 0 );
+        }
+        catch ( IOException e )
+        {
+            throw new RuntimeException( e );
+        }
+        
+        return valueContainer;
+    }
+
+    
+    /**
+     * Tells if there is only one value in this element holder
+     * 
+     * @return true if single value is present, false if multiple values are present
+     */
+    public boolean isSingleValue()
+    {
+        if( !btree.isManaged() )
+        {
+            return ( valueContainer == null );
+        }
+        
+        return ( reference == null );
+    }
+    
+    
     /**
      * @see Object#toString()
      */

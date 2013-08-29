@@ -388,6 +388,7 @@ public class BTreeDuplicateKeyTest
         assertFalse( cursor.hasNext() );
         assertTrue( cursor.hasPrev() );
         assertEquals( "z", cursor.prev().getKey() );
+        // the key, 'z', has two values
         assertEquals( "z", cursor.prev().getKey() );
         assertEquals( "y", cursor.prev().getKey() );
 
