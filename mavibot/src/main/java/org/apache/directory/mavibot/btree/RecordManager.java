@@ -82,6 +82,9 @@ public class RecordManager
     public AtomicLong nbFreedPages = new AtomicLong( 0 );
     public AtomicLong nbCreatedPages = new AtomicLong( 0 );
     public AtomicLong nbReusedPages = new AtomicLong( 0 );
+    public AtomicLong nbUpdateRMHeader = new AtomicLong( 0 );
+    public AtomicLong nbUpdateBTreeHeader = new AtomicLong( 0 );
+    public AtomicLong nbUpdatePageIOs = new AtomicLong( 0 );
 
     /** The offset of the end of the file */
     private long endOfFileOffset;
@@ -596,18 +599,18 @@ public class RecordManager
                 if ( btree.isAllowDuplicates() )
                 {
                     byte flag = byteBuffer.get();
-                    
-                    if( flag == 0 )
+
+                    if ( flag == 0 )
                     {
                         V singleValue = btree.getValueSerializer().deserialize( byteBuffer );
                         valueHolder = new MultipleMemoryHolder( btree, singleValue );
                     }
-                    else if( flag == 1 )
+                    else if ( flag == 1 )
                     {
                         long value = OFFSET_SERIALIZER.deserialize( byteBuffer );
-                            
+
                         BTree<K, V> dupValueContainer = loadDupsBTree( value );
-                        
+
                         valueHolder = new MultipleMemoryHolder( btree, dupValueContainer );
                     }
                     else
@@ -1165,20 +1168,21 @@ public class RecordManager
                     {
                         MultipleMemoryHolder<K, V> mvHolder = ( MultipleMemoryHolder<K, V> ) ( ( Leaf<K, V> ) page )
                             .getValue( pos );
-                        if( mvHolder.isSingleValue() )
+                        if ( mvHolder.isSingleValue() )
                         {
                             buffer = btree.getValueSerializer().serialize( mvHolder.getValue( btree ) );
-                            
+
                             //FIXME find a better way to avoid the copying
-                            byte[] tmp = new byte[ buffer.length + 1 ];
+                            byte[] tmp = new byte[buffer.length + 1];
                             tmp[0] = 0; // single value flag
                             System.arraycopy( buffer, 0, tmp, 1, buffer.length );
                             buffer = tmp;
                         }
                         else
                         {
-                            long duplicateContainerOffset = ( ( BTree<K, V> ) mvHolder.getValue( btree ) ).getBtreeOffset();
-                            buffer = new byte[ 8 + 1 ];
+                            long duplicateContainerOffset = ( ( BTree<K, V> ) mvHolder.getValue( btree ) )
+                                .getBtreeOffset();
+                            buffer = new byte[8 + 1];
                             buffer[0] = 1; // sub-tree flag
                             buffer = LongSerializer.serialize( buffer, 1, duplicateContainerOffset );
                         }
@@ -1265,6 +1269,8 @@ public class RecordManager
 
         LOG.debug( "Update RM header, FF : {}, LF : {}", firstFreePage, lastFreePage );
         fileChannel.write( HEADER_BUFFER, 0 );
+
+        nbUpdateRMHeader.incrementAndGet();
     }
 
 
@@ -1306,6 +1312,8 @@ public class RecordManager
 
         flushPages( pageIos );
 
+        nbUpdateBTreeHeader.incrementAndGet();
+
         if ( LOG_CHECK.isDebugEnabled() )
         {
             check();
@@ -1339,6 +1347,8 @@ public class RecordManager
                 fileChannel.write( pageIo.getData(), pageIo.getOffset() );
                 //fileChannel.force( false );
             }
+
+            nbUpdatePageIOs.incrementAndGet();
 
             pageIo.getData().rewind();
         }
@@ -1711,6 +1721,7 @@ public class RecordManager
         PageIO[] pageIos = serializePage( btree, newRevision, newPage );
 
         LOG.debug( "Write data for '{}' btree ", btree.getName() );
+
         // Write the page on disk
         flushPages( pageIos );
 
