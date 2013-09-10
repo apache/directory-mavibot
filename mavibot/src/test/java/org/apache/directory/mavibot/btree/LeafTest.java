@@ -206,7 +206,11 @@ public class LeafTest
 
     /**
      * Check that deleting an element from a leaf with N/2 element works when we borrow
-     * an element in a left page with more than N/2 elements
+     * an element in a left page with more than N/2 elements.
+     * The BTree contains :
+     *            +--[1, 2, 3, 4, 5]
+     * [6, 10]-+--[6, 7, 8, 9]
+     *            +--[10, 11, 12, 13]
      * @throws IOException 
      */
     @Test
@@ -236,12 +240,9 @@ public class LeafTest
         right = insert( right, 12L, "v12" );
         right = insert( right, 13L, "v13" );
 
-        parent.children[0] = new ReferenceHolder<Page<Long, String>, Long, String>( null, left,
-            left.getOffset(), left.getLastOffset() );
-        parent.children[1] = new ReferenceHolder<Page<Long, String>, Long, String>( null, target,
-            target.getOffset(), target.getLastOffset() );
-        parent.children[2] = new ReferenceHolder<Page<Long, String>, Long, String>( null, right,
-            right.getOffset(), right.getLastOffset() );
+        parent.children[0] = new MemoryHolder( btree, left );
+        parent.children[1] = new MemoryHolder( btree, target );
+        parent.children[2] = new MemoryHolder( btree, right );
 
         // Update the parent
         parent.keys[0] = 6L;
@@ -309,12 +310,9 @@ public class LeafTest
         right = insert( right, 13L, "v13" );
         right = insert( right, 14L, "v14" );
 
-        parent.children[0] = new ReferenceHolder<Page<Long, String>, Long, String>( null, left,
-            left.getOffset(), left.getLastOffset() );
-        parent.children[1] = new ReferenceHolder<Page<Long, String>, Long, String>( null, target,
-            target.getOffset(), target.getLastOffset() );
-        parent.children[2] = new ReferenceHolder<Page<Long, String>, Long, String>( null, right,
-            right.getOffset(), right.getLastOffset() );
+        parent.children[0] = new MemoryHolder( null, left );
+        parent.children[1] = new MemoryHolder( null, target );
+        parent.children[2] = new MemoryHolder( null, right );
 
         // Update the parent
         parent.keys[0] = 6L;
@@ -382,12 +380,9 @@ public class LeafTest
         right = insert( right, 11L, "v11" );
         right = insert( right, 12L, "v12" );
 
-        parent.children[0] = new ReferenceHolder<Page<Long, String>, Long, String>( null, left,
-            left.getOffset(), left.getLastOffset() );
-        parent.children[1] = new ReferenceHolder<Page<Long, String>, Long, String>( null, target,
-            target.getOffset(), target.getLastOffset() );;
-        parent.children[2] = new ReferenceHolder<Page<Long, String>, Long, String>( null, right,
-            right.getOffset(), right.getLastOffset() );
+        parent.children[0] = new MemoryHolder( null, left );
+        parent.children[1] = new MemoryHolder( null, target );
+        parent.children[2] = new MemoryHolder( null, right );
 
         // Update the parent
         parent.keys[0] = 5L;

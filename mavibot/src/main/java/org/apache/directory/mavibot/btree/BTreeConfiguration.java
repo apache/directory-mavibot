@@ -87,6 +87,9 @@ public class BTreeConfiguration<K, V>
     /** the type of BTree */
     private BTreeTypeEnum type;
 
+    /** The cache size */
+    private int cacheSize;
+
 
     /**
      * @return the pageSize
@@ -320,4 +323,21 @@ public class BTreeConfiguration<K, V>
         this.type = type;
     }
 
+
+    /**
+     * @return the cacheSize
+     */
+    public int getCacheSize()
+    {
+        return cacheSize;
+    }
+
+
+    /**
+     * @param cacheSize the cacheSize to set
+     */
+    public void setCacheSize( int cacheSize )
+    {
+        this.cacheSize = cacheSize;
+    }
 }

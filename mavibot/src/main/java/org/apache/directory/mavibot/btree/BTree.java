@@ -35,6 +35,9 @@ import java.util.LinkedList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.ReentrantLock;
 
+import net.sf.ehcache.Cache;
+import net.sf.ehcache.config.CacheConfiguration;
+
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.BufferHandler;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
@@ -125,6 +128,15 @@ public class BTree<K, V> implements Closeable
     private File envDir;
 
     private FileChannel journalChannel = null;
+
+    /** The cache associated with this BTree */
+    private Cache cache;
+
+    /** The cache size, default to 1000 elements */
+    private int cacheSize = DEFAULT_CACHE_SIZE;
+
+    /** The default number of pages to keep in memory */
+    private static final int DEFAULT_CACHE_SIZE = 1000;
 
 
     /**
@@ -246,6 +258,7 @@ public class BTree<K, V> implements Closeable
         writeBufferSize = configuration.getWriteBufferSize();
         btreeHeader.setAllowDuplicates( configuration.isAllowDuplicates() );
         type = configuration.getType();
+        cacheSize = configuration.getCacheSize();
 
         if ( comparator == null )
         {
@@ -277,7 +290,7 @@ public class BTree<K, V> implements Closeable
         boolean allowDuplicates )
         throws IOException
     {
-        this( name, null, keySerializer, valueSerializer, DEFAULT_PAGE_SIZE, allowDuplicates );
+        this( name, null, keySerializer, valueSerializer, DEFAULT_PAGE_SIZE, allowDuplicates, DEFAULT_CACHE_SIZE );
     }
 
 
@@ -321,7 +334,7 @@ public class BTree<K, V> implements Closeable
         int pageSize )
         throws IOException
     {
-        this( name, dataDir, keySerializer, valueSerializer, pageSize, false );
+        this( name, dataDir, keySerializer, valueSerializer, pageSize, false, DEFAULT_CACHE_SIZE );
     }
 
 
@@ -330,8 +343,18 @@ public class BTree<K, V> implements Closeable
         int pageSize, boolean allowDuplicates )
         throws IOException
     {
+        this( name, dataDir, keySerializer, valueSerializer, pageSize, false, DEFAULT_CACHE_SIZE );
+    }
+
+
+    public BTree( String name, String dataDir, ElementSerializer<K> keySerializer,
+        ElementSerializer<V> valueSerializer,
+        int pageSize, boolean allowDuplicates, int cacheSize )
+        throws IOException
+    {
         btreeHeader = new BTreeHeader();
         btreeHeader.setName( name );
+
         if ( dataDir != null )
         {
             envDir = new File( dataDir );
@@ -339,6 +362,8 @@ public class BTree<K, V> implements Closeable
 
         setPageSize( pageSize );
         writeBufferSize = DEFAULT_WRITE_BUFFER_SIZE;
+
+        this.cacheSize = cacheSize;
 
         this.keySerializer = keySerializer;
 
@@ -436,9 +461,30 @@ public class BTree<K, V> implements Closeable
             type = BTreeTypeEnum.IN_MEMORY;
         }
 
+        // Initialize the caches
+        CacheConfiguration cacheConfiguration = new CacheConfiguration();
+        cacheConfiguration.setName( "pages" );
+        cacheConfiguration.setEternal( true );
+        cacheConfiguration.setOverflowToDisk( false );
+        cacheConfiguration.setCacheLoaderTimeoutMillis( 0 );
+        cacheConfiguration.setMaxElementsInMemory( cacheSize );
+        cacheConfiguration.setMemoryStoreEvictionPolicy( "LRU" );
+
+        cache = new Cache( cacheConfiguration );
+        cache.initialise();
+
         // Initialize the txnManager thread
         //FIXME we should NOT create a new transaction manager thread for each BTree
         //createTransactionManager();
+    }
+
+
+    /**
+     * Return the cache we use in this BTree
+     */
+    /* No qualifier */Cache getCache()
+    {
+        return cache;
     }
 
 
@@ -767,12 +813,12 @@ public class BTree<K, V> implements Closeable
                         revision );
 
                     // Store the offset on disk in the page in memory
-                    ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holder )
+                    ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( CacheHolder<Page<K, V>, K, V> ) holder )
                         .getOffset() );
 
                     // Store the last offset on disk in the page in memory
                     ( ( AbstractPage<K, V> ) modifiedPage )
-                        .setLastOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holder )
+                        .setLastOffset( ( ( CacheHolder<Page<K, V>, K, V> ) holder )
                             .getLastOffset() );
                 }
 
@@ -1068,14 +1114,6 @@ public class BTree<K, V> implements Closeable
                 // remain in memory.
                 ElementHolder<Page<K, V>, K, V> holder = recordManager.writePage( this, modifiedPage,
                     revision );
-
-                // Store the offset on disk in the page in memory
-                ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holder )
-                    .getOffset() );
-
-                // Store the last offset on disk in the page in memory
-                ( ( AbstractPage<K, V> ) modifiedPage ).setLastOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holder )
-                    .getLastOffset() );
             }
 
             // The root has just been modified, we haven't split it
@@ -1102,24 +1140,8 @@ public class BTree<K, V> implements Closeable
                 ElementHolder<Page<K, V>, K, V> holderLeft = recordManager.writePage( this,
                     leftPage, revision );
 
-                // Store the offset on disk in the page
-                ( ( AbstractPage<K, V> ) splitResult.getLeftPage() )
-                    .setOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holderLeft ).getOffset() );
-
-                // Store the last offset on disk in the page
-                ( ( AbstractPage<K, V> ) splitResult.getLeftPage() )
-                    .setLastOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holderLeft ).getLastOffset() );
-
                 ElementHolder<Page<K, V>, K, V> holderRight = recordManager.writePage( this,
                     rightPage, revision );
-
-                // Store the offset on disk in the page
-                ( ( AbstractPage<K, V> ) splitResult.getRightPage() )
-                    .setOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holderRight ).getOffset() );
-
-                // Store the last offset on disk in the page
-                ( ( AbstractPage<K, V> ) splitResult.getRightPage() )
-                    .setLastOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holderRight ).getLastOffset() );
 
                 // Create the new rootPage
                 newRootPage = new Node<K, V>( this, revision, pivot, holderLeft, holderRight );
@@ -1136,14 +1158,6 @@ public class BTree<K, V> implements Closeable
             {
                 ElementHolder<Page<K, V>, K, V> holder = recordManager
                     .writePage( this, newRootPage, revision );
-
-                // Store the offset on disk in the page
-                ( ( AbstractPage<K, V> ) newRootPage ).setOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holder )
-                    .getOffset() );
-
-                // Store the last offset on disk in the page
-                ( ( AbstractPage<K, V> ) newRootPage ).setLastOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holder )
-                    .getLastOffset() );
             }
 
             rootPage = newRootPage;
@@ -1667,7 +1681,7 @@ public class BTree<K, V> implements Closeable
     {
         if ( type == BTreeTypeEnum.MANAGED )
         {
-            return new ReferenceHolder<Page<K, V>, K, V>( this, value,
+            return new CacheHolder<Page<K, V>, K, V>( this, value,
                 value.getOffset(), value.getLastOffset() );
         }
         else

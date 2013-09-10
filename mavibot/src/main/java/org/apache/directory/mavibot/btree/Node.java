@@ -82,7 +82,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         // Create the children array, and store the left and right children
         if ( btree.isManaged() )
         {
-            children = ( ReferenceHolder<Page<K, V>, K, V>[] ) Array.newInstance( ReferenceHolder.class,
+            children = ( CacheHolder<Page<K, V>, K, V>[] ) Array.newInstance( CacheHolder.class,
                 btree.getPageSize() + 1 );
         }
         else
@@ -122,7 +122,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         super( btree, revision, 1 );
 
         // Create the children array, and store the left and right children
-        children = ( ReferenceHolder<Page<K, V>, K, V>[] ) Array.newInstance( ReferenceHolder.class,
+        children = ( CacheHolder<Page<K, V>, K, V>[] ) Array.newInstance( CacheHolder.class,
             btree.getPageSize() + 1 );
 
         children[0] = leftPage;
@@ -1026,12 +1026,6 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             ElementHolder<Page<K, V>, K, V> holder = btree.getRecordManager().writePage( btree,
                 page,
                 revision );
-
-            // Store the offsets on disk in the page in memory
-            ( ( AbstractPage<K, V> ) page ).setOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holder )
-                .getOffset() );
-            ( ( AbstractPage<K, V> ) page ).setLastOffset( ( ( ReferenceHolder<Page<K, V>, K, V> ) holder )
-                .getLastOffset() );
 
             return holder;
         }
