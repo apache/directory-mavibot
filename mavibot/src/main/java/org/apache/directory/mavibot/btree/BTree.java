@@ -343,7 +343,7 @@ public class BTree<K, V> implements Closeable
         int pageSize, boolean allowDuplicates )
         throws IOException
     {
-        this( name, dataDir, keySerializer, valueSerializer, pageSize, false, DEFAULT_CACHE_SIZE );
+        this( name, dataDir, keySerializer, valueSerializer, pageSize, allowDuplicates, DEFAULT_CACHE_SIZE );
     }
 
 
