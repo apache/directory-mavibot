@@ -70,7 +70,7 @@ public class Tuple<K, V>
     /**
      * @param key the key to set
      */
-    /* No qualifier*/void setKey( K key )
+    public void setKey( K key )
     {
         this.key = key;
     }
@@ -88,7 +88,7 @@ public class Tuple<K, V>
     /**
      * @param value the value to set
      */
-    /* No qualifier*/void setValue( V value )
+    public void setValue( V value )
     {
         this.value = value;
     }

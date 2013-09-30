@@ -20,13 +20,7 @@
 package org.apache.directory.mavibot.btree;
 
 
-import static org.apache.directory.mavibot.btree.InternalUtil.changeNextDupsContainer;
-import static org.apache.directory.mavibot.btree.InternalUtil.changePrevDupsContainer;
-import static org.apache.directory.mavibot.btree.InternalUtil.setDupsContainer;
-
 import java.io.IOException;
-import java.util.LinkedList;
-import java.util.NoSuchElementException;
 
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
@@ -42,45 +36,8 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class Cursor<K, V>
+public interface Cursor<K, V>
 {
-    /** The transaction used for this cursor */
-    private Transaction<K, V> transaction;
-
-    /** The Tuple used to return the results */
-    private Tuple<K, V> tuple = new Tuple<K, V>();
-
-    /** The stack of pages from the root down to the leaf */
-    private LinkedList<ParentPos<K, V>> stack;
-
-    /** The BTree we are walking */
-    private BTree<K, V> btree;
-
-    private boolean allowDuplicates;
-
-    /** a copy of the stack given at the time of initializing the cursor. This is used for moving the cursor to start position */
-    private LinkedList<ParentPos<K, V>> _initialStack;
-
-
-    /**
-     * Creates a new instance of Cursor, starting on a page at a given position.
-     * 
-     * @param transaction The transaction this operation is protected by
-     * @param stack The stack of parent's from root to this page
-     */
-    /* No qualifier */Cursor( BTree<K, V> btree, Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
-    {
-        this.transaction = transaction;
-        this.stack = stack;
-        this.btree = btree;
-        this.allowDuplicates = btree.isAllowDuplicates();
-
-        _initialStack = new LinkedList<ParentPos<K, V>>();
-
-        cloneStack( stack, _initialStack );
-    }
-
-
     /**
      * Find the next key/value
      * 
@@ -88,190 +45,7 @@ public class Cursor<K, V>
      * @throws IOException 
      * @throws EndOfFileExceededException 
      */
-    public Tuple<K, V> next() throws EndOfFileExceededException, IOException
-    {
-        ParentPos<K, V> parentPos = stack.getFirst();
-
-        if ( parentPos.page == null )
-        {
-            // This is the end : no more value
-            throw new NoSuchElementException( "No more tuples present" );
-        }
-
-        if ( parentPos.pos == parentPos.page.getNbElems() )
-        {
-            // End of the leaf. We have to go back into the stack up to the
-            // parent, and down to the leaf
-            parentPos = findNextParentPos();
-
-            // we also need to check for the type of page cause
-            // findNextParentPos will never return a null ParentPos
-            if ( parentPos.page == null || ( parentPos.page instanceof Node ) )
-            {
-                // This is the end : no more value
-                throw new NoSuchElementException( "No more tuples present" );
-            }
-        }
-
-        // can happen if next() is called after prev()
-        if ( parentPos.pos < 0 )
-        {
-            parentPos.pos = 0;
-        }
-
-        Leaf<K, V> leaf = ( Leaf<K, V> ) ( parentPos.page );
-        tuple.setKey( leaf.keys[parentPos.pos] );
-
-        if ( allowDuplicates )
-        {
-            MultipleMemoryHolder<K,V> mvHolder = ( MultipleMemoryHolder<K,V> ) leaf.values[parentPos.pos];
-            
-            if( mvHolder.isSingleValue() )
-            {
-                tuple.setValue( mvHolder.getValue( btree ) );
-                parentPos.pos++;
-            }
-            else
-            {
-                setDupsContainer( parentPos, btree );
-                
-                // can happen if next() is called after prev()
-                if ( parentPos.dupPos < 0 )
-                {
-                    parentPos.dupPos = 0;
-                }
-                
-                tuple.setValue( parentPos.dupsContainer.rootPage.getKey( parentPos.dupPos ) );
-                parentPos.dupPos++;
-                
-                if ( parentPos.dupsContainer.getNbElems() == parentPos.dupPos )
-                {
-                    parentPos.pos++;
-                    changeNextDupsContainer( parentPos, btree );
-                }
-            }
-        }
-        else
-        {
-            tuple.setValue( leaf.values[parentPos.pos].getValue( btree ) );
-            parentPos.pos++;
-        }
-
-        return tuple;
-    }
-
-
-    /**
-     * Find the leaf containing the following elements.
-     * 
-     * @return the new ParentPos instance, or null if we have no following leaf
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
-     */
-    private ParentPos<K, V> findNextParentPos() throws EndOfFileExceededException, IOException
-    {
-        ParentPos<K, V> lastParentPos = null;
-
-        while ( true )
-        {
-            // We first go up the tree, until we reach a page whose current position
-            // is not the last one
-            ParentPos<K, V> parentPos = stack.peek();
-
-            if ( parentPos == null )
-            {
-                stack.push( lastParentPos );
-                return lastParentPos;
-            }
-
-            if ( parentPos.pos == parentPos.page.getNbElems() )
-            {
-                lastParentPos = stack.pop();
-                continue;
-            }
-            else
-            {
-                // Then we go down the tree until we find a leaf which position is not the last one.
-                int newPos = ++parentPos.pos;
-                ParentPos<K, V> newParentPos = parentPos;
-
-                while ( newParentPos.page instanceof Node )
-                {
-                    Node<K, V> node = ( Node<K, V> ) newParentPos.page;
-
-                    newParentPos = new ParentPos<K, V>( node.children[newPos].getValue( btree ), 0 );
-
-                    stack.push( newParentPos );
-
-                    newPos = 0;
-                }
-
-                if ( allowDuplicates )
-                {
-                    changeNextDupsContainer( newParentPos, btree );
-                }
-
-                return newParentPos;
-            }
-        }
-    }
-
-
-    /**
-     * Find the leaf containing the previous elements.
-     * 
-     * @return the new ParentPos instance, or null if we have no previous leaf
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
-     */
-    private ParentPos<K, V> findPreviousParentPos() throws EndOfFileExceededException, IOException
-    {
-        ParentPos<K, V> lastParentPos = null;
-
-        while ( true )
-        {
-            // We first go up the tree, until we reach a page which current position
-            // is not the first one
-            ParentPos<K, V> parentPos = stack.peek();
-
-            if ( parentPos == null )
-            {
-                stack.push( lastParentPos );
-                return lastParentPos;
-            }
-
-            if ( parentPos.pos == 0 )
-            {
-                lastParentPos = stack.pop();
-                continue;
-            }
-            else
-            {
-                // Then we go down the tree until we find a leaf which position is not the first one.
-                int newPos = --parentPos.pos;
-                ParentPos<K, V> newParentPos = parentPos;
-
-                while ( newParentPos.page instanceof Node )
-                {
-                    Node<K, V> node = ( Node<K, V> ) newParentPos.page;
-
-                    newParentPos = new ParentPos<K, V>( node.children[newPos].getValue( btree ), node.children[newPos]
-                        .getValue( btree ).getNbElems() );
-
-                    stack.push( newParentPos );
-
-                    newPos = node.getNbElems();
-                }
-
-                if ( allowDuplicates )
-                {
-                    changePrevDupsContainer( newParentPos, btree );
-                }
-
-                return newParentPos;
-            }
-        }
-    }
+    Tuple<K, V> next() throws EndOfFileExceededException, IOException;
 
 
     /**
@@ -281,115 +55,7 @@ public class Cursor<K, V>
      * @throws IOException 
      * @throws EndOfFileExceededException 
      */
-    public Tuple<K, V> prev() throws EndOfFileExceededException, IOException
-    {
-        ParentPos<K, V> parentPos = stack.peek();
-
-        if ( parentPos.page == null )
-        {
-            // This is the end : no more value
-            throw new NoSuchElementException( "No more tuples present" );
-        }
-
-        if ( parentPos.pos == 0 && parentPos.dupPos == 0 )
-        {
-            // End of the leaf. We have to go back into the stack up to the
-            // parent, and down to the leaf
-            parentPos = findPreviousParentPos();
-
-            // we also need to check for the type of page cause
-            // findPrevParentPos will never return a null ParentPos
-            if ( parentPos.page == null || ( parentPos.page instanceof Node ) )
-            {
-                // This is the end : no more value
-                throw new NoSuchElementException( "No more tuples present" );
-            }
-        }
-
-        Leaf<K, V> leaf = ( Leaf<K, V> ) ( parentPos.page );
-
-        if ( allowDuplicates )
-        {
-            boolean posDecremented = false;
-            
-            // can happen if prev() was called after next()
-            if ( parentPos.pos == parentPos.page.getNbElems() )
-            {
-                parentPos.pos--;
-                posDecremented = true;
-            }
-
-            MultipleMemoryHolder<K,V> mvHolder = ( MultipleMemoryHolder<K,V> ) leaf.values[parentPos.pos];
-
-            boolean prevHasSubtree = false;
-            // if the current key has only one value then advance to previous position
-            if( mvHolder.isSingleValue() )
-            {
-                if( !posDecremented )
-                {
-                    parentPos.pos--;
-                    mvHolder = ( MultipleMemoryHolder<K,V> ) leaf.values[parentPos.pos];
-                    posDecremented = true;
-                }
-                
-                if( mvHolder.isSingleValue() )
-                {
-                    tuple.setKey( leaf.keys[parentPos.pos] );
-                    tuple.setValue( mvHolder.getValue( btree ) );
-                }
-                else
-                {
-                    prevHasSubtree = true;
-                }
-            }
-            else
-            {
-                prevHasSubtree = true;
-            }
-            
-            if( prevHasSubtree )
-            {
-                setDupsContainer( parentPos, btree );
-                
-                if ( parentPos.dupPos == parentPos.dupsContainer.getNbElems() )
-                {
-                    parentPos.dupPos--;
-                }
-                else if ( parentPos.dupPos == 0 )
-                {
-                    changePrevDupsContainer( parentPos, btree );
-                    parentPos.pos--;
-                    
-                    if( parentPos.dupsContainer != null )
-                    {
-                        parentPos.dupPos--;
-                    }
-                }
-                else
-                {
-                    parentPos.dupPos--;
-                }
-                
-                tuple.setKey( leaf.keys[parentPos.pos] );
-                if( parentPos.dupsContainer != null )
-                {
-                    tuple.setValue( parentPos.dupsContainer.rootPage.getKey( parentPos.dupPos ) );
-                }
-                else
-                {
-                    tuple.setValue( leaf.values[parentPos.pos].getValue( btree ) );
-                }
-            }
-        }
-        else
-        {
-            parentPos.pos--;
-            tuple.setKey( leaf.keys[parentPos.pos] );
-            tuple.setValue( leaf.values[parentPos.pos].getValue( btree ) );
-        }
-
-        return tuple;
-    }
+    Tuple<K, V> prev() throws EndOfFileExceededException, IOException;
 
 
     /**
@@ -398,37 +64,7 @@ public class Cursor<K, V>
      * @throws IOException 
      * @throws EndOfFileExceededException 
      */
-    public boolean hasNext() throws EndOfFileExceededException, IOException
-    {
-        ParentPos<K, V> parentPos = stack.peek();
-
-        if ( parentPos.page == null )
-        {
-            return false;
-        }
-
-        for ( ParentPos<K, V> p : stack )
-        {
-            if ( allowDuplicates && ( p.page instanceof Leaf ) )
-            {
-                if( ( p.dupsContainer == null ) && ( p.pos != p.page.getNbElems() ) )
-                {
-                    return true;
-                }
-                else if ( ( p.dupsContainer != null ) && ( p.dupPos != p.dupsContainer.getNbElems() )
-                            && ( p.pos != p.page.getNbElems() ) )
-                {
-                    return true;
-                }
-            }
-            else if ( p.pos != p.page.getNbElems() )
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
+    boolean hasNext() throws EndOfFileExceededException, IOException;
 
 
     /**
@@ -437,64 +73,25 @@ public class Cursor<K, V>
      * @throws IOException 
      * @throws EndOfFileExceededException 
      */
-    public boolean hasPrev() throws EndOfFileExceededException, IOException
-    {
-        ParentPos<K, V> parentPos = stack.peek();
-
-        if ( parentPos.page == null )
-        {
-            return false;
-        }
-
-        for ( ParentPos<K, V> p : stack )
-        {
-            if ( allowDuplicates && ( p.page instanceof Leaf ) )
-            {
-                if( ( p.dupsContainer == null ) && ( p.pos != 0 ) )
-                {
-                    return true;
-                }
-                else if ( ( p.dupsContainer != null ) && 
-                        ( ( p.dupPos != 0 ) || ( p.pos != 0 ) ) )
-                {
-                    return true;
-                }
-            }
-            else if ( p.pos != 0 )
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
+    boolean hasPrev() throws EndOfFileExceededException, IOException;
 
 
     /**
      * Closes the cursor, thus releases the associated transaction
      */
-    public void close()
-    {
-        transaction.close();
-    }
+    void close();
 
 
     /**
      * @return The revision this cursor is based on
      */
-    public long getRevision()
-    {
-        return transaction.getRevision();
-    }
+    long getRevision();
 
 
     /**
      * @return The creation date for this cursor
      */
-    public long getCreationDate()
-    {
-        return transaction.getCreationDate();
-    }
+    long getCreationDate();
 
 
     /**
@@ -514,41 +111,7 @@ public class Cursor<K, V>
      * @throws EndOfFileExceededException
      * @throws IOException
      */
-    public void moveToNextNonDuplicateKey() throws EndOfFileExceededException, IOException
-    {
-        ParentPos<K, V> parentPos = stack.getFirst();
-
-        if ( parentPos.page == null )
-        {
-            return;
-        }
-
-        if ( parentPos.pos == ( parentPos.page.getNbElems() - 1 ) )
-        {
-            // End of the leaf. We have to go back into the stack up to the
-            // parent, and down to the leaf
-            // increment the position cause findNextParentPos checks "parentPos.pos == parentPos.page.getNbElems()"
-            parentPos.pos++;
-            ParentPos<K, V> nextPos = findNextParentPos();
-
-            // if the returned value is a Node OR if it is same as the parentPos
-            // that means cursor is already at the last position
-            // call afterLast() to restore the stack with the path to the right most element
-            if ( ( nextPos.page instanceof Node ) || ( nextPos == parentPos ) )
-            {
-                afterLast();
-            }
-            else
-            {
-                parentPos = nextPos;
-            }
-        }
-        else
-        {
-            parentPos.pos++;
-            changeNextDupsContainer( parentPos, btree );
-        }
-    }
+    void moveToNextNonDuplicateKey() throws EndOfFileExceededException, IOException;
 
 
     /**
@@ -567,35 +130,7 @@ public class Cursor<K, V>
      * @throws EndOfFileExceededException
      * @throws IOException
      */
-    public void moveToPrevNonDuplicateKey() throws EndOfFileExceededException, IOException
-    {
-        ParentPos<K, V> parentPos = stack.peek();
-
-        if ( parentPos.page == null )
-        {
-            // This is the end : no more value
-            return;
-        }
-
-        if ( parentPos.pos == 0 )
-        {
-            // End of the leaf. We have to go back into the stack up to the
-            // parent, and down to the leaf
-            parentPos = findPreviousParentPos();
-
-            // if the returned value is a Node that means cursor is already at the first position
-            // call beforeFirst() to restore the stack to the initial state
-            if ( parentPos.page instanceof Node )
-            {
-                beforeFirst();
-            }
-        }
-        else
-        {
-            changePrevDupsContainer( parentPos, btree );
-            parentPos.pos--;
-        }
-    }
+    void moveToPrevNonDuplicateKey() throws EndOfFileExceededException, IOException;
 
 
     /**
@@ -607,10 +142,7 @@ public class Cursor<K, V>
      *  If the cursor was created using browseFrom(K), then calling beforeFirst() will reset the position
      *  to the just before the position where K is present.
      */
-    public void beforeFirst() throws IOException
-    {
-        cloneStack( _initialStack, stack );
-    }
+    void beforeFirst() throws IOException;
 
 
     /**
@@ -618,31 +150,5 @@ public class Cursor<K, V>
      * 
      * @throws IOException
      */
-    public void afterLast() throws IOException
-    {
-        stack.clear();
-        stack = BTreeFactory.getPathToRightMostLeaf( btree );
-    }
-
-
-    /**
-     * clones the original stack of ParentPos objects
-     * 
-     * @param original the original stack
-     * @param clone the stack where the cloned ParentPos objects to be copied
-     */
-    private void cloneStack( LinkedList<ParentPos<K, V>> original, LinkedList<ParentPos<K, V>> clone )
-    {
-        clone.clear();
-
-        // preserve the first position
-        for ( ParentPos<K, V> o : original )
-        {
-            ParentPos<K, V> tmp = new ParentPos<K, V>( o.page, o.pos );
-            tmp.dupPos = o.dupPos;
-            tmp.dupsContainer = o.dupsContainer;
-            clone.add( tmp );
-        }
-    }
-
+    public void afterLast() throws IOException;
 }

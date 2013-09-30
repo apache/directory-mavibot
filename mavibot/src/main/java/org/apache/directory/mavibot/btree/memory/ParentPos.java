@@ -17,31 +17,50 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree;
-
-
-import java.util.List;
+package org.apache.directory.mavibot.btree.memory;
 
 
 /**
- * The result of an insert or delete operation.
+ * This class is used to store the parent page and the position in it during
+ * a browse operation. We have as many ParentPos instance than the depth of the tree.
  * 
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
-
+ * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public interface Result<P>
+/* No qualifier*/class ParentPos<K, V>
 {
-    /**
-     * @return the copiedPage
-     */
-    /* No qualifier */List<P> getCopiedPages();
+    /** The page we are browsing */
+    /* No qualifier*/Page<K, V> page;
+
+    /** The current position in the page */
+    /* No qualifier*/int pos;
+
+    /** The current position of the duplicate container in the page */
+    /* No qualifier*/int dupPos;
+
+    /** the container of duplicate key's values. The tuples will be stored as <V,null>*/
+    /* No qualifier*/BTree<V, V> dupsContainer;
 
 
     /**
-     * Add a new copied page
-     * @param copiedPage the added page
+     * Creates a new instance of ParentPos
+     * @param page The current Page
+     * @param pos The current position in the page
      */
-    /* No qualifier */void addCopiedPage( P copiedPage );
+    /* No qualifier*/ParentPos( Page<K, V> page, int pos )
+    {
+        this.page = page;
+        this.pos = pos;
+    }
+
+
+    /**
+     * @see Object#toString()
+     */
+    public String toString()
+    {
+        return "<" + pos + "," + page + ">";
+    }
 }

@@ -17,31 +17,40 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree;
+package org.apache.directory.mavibot.btree.managed;
 
 
-import java.util.List;
+import java.util.Comparator;
 
 
 /**
- * The result of an insert or delete operation.
+ * A comparator for the RevisionName class
  * 
- * @param <K> The type for the Key
- * @param <V> The type for the stored value
-
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public interface Result<P>
+public class RevisionNameComparator implements Comparator<RevisionName>
 {
     /**
-     * @return the copiedPage
+     * {@inheritDoc}
      */
-    /* No qualifier */List<P> getCopiedPages();
+    public int compare( RevisionName rn1, RevisionName rn2 )
+    {
+        if ( rn1 == rn2 )
+        {
+            return 0;
+        }
 
+        // First compare the revisions
+        if ( rn1.getRevision() < rn2.getRevision() )
+        {
+            return -1;
+        }
+        else if ( rn1.getRevision() > rn2.getRevision() )
+        {
+            return 1;
+        }
 
-    /**
-     * Add a new copied page
-     * @param copiedPage the added page
-     */
-    /* No qualifier */void addCopiedPage( P copiedPage );
+        // The revision are equal : check the name
+        return rn1.getName().compareTo( rn2.getName() );
+    }
 }

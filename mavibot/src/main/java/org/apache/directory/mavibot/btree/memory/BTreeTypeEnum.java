@@ -17,31 +17,25 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree;
-
-
-import java.util.List;
+package org.apache.directory.mavibot.btree.memory;
 
 
 /**
- * The result of an insert or delete operation.
+ * An enum to describe the BTree type. We have three possible type :
+ * <ul>
+ * <li>IN_MEMORY : the BTree will remain in memory, and won't be persisted on disk</li>
+ * <li>PERSISTENT : the BTree is in memory, but will be persisted on disk</li>
+ * <li>MANAGED : the BTree is managed by a RecordManager, and some pages may
+ * be swapped out from memory on demand</li>
+ * </ul>
  * 
- * @param <K> The type for the Key
- * @param <V> The type for the stored value
-
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public interface Result<P>
+public enum BTreeTypeEnum
 {
-    /**
-     * @return the copiedPage
-     */
-    /* No qualifier */List<P> getCopiedPages();
+    /** Pure in-memory BTree, not persisted on disk */
+    IN_MEMORY,
 
-
-    /**
-     * Add a new copied page
-     * @param copiedPage the added page
-     */
-    /* No qualifier */void addCopiedPage( P copiedPage );
+    /** In-memory BTree but persisted on disk */
+    PERSISTENT
 }

@@ -17,31 +17,59 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree;
+package org.apache.directory.mavibot.btree.memory;
 
 
-import java.util.List;
+import org.apache.directory.mavibot.btree.Tuple;
 
 
 /**
- * The result of an insert or delete operation.
+ * The result of an delete operation, when the key to delete is not present in the tree.
  * 
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public interface Result<P>
+/* No qualifier */class NotPresentResult<K, V> extends AbstractResult<K, V> implements DeleteResult<K, V>
 {
-    /**
-     * @return the copiedPage
-     */
-    /* No qualifier */List<P> getCopiedPages();
+    /** The unique instance for this class */
+    @SuppressWarnings("rawtypes")
+    /* No qualifier */static final NotPresentResult NOT_PRESENT = new NotPresentResult();
 
 
     /**
-     * Add a new copied page
-     * @param copiedPage the added page
+     * A private void constructor, as we won't have any other instance.
      */
-    /* No qualifier */void addCopiedPage( P copiedPage );
+    private NotPresentResult()
+    {
+        // Do nothing
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public Page<K, V> getModifiedPage()
+    {
+        return null;
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public Tuple<K, V> getRemovedElement()
+    {
+        return null;
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public K getNewLeftMost()
+    {
+        return null;
+    }
 }

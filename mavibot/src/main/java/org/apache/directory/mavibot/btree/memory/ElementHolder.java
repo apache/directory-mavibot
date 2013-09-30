@@ -17,31 +17,33 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree;
+package org.apache.directory.mavibot.btree.memory;
 
 
-import java.util.List;
+import java.io.IOException;
+
+import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
 
 /**
- * The result of an insert or delete operation.
+ * A Value holder. As we may not store all the values in memory (except for an in-memory
+ * BTree), we will use a SoftReference to keep a reference to a Value, and if it's null,
+ * then we will load the Value from the underlying physical support, using the offset. 
  * 
- * @param <K> The type for the Key
- * @param <V> The type for the stored value
-
+ * @param <E> The type for the stored element (either a V or a Page<K, V>)
+ * @param <K> The type of the BTree key
+ * @param <V> The type of the BTree value
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public interface Result<P>
+public interface ElementHolder<E, K, V>
 {
     /**
-     * @return the copiedPage
+     * Get back the element
+     * 
+     * @param btree The Btree storing the element
+     * 
+     * @return The stored element
      */
-    /* No qualifier */List<P> getCopiedPages();
-
-
-    /**
-     * Add a new copied page
-     * @param copiedPage the added page
-     */
-    /* No qualifier */void addCopiedPage( P copiedPage );
+    E getValue( BTree<K, V> btree ) throws EndOfFileExceededException, IOException;
 }

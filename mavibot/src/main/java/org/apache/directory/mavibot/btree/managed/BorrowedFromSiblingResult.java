@@ -17,31 +17,37 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree;
-
-
-import java.util.List;
+package org.apache.directory.mavibot.btree.managed;
 
 
 /**
- * The result of an insert or delete operation.
+ * The result of an delete operation, when we have borrowed some element from a sibling.
  * 
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public interface Result<P>
+interface BorrowedFromSiblingResult<K, V> extends DeleteResult<K, V>
 {
     /**
-     * @return the copiedPage
+     * @return the modifiedSibling
      */
-    /* No qualifier */List<P> getCopiedPages();
+    Page<K, V> getModifiedSibling();
 
 
     /**
-     * Add a new copied page
-     * @param copiedPage the added page
+     * Tells if the sibling is on the left
+     * 
+     * @return True if the sibling is on the left
      */
-    /* No qualifier */void addCopiedPage( P copiedPage );
+    boolean isFromLeft();
+
+
+    /**
+     * Tells if the sibling is on the right
+     * 
+     * @return True if the sibling is on the right
+     */
+    boolean isFromRight();
 }

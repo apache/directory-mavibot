@@ -17,31 +17,31 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree;
+package org.apache.directory.mavibot.btree.managed;
 
 
-import java.util.List;
+import org.apache.directory.mavibot.btree.Result;
+import org.apache.directory.mavibot.btree.Tuple;
 
 
 /**
- * The result of an insert or delete operation.
+ * The result of an delete operation.
  * 
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public interface Result<P>
+interface DeleteResult<K, V> extends Result<Page<K, V>>
 {
     /**
-     * @return the copiedPage
+     * @return the modifiedPage
      */
-    /* No qualifier */List<P> getCopiedPages();
+    Page<K, V> getModifiedPage();
 
 
     /**
-     * Add a new copied page
-     * @param copiedPage the added page
+     * @return the removed element
      */
-    /* No qualifier */void addCopiedPage( P copiedPage );
+    Tuple<K, V> getRemovedElement();
 }

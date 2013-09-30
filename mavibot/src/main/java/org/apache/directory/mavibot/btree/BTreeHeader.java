@@ -49,7 +49,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier*/class BTreeHeader
+public class BTreeHeader
 {
     /** The current revision */
     private AtomicLong revision = new AtomicLong( 0L );
@@ -123,7 +123,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * @param versions the versions to set
      */
-    /* No qualifier*/void setVersions( long[] versions )
+    public void setVersions( long[] versions )
     {
         this.versions = versions;
     }
@@ -132,7 +132,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * @return the btreeOffset
      */
-    /* No qualifier*/long getBTreeOffset()
+    public long getBTreeOffset()
     {
         return btreeOffset;
     }
@@ -141,7 +141,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * @param btreeOffset the btreeOffset to set
      */
-    /* No qualifier*/void setBTreeOffset( long btreeOffset )
+    public void setBTreeOffset( long btreeOffset )
     {
         this.btreeOffset = btreeOffset;
     }
@@ -150,7 +150,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * @return the rootPageOffset
      */
-    /* No qualifier*/long getRootPageOffset()
+    public long getRootPageOffset()
     {
         return rootPageOffset;
     }
@@ -159,7 +159,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * @param rootPageOffset the rootPageOffset to set
      */
-    /* No qualifier*/void setRootPageOffset( long rootPageOffset )
+    public void setRootPageOffset( long rootPageOffset )
     {
         this.rootPageOffset = rootPageOffset;
     }
@@ -177,7 +177,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * @param revision the revision to set
      */
-    /* No qualifier*/void setRevision( long revision )
+    public void setRevision( long revision )
     {
         this.revision.set( revision );
     }
@@ -188,7 +188,7 @@ import java.util.concurrent.atomic.AtomicLong;
      * 
      * @return the new revision
      */
-    /* No qualifier*/long incrementRevision()
+    public long incrementRevision()
     {
         return revision.incrementAndGet();
     }
@@ -206,7 +206,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * Increment the number of elements
      */
-    /* No qualifier*/void incrementNbElems()
+    public void incrementNbElems()
     {
         nbElems.incrementAndGet();
     }
@@ -215,7 +215,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * Decrement the number of elements
      */
-    /* No qualifier*/void decrementNbElems()
+    public void decrementNbElems()
     {
         nbElems.decrementAndGet();
     }
@@ -233,7 +233,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * @return the nextBTreeOffset
      */
-    /* No qualifier*/long getNextBTreeOffset()
+    public long getNextBTreeOffset()
     {
         return nextBTreeOffset;
     }
@@ -242,7 +242,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * @param nextBtreeOffset the nextBtreeOffset to set
      */
-    /* No qualifier*/void setNextBTreeOffset( long nextBTreeOffset )
+    public void setNextBTreeOffset( long nextBTreeOffset )
     {
         this.nextBTreeOffset = nextBTreeOffset;
     }
@@ -269,7 +269,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * @return the keySerializerFQCN
      */
-    /* No qualifier*/String getKeySerializerFQCN()
+    public String getKeySerializerFQCN()
     {
         return keySerializerFQCN;
     }
@@ -278,7 +278,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * @param keySerializerFQCN the keySerializerFQCN to set
      */
-    /* No qualifier*/void setKeySerializerFQCN( String keySerializerFQCN )
+    public void setKeySerializerFQCN( String keySerializerFQCN )
     {
         this.keySerializerFQCN = keySerializerFQCN;
     }
@@ -287,7 +287,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * @return the valueSerializerFQCN
      */
-    /* No qualifier*/String getValueSerializerFQCN()
+    public String getValueSerializerFQCN()
     {
         return valueSerializerFQCN;
     }
@@ -296,19 +296,19 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * @param valueSerializerFQCN the valueSerializerFQCN to set
      */
-    /* No qualifier*/void setValueSerializerFQCN( String valueSerializerFQCN )
+    public void setValueSerializerFQCN( String valueSerializerFQCN )
     {
         this.valueSerializerFQCN = valueSerializerFQCN;
     }
 
 
-    /* No qualifier*/boolean isAllowDuplicates()
+    public boolean isAllowDuplicates()
     {
         return ( allowDuplicates == 1 );
     }
 
 
-    /* No qualifier*/void setAllowDuplicates( boolean allowDuplicates )
+    public void setAllowDuplicates( boolean allowDuplicates )
     {
         this.allowDuplicates = ( allowDuplicates ? 1 : 0 );
     }
