@@ -122,7 +122,7 @@ public class CursorImpl<K, V> implements Cursor<K, V>
         }
 
         Leaf<K, V> leaf = ( Leaf<K, V> ) ( parentPos.page );
-        tuple.setKey( leaf.keys[parentPos.pos] );
+        tuple.setKey( leaf.keys[parentPos.pos].getKey() );
 
         if ( allowDuplicates )
         {
@@ -336,7 +336,7 @@ public class CursorImpl<K, V> implements Cursor<K, V>
 
                 if ( mvHolder.isSingleValue() )
                 {
-                    tuple.setKey( leaf.keys[parentPos.pos] );
+                    tuple.setKey( leaf.keys[parentPos.pos].getKey() );
                     tuple.setValue( mvHolder.getValue( btree ) );
                 }
                 else
@@ -372,7 +372,7 @@ public class CursorImpl<K, V> implements Cursor<K, V>
                     parentPos.dupPos--;
                 }
 
-                tuple.setKey( leaf.keys[parentPos.pos] );
+                tuple.setKey( leaf.keys[parentPos.pos].getKey() );
                 if ( parentPos.dupsContainer != null )
                 {
                     tuple.setValue( parentPos.dupsContainer.rootPage.getKey( parentPos.dupPos ) );
@@ -386,7 +386,7 @@ public class CursorImpl<K, V> implements Cursor<K, V>
         else
         {
             parentPos.pos--;
-            tuple.setKey( leaf.keys[parentPos.pos] );
+            tuple.setKey( leaf.keys[parentPos.pos].getKey() );
             tuple.setValue( leaf.values[parentPos.pos].getValue( btree ) );
         }
 

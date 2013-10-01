@@ -42,7 +42,7 @@ import java.lang.reflect.Array;
     protected long revision;
 
     /** Keys of children nodes */
-    protected K[] keys;
+    protected KeyHolder<K>[] keys;
 
     /** The number of current values in the Page */
     protected int nbElems;
@@ -79,7 +79,7 @@ import java.lang.reflect.Array;
         // We get the type of array to create from the btree
         // Yes, this is an hack...
         Class<?> keyType = btree.getKeyType();
-        this.keys = ( K[] ) Array.newInstance( keyType, nbElems );
+        this.keys = ( KeyHolder[] ) Array.newInstance( KeyHolder.class, nbElems );
     }
 
 
@@ -186,7 +186,7 @@ import java.lang.reflect.Array;
         {
             int middle = ( min + max + 1 ) >> 1;
 
-            int comp = compare( keys[middle], key );
+            int comp = compare( keys[middle].getKey(), key );
 
             if ( comp < 0 )
             {
@@ -206,7 +206,7 @@ import java.lang.reflect.Array;
         }
 
         // Special case : we don't know if the key is present
-        int comp = compare( keys[max], key );
+        int comp = compare( keys[max].getKey(), key );
 
         if ( comp == 0 )
         {
@@ -271,7 +271,7 @@ import java.lang.reflect.Array;
     {
         if ( pos < nbElems )
         {
-            return keys[pos];
+            return keys[pos].getKey();
         }
         else
         {
@@ -288,7 +288,7 @@ import java.lang.reflect.Array;
      */
     /* No qualifier*/void setKey( int pos, K key )
     {
-        keys[pos] = key;
+        keys[pos] = new KeyHolder( key, null, btree.getKeySerializer() );
     }
 
 

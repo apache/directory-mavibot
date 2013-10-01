@@ -166,7 +166,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
             if ( value == null ) // this is a case to delete entire <K,sub-BTree> or <K,single-V>
             {
-                removedElement = new Tuple<K, V>( keys[index], existingVal ); // the entire value was removed
+                removedElement = new Tuple<K, V>( keys[index].getKey(), existingVal ); // the entire value was removed
                 keyRemoved = true;
             }
             else
@@ -175,7 +175,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 {
                     if ( btree.getValueSerializer().compare( value, existingVal ) == 0 )
                     {
-                        removedElement = new Tuple<K, V>( keys[index], existingVal ); // the entire value was removed
+                        removedElement = new Tuple<K, V>( keys[index].getKey(), existingVal ); // the entire value was removed
                         keyRemoved = true;
                     }
                     else
@@ -205,7 +205,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                             }
                         }
 
-                        removedElement = new Tuple<K, V>( keys[index], value ); // we deleted only one value (even if it is from a tree of size 1)
+                        removedElement = new Tuple<K, V>( keys[index].getKey(), value ); // we deleted only one value (even if it is from a tree of size 1)
                     }
                     else
                     // value is not found
@@ -221,12 +221,12 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
             if ( ( ( existing == null ) && ( value == null ) ) || ( value == null ) )
             {
-                removedElement = new Tuple<K, V>( keys[index], existing );
+                removedElement = new Tuple<K, V>( keys[index].getKey(), existing );
                 keyRemoved = true;
             }
             else if ( btree.getValueSerializer().compare( value, existing ) == 0 )
             {
-                removedElement = new Tuple<K, V>( keys[index], value );
+                removedElement = new Tuple<K, V>( keys[index].getKey(), value );
                 keyRemoved = true;
             }
             else
@@ -405,7 +405,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         throws IOException
     {
         // The sibling is on the left, borrow the rightmost element
-        K siblingKey = sibling.keys[sibling.getNbElems() - 1];
+        K siblingKey = sibling.keys[sibling.getNbElems() - 1].getKey();
         ElementHolder<V, K, V> siblingValue = sibling.values[sibling.getNbElems() - 1];
 
         // Create the new sibling, with one less element at the end
@@ -416,7 +416,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems );
 
         // Insert the borrowed element
-        newLeaf.keys[0] = siblingKey;
+        newLeaf.keys[0] = new KeyHolder<K>( siblingKey, btree.getKeySerializer() );
         newLeaf.values[0] = siblingValue;
 
         // Copy the keys and the values up to the insertion position,
@@ -452,7 +452,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         throws IOException
     {
         // The sibling is on the left, borrow the rightmost element
-        K siblingKey = sibling.keys[0];
+        K siblingKey = sibling.keys[0].getKey();
         ElementHolder<V, K, V> siblingHolder = sibling.values[0];
 
         // Create the new sibling
@@ -467,7 +467,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems );
 
         // Insert the borrowed element at the end
-        newLeaf.keys[nbElems - 1] = siblingKey;
+        newLeaf.keys[nbElems - 1] = new KeyHolder<K>( siblingKey, btree.getKeySerializer() );
         newLeaf.values[nbElems - 1] = siblingHolder;
 
         // Copy the keys and the values up to the deletion position,
@@ -868,7 +868,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         // Deal with the special case of an empty page
         if ( nbElems == 0 )
         {
-            newLeaf.keys[0] = key;
+            newLeaf.keys[0] = new KeyHolder<K>( key, btree.getKeySerializer() );
 
             newLeaf.values[0] = valueHolder;
         }
@@ -879,7 +879,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             System.arraycopy( values, 0, newLeaf.values, 0, pos );
 
             // Add the new element
-            newLeaf.keys[pos] = key;
+            newLeaf.keys[pos] = new KeyHolder<K>( key, btree.getKeySerializer() );
             newLeaf.values[pos] = valueHolder;
 
             // And copy the remaining elements
@@ -924,7 +924,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             System.arraycopy( values, 0, leftLeaf.values, 0, pos );
 
             // Add the new element
-            leftLeaf.keys[pos] = key;
+            leftLeaf.keys[pos] = new KeyHolder<K>( key, btree.getKeySerializer() );
             leftLeaf.values[pos] = valueHolder;
 
             // And copy the remaining elements
@@ -957,7 +957,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             System.arraycopy( values, middle, rightLeaf.values, 0, rightPos );
 
             // Add the new element
-            rightLeaf.keys[rightPos] = key;
+            rightLeaf.keys[rightPos] = new KeyHolder<K>( key, btree.getKeySerializer() );
             rightLeaf.values[rightPos] = valueHolder;
 
             // And copy the remaining elements
@@ -966,7 +966,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
 
         // Get the pivot
-        K pivot = rightLeaf.keys[0];
+        K pivot = rightLeaf.keys[0].getKey();
 
         // Create the result
         InsertResult<K, V> result = new SplitResult<K, V>( pivot, leftLeaf, rightLeaf );
@@ -980,7 +980,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      */
     public K getLeftMostKey()
     {
-        return keys[0];
+        return keys[0].getKey();
     }
 
 
@@ -989,7 +989,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      */
     public K getRightMostKey()
     {
-        return keys[nbElems - 1];
+        return keys[nbElems - 1].getKey();
     }
 
 
@@ -1010,7 +1010,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             val = values[0].getValue( btree );
         }
 
-        return new Tuple<K, V>( keys[0], val );
+        return new Tuple<K, V>( keys[0].getKey(), val );
     }
 
 
@@ -1031,7 +1031,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             val = values[nbElems - 1].getValue( btree );
         }
 
-        return new Tuple<K, V>( keys[nbElems - 1], val );
+        return new Tuple<K, V>( keys[nbElems - 1].getKey(), val );
     }
 
 

@@ -21,7 +21,6 @@
 package org.apache.directory.mavibot.btree.managed;
 
 
-import org.apache.directory.mavibot.btree.Tuple;
 import static org.apache.directory.mavibot.btree.managed.BTreeFactory.createLeaf;
 import static org.apache.directory.mavibot.btree.managed.BTreeFactory.createNode;
 import static org.apache.directory.mavibot.btree.managed.BTreeFactory.setKey;
@@ -33,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 
@@ -109,10 +109,10 @@ public class BTreeBuilder<K, V>
             {
                 int n = i;
                 lastLeaf.nbElems = n;
-                K[] keys = lastLeaf.keys;
+                KeyHolder<K>[] keys = lastLeaf.keys;
 
                 Class<?> keyType = btree.getKeyType();
-                lastLeaf.keys = ( K[] ) Array.newInstance( keyType, n );
+                lastLeaf.keys = ( KeyHolder[] ) Array.newInstance( keyType, n );
                 System.arraycopy( keys, 0, lastLeaf.keys, 0, n );
 
                 ElementHolder<V, K, V>[] values = lastLeaf.values;
@@ -177,10 +177,10 @@ public class BTreeBuilder<K, V>
             {
                 int n = j;
                 lastNode.nbElems = n;
-                K[] keys = lastNode.keys;
+                KeyHolder<K>[] keys = lastNode.keys;
 
                 Class<?> keyType = btree.getKeyType();
-                lastNode.keys = ( K[] ) Array.newInstance( keyType, n );
+                lastNode.keys = ( KeyHolder[] ) Array.newInstance( keyType, n );
                 System.arraycopy( keys, 0, lastNode.keys, 0, n );
 
                 break;
