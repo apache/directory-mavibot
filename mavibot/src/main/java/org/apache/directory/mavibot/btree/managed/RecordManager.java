@@ -481,14 +481,14 @@ public class RecordManager
         dataPos += INT_SIZE;
 
         // The tree name
-        byte[] btreeNameBytes = readBytes( pageIos, dataPos );
-        dataPos += INT_SIZE + btreeNameBytes.length;
+        ByteBuffer btreeNameBytes = readBytes( pageIos, dataPos );
+        dataPos += INT_SIZE + btreeNameBytes.limit();
         String btreeName = Strings.utf8ToString( btreeNameBytes );
         BTreeFactory.setName( btree, btreeName );
 
         // The keySerializer FQCN
-        byte[] keySerializerBytes = readBytes( pageIos, dataPos );
-        dataPos += INT_SIZE + keySerializerBytes.length;
+        ByteBuffer keySerializerBytes = readBytes( pageIos, dataPos );
+        dataPos += INT_SIZE + keySerializerBytes.limit();
 
         String keySerializerFqcn = "";
 
@@ -500,10 +500,10 @@ public class RecordManager
         BTreeFactory.setKeySerializer( btree, keySerializerFqcn );
 
         // The valueSerialier FQCN
-        byte[] valueSerializerBytes = readBytes( pageIos, dataPos );
+        ByteBuffer valueSerializerBytes = readBytes( pageIos, dataPos );
 
         String valueSerializerFqcn = "";
-        dataPos += INT_SIZE + valueSerializerBytes.length;
+        dataPos += INT_SIZE + valueSerializerBytes.limit();
 
         if ( valueSerializerBytes != null )
         {
@@ -574,17 +574,9 @@ public class RecordManager
 
         // The size of the data containing the keys and values
         Page<K, V> page = null;
-        ByteBuffer byteBuffer = null;
 
         // Reads the bytes containing all the keys and values, if we have some
-        byte[] data = readBytes( pageIos, position );
-
-        if ( data != null )
-        {
-            byteBuffer = ByteBuffer.allocate( data.length );
-            byteBuffer.put( data );
-            byteBuffer.rewind();
-        }
+        ByteBuffer byteBuffer = readBytes( pageIos, position );
 
         if ( nbElems >= 0 )
         {
@@ -674,7 +666,7 @@ public class RecordManager
      * @param position The position in the data stored in those pages
      * @return The byte[] we have read
      */
-    private byte[] readBytes( PageIO[] pageIos, long position )
+    private ByteBuffer readBytes( PageIO[] pageIos, long position )
     {
         // Read the byte[] length first
         int length = readInt( pageIos, position );
@@ -697,7 +689,7 @@ public class RecordManager
         }
         else
         {
-            byte[] bytes = new byte[length];
+            ByteBuffer bytes = ByteBuffer.allocate( length );
             int bytesPos = 0;
 
             while ( length > 0 )
@@ -706,15 +698,22 @@ public class RecordManager
                 {
                     pageData.mark();
                     pageData.position( pagePos );
-                    pageData.get( bytes, bytesPos, length );
+                    int oldLimit = pageData.limit();
+                    pageData.limit( pagePos + length );
+                    bytes.put( pageData );
+                    pageData.limit( oldLimit );
                     pageData.reset();
+                    bytes.rewind();
 
                     return bytes;
                 }
 
                 pageData.mark();
                 pageData.position( pagePos );
-                pageData.get( bytes, bytesPos, remaining );
+                int oldLimit = pageData.limit();
+                pageData.limit( pagePos + remaining );
+                bytes.put( pageData );
+                pageData.limit( oldLimit );
                 pageData.reset();
                 pageNb++;
                 pagePos = LINK_SIZE;
@@ -723,6 +722,8 @@ public class RecordManager
                 length -= remaining;
                 remaining = pageData.capacity() - pagePos;
             }
+
+            bytes.rewind();
 
             return bytes;
         }
@@ -2396,14 +2397,7 @@ public class RecordManager
         ByteBuffer byteBuffer = null;
 
         // Reads the bytes containing all the keys and values, if we have some
-        byte[] data = readBytes( rootPageIos, position );
-
-        if ( data != null )
-        {
-            byteBuffer = ByteBuffer.allocate( data.length );
-            byteBuffer.put( data );
-            byteBuffer.rewind();
-        }
+        ByteBuffer data = readBytes( rootPageIos, position );
 
         if ( nbElems >= 0 )
         {
@@ -2539,21 +2533,21 @@ public class RecordManager
         dataPos += INT_SIZE;
 
         // The tree name
-        byte[] btreeNameBytes = readBytes( pageIos, dataPos );
+        ByteBuffer btreeNameBytes = readBytes( pageIos, dataPos );
         dataPos += INT_SIZE;
 
-        dataPos += btreeNameBytes.length;
+        dataPos += btreeNameBytes.limit();
         String btreeName = Strings.utf8ToString( btreeNameBytes );
 
         // The keySerializer FQCN
-        byte[] keySerializerBytes = readBytes( pageIos, dataPos );
+        ByteBuffer keySerializerBytes = readBytes( pageIos, dataPos );
 
         String keySerializerFqcn = null;
         dataPos += INT_SIZE;
 
         if ( keySerializerBytes != null )
         {
-            dataPos += keySerializerBytes.length;
+            dataPos += keySerializerBytes.limit();
             keySerializerFqcn = Strings.utf8ToString( keySerializerBytes );
         }
         else
@@ -2562,14 +2556,14 @@ public class RecordManager
         }
 
         // The valueSerialier FQCN
-        byte[] valueSerializerBytes = readBytes( pageIos, dataPos );
+        ByteBuffer valueSerializerBytes = readBytes( pageIos, dataPos );
 
         String valueSerializerFqcn = null;
         dataPos += INT_SIZE;
 
         if ( valueSerializerBytes != null )
         {
-            dataPos += valueSerializerBytes.length;
+            dataPos += valueSerializerBytes.limit();
             valueSerializerFqcn = Strings.utf8ToString( valueSerializerBytes );
         }
         else
