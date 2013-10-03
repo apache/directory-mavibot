@@ -21,6 +21,7 @@ package org.apache.directory.mavibot.btree.util;
 
 
 import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -215,6 +216,34 @@ public final class Strings
                 throw new RuntimeException( uee );
             }
         }
+
+        return new String( chars );
+    }
+
+
+    /**
+     * Return an UTF-8 encoded String
+     *
+     * @param bytes The byte array to be transformed to a String
+     * @return A String.
+     */
+    public static String utf8ToString( ByteBuffer bytes )
+    {
+        if ( bytes == null )
+        {
+            return "";
+        }
+
+        char[] chars = new char[bytes.limit()];
+        int pos = 0;
+
+        byte b;
+
+        do
+        {
+            chars[pos++] = ( char ) UTF8[bytes.get()];
+        }
+        while ( bytes.position() < bytes.limit() );
 
         return new String( chars );
     }
