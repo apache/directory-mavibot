@@ -652,7 +652,7 @@ public class RecordManager
                 long offset = OFFSET_SERIALIZER.deserialize( byteBuffer );
                 long lastOffset = OFFSET_SERIALIZER.deserialize( byteBuffer );
 
-                ElementHolder valueHolder = new CacheHolder( btree, null, offset, lastOffset );
+                ElementHolder valueHolder = new PageHolder( btree, null, offset, lastOffset );
                 ( ( Node<K, V> ) page ).setValue( i, valueHolder );
 
                 K key = btree.getKeySerializer().deserialize( byteBuffer );
@@ -663,7 +663,7 @@ public class RecordManager
             long offset = OFFSET_SERIALIZER.deserialize( byteBuffer );
             long lastOffset = OFFSET_SERIALIZER.deserialize( byteBuffer );
 
-            ElementHolder valueHolder = new CacheHolder( btree, null, offset, lastOffset );
+            ElementHolder valueHolder = new PageHolder( btree, null, offset, lastOffset );
             ( ( Node<K, V> ) page ).setValue( nodeNbElems, valueHolder );
         }
 
@@ -1766,7 +1766,7 @@ public class RecordManager
         // Build the resulting reference
         long offset = pageIos[0].getOffset();
         long lastOffset = pageIos[pageIos.length - 1].getOffset();
-        ElementHolder<Page<K, V>, K, V> valueHolder = new CacheHolder<Page<K, V>, K, V>( btree, newPage, offset,
+        ElementHolder<Page<K, V>, K, V> valueHolder = new PageHolder<K, V>( btree, newPage, offset,
             lastOffset );
 
         if ( LOG_CHECK.isDebugEnabled() )

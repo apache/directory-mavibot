@@ -81,7 +81,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         super( btree, revision, 1 );
 
         // Create the children array, and store the left and right children
-        children = ( CacheHolder<Page<K, V>, K, V>[] ) Array.newInstance( CacheHolder.class,
+        children = ( PageHolder<K, V>[] ) Array.newInstance( PageHolder.class,
             btree.getPageSize() + 1 );
 
         children[0] = btree.createPageHolder( leftPage );
@@ -115,7 +115,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         super( btree, revision, 1 );
 
         // Create the children array, and store the left and right children
-        children = ( CacheHolder<Page<K, V>, K, V>[] ) Array.newInstance( CacheHolder.class,
+        children = ( PageHolder<K, V>[] ) Array.newInstance( PageHolder.class,
             btree.getPageSize() + 1 );
 
         children[0] = leftPage;

@@ -38,7 +38,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class CacheHolder<E, K, V> implements ElementHolder<E, K, V>
+public class PageHolder<K, V> implements ElementHolder<Page<K, V>, K, V>
 {
     /** The BTree */
     private BTree<K, V> btree;
@@ -56,7 +56,7 @@ public class CacheHolder<E, K, V> implements ElementHolder<E, K, V>
      * @param offset The offset in disk for this value
      * @param element The element to store into a SoftReference
      */
-    public CacheHolder( BTree<K, V> btree, Page<K, V> element, long offset, long lastOffset )
+    public PageHolder( BTree<K, V> btree, Page<K, V> element, long offset, long lastOffset )
     {
         this.btree = btree;
         this.offset = offset;
@@ -78,7 +78,7 @@ public class CacheHolder<E, K, V> implements ElementHolder<E, K, V>
      * @throws EndOfFileExceededException 
      */
     @Override
-    public E getValue( BTree<K, V> btree ) throws EndOfFileExceededException, IOException
+    public Page<K, V> getValue( BTree<K, V> btree ) throws EndOfFileExceededException, IOException
     {
         Element element = btree.getCache().get( offset );
 
@@ -90,15 +90,15 @@ public class CacheHolder<E, K, V> implements ElementHolder<E, K, V>
 
             btree.getCache().put( new Element( offset, page ) );
 
-            return ( E ) page;
+            return page;
         }
 
-        V value = ( V ) element.getObjectValue();
+        Page<K, V> page = ( Page<K, V> ) element.getObjectValue();
 
-        if ( value == null )
+        if ( page == null )
         {
             // We have to fetch the element from disk, using the offset now
-            Page<K, V> page = fetchElement( btree );
+            page = fetchElement( btree );
 
             if ( page instanceof Page<?, ?> )
             {
@@ -107,15 +107,9 @@ public class CacheHolder<E, K, V> implements ElementHolder<E, K, V>
             }
 
             btree.getCache().put( new Element( offset, page ) );
-
-            element = btree.getCache().get( offset );
-
-            return ( E ) page;
         }
-        else
-        {
-            return ( E ) value;
-        }
+
+        return page;
     }
 
 
@@ -160,12 +154,12 @@ public class CacheHolder<E, K, V> implements ElementHolder<E, K, V>
 
         try
         {
-            E element = getValue( btree );
+            Page<K, V> page = getValue( btree );
 
-            if ( element != null )
+            if ( page != null )
             {
                 sb.append( btree.getName() ).append( "[" ).append( offset ).append( ", " ).append( lastOffset )
-                    .append( "]:" ).append( element );
+                    .append( "]:" ).append( page );
             }
             else
             {

@@ -727,12 +727,12 @@ public class BTree<K, V> implements Closeable
                     revision );
 
                 // Store the offset on disk in the page in memory
-                ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( CacheHolder<Page<K, V>, K, V> ) holder )
+                ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( PageHolder<K, V> ) holder )
                     .getOffset() );
 
                 // Store the last offset on disk in the page in memory
                 ( ( AbstractPage<K, V> ) modifiedPage )
-                    .setLastOffset( ( ( CacheHolder<Page<K, V>, K, V> ) holder )
+                    .setLastOffset( ( ( PageHolder<K, V> ) holder )
                         .getLastOffset() );
 
                 // This is a new root
@@ -1278,7 +1278,7 @@ public class BTree<K, V> implements Closeable
      */
     /* no qualifier */ElementHolder<Page<K, V>, K, V> createPageHolder( Page<K, V> value )
     {
-        return new CacheHolder<Page<K, V>, K, V>( this, value,
+        return new PageHolder<K, V>( this, value,
             value.getOffset(), value.getLastOffset() );
     }
 
