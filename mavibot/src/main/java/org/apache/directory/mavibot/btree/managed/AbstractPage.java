@@ -76,10 +76,6 @@ import java.nio.ByteBuffer;
         this.btree = btree;
         this.revision = revision;
         this.nbElems = nbElems;
-
-        // We get the type of array to create from the btree
-        // Yes, this is an hack...
-        Class<?> keyType = btree.getKeyType();
         this.keys = ( KeyHolder[] ) Array.newInstance( KeyHolder.class, nbElems );
     }
 

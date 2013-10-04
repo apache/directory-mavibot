@@ -536,6 +536,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             if ( btree.isAllowDuplicates() )
             {
                 MultipleMemoryHolder<K, V> mvHolder = ( MultipleMemoryHolder<K, V> ) values[-( pos + 1 )];
+
                 if ( mvHolder.isSingleValue() )
                 {
                     return mvHolder.getValue( btree );
@@ -544,6 +545,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 {
                     // always return the first value for get(key) when duplicates are allowed
                     BTree<V, V> dupTree = ( BTree<V, V> ) mvHolder.getValue( btree );
+
                     return dupTree.rootPage.getLeftMostKey();
                 }
             }
@@ -868,7 +870,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         // Atm, store the value in memory
 
-        ElementHolder valueHolder = null;
+        ElementHolder<V, K, V> valueHolder = null;
 
         if ( btree.isAllowDuplicates() )
         {

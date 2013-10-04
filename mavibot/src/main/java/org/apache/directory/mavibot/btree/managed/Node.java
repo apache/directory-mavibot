@@ -122,12 +122,9 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         children[1] = rightPage;
 
         // Create the keys array and store the pivot into it
-        // We get the type of array to create from the btree
-        // Yes, this is an hack...
-        Class<?> keyType = btree.getKeyType();
         keys = ( KeyHolder[] ) Array.newInstance( KeyHolder.class, btree.getPageSize() );
 
-        keys[0] = new KeyHolder( key, btree.getKeySerializer() );
+        keys[0] = new KeyHolder<K>( key, btree.getKeySerializer() );
     }
 
 
