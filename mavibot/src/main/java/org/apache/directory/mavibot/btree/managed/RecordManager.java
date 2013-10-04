@@ -576,19 +576,28 @@ public class RecordManager
         Page<K, V> page = null;
 
         // Reads the bytes containing all the keys and values, if we have some
+        // We read  big blog of data into  ByteBuffer, then we will process
+        // this ByteBuffer
         ByteBuffer byteBuffer = readBytes( pageIos, position );
 
+        // Now, deserialize the data block
         if ( nbElems >= 0 )
         {
-            // Its a leaf
+            // Its a leaf, create it
             page = BTreeFactory.createLeaf( btree, revision, nbElems );
 
+            // Store the page offset on disk
             ( ( AbstractPage<K, V> ) page ).setOffset( pageIos[0].getOffset() );
             ( ( AbstractPage<K, V> ) page ).setLastOffset( pageIos[pageIos.length - 1].getOffset() );
 
-            // Read each value and key
+            int[] keyLengths = new int[nbElems];
+            int[] valueLengths = new int[nbElems];
+
+            // Read each key and value
             for ( int i = 0; i < nbElems; i++ )
             {
+                //valueLengths[i] = byteBuffer.getInt();
+
                 ElementHolder<V, K, V> valueHolder;
 
                 if ( btree.isAllowDuplicates() )
@@ -622,9 +631,11 @@ public class RecordManager
 
                 BTreeFactory.setValue( ( ( Leaf<K, V> ) page ), i, valueHolder );
 
-                K key = btree.getKeySerializer().deserialize( byteBuffer );
-
-                BTreeFactory.setKey( page, i, key );
+                keyLengths[i] = byteBuffer.getInt();
+                ByteBuffer slice = byteBuffer.slice();
+                slice.limit( keyLengths[i] );
+                byteBuffer.position( byteBuffer.position() + keyLengths[i] );
+                BTreeFactory.setKey( page, i, slice, null );
             }
         }
         else
@@ -1148,7 +1159,9 @@ public class RecordManager
             serializedData.add( buffer );
             serializedSize += buffer.length;
 
-            // Iterate on the keys
+            // Iterate on the keys and values. We first serialize the value, then the key
+            // until we are done with all of them. If w are serializing a page, we have
+            // to serialize one more value
             for ( int pos = 0; pos < nbElems; pos++ )
             {
                 // Start with the value
@@ -1202,9 +1215,30 @@ public class RecordManager
                 }
 
                 // and the key
-                buffer = btree.getKeySerializer().serialize( page.getKey( pos ) );
-                serializedData.add( buffer );
-                dataSize += buffer.length;
+                if ( page instanceof Leaf )
+                {
+                    KeyHolder<K> keyHolder = ( ( Leaf<K, V> ) page ).getKeyHolder( pos );
+                    ByteBuffer keyData = keyHolder.getBuffer();
+
+                    if ( keyData != null )
+                    {
+                        serializedData.add( IntSerializer.serialize( keyData.limit() ) );
+                        serializedData.add( keyData.array() );
+                        dataSize += keyData.limit() + 4;
+                    }
+                    else
+                    {
+                        serializedData.add( IntSerializer.serialize( 4 ) );
+                        serializedData.add( Strings.EMPTY_BYTES );
+                        dataSize += 4;
+                    }
+                }
+                else
+                {
+                    buffer = btree.getKeySerializer().serialize( page.getKey( pos ) );
+                    serializedData.add( buffer );
+                    dataSize += buffer.length;
+                }
             }
 
             // Nodes have one more value to serialize

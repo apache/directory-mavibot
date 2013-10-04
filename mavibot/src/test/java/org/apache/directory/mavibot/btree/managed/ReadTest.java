@@ -42,6 +42,7 @@ public class ReadTest
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
+
     /**
      * Test the readInt method
      */
@@ -261,33 +262,33 @@ public class ReadTest
         storeMethod.invoke( recordManager, 0L, bytes, pageIos );
 
         // Read the bytes back
-        byte[] readBytes = ( byte[] ) readBytesMethod.invoke( recordManager, pageIos, 0L );
+        ByteBuffer readBytes = ( ByteBuffer ) readBytesMethod.invoke( recordManager, pageIos, 0L );
 
         // The byte length
         int pos = 0;
         assertNotNull( readBytes );
-        assertEquals( 4, readBytes.length );
+        assertEquals( 4, readBytes.limit() );
         // The data
-        assertEquals( 0x01, readBytes[pos++] );
-        assertEquals( 0x23, readBytes[pos++] );
-        assertEquals( 0x45, readBytes[pos++] );
-        assertEquals( 0x67, readBytes[pos++] );
+        assertEquals( 0x01, readBytes.get() );
+        assertEquals( 0x23, readBytes.get() );
+        assertEquals( 0x45, readBytes.get() );
+        assertEquals( 0x67, readBytes.get() );
 
         // Set the bytes at the end of the first page
         storeMethod.invoke( recordManager, 12L, bytes, pageIos );
 
         // Read the bytes back
-        readBytes = ( byte[] ) readBytesMethod.invoke( recordManager, pageIos, 12L );
+        readBytes = ( ByteBuffer ) readBytesMethod.invoke( recordManager, pageIos, 12L );
 
         // The byte length
         pos = 0;
         assertNotNull( readBytes );
-        assertEquals( 4, readBytes.length );
+        assertEquals( 4, readBytes.limit() );
         // The data
-        assertEquals( 0x01, readBytes[pos++] );
-        assertEquals( 0x23, readBytes[pos++] );
-        assertEquals( 0x45, readBytes[pos++] );
-        assertEquals( 0x67, readBytes[pos++] );
+        assertEquals( 0x01, readBytes.get() );
+        assertEquals( 0x23, readBytes.get() );
+        assertEquals( 0x45, readBytes.get() );
+        assertEquals( 0x67, readBytes.get() );
 
         // Set A full page of bytes in the first page 
         bytes = new byte[16];
@@ -300,33 +301,33 @@ public class ReadTest
         storeMethod.invoke( recordManager, 0L, bytes, pageIos );
 
         // Read the bytes back
-        readBytes = ( byte[] ) readBytesMethod.invoke( recordManager, pageIos, 0L );
+        readBytes = ( ByteBuffer ) readBytesMethod.invoke( recordManager, pageIos, 0L );
 
         // The byte length
         pos = 0;
         assertNotNull( readBytes );
-        assertEquals( 16, readBytes.length );
+        assertEquals( 16, readBytes.limit() );
 
         // The data
         for ( int i = 0; i < 16; i++ )
         {
-            assertEquals( i + 1, readBytes[pos++] );
+            assertEquals( i + 1, readBytes.get() );
         }
 
         // Write the bytes over 2 pages
         storeMethod.invoke( recordManager, 15L, bytes, pageIos );
 
         // Read the bytes back
-        readBytes = ( byte[] ) readBytesMethod.invoke( recordManager, pageIos, 15L );
+        readBytes = ( ByteBuffer ) readBytesMethod.invoke( recordManager, pageIos, 15L );
 
         // The byte length
         pos = 0;
         assertNotNull( readBytes );
-        assertEquals( 16, readBytes.length );
+        assertEquals( 16, readBytes.limit() );
         // The data
         for ( int i = 0; i < 16; i++ )
         {
-            assertEquals( i + 1, readBytes[pos++] );
+            assertEquals( i + 1, readBytes.get() );
         }
 
         // Write the bytes over 4 pages
@@ -340,16 +341,16 @@ public class ReadTest
         storeMethod.invoke( recordManager, 2L, bytes, pageIos );
 
         // Read the bytes back
-        readBytes = ( byte[] ) readBytesMethod.invoke( recordManager, pageIos, 2L );
+        readBytes = ( ByteBuffer ) readBytesMethod.invoke( recordManager, pageIos, 2L );
 
         // The byte length
         pos = 0;
         assertNotNull( readBytes );
-        assertEquals( 80, readBytes.length );
+        assertEquals( 80, readBytes.limit() );
         // The data
         for ( int i = 0; i < 80; i++ )
         {
-            assertEquals( i + 1, readBytes[pos++] );
+            assertEquals( i + 1, readBytes.get() );
         }
     }
 }

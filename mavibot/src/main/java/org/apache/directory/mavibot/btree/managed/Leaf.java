@@ -562,6 +562,22 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
+    /* No qualifier */KeyHolder<K> getKeyHolder( int pos )
+    {
+        if ( pos < nbElems )
+        {
+            return keys[pos];
+        }
+        else
+        {
+            return null;
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public DuplicateKeyVal<V> getValues( K key ) throws KeyNotFoundException, IOException, IllegalArgumentException
     {

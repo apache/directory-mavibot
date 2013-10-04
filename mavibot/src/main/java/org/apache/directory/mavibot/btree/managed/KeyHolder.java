@@ -99,6 +99,12 @@ public class KeyHolder<K>
     }
 
 
+    /* No qualifier */ByteBuffer getBuffer()
+    {
+        return raw;
+    }
+
+
     /**
      * @see Object#toString()
      */
@@ -108,20 +114,22 @@ public class KeyHolder<K>
 
         sb.append( "KeyHolder[" );
 
-        if ( key == null )
+        if ( key != null )
         {
-            if ( raw.isDirect() )
-            {
-                sb.append( "raw" );
-            }
-            else
-            {
-                Strings.dumpBytes( raw.array() );
-            }
+            sb.append( key );
+            sb.append( ", " );
+        }
+
+        if ( raw.isDirect() )
+        {
+            byte[] bytes = new byte[raw.limit()];
+            raw.get( bytes );
+            raw.rewind();
+            Strings.dumpBytes( bytes );
         }
         else
         {
-            sb.append( key );
+            sb.append( Strings.dumpBytes( raw.array() ) );
         }
 
         sb.append( "]" );
