@@ -31,6 +31,8 @@ import org.apache.directory.mavibot.btree.util.Strings;
  * A class storing either a key, or an offset to the key on the page's byte[]
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
+ * 
+ * <K> The key type
  */
 public class KeyHolder<K>
 {
@@ -44,6 +46,11 @@ public class KeyHolder<K>
     private ElementSerializer<K> keySerializer;
 
 
+    /**
+     * Create a new KeyHolder instance
+     * @param key The key to store
+     * @param keySerializer The KeySerializer instance
+     */
     /* No Qualifier */KeyHolder( K key, ElementSerializer<K> keySerializer )
     {
         this.key = key;
@@ -52,6 +59,12 @@ public class KeyHolder<K>
     }
 
 
+    /**
+     * Create a new KeyHolder instance
+     * @param key The key to store
+     * @param raw the bytes representing the serialized key
+     * @param keySerializer The KeySerializer instance
+     */
     /* No Qualifier */KeyHolder( K key, ByteBuffer raw, ElementSerializer<K> keySerializer )
     {
         this.key = key;
@@ -99,6 +112,9 @@ public class KeyHolder<K>
     }
 
 
+    /**
+     * @return The internal serialized byte[]
+     */
     /* No qualifier */ByteBuffer getBuffer()
     {
         return raw;
