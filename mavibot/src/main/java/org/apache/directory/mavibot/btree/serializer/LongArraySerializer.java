@@ -22,7 +22,6 @@ package org.apache.directory.mavibot.btree.serializer;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Comparator;
 
 import org.apache.directory.mavibot.btree.comparator.LongArrayComparator;
 
@@ -32,18 +31,14 @@ import org.apache.directory.mavibot.btree.comparator.LongArrayComparator;
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class LongArraySerializer implements ElementSerializer<long[]>
+public class LongArraySerializer extends AbstractElementSerializer<long[]>
 {
-    /** The associated comparator */
-    private final Comparator<long[]> comparator;
-
-
     /**
      * Create a new instance of LongSerializer
      */
     public LongArraySerializer()
     {
-        comparator = new LongArrayComparator();
+        super( new LongArrayComparator() );
     }
 
 
@@ -260,15 +255,5 @@ public class LongArraySerializer implements ElementSerializer<long[]>
                 }
             }
         }
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Comparator<long[]> getComparator()
-    {
-        return comparator;
     }
 }

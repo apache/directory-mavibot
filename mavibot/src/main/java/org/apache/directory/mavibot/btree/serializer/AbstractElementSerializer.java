@@ -20,6 +20,8 @@
 package org.apache.directory.mavibot.btree.serializer;
 
 
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.Comparator;
 
 
@@ -35,13 +37,34 @@ public abstract class AbstractElementSerializer<T> implements ElementSerializer<
     /** The associated comparator */
     private final Comparator<T> comparator;
 
+    /** The type which is being serialized */
+    private Class<?> type;
+
 
     /**
-     * Create a new instance of BooleanSerializer
+     * Create a new instance of Serializer
      */
     public AbstractElementSerializer( Comparator<T> comparator )
     {
         this.comparator = comparator;
+
+        // We will extract the Type to use for values, using the serializer for that
+        Class<?> valueSerializerClass = comparator.getClass();
+        Type[] types = valueSerializerClass.getGenericInterfaces();
+
+        if ( types[0] instanceof Class )
+        {
+            type = ( Class<?> ) types[0];
+        }
+        else
+        {
+            Type[] argumentTypes = ( ( ParameterizedType ) types[0] ).getActualTypeArguments();
+
+            if ( ( argumentTypes != null ) && ( argumentTypes.length > 0 ) && ( argumentTypes[0] instanceof Class<?> ) )
+            {
+                type = ( Class<?> ) argumentTypes[0];
+            }
+        }
     }
 
 
@@ -61,5 +84,15 @@ public abstract class AbstractElementSerializer<T> implements ElementSerializer<
     public Comparator<T> getComparator()
     {
         return comparator;
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Class<?> getType()
+    {
+        return type;
     }
 }

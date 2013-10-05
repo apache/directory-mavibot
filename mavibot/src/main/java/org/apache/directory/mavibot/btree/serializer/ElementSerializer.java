@@ -82,4 +82,10 @@ public interface ElementSerializer<T>
      * @return the comparator for the used type
      */
     Comparator<T> getComparator();
+
+
+    /**
+     * @return the type being serialized
+     */
+    Class<?> getType();
 }
