@@ -31,8 +31,8 @@ import java.io.IOException;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
-import org.apache.directory.mavibot.btree.Cursor;
 import org.apache.directory.mavibot.btree.Tuple;
+import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
 import org.junit.Test;
@@ -55,7 +55,7 @@ public class BTreeDuplicateKeyTest
 
         btree.insert( 1, null );
 
-        Cursor<Integer, Integer> cursor = btree.browse();
+        TupleCursor<Integer, Integer> cursor = btree.browse();
         assertTrue( cursor.hasNext() );
 
         Tuple<Integer, Integer> t = cursor.next();
@@ -75,7 +75,7 @@ public class BTreeDuplicateKeyTest
         BTree<Integer, Integer> btree = new BTree<Integer, Integer>( "master", serializer, serializer );
         btree.init();
 
-        Cursor<Integer, Integer> cursor = btree.browse();
+        TupleCursor<Integer, Integer> cursor = btree.browse();
         assertFalse( cursor.hasNext() );
         assertFalse( cursor.hasPrev() );
 
@@ -117,7 +117,7 @@ public class BTreeDuplicateKeyTest
         btree.insert( 1, 1 );
         btree.insert( 1, 2 );
 
-        Cursor<Integer, Integer> cursor = btree.browse();
+        TupleCursor<Integer, Integer> cursor = btree.browse();
         assertTrue( cursor.hasNext() );
 
         Tuple<Integer, Integer> t = cursor.next();
@@ -259,7 +259,7 @@ public class BTreeDuplicateKeyTest
             }
         }
 
-        Cursor<String, String> cursor = btree.browse();
+        TupleCursor<String, String> cursor = btree.browse();
 
         char ch = 'a';
         int k = 0;
@@ -316,14 +316,16 @@ public class BTreeDuplicateKeyTest
         // add one more value for 'a'
         btree.insert( String.valueOf( 'a' ), UUID.randomUUID().toString() );
 
-        Cursor<String, String> cursor = btree.browseFrom( "c" );
+        TupleCursor<String, String> cursor = btree.browseFrom( "c" );
 
         int i = 0;
+
         while ( cursor.hasNext() )
         {
             assertNotNull( cursor.next() );
             i++;
         }
+
         assertEquals( 24, i );
 
         // now move the cursor first
@@ -332,6 +334,7 @@ public class BTreeDuplicateKeyTest
         assertEquals( "c", cursor.next().getKey() );
 
         i = 0;
+
         while ( cursor.hasNext() )
         {
             assertNotNull( cursor.next() );
@@ -384,7 +387,7 @@ public class BTreeDuplicateKeyTest
 
         btree.insert( String.valueOf( 'z' ), UUID.randomUUID().toString() );
 
-        Cursor<String, String> cursor = btree.browseFrom( "c" );
+        TupleCursor<String, String> cursor = btree.browseFrom( "c" );
         cursor.afterLast();
 
         assertFalse( cursor.hasNext() );
@@ -424,7 +427,7 @@ public class BTreeDuplicateKeyTest
             }
         }
 
-        Cursor<String, String> cursor = btree.browse();
+        TupleCursor<String, String> cursor = btree.browse();
 
         assertTrue( cursor.hasNext() );
         assertFalse( cursor.hasPrev() );
@@ -527,7 +530,7 @@ public class BTreeDuplicateKeyTest
         }
 
         // 3 is the last element of the first leaf
-        Cursor<Integer, Integer> cursor = btree.browseFrom( 3 );
+        TupleCursor<Integer, Integer> cursor = btree.browseFrom( 3 );
         cursor.moveToNextNonDuplicateKey();
 
         assertTrue( cursor.hasNext() );
@@ -602,7 +605,7 @@ public class BTreeDuplicateKeyTest
         }
 
         // 3 is the last element of the first leaf
-        Cursor<Integer, Integer> cursor = btree.browseFrom( 4 );
+        TupleCursor<Integer, Integer> cursor = btree.browseFrom( 4 );
 
         assertTrue( cursor.hasNext() );
         Tuple<Integer, Integer> tuple = cursor.next();
@@ -647,7 +650,7 @@ public class BTreeDuplicateKeyTest
         }
 
         // 4 is the last element in the tree
-        Cursor<Integer, Integer> cursor = btree.browseFrom( 4 );
+        TupleCursor<Integer, Integer> cursor = btree.browseFrom( 4 );
         cursor.moveToNextNonDuplicateKey();
 
         int currentKey = 4;
@@ -685,7 +688,7 @@ public class BTreeDuplicateKeyTest
         }
 
         // 4 is the last element in the tree
-        Cursor<Integer, Integer> cursor = btree.browseFrom( 0 );
+        TupleCursor<Integer, Integer> cursor = btree.browseFrom( 0 );
         cursor.moveToPrevNonDuplicateKey();
 
         int currentKey = 0;

@@ -114,6 +114,36 @@ public class BooleanSerializer extends AbstractElementSerializer<Boolean>
 
 
     /**
+     * A method used to deserialize a Boolean from a byte array.
+     * 
+     * @param in The byte array containing the boolean
+     * @return A boolean
+     */
+    public Boolean fromBytes( byte[] in )
+    {
+        return deserialize( in, 0 );
+    }
+
+
+    /**
+     * A method used to deserialize a Boolean from a byte array.
+     * 
+     * @param in The byte array containing the boolean
+     * @param start the position in the byte[] we will deserialize the boolean from
+     * @return A boolean
+     */
+    public Boolean fromBytes( byte[] in, int start )
+    {
+        if ( ( in == null ) || ( in.length < 1 + start ) )
+        {
+            throw new RuntimeException( "Cannot extract a Boolean from a buffer with not enough bytes" );
+        }
+
+        return in[start] == 0x01;
+    }
+
+
+    /**
      * {@inheritDoc}
      */
     public Boolean deserialize( ByteBuffer buffer ) throws IOException

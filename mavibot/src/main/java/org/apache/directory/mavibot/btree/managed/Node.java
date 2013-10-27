@@ -26,6 +26,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.apache.directory.mavibot.btree.Tuple;
+import org.apache.directory.mavibot.btree.ValueCursor;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
@@ -90,10 +91,9 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         // Create the keys array and store the pivot into it
         // We get the type of array to create from the btree
         // Yes, this is an hack...
-        Class<?> keyType = btree.getKeyType();
-        keys = ( KeyHolder[] ) Array.newInstance( keyType, btree.getPageSize() );
+        keys = ( KeyHolder[] ) Array.newInstance( KeyHolder.class, btree.getPageSize() );
 
-        keys[0] = new KeyHolder<K>( key, btree.getKeySerializer() );
+        keys[0] = new KeyHolder<K>( btree.getKeySerializer(), key );
     }
 
 
@@ -124,7 +124,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         // Create the keys array and store the pivot into it
         keys = ( KeyHolder[] ) Array.newInstance( KeyHolder.class, btree.getPageSize() );
 
-        keys[0] = new KeyHolder<K>( key, btree.getKeySerializer() );
+        keys[0] = new KeyHolder<K>( btree.getKeySerializer(), key );
     }
 
 
@@ -292,7 +292,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         int index = Math.abs( pos );
 
         // Copy the key and children from sibling
-        newNode.keys[nbElems - 1] = new KeyHolder<K>( siblingKey, btree.getKeySerializer() ); // 1
+        newNode.keys[nbElems - 1] = new KeyHolder<K>( btree.getKeySerializer(), siblingKey ); // 1
         newNode.children[nbElems] = sibling.children[0]; // 8
 
         if ( index < 2 )
@@ -316,8 +316,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             }
 
             // Inject the new modified page key
-            newNode.keys[index - 2] = new KeyHolder<K>( mergedResult.getModifiedPage().getLeftMostKey(),
-                btree.getKeySerializer() ); // 2
+            newNode.keys[index - 2] = new KeyHolder<K>( btree.getKeySerializer(), mergedResult.getModifiedPage()
+                .getLeftMostKey() ); // 2
 
             if ( index < nbElems )
             {
@@ -382,8 +382,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         if ( index < 2 )
         {
-            newNode.keys[0] = new KeyHolder<K>( mergedResult.getModifiedPage().getLeftMostKey(),
-                btree.getKeySerializer() );
+            newNode.keys[0] = new KeyHolder<K>( btree.getKeySerializer(), mergedResult.getModifiedPage()
+                .getLeftMostKey() );
             System.arraycopy( keys, 1, newNode.keys, 1, nbElems - 1 );
 
             Page<K, V> modifiedPage = mergedResult.getModifiedPage();
@@ -393,8 +393,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         else
         {
             // Set the first key
-            newNode.keys[0] = new KeyHolder<K>( children[0].getValue( btree ).getLeftMostKey(),
-                btree.getKeySerializer() ); //2
+            newNode.keys[0] = new KeyHolder<K>( btree.getKeySerializer(), children[0].getValue( btree )
+                .getLeftMostKey() ); //2
 
             if ( index > 2 )
             {
@@ -403,8 +403,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             }
 
             // Inject the modified key
-            newNode.keys[index - 1] = new KeyHolder<K>( mergedResult.getModifiedPage().getLeftMostKey(),
-                btree.getKeySerializer() ); // 3
+            newNode.keys[index - 1] = new KeyHolder<K>( btree.getKeySerializer(), mergedResult.getModifiedPage()
+                .getLeftMostKey() ); // 3
 
             if ( index < nbElems )
             {
@@ -466,8 +466,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             // Then copy all the elements up to the deletion point
             if ( index < 2 )
             {
-                newNode.keys[half] = new KeyHolder<K>( mergedResult.getModifiedPage().getLeftMostKey(),
-                    btree.getKeySerializer() );
+                newNode.keys[half] = new KeyHolder<K>( btree.getKeySerializer(), mergedResult.getModifiedPage()
+                    .getLeftMostKey() );
                 System.arraycopy( keys, 1, newNode.keys, half + 1, half - 1 );
 
                 Page<K, V> modifiedPage = mergedResult.getModifiedPage();
@@ -478,8 +478,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             {
                 // Copy the left part of the node keys up to the deletion point
                 // Insert the new key
-                newNode.keys[half] = new KeyHolder<K>( children[0].getValue( btree ).getLeftMostKey(),
-                    btree.getKeySerializer() ); // 3
+                newNode.keys[half] = new KeyHolder<K>( btree.getKeySerializer(), children[0].getValue( btree )
+                    .getLeftMostKey() ); // 3
 
                 if ( index > 2 )
                 {
@@ -487,8 +487,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 }
 
                 // Inject the new merged key
-                newNode.keys[half + index - 1] = new KeyHolder<K>( mergedResult.getModifiedPage().getLeftMostKey(),
-                    btree.getKeySerializer() ); //5
+                newNode.keys[half + index - 1] = new KeyHolder<K>( btree.getKeySerializer(), mergedResult
+                    .getModifiedPage().getLeftMostKey() ); //5
 
                 if ( index < half )
                 {
@@ -532,8 +532,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 System.arraycopy( children, 0, newNode.children, 0, index - 1 ); //6
 
                 // Inject the modified key
-                newNode.keys[index - 2] = new KeyHolder<K>( mergedResult.getModifiedPage().getLeftMostKey(),
-                    btree.getKeySerializer() ); //2
+                newNode.keys[index - 2] = new KeyHolder<K>( btree.getKeySerializer(), mergedResult.getModifiedPage()
+                    .getLeftMostKey() ); //2
 
                 // Inject the modified children
                 Page<K, V> modifiedPage = mergedResult.getModifiedPage();
@@ -550,7 +550,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             }
 
             // Inject the new key from sibling
-            newNode.keys[half - 1] = new KeyHolder<K>( sibling.findLeftMost().getKey(), btree.getKeySerializer() ); //3
+            newNode.keys[half - 1] = new KeyHolder<K>( btree.getKeySerializer(), sibling.findLeftMost().getKey() ); //3
 
             // Copy the sibling keys
             System.arraycopy( sibling.keys, 0, newNode.keys, half, half );
@@ -715,9 +715,9 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             if ( borrowedResult.isFromRight() )
             {
                 // Update the keys
-                newPage.keys[pos] = new KeyHolder<K>( modifiedPage.findLeftMost().getKey(), btree.getKeySerializer() );
-                newPage.keys[pos + 1] = new KeyHolder<K>( modifiedSibling.findLeftMost().getKey(),
-                    btree.getKeySerializer() );
+                newPage.keys[pos] = new KeyHolder<K>( btree.getKeySerializer(), modifiedPage.findLeftMost().getKey() );
+                newPage.keys[pos + 1] = new KeyHolder<K>( btree.getKeySerializer(), modifiedSibling.findLeftMost()
+                    .getKey() );
 
                 // Update the children
                 newPage.children[pos + 1] = createHolder( modifiedPage );
@@ -726,7 +726,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             else
             {
                 // Update the keys
-                newPage.keys[pos] = new KeyHolder<K>( modifiedPage.findLeftMost().getKey(), btree.getKeySerializer() );
+                newPage.keys[pos] = new KeyHolder<K>( btree.getKeySerializer(), modifiedPage.findLeftMost().getKey() );
 
                 // Update the children
                 newPage.children[pos] = createHolder( modifiedSibling );
@@ -738,7 +738,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             if ( borrowedResult.isFromRight() )
             {
                 // Update the keys
-                newPage.keys[pos] = new KeyHolder<K>( modifiedSibling.findLeftMost().getKey(), btree.getKeySerializer() );
+                newPage.keys[pos] = new KeyHolder<K>( btree.getKeySerializer(), modifiedSibling.findLeftMost().getKey() );
 
                 // Update the children
                 newPage.children[pos] = createHolder( modifiedPage );
@@ -747,8 +747,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             else
             {
                 // Update the keys
-                newPage.keys[pos - 1] = new KeyHolder<K>( modifiedPage.findLeftMost().getKey(),
-                    btree.getKeySerializer() );
+                newPage.keys[pos - 1] = new KeyHolder<K>( btree.getKeySerializer(), modifiedPage.findLeftMost()
+                    .getKey() );
 
                 // Update the children
                 newPage.children[pos - 1] = createHolder( modifiedSibling );
@@ -800,8 +800,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 System.arraycopy( keys, 0, newNode.keys, 0, index );
             }
 
-            newNode.keys[index] = new KeyHolder<K>( mergedResult.getModifiedPage().findLeftMost().getKey(),
-                btree.getKeySerializer() );
+            newNode.keys[index] = new KeyHolder<K>( btree.getKeySerializer(), mergedResult.getModifiedPage()
+                .findLeftMost().getKey() );
 
             if ( index < nbElems - 2 )
             {
@@ -854,7 +854,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * {@inheritDoc}
      */
     @Override
-    public DuplicateKeyVal<V> getValues( K key ) throws KeyNotFoundException, IOException, IllegalArgumentException
+    public ValueCursor<V> getValues( K key ) throws KeyNotFoundException, IOException, IllegalArgumentException
     {
         int pos = findPos( key );
 
@@ -892,7 +892,6 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             if ( page == null )
             {
                 System.out.println( "Page is null for pos = " + pos + ", children = " + children[pos] );
-                System.out.println( "Key = " + key );
             }
 
             return page.hasKey( key );
@@ -1058,7 +1057,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
 
         // Add the new key and children
-        newNode.keys[pos] = new KeyHolder<K>( key, btree.getKeySerializer() );
+        newNode.keys[pos] = new KeyHolder<K>( btree.getKeySerializer(), key );
 
         // If the BTree is managed, we now have to write the modified page on disk
         // and to add this page to the list of modified pages
@@ -1117,7 +1116,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             System.arraycopy( children, 0, newLeftPage.children, 0, pos );
 
             // Add the new element
-            newLeftPage.keys[pos] = new KeyHolder<K>( pivot, btree.getKeySerializer() );
+            newLeftPage.keys[pos] = new KeyHolder<K>( btree.getKeySerializer(), pivot );
             newLeftPage.children[pos] = createHolder( leftPage );
             newLeftPage.children[pos + 1] = createHolder( rightPage );
 
@@ -1167,7 +1166,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             System.arraycopy( children, middle + 1, newRightPage.children, 0, pos - middle - 1 );
 
             // Add the new element
-            newRightPage.keys[pos - middle - 1] = new KeyHolder<K>( pivot, btree.getKeySerializer() );
+            newRightPage.keys[pos - middle - 1] = new KeyHolder<K>( btree.getKeySerializer(), pivot );
             newRightPage.children[pos - middle - 1] = createHolder( leftPage );
             newRightPage.children[pos - middle] = createHolder( rightPage );
 

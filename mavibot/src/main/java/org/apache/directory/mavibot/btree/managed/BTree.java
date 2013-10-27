@@ -22,8 +22,6 @@ package org.apache.directory.mavibot.btree.managed;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Comparator;
@@ -36,6 +34,8 @@ import net.sf.ehcache.config.CacheConfiguration;
 
 import org.apache.directory.mavibot.btree.BTreeHeader;
 import org.apache.directory.mavibot.btree.Tuple;
+import org.apache.directory.mavibot.btree.TupleCursor;
+import org.apache.directory.mavibot.btree.ValueCursor;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 import org.slf4j.Logger;
@@ -85,17 +85,11 @@ public class BTree<K, V> implements Closeable
     /** The size of the buffer used to write data in disk */
     private int writeBufferSize;
 
-    /** The type to use to create the keys */
-    protected Class<?> keyType;
-
     /** The Key serializer used for this tree.*/
     private ElementSerializer<K> keySerializer;
 
     /** The Value serializer used for this tree. */
     private ElementSerializer<V> valueSerializer;
-
-    /** The associated file. If null, this is an in-memory btree  */
-    //private File file;
 
     /** The RecordManager if the BTree is managed */
     private RecordManager recordManager;
@@ -120,6 +114,16 @@ public class BTree<K, V> implements Closeable
 
     /** The default number of pages to keep in memory */
     private static final int DEFAULT_CACHE_SIZE = 1000;
+
+    /** The number of stored Values before we switch to a BTree */
+    private static final int DEFAULT_VALUE_THRESHOLD_UP = 8;
+
+    /** The number of stored Values before we switch back to an array */
+    private static final int DEFAULT_VALUE_THRESHOLD_LOW = 1;
+
+    /** The configuration for the array <-> BTree switch */
+    /*No qualifier*/static int valueThresholdUp = DEFAULT_VALUE_THRESHOLD_UP;
+    /*No qualifier*/static int valueThresholdLow = DEFAULT_VALUE_THRESHOLD_LOW;
 
 
     /**
@@ -364,24 +368,6 @@ public class BTree<K, V> implements Closeable
     {
         // Create the queue containing the pending read transactions
         readTransactions = new ConcurrentLinkedQueue<Transaction<K, V>>();
-
-        // We will extract the Type to use for keys, using the comparator for that
-        Class<?> comparatorClass = comparator.getClass();
-        Type[] types = comparatorClass.getGenericInterfaces();
-
-        if ( types[0] instanceof Class )
-        {
-            keyType = ( Class<?> ) types[0];
-        }
-        else
-        {
-            Type[] argumentTypes = ( ( ParameterizedType ) types[0] ).getActualTypeArguments();
-
-            if ( ( argumentTypes != null ) && ( argumentTypes.length > 0 ) && ( argumentTypes[0] instanceof Class<?> ) )
-            {
-                keyType = ( Class<?> ) argumentTypes[0];
-            }
-        }
 
         writeLock = new ReentrantLock();
 
@@ -785,7 +771,7 @@ public class BTree<K, V> implements Closeable
     /**
      * @see Page#getValues(Object)
      */
-    public DuplicateKeyVal<V> getValues( K key ) throws IOException, KeyNotFoundException
+    public ValueCursor<V> getValues( K key ) throws IOException, KeyNotFoundException
     {
         return rootPage.getValues( key );
     }
@@ -889,7 +875,7 @@ public class BTree<K, V> implements Closeable
      * @return A cursor on the btree
      * @throws IOException
      */
-    public CursorImpl<K, V> browse() throws IOException
+    public TupleCursor<K, V> browse() throws IOException
     {
         Transaction<K, V> transaction = beginReadTransaction();
 
@@ -1085,15 +1071,6 @@ public class BTree<K, V> implements Closeable
 
 
     /**
-     * @return the type for the keys
-     */
-    /* No qualifier*/Class<?> getKeyType()
-    {
-        return keyType;
-    }
-
-
-    /**
      * @return the comparator
      */
     public Comparator<K> getComparator()
@@ -1256,17 +1233,10 @@ public class BTree<K, V> implements Closeable
      * @param value The value to store
      * @return The value holder
      */
-    /* no qualifier */ElementHolder<V, K, V> createValueHolder( V value )
+    @SuppressWarnings("unchecked")
+    /* no qualifier */ValueHolder<V> createValueHolder( V value )
     {
-        if ( isAllowDuplicates() )
-        {
-            return new MultipleMemoryHolder<K, V>( this, value );
-        }
-        else
-        {
-            // Atm, keep the values in memory
-            return new MemoryHolder<K, V>( this, value );
-        }
+        return new ValueHolder<V>( recordManager, valueSerializer, value );
     }
 
 

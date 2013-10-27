@@ -27,8 +27,8 @@ import java.io.IOException;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 
-import org.apache.directory.mavibot.btree.Cursor;
 import org.apache.directory.mavibot.btree.Tuple;
+import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
@@ -114,7 +114,7 @@ public class MultiThreadedBtreeTest
      */
     private int testBrowse() throws IOException
     {
-        Cursor<Long, String> cursor = btree.browse();
+        TupleCursor<Long, String> cursor = btree.browse();
 
         int nb = 0;
         long elem = Long.MIN_VALUE;

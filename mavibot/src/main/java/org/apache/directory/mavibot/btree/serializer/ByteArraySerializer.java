@@ -221,6 +221,73 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
 
 
     /**
+     * A method used to deserialize a byte array from a byte array.
+     * 
+     * @param in The byte array containing the byte array
+     * @return A byte[]
+     */
+    public byte[] fromBytes( byte[] in )
+    {
+        if ( ( in == null ) || ( in.length < 4 ) )
+        {
+            throw new RuntimeException( "Cannot extract a byte[] from a buffer with not enough bytes" );
+        }
+
+        int len = IntSerializer.deserialize( in );
+
+        switch ( len )
+        {
+            case 0:
+                return new byte[]
+                    {};
+
+            case -1:
+                return null;
+
+            default:
+                byte[] result = new byte[len];
+                System.arraycopy( in, 4, result, 0, len );
+
+                return result;
+        }
+    }
+
+
+    /**
+     * A method used to deserialize a byte array from a byte array.
+     * 
+     * @param in The byte array containing the byte array
+     * @param start the position in the byte[] we will deserialize the byte[] from
+     * @return A byte[]
+     */
+    public byte[] fromBytes( byte[] in, int start )
+    {
+        if ( ( in == null ) || ( in.length < 4 + start ) )
+        {
+            throw new RuntimeException( "Cannot extract a byte[] from a buffer with not enough bytes" );
+        }
+
+        int len = IntSerializer.deserialize( in, start );
+
+        switch ( len )
+        {
+            case 0:
+                return new byte[]
+                    {};
+
+            case -1:
+                return null;
+
+            default:
+                byte[] result = new byte[len];
+                System.arraycopy( in, 4 + start, result, 0, len );
+
+                return result;
+        }
+    }
+
+
+    /**
      * {@inheritDoc}
      */
     public byte[] deserialize( BufferHandler bufferHandler ) throws IOException

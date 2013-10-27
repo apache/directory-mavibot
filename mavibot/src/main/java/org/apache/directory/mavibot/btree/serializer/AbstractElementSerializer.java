@@ -20,6 +20,8 @@
 package org.apache.directory.mavibot.btree.serializer;
 
 
+import java.lang.reflect.Array;
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Comparator;
@@ -60,9 +62,18 @@ public abstract class AbstractElementSerializer<T> implements ElementSerializer<
         {
             Type[] argumentTypes = ( ( ParameterizedType ) types[0] ).getActualTypeArguments();
 
-            if ( ( argumentTypes != null ) && ( argumentTypes.length > 0 ) && ( argumentTypes[0] instanceof Class<?> ) )
+            if ( ( argumentTypes != null ) && ( argumentTypes.length > 0 ) )
             {
-                type = ( Class<?> ) argumentTypes[0];
+                if ( argumentTypes[0] instanceof Class<?> )
+                {
+                    type = ( Class<?> ) argumentTypes[0];
+                }
+                else if ( argumentTypes[0] instanceof GenericArrayType )
+                {
+                    Class<?> clazz = ( Class<?> ) ( ( GenericArrayType ) argumentTypes[0] ).getGenericComponentType();
+
+                    type = Array.newInstance( clazz, 0 ).getClass();
+                }
             }
         }
     }

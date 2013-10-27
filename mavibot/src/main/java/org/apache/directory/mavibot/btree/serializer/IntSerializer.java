@@ -74,6 +74,37 @@ public class IntSerializer extends AbstractElementSerializer<Integer>
 
 
     /**
+     * A method used to deserialize an Integer from a byte array.
+     * @param in The byte array containing the Integer
+     * @return An Integer
+     */
+    public Integer fromBytes( byte[] in )
+    {
+        return deserialize( in, 0 );
+    }
+
+
+    /**
+     * A method used to deserialize an Integer from a byte array.
+     * @param in The byte array containing the Integer
+     * @param start the position in the byte[] we will deserialize the int from
+     * @return An Integer
+     */
+    public Integer fromBytes( byte[] in, int start )
+    {
+        if ( ( in == null ) || ( in.length < 4 + start ) )
+        {
+            throw new RuntimeException( "Cannot extract a Integer from a buffer with not enough bytes" );
+        }
+
+        return ( in[start] << 24 ) +
+            ( ( in[start + 1] & 0xFF ) << 16 ) +
+            ( ( in[start + 2] & 0xFF ) << 8 ) +
+            ( in[start + 3] & 0xFF );
+    }
+
+
+    /**
      * {@inheritDoc}
      */
     public Integer deserialize( ByteBuffer buffer ) throws IOException

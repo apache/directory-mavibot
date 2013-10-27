@@ -31,52 +31,34 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
  * when the user is done with it.
  * <p>
  *
- * @param <K> The type for the Key
+ * @param <V> The type for the stored value
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public interface Cursor<K>
+public interface ValueCursor<V> extends Cursor<V>
 {
     /**
-     * Tells if the cursor can return a next element
-     * @return true if there are some more elements
+     * Find the next key/value
+     * 
+     * @return A Tuple containing the found key and value
      * @throws IOException 
      * @throws EndOfFileExceededException 
      */
-    boolean hasNext() throws EndOfFileExceededException, IOException;
+    V next() throws EndOfFileExceededException, IOException;
 
 
     /**
-     * Tells if the cursor can return a previous element
-     * @return true if there are some more elements
+     * Find the previous key/value
+     * 
+     * @return A Tuple containing the found key and value
      * @throws IOException 
      * @throws EndOfFileExceededException 
      */
-    boolean hasPrev() throws EndOfFileExceededException, IOException;
+    V prev() throws EndOfFileExceededException, IOException;
 
 
     /**
-     * Closes the cursor, thus releases the associated transaction
+     * @return The number of elements stored in the cursor
      */
-    void close();
-
-
-    /**
-     * moves the cursor to the same position that was given at the time of instantiating the cursor.
-     * 
-     *  For example, if the cursor was created using browse() method, then beforeFirst() will
-     *  place the cursor before the 0th position.
-     *  
-     *  If the cursor was created using browseFrom(K), then calling beforeFirst() will reset the position
-     *  to the just before the position where K is present.
-     */
-    void beforeFirst() throws IOException;
-
-
-    /**
-     * Places the cursor at the end of the last position
-     * 
-     * @throws IOException
-     */
-    public void afterLast() throws IOException;
+    int size();
 }

@@ -27,6 +27,7 @@ import java.lang.reflect.Array;
 import java.util.LinkedList;
 
 import org.apache.directory.mavibot.btree.Tuple;
+import org.apache.directory.mavibot.btree.ValueCursor;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
@@ -42,7 +43,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 /* No qualifier */class Leaf<K, V> extends AbstractPage<K, V>
 {
     /** Values associated with keys */
-    protected ElementHolder<V, K, V>[] values;
+    protected ValueHolder<V>[] values;
 
 
     /**
@@ -68,16 +69,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /* No qualifier */Leaf( BTree<K, V> btree, long revision, int nbElems )
     {
         super( btree, revision, nbElems );
-
-        if ( btree.isAllowDuplicates() )
-        {
-            this.values = ( MultipleMemoryHolder<K, V>[] ) Array.newInstance( MultipleMemoryHolder.class,
-                nbElems );
-        }
-        else
-        {
-            this.values = ( MemoryHolder<K, V>[] ) Array.newInstance( MemoryHolder.class, nbElems );
-        }
+        values = ( ValueHolder<V>[] ) Array.newInstance( ValueHolder.class, nbElems );
     }
 
 
@@ -156,78 +148,29 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         int index = -( pos + 1 );
 
-        if ( btree.isAllowDuplicates() )
+        ValueHolder<V> valueHolder = values[index];
+
+        if ( value == null )
         {
-            MultipleMemoryHolder<K, V> mvHolder = ( MultipleMemoryHolder<K, V> ) values[index];
-
-            //FIXME should the internal sub-tree should be deleted from RM?
-
-            V existingVal = mvHolder.getValue( btree );
-
-            if ( value == null ) // this is a case to delete entire <K,sub-BTree> or <K,single-V>
-            {
-                removedElement = new Tuple<K, V>( keys[index].getKey(), existingVal ); // the entire value was removed
-                keyRemoved = true;
-            }
-            else
-            {
-                if ( mvHolder.isSingleValue() )
-                {
-                    if ( btree.getValueSerializer().compare( value, existingVal ) == 0 )
-                    {
-                        removedElement = new Tuple<K, V>( keys[index].getKey(), existingVal ); // the entire value was removed
-                        keyRemoved = true;
-                    }
-                    else
-                    // value is not found
-                    {
-                        return NotPresentResult.NOT_PRESENT;
-                    }
-                }
-                else
-                {
-                    BTree<V, V> dups = ( BTree<V, V> ) existingVal;
-
-                    if ( dups.hasKey( value ) )
-                    {
-                        dups.delete( value );
-
-                        if ( dups.getNbElems() == 0 )
-                        {
-                            keyRemoved = true;
-                        }
-                        else
-                        {
-                            if ( dups.getNbElems() == 1 )
-                            {
-                                //FIXME switch to single value mode
-                                mvHolder.switchToSingleValMode();
-                            }
-                        }
-
-                        removedElement = new Tuple<K, V>( keys[index].getKey(), value ); // we deleted only one value (even if it is from a tree of size 1)
-                    }
-                    else
-                    // value is not found
-                    {
-                        return NotPresentResult.NOT_PRESENT;
-                    }
-                }
-            }
+            // we have to delete the whole value
+            removedElement = new Tuple<K, V>( keys[index].getKey(), value ); // the entire value was removed
+            keyRemoved = true;
         }
         else
         {
-            V existing = values[index].getValue( btree );
+            if ( valueHolder.contains( value ) )
+            {
+                if ( valueHolder.size() == 1 )
+                {
+                    removedElement = new Tuple<K, V>( keys[index].getKey(), value ); // the entire value was removed
+                    keyRemoved = true;
+                }
+                else
+                {
+                    removedElement = new Tuple<K, V>( keys[index].getKey(), value ); // the entire value was removed
 
-            if ( ( ( existing == null ) && ( value == null ) ) || ( value == null ) )
-            {
-                removedElement = new Tuple<K, V>( keys[index].getKey(), existing );
-                keyRemoved = true;
-            }
-            else if ( btree.getValueSerializer().compare( value, existing ) == 0 )
-            {
-                removedElement = new Tuple<K, V>( keys[index].getKey(), value );
-                keyRemoved = true;
+                    valueHolder.remove( value );
+                }
             }
             else
             {
@@ -406,7 +349,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     {
         // The sibling is on the left, borrow the rightmost element
         K siblingKey = sibling.keys[sibling.getNbElems() - 1].getKey();
-        ElementHolder<V, K, V> siblingValue = sibling.values[sibling.getNbElems() - 1];
+        ValueHolder<V> siblingValue = sibling.values[sibling.getNbElems() - 1];
 
         // Create the new sibling, with one less element at the end
         Leaf<K, V> newSibling = ( Leaf<K, V> ) sibling.copy( revision, sibling.getNbElems() - 1 );
@@ -416,7 +359,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems );
 
         // Insert the borrowed element
-        newLeaf.keys[0] = new KeyHolder<K>( siblingKey, btree.getKeySerializer() );
+        newLeaf.keys[0] = new KeyHolder<K>( btree.getKeySerializer(), siblingKey );
         newLeaf.values[0] = siblingValue;
 
         // Copy the keys and the values up to the insertion position,
@@ -453,7 +396,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     {
         // The sibling is on the left, borrow the rightmost element
         K siblingKey = sibling.keys[0].getKey();
-        ElementHolder<V, K, V> siblingHolder = sibling.values[0];
+        ValueHolder<V> siblingHolder = sibling.values[0];
 
         // Create the new sibling
         Leaf<K, V> newSibling = new Leaf<K, V>( btree, revision, sibling.getNbElems() - 1 );
@@ -467,7 +410,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems );
 
         // Insert the borrowed element at the end
-        newLeaf.keys[nbElems - 1] = new KeyHolder<K>( siblingKey, btree.getKeySerializer() );
+        newLeaf.keys[nbElems - 1] = new KeyHolder<K>( btree.getKeySerializer(), siblingKey );
         newLeaf.values[nbElems - 1] = siblingHolder;
 
         // Copy the keys and the values up to the deletion position,
@@ -533,26 +476,22 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         if ( pos < 0 )
         {
-            if ( btree.isAllowDuplicates() )
+            ValueHolder<V> valueHolder = values[-( pos + 1 )];
+
+            ValueCursor<V> cursor = valueHolder.getCursor();
+
+            cursor.beforeFirst();
+
+            if ( cursor.hasNext() )
             {
-                MultipleMemoryHolder<K, V> mvHolder = ( MultipleMemoryHolder<K, V> ) values[-( pos + 1 )];
+                V value = cursor.next();
 
-                if ( mvHolder.isSingleValue() )
-                {
-                    return mvHolder.getValue( btree );
-                }
-                else
-                {
-                    // always return the first value for get(key) when duplicates are allowed
-                    BTree<V, V> dupTree = ( BTree<V, V> ) mvHolder.getValue( btree );
-
-                    return dupTree.rootPage.getLeftMostKey();
-                }
+                return value;
             }
-
-            V v = values[-( pos + 1 )].getValue( btree );
-
-            return v;
+            else
+            {
+                return null;
+            }
         }
         else
         {
@@ -581,7 +520,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * {@inheritDoc}
      */
     @Override
-    public DuplicateKeyVal<V> getValues( K key ) throws KeyNotFoundException, IOException, IllegalArgumentException
+    public ValueCursor<V> getValues( K key ) throws KeyNotFoundException, IOException, IllegalArgumentException
     {
         if ( !btree.isAllowDuplicates() )
         {
@@ -592,14 +531,9 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         if ( pos < 0 )
         {
-            MultipleMemoryHolder<K, V> mvHolder = ( MultipleMemoryHolder<K, V> ) values[-( pos + 1 )];
+            ValueHolder<V> valueHolder = values[-( pos + 1 )];
 
-            if ( mvHolder.isSingleValue() )
-            {
-                return new DuplicateKeyVal<V>( mvHolder.getValue( btree ) );
-            }
-
-            return new DuplicateKeyVal<V>( ( BTree<V, V> ) mvHolder.getValue( btree ) );
+            return valueHolder.getCursor();
         }
         else
         {
@@ -631,25 +565,9 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         if ( pos < 0 )
         {
-            if ( btree.isAllowDuplicates() )
-            {
-                MultipleMemoryHolder<K, V> mvHolder = ( MultipleMemoryHolder<K, V> ) values[-( pos + 1 )];
-                if ( mvHolder.isSingleValue() )
-                {
-                    return ( btree.getValueSerializer().compare( value, mvHolder.getValue( btree ) ) == 0 );
-                }
-                else
-                {
-                    // always return the first value for get(key) when duplicates are allowed
-                    BTree<V, V> dupTree = ( ( BTree<V, V> ) mvHolder.getValue( btree ) );
-                    return dupTree.hasKey( value );
-                }
-            }
-            else
-            {
-                V v = values[-( pos + 1 )].getValue( btree );
-                return ( btree.getValueSerializer().compare( value, v ) == 0 );
-            }
+            ValueHolder<V> valueHolder = values[-( pos + 1 )];
+
+            return valueHolder.contains( value );
         }
         else
         {
@@ -661,7 +579,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
-    public ElementHolder<V, K, V> getValue( int pos )
+    public ValueHolder<V> getValue( int pos )
     {
         if ( pos < nbElems )
         {
@@ -679,7 +597,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    public void setValue( int pos, ElementHolder<V, K, V> value )
+    public void setValue( int pos, ValueHolder<V> value )
     {
         values[pos] = value;
     }
@@ -772,7 +690,23 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         // Copy the keys and the values
         System.arraycopy( keys, 0, newLeaf.keys, 0, nbElems );
-        System.arraycopy( values, 0, newLeaf.values, 0, nbElems );
+
+        // It' not enough to copy the ValueHolder, we have to clone them
+        // as ValueHolders are mutable
+        int pos = 0;
+
+        for ( ValueHolder<V> valueHolder : values )
+        {
+            try
+            {
+                newLeaf.values[pos++] = valueHolder.clone();
+            }
+            catch ( CloneNotSupportedException e )
+            {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
 
         return newLeaf;
     }
@@ -799,54 +733,17 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             newLeaf = ( Leaf<K, V> ) copy( revision, nbElems );
         }
 
-        V oldValue = null;
+        // Get the previous value from the leaf (it's a copy)
+        ValueHolder<V> valueHolder = newLeaf.values[pos];
 
-        if ( btree.isAllowDuplicates() )
+        if ( !valueHolder.contains( value ) )
         {
-            MultipleMemoryHolder<K, V> mvHolder = ( MultipleMemoryHolder<K, V> ) newLeaf.values[pos];
-
-            if ( mvHolder.isSingleValue() )
-            {
-                V singleVal = mvHolder.getValue( btree );
-
-                // see if the given value already matches
-                if ( btree.getValueSerializer().compare( value, singleVal ) == 0 )
-                {
-                    oldValue = value;
-                }
-                else
-                // create a sub-tree
-                {
-                    mvHolder.createAndSwitchToSubTree();
-                }
-            }
-
-            // if oldValue is null then the given 'value' is different and needs to be added
-            // ('oldValue' will be not null if it matched with the 'singleValue', see above nested if block )
-            if ( oldValue == null )
-            {
-                BTree<V, V> dupValues = ( BTree<V, V> ) mvHolder.getValue( btree );
-
-                // return value will always be null  here 
-                if ( !dupValues.hasKey( value ) )
-                {
-                    dupValues.insert( value, null, 0 );
-                }
-                else
-                {
-                    oldValue = value;
-                }
-            }
-        }
-        else
-        {
-            // Now we can inject the value
-            oldValue = newLeaf.values[pos].getValue( btree );
-            newLeaf.values[pos] = btree.createValueHolder( value );
+            valueHolder.add( value );
+            newLeaf.values[pos] = valueHolder;
         }
 
         // Create the result
-        InsertResult<K, V> result = new ModifyResult<K, V>( newLeaf, oldValue );
+        InsertResult<K, V> result = new ModifyResult<K, V>( newLeaf, ( V ) valueHolder );
         result.addCopiedPage( this );
 
         return result;
@@ -868,25 +765,13 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         // First copy the current page, but add one element in the copied page
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems + 1 );
 
-        // Atm, store the value in memory
-
-        ElementHolder<V, K, V> valueHolder = null;
-
-        if ( btree.isAllowDuplicates() )
-        {
-            valueHolder = new MultipleMemoryHolder<K, V>( btree, value );
-        }
-        else
-        {
-            valueHolder = new MemoryHolder<K, V>( btree, value );
-        }
-
-        //ValueHolder<K, V> valueHolder = btree.createHolder( value );
+        // Create the value holder
+        ValueHolder<V> valueHolder = btree.createValueHolder( value );
 
         // Deal with the special case of an empty page
         if ( nbElems == 0 )
         {
-            newLeaf.keys[0] = new KeyHolder<K>( key, btree.getKeySerializer() );
+            newLeaf.keys[0] = new KeyHolder<K>( btree.getKeySerializer(), key );
 
             newLeaf.values[0] = valueHolder;
         }
@@ -897,7 +782,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             System.arraycopy( values, 0, newLeaf.values, 0, pos );
 
             // Add the new element
-            newLeaf.keys[pos] = new KeyHolder<K>( key, btree.getKeySerializer() );
+            newLeaf.keys[pos] = new KeyHolder<K>( btree.getKeySerializer(), key );
             newLeaf.values[pos] = valueHolder;
 
             // And copy the remaining elements
@@ -929,7 +814,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         int middle = btree.getPageSize() >> 1;
         Leaf<K, V> leftLeaf = null;
         Leaf<K, V> rightLeaf = null;
-        ElementHolder<V, K, V> valueHolder = btree.createValueHolder( value );
+        ValueHolder<V> valueHolder = btree.createValueHolder( value );
 
         // Determinate where to store the new value
         if ( pos <= middle )
@@ -942,7 +827,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             System.arraycopy( values, 0, leftLeaf.values, 0, pos );
 
             // Add the new element
-            leftLeaf.keys[pos] = new KeyHolder<K>( key, btree.getKeySerializer() );
+            leftLeaf.keys[pos] = new KeyHolder<K>( btree.getKeySerializer(), key );
             leftLeaf.values[pos] = valueHolder;
 
             // And copy the remaining elements
@@ -975,7 +860,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             System.arraycopy( values, middle, rightLeaf.values, 0, rightPos );
 
             // Add the new element
-            rightLeaf.keys[rightPos] = new KeyHolder<K>( key, btree.getKeySerializer() );
+            rightLeaf.keys[rightPos] = new KeyHolder<K>( btree.getKeySerializer(), key );
             rightLeaf.values[rightPos] = valueHolder;
 
             // And copy the remaining elements
@@ -1016,19 +901,25 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      */
     public Tuple<K, V> findLeftMost() throws IOException
     {
-        V val = null;
+        ValueCursor<V> cursor = values[0].getCursor();
 
-        if ( btree.isAllowDuplicates() )
+        try
         {
-            BTree<V, V> dupTree = ( BTree<V, V> ) values[0].getValue( btree );
-            val = dupTree.rootPage.getLeftMostKey();
+            cursor.beforeFirst();
+            if ( cursor.hasNext() )
+            {
+                return new Tuple<K, V>( keys[0].getKey(), cursor.next() );
+            }
+            else
+            {
+                // Null value
+                return new Tuple<K, V>( keys[0].getKey(), null );
+            }
         }
-        else
+        finally
         {
-            val = values[0].getValue( btree );
+            cursor.close();
         }
-
-        return new Tuple<K, V>( keys[0].getKey(), val );
     }
 
 
@@ -1037,19 +928,26 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      */
     public Tuple<K, V> findRightMost() throws EndOfFileExceededException, IOException
     {
-        V val = null;
+        ValueCursor<V> cursor = values[0].getCursor();
 
-        if ( btree.isAllowDuplicates() )
+        try
         {
-            BTree<V, V> dupTree = ( BTree<V, V> ) values[nbElems - 1].getValue( btree );
-            val = dupTree.rootPage.getRightMostKey();
-        }
-        else
-        {
-            val = values[nbElems - 1].getValue( btree );
-        }
+            cursor.afterLast();
 
-        return new Tuple<K, V>( keys[nbElems - 1].getKey(), val );
+            if ( cursor.hasPrev() )
+            {
+                return new Tuple<K, V>( keys[0].getKey(), cursor.prev() );
+            }
+            else
+            {
+                // Null value
+                return new Tuple<K, V>( keys[0].getKey(), null );
+            }
+        }
+        finally
+        {
+            cursor.close();
+        }
     }
 
 

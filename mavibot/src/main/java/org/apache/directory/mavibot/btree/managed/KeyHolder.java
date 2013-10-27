@@ -21,10 +21,8 @@ package org.apache.directory.mavibot.btree.managed;
 
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
-import org.apache.directory.mavibot.btree.util.Strings;
 
 
 /**
@@ -40,7 +38,7 @@ public class KeyHolder<K>
     private K key;
 
     /** The ByteBuffer storing the key */
-    private ByteBuffer raw;
+    private byte[] raw;
 
     /** The Key serializer */
     private ElementSerializer<K> keySerializer;
@@ -48,36 +46,27 @@ public class KeyHolder<K>
 
     /**
      * Create a new KeyHolder instance
-     * @param key The key to store
      * @param keySerializer The KeySerializer instance
+     * @param key The key to store
      */
-    /* No Qualifier */KeyHolder( K key, ElementSerializer<K> keySerializer )
+    /* No Qualifier */KeyHolder( ElementSerializer<K> keySerializer, K key )
     {
         this.key = key;
         this.keySerializer = keySerializer;
-        raw = ByteBuffer.wrap( keySerializer.serialize( key ) );
+        raw = keySerializer.serialize( key );
     }
 
 
     /**
      * Create a new KeyHolder instance
-     * @param key The key to store
-     * @param raw the bytes representing the serialized key
      * @param keySerializer The KeySerializer instance
+     * @param raw the bytes representing the serialized key
      */
-    /* No Qualifier */KeyHolder( K key, ByteBuffer raw, ElementSerializer<K> keySerializer )
+    /* No Qualifier */KeyHolder( ElementSerializer<K> keySerializer, byte[] raw )
     {
-        this.key = key;
+        this.key = null;
         this.keySerializer = keySerializer;
-
-        if ( raw != null )
-        {
-            this.raw = raw;
-        }
-        else
-        {
-            raw = ByteBuffer.wrap( keySerializer.serialize( key ) );
-        }
+        this.raw = raw;
     }
 
 
@@ -90,7 +79,7 @@ public class KeyHolder<K>
         {
             try
             {
-                key = keySerializer.deserialize( raw );
+                key = keySerializer.fromBytes( raw );
             }
             catch ( IOException ioe )
             {
@@ -108,14 +97,14 @@ public class KeyHolder<K>
     public void setKey( K key )
     {
         this.key = key;
-        raw = ByteBuffer.wrap( keySerializer.serialize( key ) );
+        raw = keySerializer.serialize( key );
     }
 
 
     /**
      * @return The internal serialized byte[]
      */
-    /* No qualifier */ByteBuffer getBuffer()
+    /* No qualifier */byte[] getBuffer()
     {
         return raw;
     }
@@ -135,17 +124,18 @@ public class KeyHolder<K>
             sb.append( key );
             sb.append( ", " );
         }
-
-        if ( raw.isDirect() )
+        else
         {
-            byte[] bytes = new byte[raw.limit()];
-            raw.get( bytes );
-            raw.rewind();
-            Strings.dumpBytes( bytes );
+            sb.append( "null," );
+        }
+
+        if ( raw != null )
+        {
+            sb.append( raw.length );
         }
         else
         {
-            sb.append( Strings.dumpBytes( raw.array() ) );
+            sb.append( "null" );
         }
 
         sb.append( "]" );

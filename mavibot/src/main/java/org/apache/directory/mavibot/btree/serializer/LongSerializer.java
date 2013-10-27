@@ -127,6 +127,44 @@ public class LongSerializer extends AbstractElementSerializer<Long>
 
 
     /**
+     * A method used to deserialize a Long from a byte array.
+     * @param in The byte array containing the Long
+     * @param start the position in the byte[] we will deserialize the long from
+     * @return A Long
+     */
+    public Long fromBytes( byte[] in )
+    {
+        return deserialize( in, 0 );
+    }
+
+
+    /**
+     * A method used to deserialize an Integer from a byte array.
+     * @param in The byte array containing the Integer
+     * @param start the position in the byte[] we will deserialize the long from
+     * @return An Integer
+     */
+    public Long fromBytes( byte[] in, int start )
+    {
+        if ( ( in == null ) || ( in.length < 8 + start ) )
+        {
+            throw new RuntimeException( "Cannot extract a Long from a buffer with not enough bytes" );
+        }
+
+        long result = ( ( long ) in[start] << 56 ) +
+            ( ( in[start + 1] & 0xFFL ) << 48 ) +
+            ( ( in[start + 2] & 0xFFL ) << 40 ) +
+            ( ( in[start + 3] & 0xFFL ) << 32 ) +
+            ( ( in[start + 4] & 0xFFL ) << 24 ) +
+            ( ( in[start + 5] & 0xFFL ) << 16 ) +
+            ( ( in[start + 6] & 0xFFL ) << 8 ) +
+            ( in[start + 7] & 0xFFL );
+
+        return result;
+    }
+
+
+    /**
      * {@inheritDoc}
      */
     public Long deserialize( BufferHandler bufferHandler ) throws IOException

@@ -75,7 +75,6 @@ public class BulkDataSorterTest
         for ( int i = 0; i < count; i++ )
         {
             int x = random.nextInt( 100 );
-            //System.out.println(x);
 
             Tuple<Integer, Integer> t = new Tuple<Integer, Integer>( x, x );
 
@@ -127,7 +126,6 @@ public class BulkDataSorterTest
         for ( int i = 0; i < count; i++ )
         {
             int x = random.nextInt( randUpper );
-            //System.out.println(x);
 
             Tuple<Integer, Integer> t = new Tuple<Integer, Integer>( x, x );
 
@@ -156,8 +154,6 @@ public class BulkDataSorterTest
             {
                 assertTrue( prev <= t.getKey() );
             }
-
-            //System.out.println(t);
         }
 
         deleteDir( bds.getWorkDir() );

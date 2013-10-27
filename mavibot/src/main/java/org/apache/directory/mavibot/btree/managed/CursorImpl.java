@@ -22,14 +22,13 @@ package org.apache.directory.mavibot.btree.managed;
 
 import static org.apache.directory.mavibot.btree.managed.InternalUtil.changeNextDupsContainer;
 import static org.apache.directory.mavibot.btree.managed.InternalUtil.changePrevDupsContainer;
-import static org.apache.directory.mavibot.btree.managed.InternalUtil.setDupsContainer;
 
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.NoSuchElementException;
 
-import org.apache.directory.mavibot.btree.Cursor;
 import org.apache.directory.mavibot.btree.Tuple;
+import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
 
@@ -44,7 +43,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class CursorImpl<K, V> implements Cursor<K, V>
+public class CursorImpl<K, V> implements TupleCursor<K, V>
 {
     /** The transaction used for this cursor */
     private Transaction<K, V> transaction;
@@ -124,40 +123,9 @@ public class CursorImpl<K, V> implements Cursor<K, V>
         Leaf<K, V> leaf = ( Leaf<K, V> ) ( parentPos.page );
         tuple.setKey( leaf.keys[parentPos.pos].getKey() );
 
-        if ( allowDuplicates )
-        {
-            MultipleMemoryHolder<K, V> mvHolder = ( MultipleMemoryHolder<K, V> ) leaf.values[parentPos.pos];
-
-            if ( mvHolder.isSingleValue() )
-            {
-                tuple.setValue( mvHolder.getValue( btree ) );
-                parentPos.pos++;
-            }
-            else
-            {
-                setDupsContainer( parentPos, btree );
-
-                // can happen if next() is called after prev()
-                if ( parentPos.dupPos < 0 )
-                {
-                    parentPos.dupPos = 0;
-                }
-
-                tuple.setValue( parentPos.dupsContainer.rootPage.getKey( parentPos.dupPos ) );
-                parentPos.dupPos++;
-
-                if ( parentPos.dupsContainer.getNbElems() == parentPos.dupPos )
-                {
-                    parentPos.pos++;
-                    changeNextDupsContainer( parentPos, btree );
-                }
-            }
-        }
-        else
-        {
-            tuple.setValue( leaf.values[parentPos.pos].getValue( btree ) );
-            parentPos.pos++;
-        }
+        ValueHolder<V> valueHolder = leaf.values[parentPos.pos];
+        tuple.setValue( valueHolder.getCursor().next() );
+        parentPos.pos++;
 
         return tuple;
     }
@@ -309,86 +277,9 @@ public class CursorImpl<K, V> implements Cursor<K, V>
         }
 
         Leaf<K, V> leaf = ( Leaf<K, V> ) ( parentPos.page );
-
-        if ( allowDuplicates )
-        {
-            boolean posDecremented = false;
-
-            // can happen if prev() was called after next()
-            if ( parentPos.pos == parentPos.page.getNbElems() )
-            {
-                parentPos.pos--;
-                posDecremented = true;
-            }
-
-            MultipleMemoryHolder<K, V> mvHolder = ( MultipleMemoryHolder<K, V> ) leaf.values[parentPos.pos];
-
-            boolean prevHasSubtree = false;
-            // if the current key has only one value then advance to previous position
-            if ( mvHolder.isSingleValue() )
-            {
-                if ( !posDecremented )
-                {
-                    parentPos.pos--;
-                    mvHolder = ( MultipleMemoryHolder<K, V> ) leaf.values[parentPos.pos];
-                    posDecremented = true;
-                }
-
-                if ( mvHolder.isSingleValue() )
-                {
-                    tuple.setKey( leaf.keys[parentPos.pos].getKey() );
-                    tuple.setValue( mvHolder.getValue( btree ) );
-                }
-                else
-                {
-                    prevHasSubtree = true;
-                }
-            }
-            else
-            {
-                prevHasSubtree = true;
-            }
-
-            if ( prevHasSubtree )
-            {
-                setDupsContainer( parentPos, btree );
-
-                if ( parentPos.dupPos == parentPos.dupsContainer.getNbElems() )
-                {
-                    parentPos.dupPos--;
-                }
-                else if ( parentPos.dupPos == 0 )
-                {
-                    changePrevDupsContainer( parentPos, btree );
-                    parentPos.pos--;
-
-                    if ( parentPos.dupsContainer != null )
-                    {
-                        parentPos.dupPos--;
-                    }
-                }
-                else
-                {
-                    parentPos.dupPos--;
-                }
-
-                tuple.setKey( leaf.keys[parentPos.pos].getKey() );
-                if ( parentPos.dupsContainer != null )
-                {
-                    tuple.setValue( parentPos.dupsContainer.rootPage.getKey( parentPos.dupPos ) );
-                }
-                else
-                {
-                    tuple.setValue( leaf.values[parentPos.pos].getValue( btree ) );
-                }
-            }
-        }
-        else
-        {
-            parentPos.pos--;
-            tuple.setKey( leaf.keys[parentPos.pos].getKey() );
-            tuple.setValue( leaf.values[parentPos.pos].getValue( btree ) );
-        }
+        ValueHolder<V> valueHolder = leaf.values[parentPos.pos];
+        tuple.setKey( leaf.keys[parentPos.pos].getKey() );
+        tuple.setValue( valueHolder.getCursor().next() );
 
         return tuple;
     }

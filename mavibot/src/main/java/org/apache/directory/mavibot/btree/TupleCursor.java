@@ -32,51 +32,79 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
  * <p>
  *
  * @param <K> The type for the Key
+ * @param <V> The type for the stored value
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public interface Cursor<K>
+public interface TupleCursor<K, V> extends Cursor<K>
 {
     /**
-     * Tells if the cursor can return a next element
-     * @return true if there are some more elements
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
-     */
-    boolean hasNext() throws EndOfFileExceededException, IOException;
-
-
-    /**
-     * Tells if the cursor can return a previous element
-     * @return true if there are some more elements
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
-     */
-    boolean hasPrev() throws EndOfFileExceededException, IOException;
-
-
-    /**
-     * Closes the cursor, thus releases the associated transaction
-     */
-    void close();
-
-
-    /**
-     * moves the cursor to the same position that was given at the time of instantiating the cursor.
+     * Find the next key/value
      * 
-     *  For example, if the cursor was created using browse() method, then beforeFirst() will
-     *  place the cursor before the 0th position.
+     * @return A Tuple containing the found key and value
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
+     */
+    Tuple<K, V> next() throws EndOfFileExceededException, IOException;
+
+
+    /**
+     * Find the previous key/value
+     * 
+     * @return A Tuple containing the found key and value
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
+     */
+    Tuple<K, V> prev() throws EndOfFileExceededException, IOException;
+
+
+    /**
+     * @return The revision this cursor is based on
+     */
+    long getRevision();
+
+
+    /**
+     * @return The creation date for this cursor
+     */
+    long getCreationDate();
+
+
+    /**
+     * Moves the cursor to the next non-duplicate key.
+
+     * If the BTree contains 
+     * 
+     *  <ul>
+     *    <li><1,0></li>
+     *    <li><1,1></li>
+     *    <li><2,0></li>
+     *    <li><2,1></li>
+     *  </ul>
+     *   
+     *  and cursor is present at <1,0> then the cursor will move to <2,0>
      *  
-     *  If the cursor was created using browseFrom(K), then calling beforeFirst() will reset the position
-     *  to the just before the position where K is present.
-     */
-    void beforeFirst() throws IOException;
-
-
-    /**
-     * Places the cursor at the end of the last position
-     * 
+     * @throws EndOfFileExceededException
      * @throws IOException
      */
-    public void afterLast() throws IOException;
+    void moveToNextNonDuplicateKey() throws EndOfFileExceededException, IOException;
+
+
+    /**
+     * Moves the cursor to the previous non-duplicate key
+     * If the BTree contains 
+     * 
+     *  <ul>
+     *    <li><1,0></li>
+     *    <li><1,1></li>
+     *    <li><2,0></li>
+     *    <li><2,1></li>
+     *  </ul>
+     *   
+     *  and cursor is present at <2,1> then the cursor will move to <1,1>
+     * 
+     * @throws EndOfFileExceededException
+     * @throws IOException
+     */
+    void moveToPrevNonDuplicateKey() throws EndOfFileExceededException, IOException;
 }

@@ -28,8 +28,8 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.NoSuchElementException;
 
-import org.apache.directory.mavibot.btree.Cursor;
 import org.apache.directory.mavibot.btree.Tuple;
+import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
 
@@ -44,7 +44,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class CursorImpl<K, V> implements Cursor<K, V>
+public class CursorImpl<K, V> implements TupleCursor<K, V>
 {
     /** The transaction used for this cursor */
     private Transaction<K, V> transaction;

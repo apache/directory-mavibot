@@ -21,7 +21,6 @@ package org.apache.directory.mavibot.btree.managed;
 
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.LinkedList;
 
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
@@ -227,11 +226,12 @@ public class BTreeFactory
     /**
      * Set the key at a give position
      * @param pos The position in the keys array
-     * @param key the key to inject
+     * @param pos the position of this key in the page
+     * @param buffer the byte[] containing the serialized key
      */
-    public static <K, V> void setKey( Page<K, V> page, int pos, ByteBuffer buffer, K key )
+    public static <K, V> void setKey( Page<K, V> page, int pos, byte[] buffer )
     {
-        ( ( AbstractPage<K, V> ) page ).setKey( pos, buffer, key );
+        ( ( AbstractPage<K, V> ) page ).setKey( pos, buffer );
     }
 
 
@@ -240,7 +240,7 @@ public class BTreeFactory
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    public static <K, V> void setValue( Leaf<K, V> page, int pos, ElementHolder<V, K, V> value )
+    public static <K, V> void setValue( Leaf<K, V> page, int pos, ValueHolder<V> value )
     {
         page.setValue( pos, value );
     }

@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.LinkedList;
 
 import org.apache.directory.mavibot.btree.Tuple;
+import org.apache.directory.mavibot.btree.ValueCursor;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
@@ -111,7 +112,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @throws IOException If we have an error while trying to access the page
      * @throws IllegalArgumentException If duplicates are not enabled 
      */
-    DuplicateKeyVal<V> getValues( K key ) throws KeyNotFoundException, IOException, IllegalArgumentException;
+    ValueCursor<V> getValues( K key ) throws KeyNotFoundException, IOException, IllegalArgumentException;
 
 
     /**

@@ -86,6 +86,42 @@ public class RevisionNameSerializer extends AbstractElementSerializer<RevisionNa
 
 
     /**
+     * A static method used to deserialize a RevisionName from a byte array.
+     * 
+     * @param in The byte array containing the RevisionName
+     * @return A RevisionName instance
+     */
+    public RevisionName fromBytes( byte[] in )
+    {
+        return deserialize( in, 0 );
+    }
+
+
+    /**
+     * A static method used to deserialize a RevisionName from a byte array.
+     * 
+     * @param in The byte array containing the RevisionName
+     * @param start the position in the byte[] we will deserialize the RevisionName from
+     * @return A RevisionName instance
+     */
+    public RevisionName fromBytes( byte[] in, int start )
+    {
+        // The buffer must be 8 bytes plus 4 bytes long (the revision is a long, and the name is a String
+        if ( ( in == null ) || ( in.length < 12 + start ) )
+        {
+            throw new RuntimeException( "Cannot extract a RevisionName from a buffer with not enough bytes" );
+        }
+
+        long revision = LongSerializer.deserialize( in, start );
+        String name = StringSerializer.deserialize( in, 8 + start );
+
+        RevisionName revisionName = new RevisionName( revision, name );
+
+        return revisionName;
+    }
+
+
+    /**
      * {@inheritDoc}
      */
     @Override

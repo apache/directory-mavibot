@@ -92,6 +92,40 @@ public class StringSerializer extends AbstractElementSerializer<String>
 
 
     /**
+     * A method used to deserialize a String from a byte array.
+     * @param in The byte array containing the String
+     * @return A String
+     */
+    public String fromBytes( byte[] in )
+    {
+        return deserialize( in, 0 );
+    }
+
+
+    /**
+     * A method used to deserialize a String from a byte array.
+     * @param in The byte array containing the String
+     * @return A String
+     */
+    public String fromBytes( byte[] in, int start )
+    {
+        int length = IntSerializer.deserialize( in, start );
+
+        if ( length == 0xFFFFFFFF )
+        {
+            return null;
+        }
+
+        if ( in.length < length + start )
+        {
+            throw new RuntimeException( "Cannot extract a String from a buffer with not enough bytes" );
+        }
+
+        return Strings.utf8ToString( in, start + 4, length );
+    }
+
+
+    /**
      * Serialize a String. We store the length on 4 bytes, then the String
      * 
      * @param buffer the Buffer that will contain the serialized value

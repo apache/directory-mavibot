@@ -76,13 +76,15 @@ public class BTreeBuilder<K, V>
         lstLeaves.add( leaf1 );
 
         int leafIndex = 0;
+
         while ( sortedTupleItr.hasNext() )
         {
             Tuple<K, V> tuple = sortedTupleItr.next();
 
             setKey( leaf1, leafIndex, tuple.getKey() );
 
-            MemoryHolder<K, V> eh = new MemoryHolder<K, V>( btree, tuple.getValue() );
+            ValueHolder<V> eh = new ValueHolder<V>( btree.getRecordManager(), btree.getValueSerializer(),
+                tuple.getValue() );
 
             setValue( leaf1, leafIndex, eh );
 
@@ -111,12 +113,11 @@ public class BTreeBuilder<K, V>
                 lastLeaf.nbElems = n;
                 KeyHolder<K>[] keys = lastLeaf.keys;
 
-                Class<?> keyType = btree.getKeyType();
-                lastLeaf.keys = ( KeyHolder[] ) Array.newInstance( keyType, n );
+                lastLeaf.keys = ( KeyHolder[] ) Array.newInstance( KeyHolder.class, n );
                 System.arraycopy( keys, 0, lastLeaf.keys, 0, n );
 
-                ElementHolder<V, K, V>[] values = lastLeaf.values;
-                lastLeaf.values = ( MemoryHolder<K, V>[] ) Array.newInstance( MemoryHolder.class, n );
+                ValueHolder<V>[] values = lastLeaf.values;
+                lastLeaf.values = ( ValueHolder<V>[] ) Array.newInstance( ValueHolder.class, n );
                 System.arraycopy( values, 0, lastLeaf.values, 0, n );
 
                 break;
@@ -179,8 +180,7 @@ public class BTreeBuilder<K, V>
                 lastNode.nbElems = n;
                 KeyHolder<K>[] keys = lastNode.keys;
 
-                Class<?> keyType = btree.getKeyType();
-                lastNode.keys = ( KeyHolder[] ) Array.newInstance( keyType, n );
+                lastNode.keys = ( KeyHolder[] ) Array.newInstance( KeyHolder.class, n );
                 System.arraycopy( keys, 0, lastNode.keys, 0, n );
 
                 break;

@@ -64,6 +64,26 @@ public interface ElementSerializer<T>
 
 
     /**
+     * Deserialize an element from a byte[]
+     * 
+     * @param buffer The incoming byte[]
+     * @return The deserialized element
+     * @throws IOException If the deserialization failed
+     */
+    T fromBytes( byte[] buffer ) throws IOException;
+
+
+    /**
+     * Deserialize an element from a byte[]
+     * 
+     * @param buffer The incoming byte[]
+     * @return The deserialized element
+     * @throws IOException If the deserialization failed
+     */
+    T fromBytes( byte[] buffer, int pos ) throws IOException;
+
+
+    /**
      * Returns the comparison of two types. <br/>
      * <ul>
      * <li>If type1 < type2, return -1</li>

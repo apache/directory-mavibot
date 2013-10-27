@@ -112,6 +112,34 @@ public class ByteSerializer extends AbstractElementSerializer<Byte>
 
 
     /**
+     * A method used to deserialize a Byte from a byte array.
+     * @param in The byte array containing the Byte
+     * @return A Byte
+     */
+    public Byte fromBytes( byte[] in )
+    {
+        return deserialize( in, 0 );
+    }
+
+
+    /**
+     * A method used to deserialize a Byte from a byte array.
+     * @param in The byte array containing the Byte
+     * @param start the position in the byte[] we will deserialize the byte from
+     * @return A Byte
+     */
+    public Byte fromBytes( byte[] in, int start )
+    {
+        if ( ( in == null ) || ( in.length < 1 + start ) )
+        {
+            throw new RuntimeException( "Cannot extract a Byte from a buffer with not enough bytes" );
+        }
+
+        return in[start];
+    }
+
+
+    /**
      * {@inheritDoc}
      */
     public Byte deserialize( ByteBuffer buffer ) throws IOException

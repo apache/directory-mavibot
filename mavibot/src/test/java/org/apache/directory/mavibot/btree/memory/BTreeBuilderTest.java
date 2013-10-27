@@ -27,8 +27,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.directory.mavibot.btree.Cursor;
 import org.apache.directory.mavibot.btree.Tuple;
+import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.junit.Test;
 
@@ -62,8 +62,9 @@ public class BTreeBuilderTest
 
         assertEquals( 1, btree.rootPage.findLeftMost().getKey().intValue() );
 
-        Cursor<Integer, Integer> cursor = btree.browse();
+        TupleCursor<Integer, Integer> cursor = btree.browse();
         int i = 0;
+
         while ( cursor.hasNext() )
         {
             Tuple<Integer, Integer> expected = sortedTuple.get( i++ );

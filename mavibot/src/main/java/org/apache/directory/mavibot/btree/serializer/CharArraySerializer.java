@@ -137,6 +137,82 @@ public class CharArraySerializer extends AbstractElementSerializer<char[]>
 
 
     /**
+     * A method used to deserialize a char array from a byte array.
+     * 
+     * @param in The byte array containing the char array
+     * @return A char[]
+     */
+    public char[] fromBytes( byte[] in, int start )
+    {
+        if ( ( in == null ) || ( in.length - start < 4 ) )
+        {
+            throw new RuntimeException( "Cannot extract a byte[] from a buffer with not enough bytes" );
+        }
+
+        int len = IntSerializer.deserialize( in, start );
+
+        switch ( len )
+        {
+            case 0:
+                return new char[]
+                    {};
+
+            case -1:
+                return null;
+
+            default:
+                char[] result = new char[len];
+
+                for ( int i = 4; i < len * 2 + 4; i += 2 )
+                {
+                    result[i] = Character.valueOf( ( char ) ( ( in[i] << 8 ) +
+                        ( in[i + 1] & 0xFF ) ) );
+                }
+
+                return result;
+        }
+    }
+
+
+    /**
+     * A method used to deserialize a char array from a byte array.
+     * 
+     * @param in The byte array containing the char array
+     * @return A char[]
+     */
+    public char[] fromBytes( byte[] in )
+    {
+        if ( ( in == null ) || ( in.length < 4 ) )
+        {
+            throw new RuntimeException( "Cannot extract a byte[] from a buffer with not enough bytes" );
+        }
+
+        int len = IntSerializer.deserialize( in );
+
+        switch ( len )
+        {
+            case 0:
+                return new char[]
+                    {};
+
+            case -1:
+                return null;
+
+            default:
+                char[] result = new char[len];
+
+                for ( int i = 4; i < len * 2 + 4; i += 2 )
+                {
+                    result[i] = Character.valueOf( ( char ) ( ( in[i] << 8 ) +
+                        ( in[i + 1] & 0xFF ) ) );
+                }
+
+                return result;
+        }
+    }
+
+
+    /**
      * {@inheritDoc}
      */
     public char[] deserialize( BufferHandler bufferHandler ) throws IOException

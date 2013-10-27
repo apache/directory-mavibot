@@ -131,6 +131,13 @@ public class RecordManager
     /** A global buffer used to store the header */
     private static ByteBuffer HEADER_BUFFER;
 
+    /** A static buffer used to store the header */
+    private static byte[] HEADER_BYTES;
+
+    /** The length of an Offset, as a nagative value */
+    private static byte[] LONG_LENGTH = new byte[]
+        { ( byte ) 0xFF, ( byte ) 0xFF, ( byte ) 0xFF, ( byte ) 0xF8 };
+
     /** The RecordManager underlying page size. */
     private int pageSize = DEFAULT_PAGE_SIZE;
 
@@ -180,6 +187,7 @@ public class RecordManager
         managedBTrees = new LinkedHashMap<String, BTree<Object, Object>>();
 
         HEADER_BUFFER = ByteBuffer.allocate( pageSize );
+        HEADER_BYTES = new byte[pageSize];
         HEADER_SIZE = pageSize;
 
         // Open the file or create it
@@ -580,94 +588,140 @@ public class RecordManager
         // this ByteBuffer
         ByteBuffer byteBuffer = readBytes( pageIos, position );
 
-        // Now, deserialize the data block
+        // Now, deserialize the data block. If the number of elements
+        // is positive, it's a Leaf, otherwise it's a Node
+        // Note that only a leaf can have 0 elements, and it's the root page then.
         if ( nbElems >= 0 )
         {
-            // Its a leaf, create it
-            page = BTreeFactory.createLeaf( btree, revision, nbElems );
-
-            // Store the page offset on disk
-            ( ( AbstractPage<K, V> ) page ).setOffset( pageIos[0].getOffset() );
-            ( ( AbstractPage<K, V> ) page ).setLastOffset( pageIos[pageIos.length - 1].getOffset() );
-
-            int[] keyLengths = new int[nbElems];
-            int[] valueLengths = new int[nbElems];
-
-            // Read each key and value
-            for ( int i = 0; i < nbElems; i++ )
-            {
-                //valueLengths[i] = byteBuffer.getInt();
-
-                ElementHolder<V, K, V> valueHolder;
-
-                if ( btree.isAllowDuplicates() )
-                {
-                    byte flag = byteBuffer.get();
-
-                    if ( flag == 0 )
-                    {
-                        V singleValue = btree.getValueSerializer().deserialize( byteBuffer );
-                        valueHolder = new MultipleMemoryHolder( btree, singleValue );
-                    }
-                    else if ( flag == 1 )
-                    {
-                        long value = OFFSET_SERIALIZER.deserialize( byteBuffer );
-
-                        BTree<K, V> dupValueContainer = loadDupsBTree( value );
-
-                        valueHolder = new MultipleMemoryHolder( btree, dupValueContainer );
-                    }
-                    else
-                    {
-                        throw new IllegalStateException( "Unknown multiple value holder flag " + flag );
-                    }
-                }
-                else
-                {
-                    Object value = btree.getValueSerializer().deserialize( byteBuffer );
-
-                    valueHolder = new MemoryHolder( btree, value );
-                }
-
-                BTreeFactory.setValue( ( ( Leaf<K, V> ) page ), i, valueHolder );
-
-                keyLengths[i] = byteBuffer.getInt();
-                ByteBuffer slice = byteBuffer.slice();
-                slice.limit( keyLengths[i] );
-                byteBuffer.position( byteBuffer.position() + keyLengths[i] );
-                BTreeFactory.setKey( page, i, slice, null );
-            }
+            // It's a leaf
+            page = readLeaf( btree, nbElems, revision, byteBuffer, pageIos );
         }
         else
         {
             // It's a node
-            int nodeNbElems = -nbElems;
-
-            page = BTreeFactory.createNode( btree, revision, nodeNbElems );
-
-            // Read each value and key
-            for ( int i = 0; i < nodeNbElems; i++ )
-            {
-                // This is an Offset
-                long offset = OFFSET_SERIALIZER.deserialize( byteBuffer );
-                long lastOffset = OFFSET_SERIALIZER.deserialize( byteBuffer );
-
-                ElementHolder valueHolder = new PageHolder( btree, null, offset, lastOffset );
-                ( ( Node<K, V> ) page ).setValue( i, valueHolder );
-
-                K key = btree.getKeySerializer().deserialize( byteBuffer );
-                BTreeFactory.setKey( page, i, key );
-            }
-
-            // and read the last value, as it's a node
-            long offset = OFFSET_SERIALIZER.deserialize( byteBuffer );
-            long lastOffset = OFFSET_SERIALIZER.deserialize( byteBuffer );
-
-            ElementHolder valueHolder = new PageHolder( btree, null, offset, lastOffset );
-            ( ( Node<K, V> ) page ).setValue( nodeNbElems, valueHolder );
+            page = readNode( btree, -nbElems, revision, byteBuffer, pageIos );
         }
 
         return page;
+    }
+
+
+    /**
+     * Deserialize a Leaf from some PageIOs
+     */
+    private <K, V> Leaf<K, V> readLeaf( BTree<K, V> btree, int nbElems, long revision, ByteBuffer byteBuffer,
+        PageIO[] pageIos )
+    {
+        // Its a leaf, create it
+        Leaf<K, V> leaf = BTreeFactory.createLeaf( btree, revision, nbElems );
+
+        // Store the page offset on disk
+        leaf.setOffset( pageIos[0].getOffset() );
+        leaf.setLastOffset( pageIos[pageIos.length - 1].getOffset() );
+
+        int[] keyLengths = new int[nbElems];
+        int[] valueLengths = new int[nbElems];
+
+        // Read each key and value
+        for ( int i = 0; i < nbElems; i++ )
+        {
+            // Read the number of values
+            int nbValues = byteBuffer.getInt();
+            ValueHolder<V> valueHolder = null;
+
+            if ( nbValues < 0 )
+            {
+                // This is a sub-btree
+                long btreeOffset = byteBuffer.getLong();
+
+                // Load the BTree now.
+                try
+                {
+                    PageIO[] rootPageIos = readPageIOs( btreeOffset, Long.MAX_VALUE );
+
+                    BTree<V, V> subBtree = BTreeFactory.createBTree();
+                    subBtree.setBtreeOffset( btreeOffset );
+
+                    try
+                    {
+                        loadBTree( rootPageIos, subBtree );
+                    }
+                    catch ( Exception e )
+                    {
+                        // should not happen
+                        throw new RuntimeException( e );
+                    }
+
+                    valueHolder = new ValueHolder<V>( this, btree.getValueSerializer(), subBtree );
+
+                    valueHolder.setSubBtree( subBtree );
+                }
+                catch ( EndOfFileExceededException e1 )
+                {
+                    // TODO Auto-generated catch block
+                    e1.printStackTrace();
+                }
+                catch ( IOException e1 )
+                {
+                    // TODO Auto-generated catch block
+                    e1.printStackTrace();
+                }
+            }
+            else
+            {
+                // This is an array
+                // Read the value's array length
+                valueLengths[i] = byteBuffer.getInt();
+
+                // This is an Array of values, read the byte[] associated with it
+                byte[] valueBytes = new byte[valueLengths[i]];
+                byteBuffer.get( valueBytes );
+                valueHolder = new ValueHolder<V>( this, btree.getValueSerializer(), false, nbValues,
+                    valueBytes );
+            }
+
+            BTreeFactory.setValue( leaf, i, valueHolder );
+
+            keyLengths[i] = byteBuffer.getInt();
+            byte[] data = new byte[keyLengths[i]];
+            byteBuffer.get( data );
+            BTreeFactory.setKey( leaf, i, data );
+        }
+
+        return leaf;
+    }
+
+
+    /**
+     * Deserialize a Node from some PageIos
+     */
+    private <K, V> Node<K, V> readNode( BTree<K, V> btree, int nbElems, long revision, ByteBuffer byteBuffer,
+        PageIO[] pageIos ) throws IOException
+    {
+        Node<K, V> node = BTreeFactory.createNode( btree, revision, nbElems );
+
+        // Read each value and key
+        for ( int i = 0; i < nbElems; i++ )
+        {
+            // This is an Offset
+            long offset = OFFSET_SERIALIZER.deserialize( byteBuffer );
+            long lastOffset = OFFSET_SERIALIZER.deserialize( byteBuffer );
+
+            PageHolder<K, V> valueHolder = new PageHolder<K, V>( btree, null, offset, lastOffset );
+            node.setValue( i, valueHolder );
+
+            K key = btree.getKeySerializer().deserialize( byteBuffer );
+            BTreeFactory.setKey( node, i, key );
+        }
+
+        // and read the last value, as it's a node
+        long offset = OFFSET_SERIALIZER.deserialize( byteBuffer );
+        long lastOffset = OFFSET_SERIALIZER.deserialize( byteBuffer );
+
+        PageHolder<K, V> valueHolder = new PageHolder<K, V>( btree, null, offset, lastOffset );
+        node.setValue( nbElems, valueHolder );
+
+        return node;
     }
 
 
@@ -1103,27 +1157,7 @@ public class RecordManager
 
         if ( nbElems == 0 )
         {
-            // We will have 1 single page if we have no elements
-            PageIO[] pageIos = new PageIO[1];
-
-            // This is either a new root page or a new page that will be filled later
-            PageIO newPage = fetchNewPage();
-
-            // We need first to create a byte[] that will contain all the data
-            // For the root page, this is easy, as we only have to store the revision, 
-            // and the number of elements, which is 0.
-            long position = 0L;
-
-            position = store( position, revision, newPage );
-            position = store( position, nbElems, newPage );
-
-            // Update the page size now
-            newPage.setSize( ( int ) position );
-
-            // Insert the result into the array of PageIO
-            pageIos[0] = newPage;
-
-            return pageIos;
+            return serializeRootPage( revision );
         }
         else
         {
@@ -1160,101 +1194,27 @@ public class RecordManager
             serializedSize += buffer.length;
 
             // Iterate on the keys and values. We first serialize the value, then the key
-            // until we are done with all of them. If w are serializing a page, we have
+            // until we are done with all of them. If we are serializing a page, we have
             // to serialize one more value
             for ( int pos = 0; pos < nbElems; pos++ )
             {
                 // Start with the value
                 if ( page instanceof Node )
                 {
-                    Page<K, V> child = ( ( Node<K, V> ) page ).getReference( pos );
-
-                    // The first offset
-                    buffer = LongSerializer.serialize( child.getOffset() );
-                    serializedData.add( buffer );
-                    dataSize += buffer.length;
-
-                    // The last offset
-                    buffer = LongSerializer.serialize( child.getLastOffset() );
-                    serializedData.add( buffer );
-                    dataSize += buffer.length;
+                    dataSize += serializeNodeValue( ( Node<K, V> ) page, pos, serializedData );
+                    dataSize += serializeNodeKey( ( Node<K, V> ) page, pos, serializedData );
                 }
                 else
                 {
-                    if ( btree.isAllowDuplicates() )
-                    {
-                        MultipleMemoryHolder<K, V> mvHolder = ( MultipleMemoryHolder<K, V> ) ( ( Leaf<K, V> ) page )
-                            .getValue( pos );
-                        if ( mvHolder.isSingleValue() )
-                        {
-                            buffer = btree.getValueSerializer().serialize( mvHolder.getValue( btree ) );
-
-                            //FIXME find a better way to avoid the copying
-                            byte[] tmp = new byte[buffer.length + 1];
-                            tmp[0] = 0; // single value flag
-                            System.arraycopy( buffer, 0, tmp, 1, buffer.length );
-                            buffer = tmp;
-                        }
-                        else
-                        {
-                            long duplicateContainerOffset = ( ( BTree<K, V> ) mvHolder.getValue( btree ) )
-                                .getBtreeOffset();
-                            buffer = new byte[8 + 1];
-                            buffer[0] = 1; // sub-tree flag
-                            buffer = LongSerializer.serialize( buffer, 1, duplicateContainerOffset );
-                        }
-                    }
-                    else
-                    {
-                        ElementHolder<V, K, V> value = ( ( Leaf<K, V> ) page ).getValue( pos );
-                        buffer = btree.getValueSerializer().serialize( value.getValue( btree ) );
-                    }
-
-                    serializedData.add( buffer );
-                    dataSize += buffer.length;
-                }
-
-                // and the key
-                if ( page instanceof Leaf )
-                {
-                    KeyHolder<K> keyHolder = ( ( Leaf<K, V> ) page ).getKeyHolder( pos );
-                    ByteBuffer keyData = keyHolder.getBuffer();
-
-                    if ( keyData != null )
-                    {
-                        serializedData.add( IntSerializer.serialize( keyData.limit() ) );
-                        serializedData.add( keyData.array() );
-                        dataSize += keyData.limit() + 4;
-                    }
-                    else
-                    {
-                        serializedData.add( IntSerializer.serialize( 4 ) );
-                        serializedData.add( Strings.EMPTY_BYTES );
-                        dataSize += 4;
-                    }
-                }
-                else
-                {
-                    buffer = btree.getKeySerializer().serialize( page.getKey( pos ) );
-                    serializedData.add( buffer );
-                    dataSize += buffer.length;
+                    dataSize += serializeLeafValue( ( Leaf<K, V> ) page, pos, serializedData );
+                    dataSize += serializeLeafKey( ( Leaf<K, V> ) page, pos, serializedData );
                 }
             }
 
             // Nodes have one more value to serialize
             if ( page instanceof Node )
             {
-                Page<K, V> child = ( ( Node<K, V> ) page ).getReference( nbElems );
-
-                // The first offset
-                buffer = LongSerializer.serialize( child.getOffset() );
-                serializedData.add( buffer );
-                dataSize += buffer.length;
-
-                // The last offset
-                buffer = LongSerializer.serialize( child.getLastOffset() );
-                serializedData.add( buffer );
-                dataSize += buffer.length;
+                dataSize += serializeNodeValue( ( Node<K, V> ) page, nbElems, serializedData );
             }
 
             // Store the data size
@@ -1281,32 +1241,204 @@ public class RecordManager
 
 
     /**
+     * Serialize a Node's key
+     */
+    private <K, V> int serializeNodeKey( Node<K, V> node, int pos, List<byte[]> serializedData )
+    {
+        byte[] buffer = node.btree.getKeySerializer().serialize( node.getKey( pos ) );
+        serializedData.add( buffer );
+
+        return buffer.length;
+    }
+
+
+    /**
+     * Serialize a Node's Value. We store the two offsets of the child page.
+     */
+    private <K, V> int serializeNodeValue( Node<K, V> node, int pos, List<byte[]> serializedData )
+        throws IOException
+    {
+        // For a node, we just store the children's offsets
+        Page<K, V> child = node.getReference( pos );
+
+        // The first offset
+        byte[] buffer = LongSerializer.serialize( child.getOffset() );
+        serializedData.add( buffer );
+        int dataSize = buffer.length;
+
+        // The last offset
+        buffer = LongSerializer.serialize( child.getLastOffset() );
+        serializedData.add( buffer );
+        dataSize += buffer.length;
+
+        return dataSize;
+    }
+
+
+    /**
+     * Serialize a Leaf's key
+     */
+    private <K, V> int serializeLeafKey( Leaf<K, V> leaf, int pos, List<byte[]> serializedData )
+    {
+        int dataSize = 0;
+        KeyHolder<K> keyHolder = leaf.getKeyHolder( pos );
+        byte[] keyData = keyHolder.getBuffer();
+
+        if ( keyData != null )
+        {
+            byte[] data = new byte[keyData.length];
+
+            // The key length
+            byte[] buffer = IntSerializer.serialize( data.length );
+            serializedData.add( buffer );
+            dataSize += buffer.length;
+
+            // The key data
+            serializedData.add( keyData );
+            dataSize += data.length;
+        }
+        else
+        {
+            serializedData.add( IntSerializer.serialize( 0 ) );
+            dataSize += 4;
+        }
+
+        return dataSize;
+    }
+
+
+    /**
+     * Serialize a Leaf's Value. We store 
+     */
+    private <K, V> int serializeLeafValue( Leaf<K, V> leaf, int pos, List<byte[]> serializedData )
+        throws IOException
+    {
+        // The value can be an Array or a sub-btree, but we don't care
+        // we just iterate on all the values
+        ValueHolder<V> valueHolder = leaf.getValue( pos );
+
+        // First take the number of values
+        int nbValues = valueHolder.size();
+        int dataSize = 0;
+
+        if ( nbValues == 0 )
+        {
+            // No value. 
+            byte[] buffer = IntSerializer.serialize( nbValues );
+            serializedData.add( buffer );
+
+            return buffer.length;
+        }
+
+        if ( valueHolder.isSubBtree() )
+        {
+            byte[] buffer = IntSerializer.serialize( -nbValues );
+            serializedData.add( buffer );
+            dataSize += buffer.length;
+
+            // the BTree offset
+            buffer = LongSerializer.serialize( valueHolder.getOffset() );
+            serializedData.add( buffer );
+            dataSize += buffer.length;
+        }
+        else
+        {
+            // This is an array, store the nb of values as a positive number
+            byte[] buffer = IntSerializer.serialize( nbValues );
+            serializedData.add( buffer );
+            dataSize += buffer.length;
+
+            // Now store each value
+            byte[] data = valueHolder.getRaw();
+            buffer = IntSerializer.serialize( data.length );
+            serializedData.add( buffer );
+            dataSize += buffer.length;
+
+            if ( data.length > 0 )
+            {
+                serializedData.add( data );
+            }
+
+            dataSize += data.length;
+        }
+
+        return dataSize;
+    }
+
+
+    /**
+     * Write a root page with no elements in it
+     */
+    private PageIO[] serializeRootPage( long revision ) throws IOException
+    {
+        // We will have 1 single page if we have no elements
+        PageIO[] pageIos = new PageIO[1];
+
+        // This is either a new root page or a new page that will be filled later
+        PageIO newPage = fetchNewPage();
+
+        // We need first to create a byte[] that will contain all the data
+        // For the root page, this is easy, as we only have to store the revision, 
+        // and the number of elements, which is 0.
+        long position = 0L;
+
+        position = store( position, revision, newPage );
+        position = store( position, 0, newPage );
+
+        // Update the page size now
+        newPage.setSize( ( int ) position );
+
+        // Insert the result into the array of PageIO
+        pageIos[0] = newPage;
+
+        return pageIos;
+    }
+
+
+    /**
      * Update the header, injecting the nbBtree, firstFreePage and lastFreePage
      */
     private void updateRecordManagerHeader() throws IOException
     {
-        HEADER_BUFFER.clear();
-
         // The page size
-        HEADER_BUFFER.putInt( pageSize );
+        HEADER_BYTES[0] = ( byte ) ( pageSize >>> 24 );
+        HEADER_BYTES[1] = ( byte ) ( pageSize >>> 16 );
+        HEADER_BYTES[2] = ( byte ) ( pageSize >>> 8 );
+        HEADER_BYTES[3] = ( byte ) ( pageSize );
 
         // The number of managed BTree (currently we have only one : the discardedPage BTree
-        HEADER_BUFFER.putInt( nbBtree );
+        HEADER_BYTES[4] = ( byte ) ( nbBtree >>> 24 );
+        HEADER_BYTES[5] = ( byte ) ( nbBtree >>> 16 );
+        HEADER_BYTES[6] = ( byte ) ( nbBtree >>> 8 );
+        HEADER_BYTES[7] = ( byte ) ( nbBtree );
 
         // The first free page
-        HEADER_BUFFER.putLong( firstFreePage );
+        HEADER_BYTES[8] = ( byte ) ( firstFreePage >>> 56 );
+        HEADER_BYTES[9] = ( byte ) ( firstFreePage >>> 48 );
+        HEADER_BYTES[10] = ( byte ) ( firstFreePage >>> 40 );
+        HEADER_BYTES[11] = ( byte ) ( firstFreePage >>> 32 );
+        HEADER_BYTES[12] = ( byte ) ( firstFreePage >>> 24 );
+        HEADER_BYTES[13] = ( byte ) ( firstFreePage >>> 16 );
+        HEADER_BYTES[14] = ( byte ) ( firstFreePage >>> 8 );
+        HEADER_BYTES[15] = ( byte ) ( firstFreePage );
 
         // The last free page
-        HEADER_BUFFER.putLong( lastFreePage );
-
-        // Set the limit to the end of the page
-        HEADER_BUFFER.limit( pageSize );
+        HEADER_BYTES[16] = ( byte ) ( lastFreePage >>> 56 );
+        HEADER_BYTES[17] = ( byte ) ( lastFreePage >>> 48 );
+        HEADER_BYTES[18] = ( byte ) ( lastFreePage >>> 40 );
+        HEADER_BYTES[19] = ( byte ) ( lastFreePage >>> 32 );
+        HEADER_BYTES[20] = ( byte ) ( lastFreePage >>> 24 );
+        HEADER_BYTES[21] = ( byte ) ( lastFreePage >>> 16 );
+        HEADER_BYTES[22] = ( byte ) ( lastFreePage >>> 8 );
+        HEADER_BYTES[23] = ( byte ) ( lastFreePage );
 
         // Write the header on disk
-        HEADER_BUFFER.rewind();
+        HEADER_BUFFER.put( HEADER_BYTES );
+        HEADER_BUFFER.flip();
 
         LOG.debug( "Update RM header, FF : {}, LF : {}", firstFreePage, lastFreePage );
         fileChannel.write( HEADER_BUFFER, 0 );
+        HEADER_BUFFER.clear();
 
         nbUpdateRMHeader.incrementAndGet();
     }

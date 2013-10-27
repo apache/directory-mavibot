@@ -35,6 +35,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.apache.directory.mavibot.btree.Tuple;
+import org.apache.directory.mavibot.btree.ValueCursor;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
@@ -845,28 +846,13 @@ public class RecordManagerTest
 
         dupsTree = recordManager1.getManagedTree( name );
 
-        //        Cursor<Long, String> cursor1 = dupsTree.browse();
-        //        while( cursor1.hasNext() )
-        //        {
-        //            System.out.println( cursor1.next() );
-        //        }
-        //        cursor1.close();
-
         for ( long i = 0; i < numKeys; i++ )
         {
-            DuplicateKeyVal<String> dupVal = dupsTree.getValues( i );
-            //            Cursor<String, String> cursor = values.browse();
-            //            while( cursor.hasNext() )
-            //            {
-            //                System.out.println( cursor.next() );
-            //            }
-            //            cursor.close();
-
-            BTree<String, String> values = dupVal.getSubTree();
+            ValueCursor<String> values = dupsTree.getValues( i );
 
             for ( int k = 0; k < pageSize + 1; k++ )
             {
-                assertTrue( values.hasKey( String.valueOf( k ) ) );
+                assertTrue( values.next().equals( String.valueOf( k ) ) );
             }
         }
     }

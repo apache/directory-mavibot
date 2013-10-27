@@ -113,6 +113,34 @@ public class ShortSerializer extends AbstractElementSerializer<Short>
 
 
     /**
+     * A method used to deserialize a Short from a byte array.
+     * @param in The byte array containing the Short
+     * @return A Short
+     */
+    public Short fromBytes( byte[] in )
+    {
+        return deserialize( in, 0 );
+    }
+
+
+    /**
+     * A method used to deserialize a Short from a byte array.
+     * @param in The byte array containing the Short
+     * @param start the position in the byte[] we will deserialize the short from
+     * @return A Short
+     */
+    public Short fromBytes( byte[] in, int start )
+    {
+        if ( ( in == null ) || ( in.length < 2 + start ) )
+        {
+            throw new RuntimeException( "Cannot extract a Short from a buffer with not enough bytes" );
+        }
+
+        return ( short ) ( ( in[start] << 8 ) + ( in[start + 1] & 0xFF ) );
+    }
+
+
+    /**
      * {@inheritDoc}
      */
     public Short deserialize( ByteBuffer buffer ) throws IOException

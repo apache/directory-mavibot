@@ -29,8 +29,8 @@ import java.io.IOException;
 import java.util.Random;
 import java.util.Set;
 
-import org.apache.directory.mavibot.btree.Cursor;
 import org.apache.directory.mavibot.btree.Tuple;
+import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
@@ -251,8 +251,8 @@ public class BTreeFlushTest
                 new StringSerializer() );
             btree.setPageSize( 8 );
 
-            Cursor<Integer, String> cursor1 = btree.browse();
-            Cursor<Integer, String> cursor2 = btree.browse();
+            TupleCursor<Integer, String> cursor1 = btree.browse();
+            TupleCursor<Integer, String> cursor2 = btree.browse();
 
             while ( cursor1.hasNext() )
             {

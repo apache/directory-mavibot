@@ -40,10 +40,10 @@ import net.sf.ehcache.config.CacheConfiguration;
 
 import org.apache.directory.mavibot.btree.Addition;
 import org.apache.directory.mavibot.btree.BTreeHeader;
-import org.apache.directory.mavibot.btree.Cursor;
 import org.apache.directory.mavibot.btree.Deletion;
 import org.apache.directory.mavibot.btree.Modification;
 import org.apache.directory.mavibot.btree.Tuple;
+import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.BufferHandler;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
@@ -935,14 +935,14 @@ public class BTree<K, V> implements Closeable
      * @return A cursor on the btree
      * @throws IOException
      */
-    public Cursor<K, V> browse() throws IOException
+    public TupleCursor<K, V> browse() throws IOException
     {
         Transaction<K, V> transaction = beginReadTransaction();
 
         // Fetch the root page for this revision
         LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
 
-        Cursor<K, V> cursor = rootPage.browse( transaction, stack );
+        TupleCursor<K, V> cursor = rootPage.browse( transaction, stack );
 
         return cursor;
     }
@@ -956,7 +956,7 @@ public class BTree<K, V> implements Closeable
      * @throws IOException If we had an issue while fetching data from the disk
      * @throws KeyNotFoundException If the key is not found in the BTree
      */
-    public Cursor<K, V> browse( long revision ) throws IOException, KeyNotFoundException
+    public TupleCursor<K, V> browse( long revision ) throws IOException, KeyNotFoundException
     {
         Transaction<K, V> transaction = beginReadTransaction();
 
@@ -965,7 +965,7 @@ public class BTree<K, V> implements Closeable
 
         // And get the cursor
         LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
-        Cursor<K, V> cursor = revisionRootPage.browse( transaction, stack );
+        TupleCursor<K, V> cursor = revisionRootPage.browse( transaction, stack );
 
         return cursor;
     }
@@ -979,12 +979,12 @@ public class BTree<K, V> implements Closeable
      * @return A cursor on the btree
      * @throws IOException
      */
-    public Cursor<K, V> browseFrom( K key ) throws IOException
+    public TupleCursor<K, V> browseFrom( K key ) throws IOException
     {
         Transaction<K, V> transaction = beginReadTransaction();
 
         // Fetch the root page for this revision
-        Cursor<K, V> cursor = rootPage.browse( key, transaction, new LinkedList<ParentPos<K, V>>() );
+        TupleCursor<K, V> cursor = rootPage.browse( key, transaction, new LinkedList<ParentPos<K, V>>() );
 
         return cursor;
     }
@@ -1000,7 +1000,7 @@ public class BTree<K, V> implements Closeable
      * @throws IOException If wxe had an issue reading the BTree from disk
      * @throws KeyNotFoundException  If we can't find a rootPage for this revision
      */
-    public Cursor<K, V> browseFrom( long revision, K key ) throws IOException, KeyNotFoundException
+    public TupleCursor<K, V> browseFrom( long revision, K key ) throws IOException, KeyNotFoundException
     {
         Transaction<K, V> transaction = beginReadTransaction();
 
@@ -1009,7 +1009,7 @@ public class BTree<K, V> implements Closeable
 
         // And get the cursor
         LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
-        Cursor<K, V> cursor = revisionRootPage.browse( key, transaction, stack );
+        TupleCursor<K, V> cursor = revisionRootPage.browse( key, transaction, stack );
 
         return cursor;
     }
@@ -1222,7 +1222,7 @@ public class BTree<K, V> implements Closeable
         // Create a buffer containing 200 4Kb pages (around 1Mb)
         ByteBuffer bb = ByteBuffer.allocateDirect( writeBufferSize );
 
-        Cursor<K, V> cursor = browse();
+        TupleCursor<K, V> cursor = browse();
 
         if ( keySerializer == null )
         {

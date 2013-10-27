@@ -35,8 +35,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
-import org.apache.directory.mavibot.btree.Cursor;
 import org.apache.directory.mavibot.btree.Tuple;
+import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
@@ -623,7 +623,7 @@ public class InMemoryBTreeTest
 
         // Browse starting at position 10
         int pos = 10;
-        Cursor<Integer, String> cursor = btree.browseFrom( sortedValues[pos] );
+        TupleCursor<Integer, String> cursor = btree.browseFrom( sortedValues[pos] );
 
         while ( cursor.hasNext() )
         {
@@ -707,7 +707,7 @@ public class InMemoryBTreeTest
 
         // Browse starting at position 10
         int pos = 10;
-        Cursor<Integer, String> cursor = btree.browseFrom( sortedValues[pos] );
+        TupleCursor<Integer, String> cursor = btree.browseFrom( sortedValues[pos] );
 
         while ( cursor.hasPrev() )
         {
@@ -764,7 +764,7 @@ public class InMemoryBTreeTest
         BTree<Integer, String> btree = new BTree<Integer, String>( "test", new IntSerializer(), new StringSerializer() );
         btree.setPageSize( 8 );
 
-        Cursor<Integer, String> cursor = btree.browse();
+        TupleCursor<Integer, String> cursor = btree.browse();
 
         assertFalse( cursor.hasNext() );
         assertFalse( cursor.hasPrev() );
@@ -791,7 +791,7 @@ public class InMemoryBTreeTest
         }
 
         // Start to browse in the middle
-        Cursor<Integer, String> cursor = btree.browseFrom( 8 );
+        TupleCursor<Integer, String> cursor = btree.browseFrom( 8 );
 
         assertTrue( cursor.hasNext() );
 
@@ -1025,7 +1025,7 @@ public class InMemoryBTreeTest
         assertTrue( btree.hasKey( 8 ) );
         assertFalse( btree.hasKey( 11 ) );
 
-        Cursor<Integer, String> cursor = btree.browseFrom( 11 );
+        TupleCursor<Integer, String> cursor = btree.browseFrom( 11 );
         assertFalse( cursor.hasNext() );
     }
 
@@ -1194,7 +1194,7 @@ public class InMemoryBTreeTest
     {
         try
         {
-            Cursor<Integer, String> cursor = btree.browse();
+            TupleCursor<Integer, String> cursor = btree.browse();
             Integer value = null;
 
             while ( cursor.hasNext() )
@@ -1778,7 +1778,7 @@ public class InMemoryBTreeTest
         // Now browse them
         long l1 = System.currentTimeMillis();
 
-        Cursor<Long, String> cursor = btree.browse();
+        TupleCursor<Long, String> cursor = btree.browse();
 
         int nb = 0;
         long elem = Long.MIN_VALUE;
@@ -1851,7 +1851,7 @@ public class InMemoryBTreeTest
         }
 
         // Start to browse in the middle
-        Cursor<Integer, String> cursor = btree.browseFrom( 8 );
+        TupleCursor<Integer, String> cursor = btree.browseFrom( 8 );
 
         assertTrue( cursor.hasNext() );
 
@@ -1914,7 +1914,7 @@ public class InMemoryBTreeTest
         }
 
         // 3 is the last element of the first leaf
-        Cursor<Integer, Integer> cursor = btree.browseFrom( 4 );
+        TupleCursor<Integer, Integer> cursor = btree.browseFrom( 4 );
 
         assertTrue( cursor.hasNext() );
         Tuple<Integer, Integer> tuple = cursor.next();

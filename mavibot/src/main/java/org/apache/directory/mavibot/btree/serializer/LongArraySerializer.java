@@ -256,4 +256,62 @@ public class LongArraySerializer extends AbstractElementSerializer<long[]>
             }
         }
     }
+
+
+    @Override
+    public long[] fromBytes( byte[] buffer ) throws IOException
+    {
+        int len = IntSerializer.deserialize( buffer );
+        int pos = 4;
+
+        switch ( len )
+        {
+            case 0:
+                return new long[]
+                    {};
+
+            case -1:
+                return null;
+
+            default:
+                long[] longs = new long[len];
+
+                for ( int i = 0; i < len; i++ )
+                {
+                    longs[i] = LongSerializer.deserialize( buffer, pos );
+                    pos += 8;
+                }
+
+                return longs;
+        }
+    }
+
+
+    @Override
+    public long[] fromBytes( byte[] buffer, int pos ) throws IOException
+    {
+        int newPos = pos;
+        int len = IntSerializer.deserialize( buffer, newPos );
+
+        switch ( len )
+        {
+            case 0:
+                return new long[]
+                    {};
+
+            case -1:
+                return null;
+
+            default:
+                long[] longs = new long[len];
+
+                for ( int i = 0; i < len; i++ )
+                {
+                    longs[i] = LongSerializer.deserialize( buffer, newPos );
+                    newPos += 8;
+                }
+
+                return longs;
+        }
+    }
 }

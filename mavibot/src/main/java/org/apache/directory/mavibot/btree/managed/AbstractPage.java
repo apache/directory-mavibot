@@ -22,7 +22,6 @@ package org.apache.directory.mavibot.btree.managed;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
-import java.nio.ByteBuffer;
 
 
 /**
@@ -285,7 +284,7 @@ import java.nio.ByteBuffer;
      */
     /* No qualifier*/void setKey( int pos, K key )
     {
-        keys[pos] = new KeyHolder<K>( key, null, btree.getKeySerializer() );
+        keys[pos] = new KeyHolder<K>( btree.getKeySerializer(), key );
     }
 
 
@@ -293,11 +292,11 @@ import java.nio.ByteBuffer;
      * Sets the key at a give position
      * 
      * @param pos The position in the keys array
-     * @param key the key to inject
+     * @param buffer the serialized key to inject
      */
-    /* No qualifier*/void setKey( int pos, ByteBuffer buffer, K key )
+    /* No qualifier*/void setKey( int pos, byte[] buffer )
     {
-        keys[pos] = new KeyHolder<K>( key, buffer, btree.getKeySerializer() );
+        keys[pos] = new KeyHolder<K>( btree.getKeySerializer(), buffer );
     }
 
 
