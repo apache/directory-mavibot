@@ -45,6 +45,10 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /** Values associated with keys */
     protected ValueHolder<V>[] values;
 
+    /** A static Exception used to avoid creating a new one every time */
+    private KeyNotFoundException KEY_NOT_FOUND_EXCEPTION = new KeyNotFoundException(
+        "Cannot find an entry associated with this key" );
+
 
     /**
      * Constructor used to create a new Leaf when we read it from a file.
@@ -495,7 +499,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
         else
         {
-            throw new KeyNotFoundException( "Cannot find an entry for key " + key );
+            throw KEY_NOT_FOUND_EXCEPTION;
         }
     }
 
@@ -537,7 +541,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
         else
         {
-            throw new KeyNotFoundException( "Cannot find an entry for key " + key );
+            throw KEY_NOT_FOUND_EXCEPTION;
         }
     }
 
