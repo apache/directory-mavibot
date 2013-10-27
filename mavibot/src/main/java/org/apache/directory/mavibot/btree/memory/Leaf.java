@@ -554,7 +554,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
         else
         {
-            throw new KeyNotFoundException( "Cannot find an entry for key " + key );
+            throw KEY_NOT_FOUND_EXCEPTION;
         }
     }
 
@@ -585,7 +585,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
         else
         {
-            throw new KeyNotFoundException( "Cannot find an entry for key " + key );
+            throw KEY_NOT_FOUND_EXCEPTION;
         }
     }
 

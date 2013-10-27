@@ -23,6 +23,8 @@ package org.apache.directory.mavibot.btree.managed;
 import java.io.IOException;
 import java.lang.reflect.Array;
 
+import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
+
 
 /**
  * A MVCC abstract Page. It stores the field and the methods shared by the Node and Leaf
@@ -52,6 +54,10 @@ import java.lang.reflect.Array;
 
     /** The last {@link PageIO} storing the serialized Page on disk */
     private long lastOffset = -1L;
+
+    /** A static Exception used to avoid creating a new one every time */
+    protected KeyNotFoundException KEY_NOT_FOUND_EXCEPTION = new KeyNotFoundException(
+        "Cannot find an entry associated with this key" );
 
 
     /**
