@@ -160,15 +160,15 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         {
             if ( valueHolder.contains( value ) )
             {
+
                 if ( valueHolder.size() == 1 )
                 {
-                    removedElement = new Tuple<K, V>( keys[index].getKey(), value ); // the entire value was removed
+                    removedElement = new Tuple<K, V>( keys[index].getKey(), null ); // the entire value was removed
                     keyRemoved = true;
                 }
                 else
                 {
-                    removedElement = new Tuple<K, V>( keys[index].getKey(), value ); // the entire value was removed
-
+                    removedElement = new Tuple<K, V>( keys[index].getKey(), value ); // only one value was removed
                     valueHolder.remove( value );
                 }
             }
@@ -870,6 +870,11 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         // Get the pivot
         K pivot = rightLeaf.keys[0].getKey();
+
+        if ( pivot == null )
+        {
+            pivot = rightLeaf.keys[0].getKey();
+        }
 
         // Create the result
         InsertResult<K, V> result = new SplitResult<K, V>( pivot, leftLeaf, rightLeaf );

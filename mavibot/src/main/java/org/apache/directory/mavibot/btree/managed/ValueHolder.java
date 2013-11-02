@@ -31,7 +31,6 @@ import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
-import org.apache.directory.mavibot.btree.util.Strings;
 
 
 /**
@@ -247,7 +246,7 @@ public class ValueHolder<V> implements Cloneable
             }
             else
             {
-                return ( valueArray != null ) && ( currentPos < valueArray.length );
+                return ( valueArray != null ) && ( currentPos < valueArray.length - 1 );
             }
         }
 
@@ -756,7 +755,7 @@ public class ValueHolder<V> implements Cloneable
 
             // Ok, we just have to delete the new element at the right position
             // First, copy the array
-            V[] newValueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), valueArray.length + 1 );
+            V[] newValueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), valueArray.length - 1 );
 
             System.arraycopy( valueArray, 0, newValueArray, 0, pos );
             System.arraycopy( valueArray, pos + 1, newValueArray, pos, valueArray.length - pos - 1 );
@@ -987,13 +986,14 @@ public class ValueHolder<V> implements Cloneable
                     {
                         int size = IntSerializer.deserialize( raw, pos );
                         pos += 4;
+
                         V value = valueSerializer.fromBytes( raw, pos );
                         pos += size;
                         valueArray[index++] = value;
                     }
                     catch ( IOException e )
                     {
-                        System.out.println( Strings.dumpBytes( raw ) );
+                        e.printStackTrace();
                     }
                 }
             }

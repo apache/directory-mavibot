@@ -1245,7 +1245,8 @@ public class RecordManager
      */
     private <K, V> int serializeNodeKey( Node<K, V> node, int pos, List<byte[]> serializedData )
     {
-        byte[] buffer = node.btree.getKeySerializer().serialize( node.getKey( pos ) );
+        KeyHolder<K> holder = node.getKeyHolder( pos );
+        byte[] buffer = holder.getBuffer();
         serializedData.add( buffer );
 
         return buffer.length;

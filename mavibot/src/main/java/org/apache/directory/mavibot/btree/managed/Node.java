@@ -833,6 +833,22 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
+    /* No qualifier */KeyHolder<K> getKeyHolder( int pos )
+    {
+        if ( pos < nbElems )
+        {
+            return keys[pos];
+        }
+        else
+        {
+            return null;
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
     public V get( K key ) throws IOException, KeyNotFoundException
     {
         int pos = findPos( key );
@@ -1129,7 +1145,14 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             System.arraycopy( children, middle, newRightPage.children, 0, middle + 1 );
 
             // Create the result
-            InsertResult<K, V> result = new SplitResult<K, V>( copiedPages, keys[middle - 1].getKey(), newLeftPage,
+            pivot = keys[middle - 1].getKey();
+
+            if ( pivot == null )
+            {
+                pivot = keys[middle - 1].getKey();
+            }
+
+            InsertResult<K, V> result = new SplitResult<K, V>( copiedPages, pivot, newLeftPage,
                 newRightPage );
             result.addCopiedPage( this );
 
@@ -1175,7 +1198,14 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             System.arraycopy( children, pos + 1, newRightPage.children, pos + 1 - middle, nbElems - pos );
 
             // Create the result
-            InsertResult<K, V> result = new SplitResult<K, V>( copiedPages, keys[middle].getKey(), newLeftPage,
+            pivot = keys[middle].getKey();
+
+            if ( pivot == null )
+            {
+                pivot = keys[middle].getKey();
+            }
+
+            InsertResult<K, V> result = new SplitResult<K, V>( copiedPages, pivot, newLeftPage,
                 newRightPage );
             result.addCopiedPage( this );
 
