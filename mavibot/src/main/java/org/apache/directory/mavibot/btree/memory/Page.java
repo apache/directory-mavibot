@@ -134,7 +134,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @return A Cursor to browse the next elements
      * @throws IOException If we have an error while trying to access the page
      */
-    CursorImpl<K, V> browse( K key, Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
+    TupleCursorImpl<K, V> browse( K key, Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
         throws IOException;
 
 
@@ -146,7 +146,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @return A Cursor to browse the next elements
      * @throws IOException If we have an error while trying to access the page
      */
-    CursorImpl<K, V> browse( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
+    TupleCursorImpl<K, V> browse( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
         throws EndOfFileExceededException, IOException;
 
 

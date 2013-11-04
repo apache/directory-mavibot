@@ -943,7 +943,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
-    public CursorImpl<K, V> browse( K key, Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
+    public TupleCursorImpl<K, V> browse( K key, Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
         throws IOException
     {
         int pos = findPos( key );
@@ -963,7 +963,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
-    public CursorImpl<K, V> browse( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
+    public TupleCursorImpl<K, V> browse( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
         throws IOException
     {
         stack.push( new ParentPos<K, V>( this, 0 ) );
