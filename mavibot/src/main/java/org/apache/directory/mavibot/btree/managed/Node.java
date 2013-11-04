@@ -26,6 +26,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.apache.directory.mavibot.btree.Tuple;
+import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.ValueCursor;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
@@ -967,7 +968,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
-    public CursorImpl<K, V> browse( K key, Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
+    public TupleCursor<K, V> browse( K key, Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
         throws IOException
     {
         int pos = findPos( key );
@@ -987,7 +988,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
-    public CursorImpl<K, V> browse( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
+    public TupleCursor<K, V> browse( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
         throws IOException
     {
         stack.push( new ParentPos<K, V>( this, 0 ) );

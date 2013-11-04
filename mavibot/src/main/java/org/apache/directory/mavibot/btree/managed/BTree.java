@@ -876,7 +876,7 @@ public class BTree<K, V> implements Closeable
         // Fetch the root page for this revision
         LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
 
-        CursorImpl<K, V> cursor = rootPage.browse( transaction, stack );
+        TupleCursor<K, V> cursor = rootPage.browse( transaction, stack );
 
         return cursor;
     }
@@ -890,7 +890,7 @@ public class BTree<K, V> implements Closeable
      * @throws IOException If we had an issue while fetching data from the disk
      * @throws KeyNotFoundException If the key is not found in the BTree
      */
-    public CursorImpl<K, V> browse( long revision ) throws IOException, KeyNotFoundException
+    public TupleCursor<K, V> browse( long revision ) throws IOException, KeyNotFoundException
     {
         Transaction<K, V> transaction = beginReadTransaction();
 
@@ -899,7 +899,7 @@ public class BTree<K, V> implements Closeable
 
         // And get the cursor
         LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
-        CursorImpl<K, V> cursor = revisionRootPage.browse( transaction, stack );
+        TupleCursor<K, V> cursor = revisionRootPage.browse( transaction, stack );
 
         return cursor;
     }
@@ -913,12 +913,12 @@ public class BTree<K, V> implements Closeable
      * @return A cursor on the btree
      * @throws IOException
      */
-    public CursorImpl<K, V> browseFrom( K key ) throws IOException
+    public TupleCursor<K, V> browseFrom( K key ) throws IOException
     {
         Transaction<K, V> transaction = beginReadTransaction();
 
         // Fetch the root page for this revision
-        CursorImpl<K, V> cursor = rootPage.browse( key, transaction, new LinkedList<ParentPos<K, V>>() );
+        TupleCursor<K, V> cursor = rootPage.browse( key, transaction, new LinkedList<ParentPos<K, V>>() );
 
         return cursor;
     }
@@ -934,7 +934,7 @@ public class BTree<K, V> implements Closeable
      * @throws IOException If wxe had an issue reading the BTree from disk
      * @throws KeyNotFoundException  If we can't find a rootPage for this revision
      */
-    public CursorImpl<K, V> browseFrom( long revision, K key ) throws IOException, KeyNotFoundException
+    public TupleCursor<K, V> browseFrom( long revision, K key ) throws IOException, KeyNotFoundException
     {
         Transaction<K, V> transaction = beginReadTransaction();
 
@@ -943,7 +943,7 @@ public class BTree<K, V> implements Closeable
 
         // And get the cursor
         LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
-        CursorImpl<K, V> cursor = revisionRootPage.browse( key, transaction, stack );
+        TupleCursor<K, V> cursor = revisionRootPage.browse( key, transaction, stack );
 
         return cursor;
     }

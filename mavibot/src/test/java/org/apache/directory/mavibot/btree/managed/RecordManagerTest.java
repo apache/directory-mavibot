@@ -35,6 +35,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.apache.directory.mavibot.btree.Tuple;
+import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.ValueCursor;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
@@ -316,7 +317,7 @@ public class RecordManagerTest
         throws IOException,
         KeyNotFoundException
     {
-        CursorImpl<Long, String> cursor = btree.browse( revision );
+        TupleCursor<Long, String> cursor = btree.browse( revision );
         List<Long> expected = new ArrayList<Long>( values.length );
         Set<Long> found = new HashSet<Long>( values.length );
 
@@ -348,7 +349,7 @@ public class RecordManagerTest
         throws IOException,
         KeyNotFoundException
     {
-        CursorImpl<Long, String> cursor = btree.browseFrom( revision, from );
+        TupleCursor<Long, String> cursor = btree.browseFrom( revision, from );
         List<Long> expected = new ArrayList<Long>( values.length );
         Set<Long> found = new HashSet<Long>( values.length );
 
