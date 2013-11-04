@@ -304,11 +304,11 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
         {
             if ( allowDuplicates && ( p.page instanceof Leaf ) )
             {
-                if ( ( p.dupsContainer == null ) && ( p.pos != p.page.getNbElems() ) )
+                if ( ( p.valueHolder == null ) && ( p.pos != p.page.getNbElems() ) )
                 {
                     return true;
                 }
-                else if ( ( p.dupsContainer != null ) && ( p.dupPos != p.dupsContainer.getNbElems() )
+                else if ( ( p.valueHolder != null ) && ( p.dupPos != p.valueHolder.size() )
                     && ( p.pos != p.page.getNbElems() ) )
                 {
                     return true;
@@ -343,11 +343,11 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
         {
             if ( allowDuplicates && ( p.page instanceof Leaf ) )
             {
-                if ( ( p.dupsContainer == null ) && ( p.pos != 0 ) )
+                if ( ( p.valueHolder == null ) && ( p.pos != 0 ) )
                 {
                     return true;
                 }
-                else if ( ( p.dupsContainer != null ) &&
+                else if ( ( p.valueHolder != null ) &&
                     ( ( p.dupPos != 0 ) || ( p.pos != 0 ) ) )
                 {
                     return true;
@@ -533,9 +533,8 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
         {
             ParentPos<K, V> tmp = new ParentPos<K, V>( o.page, o.pos );
             tmp.dupPos = o.dupPos;
-            tmp.dupsContainer = o.dupsContainer;
+            tmp.valueHolder = o.valueHolder;
             clone.add( tmp );
         }
     }
-
 }

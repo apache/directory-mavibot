@@ -49,11 +49,10 @@ import java.io.IOException;
             return;
         }
 
-        if ( parentPos.dupsContainer == null )
+        if ( parentPos.valueHolder == null )
         {
             Leaf leaf = ( Leaf ) ( parentPos.page );
-            ValueHolder valueHolder = leaf.values[parentPos.pos];
-
+            parentPos.valueHolder = leaf.values[parentPos.pos];
         }
     }
 
@@ -76,7 +75,7 @@ import java.io.IOException;
         if ( parentPos.pos < parentPos.page.getNbElems() )
         {
             Leaf leaf = ( Leaf ) ( parentPos.page );
-            ValueHolder valueHolder = leaf.values[parentPos.pos];
+            parentPos.valueHolder = leaf.values[parentPos.pos];
         }
     }
 
@@ -101,7 +100,7 @@ import java.io.IOException;
         if ( index >= 0 )
         {
             Leaf leaf = ( Leaf ) ( parentPos.page );
-            ValueHolder valueHolder = leaf.values[index];
+            parentPos.valueHolder = leaf.values[index];
         }
     }
 

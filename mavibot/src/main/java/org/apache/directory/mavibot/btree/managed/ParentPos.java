@@ -41,7 +41,7 @@ package org.apache.directory.mavibot.btree.managed;
     /* No qualifier*/int dupPos;
 
     /** the container of duplicate key's values. The tuples will be stored as <V,null>*/
-    /* No qualifier*/BTree<V, V> dupsContainer;
+    /* No qualifier*/ValueHolder<V> valueHolder;
 
 
     /**
