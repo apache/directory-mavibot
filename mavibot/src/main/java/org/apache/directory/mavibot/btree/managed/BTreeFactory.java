@@ -166,8 +166,6 @@ public class BTreeFactory
         @SuppressWarnings("unchecked")
         ElementSerializer<K> instance = ( ElementSerializer<K> ) keySerializer.newInstance();
         btree.setKeySerializer( instance );
-
-        btree.setComparator( instance.getComparator() );
     }
 
 

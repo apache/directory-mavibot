@@ -83,9 +83,6 @@ public class BTree<K, V> implements Closeable
     /** The default journal file suffix */
     public static final String JOURNAL_SUFFIX = ".log";
 
-    /** Comparator used to index entries. */
-    private Comparator<K> comparator;
-
     /** The current rootPage */
     protected volatile Page<K, V> rootPage;
 
@@ -256,14 +253,13 @@ public class BTree<K, V> implements Closeable
         valueSerializer = configuration.getValueSerializer();
         btreeHeader.setValueSerializerFQCN( valueSerializer.getClass().getName() );
 
-        comparator = keySerializer.getComparator();
         readTimeOut = configuration.getReadTimeOut();
         writeBufferSize = configuration.getWriteBufferSize();
         btreeHeader.setAllowDuplicates( configuration.isAllowDuplicates() );
         type = configuration.getType();
         cacheSize = configuration.getCacheSize();
 
-        if ( comparator == null )
+        if ( keySerializer.getComparator() == null )
         {
             throw new IllegalArgumentException( "Comparator should not be null" );
         }
@@ -376,8 +372,6 @@ public class BTree<K, V> implements Closeable
 
         btreeHeader.setValueSerializerFQCN( valueSerializer.getClass().getName() );
 
-        comparator = keySerializer.getComparator();
-
         btreeHeader.setAllowDuplicates( allowDuplicates );
 
         // Create the first root page, with revision 0L. It will be empty
@@ -418,7 +412,7 @@ public class BTree<K, V> implements Closeable
         readTransactions = new ConcurrentLinkedQueue<Transaction<K, V>>();
 
         // We will extract the Type to use for keys, using the comparator for that
-        Class<?> comparatorClass = comparator.getClass();
+        Class<?> comparatorClass = keySerializer.getComparator().getClass();
         Type[] types = comparatorClass.getGenericInterfaces();
 
         if ( types[0] instanceof Class )
@@ -1121,16 +1115,7 @@ public class BTree<K, V> implements Closeable
      */
     public Comparator<K> getComparator()
     {
-        return comparator;
-    }
-
-
-    /**
-     * @param comparator the comparator to set
-     */
-    public void setComparator( Comparator<K> comparator )
-    {
-        this.comparator = comparator;
+        return keySerializer.getComparator();
     }
 
 
@@ -1140,7 +1125,6 @@ public class BTree<K, V> implements Closeable
     public void setKeySerializer( ElementSerializer<K> keySerializer )
     {
         this.keySerializer = keySerializer;
-        this.comparator = keySerializer.getComparator();
         btreeHeader.setKeySerializerFQCN( keySerializer.getClass().getName() );
     }
 
@@ -1702,13 +1686,13 @@ public class BTree<K, V> implements Closeable
 
         sb.append( ", comparator:" );
 
-        if ( comparator == null )
+        if ( keySerializer.getComparator() == null )
         {
             sb.append( "null" );
         }
         else
         {
-            sb.append( comparator.getClass().getSimpleName() );
+            sb.append( keySerializer.getComparator().getClass().getSimpleName() );
         }
 
         sb.append( ", DuplicatesAllowed: " ).append( btreeHeader.isAllowDuplicates() );
