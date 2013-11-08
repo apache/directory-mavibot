@@ -19,6 +19,8 @@
  */
 package org.apache.directory.mavibot.btree.managed;
 
+import org.apache.directory.mavibot.btree.ValueCursor;
+
 
 /**
  * This class is used to store the parent page and the position in it during
@@ -38,10 +40,7 @@ package org.apache.directory.mavibot.btree.managed;
     /* No qualifier*/int pos;
 
     /** The current position of the duplicate container in the page */
-    /* No qualifier*/int dupPos;
-
-    /** the container of duplicate key's values. The tuples will be stored as <V,null>*/
-    /* No qualifier*/ValueHolder<V> valueHolder;
+    /* No qualifier*/ValueCursor<V> valueCursor;
 
 
     /**
@@ -53,6 +52,20 @@ package org.apache.directory.mavibot.btree.managed;
     {
         this.page = page;
         this.pos = pos;
+        
+        if ( page instanceof Leaf )
+        {
+            try
+            {
+                ValueHolder<V> valueHolder = ( ( Leaf<K, V> ) page ).getValue( pos );
+                
+                valueCursor = valueHolder.getCursor();
+            }
+            catch ( IllegalArgumentException e )
+            {
+                e.printStackTrace();
+            }
+        }
     }
 
 

@@ -170,6 +170,7 @@ public class RecordManagerFreePageTest
         TupleCursor<Long, String> cursor = btree.browse();
 
         long i = 0;
+        
         while ( cursor.hasNext() )
         {
             Tuple<Long, String> t = cursor.next();

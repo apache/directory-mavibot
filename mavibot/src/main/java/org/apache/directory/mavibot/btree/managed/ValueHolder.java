@@ -246,7 +246,7 @@ public class ValueHolder<V> implements Cloneable
             }
             else
             {
-                return ( valueArray != null ) && ( currentPos < valueArray.length - 1 );
+                return currentPos < valueArray.length - 1;
             }
         }
 
@@ -284,7 +284,15 @@ public class ValueHolder<V> implements Cloneable
         @Override
         public boolean hasPrev() throws EndOfFileExceededException, IOException
         {
-            return false;
+            if ( valueArray == null )
+            {
+                // Load the array from the raw data
+                return false;
+            }
+            else
+            {
+                return currentPos > 0;
+            }
         }
 
 
@@ -303,6 +311,7 @@ public class ValueHolder<V> implements Cloneable
         @Override
         public void beforeFirst() throws IOException
         {
+            currentPos = -1;
         }
 
 
@@ -312,6 +321,7 @@ public class ValueHolder<V> implements Cloneable
         @Override
         public void afterLast() throws IOException
         {
+            currentPos = valueArray.length;
         }
 
 
@@ -321,7 +331,25 @@ public class ValueHolder<V> implements Cloneable
         @Override
         public V prev() throws EndOfFileExceededException, IOException
         {
-            return null;
+            if ( valueArray == null )
+            {
+                // Deserialize the array
+                return null;
+            }
+            else
+            {
+                currentPos--;
+
+                if ( currentPos == -1 )
+                {
+                    // We have reached the end of the array
+                    return null;
+                }
+                else
+                {
+                    return valueArray[currentPos];
+                }
+            }
         }
 
 

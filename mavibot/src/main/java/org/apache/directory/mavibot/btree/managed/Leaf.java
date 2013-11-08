@@ -20,13 +20,12 @@
 package org.apache.directory.mavibot.btree.managed;
 
 
-import static org.apache.directory.mavibot.btree.managed.InternalUtil.setDupsContainer;
-
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.LinkedList;
 
 import org.apache.directory.mavibot.btree.Tuple;
+import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.ValueCursor;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
@@ -606,21 +605,23 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
-    public TupleCursorImpl<K, V> browse( K key, Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
+    public TupleCursor<K, V> browse( K key, Transaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
     {
         int pos = findPos( key );
-        TupleCursorImpl<K, V> cursor = null;
+        TupleCursor<K, V> cursor = null;
 
         if ( pos < 0 )
         {
-            int index = -( pos + 1 );
+            pos = -( pos + 1 );
 
-            // The first element has been found. Create the cursor
-            ParentPos<K, V> parentPos = new ParentPos<K, V>( this, index );
-            setDupsContainer( parentPos, btree );
-            stack.push( parentPos );
+            cursor = new TupleCursorImpl<K, V>( btree, transaction, null, 0 );
 
-            cursor = new TupleCursorImpl<K, V>( btree, transaction, stack );
+            // Start at the beginning of the page
+            ParentPos<K, V> parentPos = new ParentPos<K, V>( this, pos );
+
+            stack[depth] = parentPos;
+
+            cursor = new TupleCursorImpl<K, V>( btree, transaction, stack, depth );
         }
         else
         {
@@ -628,17 +629,17 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             if ( pos < nbElems )
             {
                 ParentPos<K, V> parentPos = new ParentPos<K, V>( this, pos );
-                setDupsContainer( parentPos, btree );
-                stack.push( parentPos );
+                
+                stack[depth] = parentPos;
 
-                cursor = new TupleCursorImpl<K, V>( btree, transaction, stack );
+                cursor = new TupleCursorImpl<K, V>( btree, transaction, stack, 0 );
             }
             else
             {
                 // Not found : return a null cursor
-                stack.push( new ParentPos<K, V>( null, -1 ) );
+                stack[depth] = null;
 
-                return new TupleCursorImpl<K, V>( btree, transaction, stack );
+                return new TupleCursorImpl<K, V>( btree, transaction, null, 0 );
             }
         }
 
@@ -649,28 +650,26 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
-    public TupleCursorImpl<K, V> browse( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
+    public TupleCursor<K, V> browse( Transaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
     {
         int pos = 0;
-        TupleCursorImpl<K, V> cursor = null;
+        TupleCursor<K, V> cursor = null;
 
         if ( nbElems == 0 )
         {
             // The tree is empty, it's the root, we have nothing to return
-            stack.push( new ParentPos<K, V>( null, -1 ) );
+            stack[depth] = new ParentPos<K, V>( null, -1 );
 
-            return new TupleCursorImpl<K, V>( btree, transaction, stack );
+            return new TupleCursorImpl<K, V>( btree, transaction, stack, depth );
         }
         else
         {
             // Start at the beginning of the page
             ParentPos<K, V> parentPos = new ParentPos<K, V>( this, pos );
 
-            setDupsContainer( parentPos, btree );
+            stack[depth] = parentPos;
 
-            stack.push( parentPos );
-
-            cursor = new TupleCursorImpl<K, V>( btree, transaction, stack );
+            cursor = new TupleCursorImpl<K, V>( btree, transaction, stack, depth );
         }
 
         return cursor;

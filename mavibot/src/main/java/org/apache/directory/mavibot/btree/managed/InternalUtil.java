@@ -33,29 +33,6 @@ import java.io.IOException;
 /* No qualifier */class InternalUtil
 {
 
-    /**
-     * Sets the multi-value container(a.k.a dupsContainer) of the key at the given position.
-     * 
-     * This method will not update the existing value of 'dupsPos'. To change this value
-     * use {@link #changeNextDupsContainer(ParentPos, BTree)} or {@link #changePrevDupsContainer(ParentPos, BTree)}
-     *  
-     * @param parentPos the parent position object
-     * @param btree the BTree
-     */
-    public static void setDupsContainer( ParentPos parentPos, BTree btree )
-    {
-        if ( !btree.isAllowDuplicates() )
-        {
-            return;
-        }
-
-        if ( parentPos.valueHolder == null )
-        {
-            Leaf leaf = ( Leaf ) ( parentPos.page );
-            parentPos.valueHolder = leaf.values[parentPos.pos];
-        }
-    }
-
 
     /**
      * Sets the multi-value container(a.k.a dupsContainer) of the key at the given position
@@ -75,7 +52,8 @@ import java.io.IOException;
         if ( parentPos.pos < parentPos.page.getNbElems() )
         {
             Leaf leaf = ( Leaf ) ( parentPos.page );
-            parentPos.valueHolder = leaf.values[parentPos.pos];
+            ValueHolder valueHolder = leaf.values[parentPos.pos];
+            parentPos.valueCursor = valueHolder.getCursor();
         }
     }
 
@@ -100,7 +78,8 @@ import java.io.IOException;
         if ( index >= 0 )
         {
             Leaf leaf = ( Leaf ) ( parentPos.page );
-            parentPos.valueHolder = leaf.values[index];
+            ValueHolder valueHolder = leaf.values[index];
+            parentPos.valueCursor = valueHolder.getCursor();
         }
     }
 

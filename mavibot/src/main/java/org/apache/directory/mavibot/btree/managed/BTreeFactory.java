@@ -294,4 +294,49 @@ public class BTreeFactory
 
         return stack;
     }
+
+
+    /**
+     * Includes the intermediate nodes in the path up to and including the left most leaf of the tree
+     * 
+     * @param btree the btree
+     * @return a LinkedList of all the nodes and the final leaf
+     * @throws IOException
+     */
+    public static <K, V> LinkedList<ParentPos<K, V>> getPathToLeftMostLeaf( BTree<K, V> btree ) throws IOException
+    {
+        LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
+
+        ParentPos<K, V> first = new ParentPos<K, V>( btree.rootPage, 0 );
+        stack.push( first );
+
+        if ( btree.rootPage instanceof Leaf )
+        {
+            Leaf<K, V> leaf = ( Leaf<K, V> ) ( btree.rootPage );
+            ValueHolder<V> valueHolder = leaf.values[first.pos];
+            first.valueCursor = valueHolder.getCursor();
+        }
+        else
+        {
+            Node<K, V> node = ( Node<K, V> ) btree.rootPage;
+
+            while ( true )
+            {
+                Page<K, V> page = node.children[0].getValue( btree );
+
+                first = new ParentPos<K, V>( page, 0 );
+                stack.push( first );
+
+                if ( page instanceof Leaf )
+                {
+                    Leaf<K, V> leaf = ( Leaf<K, V> ) ( page );
+                    ValueHolder<V> valueHolder = leaf.values[first.pos];
+                    first.valueCursor = valueHolder.getCursor();
+                    break;
+                }
+            }
+        }
+
+        return stack;
+    }
 }

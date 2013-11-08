@@ -22,7 +22,6 @@ package org.apache.directory.mavibot.btree.managed;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
-import java.util.LinkedList;
 import java.util.List;
 
 import org.apache.directory.mavibot.btree.Tuple;
@@ -968,7 +967,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
-    public TupleCursor<K, V> browse( K key, Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
+    public TupleCursor<K, V> browse( K key, Transaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
         throws IOException
     {
         int pos = findPos( key );
@@ -979,21 +978,25 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
 
         // We first stack the current page
-        stack.push( new ParentPos<K, V>( this, pos ) );
+        stack[depth++] = new ParentPos<K, V>( this, pos );
+        
+        Page<K, V> page = children[0].getValue( btree );
 
-        return children[pos].getValue( btree ).browse( key, transaction, stack );
+        return page.browse( key, transaction, stack, depth );
     }
 
 
     /**
      * {@inheritDoc}
      */
-    public TupleCursor<K, V> browse( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
+    public TupleCursor<K, V> browse( Transaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
         throws IOException
     {
-        stack.push( new ParentPos<K, V>( this, 0 ) );
+        stack[depth++] = new ParentPos<K, V>( this, 0 );
+        
+        Page<K, V> page = children[0].getValue( btree );
 
-        return children[0].getValue( btree ).browse( transaction, stack );
+        return page.browse( transaction, stack, depth );
     }
 
 
