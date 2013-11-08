@@ -83,7 +83,7 @@ public class BTreeBuilder<K, V>
 
             setKey( leaf1, leafIndex, tuple.getKey() );
 
-            ValueHolder<V> eh = new ValueHolder<V>( btree.getRecordManager(), btree.getValueSerializer(),
+            ValueHolder<V> eh = new ValueHolder<V>( btree, btree.getValueSerializer(),
                 tuple.getValue() );
 
             setValue( leaf1, leafIndex, eh );

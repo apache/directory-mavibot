@@ -54,7 +54,7 @@ public class ValueHolder<V> implements Cloneable
     private boolean isSubBtree = false;
 
     /** The RecordManager */
-    private RecordManager recordManager;
+    private BTree<?, V> btree;
 
     /** The Value serializer */
     private ElementSerializer<V> valueSerializer;
@@ -69,14 +69,14 @@ public class ValueHolder<V> implements Cloneable
      * @param valueSerializer The Value's serializer
      * @param raw The raw data containing the values
      */
-    /* No qualifier */ValueHolder( RecordManager recordManager, ElementSerializer<V> valueSerializer,
+    /* No qualifier */ValueHolder( BTree<?, V> btree, ElementSerializer<V> valueSerializer,
         boolean isSubBtree, int nbValues,
         byte[] raw )
     {
         this.valueSerializer = valueSerializer;
-        this.recordManager = recordManager;
         this.raw = raw;
         this.isSubBtree = isSubBtree;
+        this.btree = btree;
 
         if ( nbValues < BTree.valueThresholdUp )
         {
@@ -98,11 +98,11 @@ public class ValueHolder<V> implements Cloneable
      * @param valueSerializer The Value's serializer
      * @param raw The raw data containing the values
      */
-    /* No qualifier */ValueHolder( RecordManager recordManager, ElementSerializer<V> valueSerializer,
+    /* No qualifier */ValueHolder( BTree<?, V> btree, ElementSerializer<V> valueSerializer,
         BTree<V, V> subBtree )
     {
         this.valueSerializer = valueSerializer;
-        this.recordManager = recordManager;
+        this.btree = btree;
         raw = null;
         isRaw = false;
         isSubBtree = true;
@@ -116,10 +116,10 @@ public class ValueHolder<V> implements Cloneable
      * @param valueSerializer The Value's serializer
      * @param values The Values stored in the ValueHolder
      */
-    /* No qualifier */ValueHolder( RecordManager recordManager, ElementSerializer<V> valueSerializer, V... values )
+    /* No qualifier */ValueHolder( BTree<?, V> btree, ElementSerializer<V> valueSerializer, V... values )
     {
         this.valueSerializer = valueSerializer;
-        this.recordManager = recordManager;
+        this.btree = btree;
 
         if ( values != null )
         {
@@ -648,11 +648,19 @@ public class ValueHolder<V> implements Cloneable
     {
         try
         {
-            valueBtree = new BTree<V, V>( UUID.randomUUID().toString(), valueSerializer, valueSerializer );
+            BTreeConfiguration<V, V> configuration = new BTreeConfiguration<V, V>();
+            configuration.setAllowDuplicates( false );
+            configuration.setKeySerializer( valueSerializer );
+            configuration.setName( UUID.randomUUID().toString() );
+            configuration.setValueSerializer( valueSerializer );
+            configuration.setParentBTree( btree );
+            configuration.setSubBtree( true );
+            
+            valueBtree = new BTree<V, V>( configuration );
 
             try
             {
-                recordManager.manage( valueBtree, true );
+                btree.getRecordManager().manage( valueBtree, true );
                 isSubBtree = true;
                 isRaw = false;
                 raw = null;

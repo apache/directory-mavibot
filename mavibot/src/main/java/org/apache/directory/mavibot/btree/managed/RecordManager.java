@@ -652,7 +652,7 @@ public class RecordManager
                         throw new RuntimeException( e );
                     }
 
-                    valueHolder = new ValueHolder<V>( this, btree.getValueSerializer(), subBtree );
+                    valueHolder = new ValueHolder<V>( btree, btree.getValueSerializer(), subBtree );
 
                     valueHolder.setSubBtree( subBtree );
                 }
@@ -676,7 +676,7 @@ public class RecordManager
                 // This is an Array of values, read the byte[] associated with it
                 byte[] valueBytes = new byte[valueLengths[i]];
                 byteBuffer.get( valueBytes );
-                valueHolder = new ValueHolder<V>( this, btree.getValueSerializer(), false, nbValues,
+                valueHolder = new ValueHolder<V>( btree, btree.getValueSerializer(), false, nbValues,
                     valueBytes );
             }
 

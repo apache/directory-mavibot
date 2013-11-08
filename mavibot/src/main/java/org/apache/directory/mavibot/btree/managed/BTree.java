@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Comparator;
-import java.util.LinkedList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -111,6 +110,9 @@ public class BTree<K, V> implements Closeable
 
     /** The default number of pages to keep in memory */
     private static final int DEFAULT_CACHE_SIZE = 1000;
+    
+    /** A flag indicating if this BTree is a Sub BTree */
+    private boolean isSubBtree = false;
 
     /** The number of stored Values before we switch to a BTree */
     private static final int DEFAULT_VALUE_THRESHOLD_UP = 8;
@@ -221,6 +223,7 @@ public class BTree<K, V> implements Closeable
         btreeHeader = new BTreeHeader();
         btreeHeader.setName( name );
         btreeHeader.setPageSize( configuration.getPageSize() );
+        isSubBtree = configuration.isSubBtree();
 
         keySerializer = configuration.getKeySerializer();
         btreeHeader.setKeySerializerFQCN( keySerializer.getClass().getName() );
@@ -241,6 +244,14 @@ public class BTree<K, V> implements Closeable
         // Create the first root page, with revision 0L. It will be empty
         // and increment the revision at the same time
         rootPage = new Leaf<K, V>( this );
+        
+        if ( isSubBtree )
+        {
+            // The subBTree inherit its cache from its parent BTree
+            this.cache = configuration.getParentBTree().getCache();
+            this.writeLock = configuration.getParentBTree().getWriteLock();
+            readTransactions = new ConcurrentLinkedQueue<Transaction<K, V>>();
+        }
 
         // Now, initialize the BTree
         init();
@@ -359,22 +370,27 @@ public class BTree<K, V> implements Closeable
      */
     public void init() throws IOException
     {
-        // Create the queue containing the pending read transactions
-        readTransactions = new ConcurrentLinkedQueue<Transaction<K, V>>();
+        if ( !isSubBtree )
+        {
+            // This is not a subBtree, we have to initialize the cache
 
-        writeLock = new ReentrantLock();
-
-        // Initialize the caches
-        CacheConfiguration cacheConfiguration = new CacheConfiguration();
-        cacheConfiguration.setName( "pages" );
-        cacheConfiguration.setEternal( true );
-        cacheConfiguration.setOverflowToDisk( false );
-        cacheConfiguration.setCacheLoaderTimeoutMillis( 0 );
-        cacheConfiguration.setMaxElementsInMemory( cacheSize );
-        cacheConfiguration.setMemoryStoreEvictionPolicy( "LRU" );
-
-        cache = new Cache( cacheConfiguration );
-        cache.initialise();
+            // Create the queue containing the pending read transactions
+            readTransactions = new ConcurrentLinkedQueue<Transaction<K, V>>();
+    
+            writeLock = new ReentrantLock();
+    
+            // Initialize the caches
+            CacheConfiguration cacheConfiguration = new CacheConfiguration();
+            cacheConfiguration.setName( "pages" );
+            cacheConfiguration.setEternal( true );
+            cacheConfiguration.setOverflowToDisk( false );
+            cacheConfiguration.setCacheLoaderTimeoutMillis( 0 );
+            cacheConfiguration.setMaxElementsInMemory( cacheSize );
+            cacheConfiguration.setMemoryStoreEvictionPolicy( "LRU" );
+    
+            cache = new Cache( cacheConfiguration );
+            cache.initialise();
+        }
 
         // Initialize the txnManager thread
         //FIXME we should NOT create a new transaction manager thread for each BTree
@@ -388,6 +404,24 @@ public class BTree<K, V> implements Closeable
     /* No qualifier */Cache getCache()
     {
         return cache;
+    }
+
+
+    /**
+     * Return the cache we use in this BTree
+     */
+    /* No qualifier */ReentrantLock getWriteLock()
+    {
+        return writeLock;
+    }
+
+
+    /**
+     * Return the cache we use in this BTree
+     */
+    /* No qualifier */ConcurrentLinkedQueue<Transaction<K, V>> getReadTransactions()
+    {
+        return readTransactions;
     }
 
 
@@ -1215,7 +1249,7 @@ public class BTree<K, V> implements Closeable
     @SuppressWarnings("unchecked")
     /* no qualifier */ValueHolder<V> createValueHolder( V value )
     {
-        return new ValueHolder<V>( recordManager, valueSerializer, value );
+        return new ValueHolder<V>( this, valueSerializer, value );
     }
 
 

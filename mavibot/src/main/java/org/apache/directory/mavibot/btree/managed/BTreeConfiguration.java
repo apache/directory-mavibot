@@ -20,6 +20,8 @@
 package org.apache.directory.mavibot.btree.managed;
 
 
+import net.sf.ehcache.Cache;
+
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 
@@ -83,11 +85,16 @@ public class BTreeConfiguration<K, V>
 
     /** Flag to enable duplicate key support */
     private boolean allowDuplicates;
+    
+    /** A flag set when the BTree is a sub btree */
+    private boolean isSubBtree = false;
 
-    /** The cache size */
+    /** The cache size, if it's <= 0, we don't have cache */
     private int cacheSize;
-
-
+    
+    /** The inherited BTree if we create a sub BTree */
+    private BTree<?, V> parentBTree;
+    
     /**
      * @return the pageSize
      */
@@ -293,7 +300,7 @@ public class BTreeConfiguration<K, V>
      * 
      * @param allowDuplicates
      * @throws IllegalStateException if the btree was already initialized or when tried to turn off duplicate suport on
-     *                               an existing btree containing duplicate keys
+     * an existing btree containing duplicate keys
      */
     public void setAllowDuplicates( boolean allowDuplicates )
     {
@@ -311,10 +318,46 @@ public class BTreeConfiguration<K, V>
 
 
     /**
-     * @param cacheSize the cacheSize to set
+     * @param cacheSize the cacheSize to set.
      */
     public void setCacheSize( int cacheSize )
     {
         this.cacheSize = cacheSize;
+    }
+
+
+    /**
+     * @return the cache
+     */
+    public BTree<?, V> getParentBTree()
+    {
+        return parentBTree;
+    }
+
+
+    /**
+     * @param cache the cache to set.
+     */
+    public void setParentBTree( BTree<?, V> parentBTree )
+    {
+        this.parentBTree = parentBTree;
+    }
+
+
+    /**
+     * @return True if this is a sub btree, false otherwise
+     */
+    public boolean isSubBtree()
+    {
+        return isSubBtree;
+    }
+
+
+    /**
+     * @param isSubBtree True if the BTree will be a sub btree, false otherwise
+     */
+    public void setSubBtree( boolean isSubBtree )
+    {
+        this.isSubBtree = isSubBtree;
     }
 }
