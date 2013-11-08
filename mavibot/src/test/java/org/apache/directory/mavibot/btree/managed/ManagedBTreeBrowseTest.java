@@ -605,7 +605,6 @@ public class ManagedBTreeBrowseTest
     public void testBrowseBTreeNodesPrevDupsN() throws IOException, BTreeAlreadyManagedException
     {
         // Inject some data
-        long t0 = System.currentTimeMillis();
         for ( long i = 1; i < 1000L; i++ )
         {
             for ( int j = 1; j < 10; j++ )
@@ -613,10 +612,6 @@ public class ManagedBTreeBrowseTest
                 btree.insert( i, Long.toString( j ) );
             }
         }
-        long t1 = System.currentTimeMillis();
-        
-        
-        System.out.println( "Delta = " + ( t1 - t0) );
 
         // Create the cursor
         TupleCursor<Long, String> cursor = btree.browse();
