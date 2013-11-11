@@ -710,7 +710,17 @@ public class RecordManager
             PageHolder<K, V> valueHolder = new PageHolder<K, V>( btree, null, offset, lastOffset );
             node.setValue( i, valueHolder );
 
+            // Read the key length
+            int keyLength = byteBuffer.getInt();
+            
+            int currentPosition = byteBuffer.position();
+            
+            // and the key value
             K key = btree.getKeySerializer().deserialize( byteBuffer );
+            
+            // Set the new position now
+            byteBuffer.position( currentPosition + keyLength );
+            
             BTreeFactory.setKey( node, i, key );
         }
 
@@ -1162,7 +1172,7 @@ public class RecordManager
         else
         {
             // Prepare a list of byte[] that will contain the serialized page
-            int nbBuffers = 1 + 1 + 1 + nbElems * 2;
+            int nbBuffers = 1 + 1 + 1 + nbElems * 3;
             int dataSize = 0;
             int serializedSize = 0;
 
@@ -1247,9 +1257,15 @@ public class RecordManager
     {
         KeyHolder<K> holder = node.getKeyHolder( pos );
         byte[] buffer = holder.getBuffer();
+        
+        // We have to store the serialized key length
+        byte[] length = IntSerializer.serialize( buffer.length );
+        serializedData.add( length );
+
+        // And store the serialized key now
         serializedData.add( buffer );
 
-        return buffer.length;
+        return buffer.length + 4;
     }
 
 
@@ -1287,16 +1303,13 @@ public class RecordManager
 
         if ( keyData != null )
         {
-            byte[] data = new byte[keyData.length];
+            // We have to store the serialized key length
+            byte[] length = IntSerializer.serialize( keyData.length );
+            serializedData.add( length );
 
-            // The key length
-            byte[] buffer = IntSerializer.serialize( data.length );
-            serializedData.add( buffer );
-            dataSize += buffer.length;
-
-            // The key data
+            // And the key data
             serializedData.add( keyData );
-            dataSize += data.length;
+            dataSize += keyData.length + 4;
         }
         else
         {

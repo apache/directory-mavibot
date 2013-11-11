@@ -278,6 +278,14 @@ public class BTree<K, V> implements Closeable
     }
 
 
+    public BTree( String name, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer,
+        boolean allowDuplicates, int cacheSize )
+        throws IOException
+    {
+        this( name, null, keySerializer, valueSerializer, DEFAULT_PAGE_SIZE, allowDuplicates, cacheSize );
+    }
+
+
     /**
      * Creates a new in-memory BTree with a default page size and key/value serializers.
      * 
