@@ -168,7 +168,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 else
                 {
                     removedElement = new Tuple<K, V>( keys[index].getKey(), value ); // only one value was removed
-                    valueHolder.remove( value );
+                    //valueHolder.remove( value );
                 }
             }
             else
@@ -181,10 +181,12 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         if ( keyRemoved )
         {
+            // No value, we can remove the key
             newLeaf = new Leaf<K, V>( btree, revision, nbElems - 1 );
         }
         else
         {
+            // Copy the page as we will delete a value from a ValueHolder
             newLeaf = new Leaf<K, V>( btree, revision, nbElems );
         }
 
@@ -194,8 +196,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         // If the parent is null, then this page is the root page.
         if ( parent == null )
         {
-            // Just remove the entry if it's present
-            copyAfterRemovingElement( keyRemoved, newLeaf, index );
+            // Just remove the entry if it's present, or replace it if we have more than one value in the ValueHolder
+            copyAfterRemovingElement( keyRemoved, value, newLeaf, index );
 
             // The current page is added in the copied page list
             defaultResult.addCopiedPage( this );
@@ -249,7 +251,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 // We simply remove the element from the page, and if it was the leftmost,
                 // we return the new pivot (it will replace any instance of the removed
                 // key in its parents)
-                copyAfterRemovingElement( keyRemoved, newLeaf, index );
+                copyAfterRemovingElement( true, value, newLeaf, index );
 
                 // The current page is added in the copied page list
                 defaultResult.addCopiedPage( this );
@@ -263,6 +265,20 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             // Copy the keys and the values
             System.arraycopy( keys, 0, newLeaf.keys, 0, nbElems );
             System.arraycopy( values, 0, newLeaf.values, 0, nbElems );
+            
+            // Replace the ValueHolder now
+            try
+            {
+                ValueHolder<V> newValueHolder = (ValueHolder<V>)valueHolder.clone();
+                newValueHolder.remove( value );
+                
+                newLeaf.values[pos] = newValueHolder;
+            }
+            catch ( CloneNotSupportedException e )
+            {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
 
             // The current page is added in the copied page list
             defaultResult.addCopiedPage( this );
@@ -438,7 +454,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @param pos The position into the page of the element to remove
      * @throws IOException If we have an error while trying to access the page
      */
-    private void copyAfterRemovingElement( boolean keyRemoved, Leaf<K, V> newLeaf, int pos ) throws IOException
+    private void copyAfterRemovingElement( boolean keyRemoved, V removedValue, Leaf<K, V> newLeaf, int pos ) throws IOException
     {
         if ( keyRemoved )
         {
@@ -462,6 +478,23 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         {
             System.arraycopy( keys, 0, newLeaf.keys, 0, nbElems );
             System.arraycopy( values, 0, newLeaf.values, 0, nbElems );
+            
+            // We still have to clone the modified value holder
+            ValueHolder<V> valueHolder = newLeaf.values[pos];
+            
+            try
+            {
+                ValueHolder<V> newValueHolder = (ValueHolder<V>)valueHolder.clone();
+                
+                newValueHolder.remove( removedValue );
+                
+                newLeaf.values[pos] = newValueHolder;
+            }
+            catch ( CloneNotSupportedException e )
+            {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
         }
     }
 
