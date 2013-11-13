@@ -88,6 +88,12 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
      */
     public Tuple<K, V> next() throws EndOfFileExceededException, IOException
     {
+        // First check that we have elements in the BTree
+        if ( ( stack == null ) || ( stack.length == 0 ) )
+        {
+            throw new NoSuchElementException( "No tuple present" );
+        }
+
         ParentPos<K, V> parentPos = stack[depth];
 
         if ( parentPos.page == null )
@@ -287,6 +293,12 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
      */
     public Tuple<K, V> prev() throws EndOfFileExceededException, IOException
     {
+        // First check that we have elements in the BTree
+        if ( ( stack == null ) || ( stack.length == 0 ) )
+        {
+            throw new NoSuchElementException( "No more tuple present" );
+        }
+
         ParentPos<K, V> parentPos = stack[depth];
 
         if ( parentPos.page == null )
@@ -366,6 +378,12 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
      */
     public boolean hasNext() throws EndOfFileExceededException, IOException
     {
+        // First check that we have elements in the BTree
+        if ( ( stack == null ) || ( stack.length == 0 ) )
+        {
+            return false;
+        }
+        
         // Take the leaf and check if we have no mare values
         ParentPos<K, V> parentPos = stack[depth];
 
@@ -421,6 +439,12 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
      */
     public boolean hasPrev() throws EndOfFileExceededException, IOException
     {
+        // First check that we have elements in the BTree
+        if ( ( stack == null ) || ( stack.length == 0 ) )
+        {
+            return false;
+        }
+
         // Take the leaf and check if we have no mare values
         ParentPos<K, V> parentPos = stack[depth];
 
@@ -513,6 +537,12 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
      */
     public void moveToNextNonDuplicateKey() throws EndOfFileExceededException, IOException
     {
+        // First check that we have elements in the BTree
+        if ( ( stack == null ) || ( stack.length == 0 ) )
+        {
+            return;
+        }
+
         ParentPos<K, V> parentPos = stack[depth];
 
         if ( parentPos.page == null )
@@ -566,6 +596,12 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
      */
     public void moveToPrevNonDuplicateKey() throws EndOfFileExceededException, IOException
     {
+        // First check that we have elements in the BTree
+        if ( ( stack == null ) || ( stack.length == 0 ) )
+        {
+            return;
+        }
+
         ParentPos<K, V> parentPos = stack[depth];
 
         if ( parentPos.page == null )
@@ -606,6 +642,12 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
      */
     public void beforeFirst() throws IOException
     {
+        // First check that we have elements in the BTree
+        if ( ( stack == null ) || ( stack.length == 0 ) )
+        {
+            return;
+        }
+
         Page<K, V> child = null;
         
         for ( int i = 0; i < depth; i++ )
@@ -646,6 +688,12 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
      */
     public void afterLast() throws IOException
     {
+        // First check that we have elements in the BTree
+        if ( ( stack == null ) || ( stack.length == 0 ) )
+        {
+            return;
+        }
+
         Page<K, V> child = null;
 
         for ( int i = 0; i < depth; i++ )
