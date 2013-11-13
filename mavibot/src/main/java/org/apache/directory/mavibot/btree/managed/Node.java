@@ -980,7 +980,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         // We first stack the current page
         stack[depth++] = new ParentPos<K, V>( this, pos );
         
-        Page<K, V> page = children[0].getValue( btree );
+        Page<K, V> page = children[pos].getValue( btree );
 
         return page.browse( key, transaction, stack, depth );
     }
