@@ -60,6 +60,9 @@ public class ManagedBTreeBrowseTest
     private File dataDir = null;
 
 
+    /**
+     * Create a BTree for this test
+     */
     @Before
     public void createBTree()
     {
@@ -79,6 +82,9 @@ public class ManagedBTreeBrowseTest
     }
 
 
+    /**
+     * Reload the BTree into a new record manager
+     */
     private void openRecordManagerAndBtree()
     {
         try
@@ -132,6 +138,33 @@ public class ManagedBTreeBrowseTest
     }
 
     
+    /**
+     * Construct a String representation of a number padded with 0 on the left
+     */
+    private String toString( long value, int size )
+    {
+        String valueStr = Long.toString( value );
+        
+        StringBuilder sb = new StringBuilder();
+        
+        if ( size > valueStr.length() )
+        {
+            for ( int i = valueStr.length(); i < size; i++ )
+            {
+                sb.append( "0" );
+            }
+        }
+        
+        sb.append( valueStr );
+        
+        return sb.toString();
+    }
+
+
+    
+    //----------------------------------------------------------------------------------------
+    // The Browse tests
+    //----------------------------------------------------------------------------------------
     /**
      * Test the browse methods on an empty btree  
      */
@@ -553,7 +586,7 @@ public class ManagedBTreeBrowseTest
 
 
     /**
-     * Test the browse methods on a btree containing just a leaf with duplicate values
+     * Test the browse methods on a btree containing nodes with duplicate values
      */
     @Test
     public void testBrowseBTreeNodesNextDupsN() throws IOException, BTreeAlreadyManagedException
@@ -599,7 +632,7 @@ public class ManagedBTreeBrowseTest
 
 
     /**
-     * Test the browse methods on a btree containing just a leaf with duplicate values
+     * Test the browse methods on a btree containing nodes with duplicate values
      */
     @Test
     public void testBrowseBTreeNodesPrevDupsN() throws IOException, BTreeAlreadyManagedException
@@ -642,26 +675,7 @@ public class ManagedBTreeBrowseTest
             }
         }
     }
-
     
-    private String toString( long value, int size )
-    {
-        String valueStr = Long.toString( value );
-        
-        StringBuilder sb = new StringBuilder();
-        
-        if ( size > valueStr.length() )
-        {
-            for ( int i = valueStr.length(); i < size; i++ )
-            {
-                sb.append( "0" );
-            }
-        }
-        
-        sb.append( valueStr );
-        
-        return sb.toString();
-    }
 
     /**
      * Test the browse methods on a btree containing just a leaf with duplicate values
@@ -724,5 +738,166 @@ public class ManagedBTreeBrowseTest
         }
         
         checkPrev( cursor, 1L, "01", true, false );
+    }
+
+
+    //----------------------------------------------------------------------------------------
+    // The BrowseFrom tests
+    //----------------------------------------------------------------------------------------
+    /**
+     * Test the browseFrom method on an empty tree
+     */
+    @Test
+    public void testBrowseFromEmptyBTree() throws IOException, BTreeAlreadyManagedException
+    {
+        TupleCursor<Long, String> cursor = btree.browseFrom( 1L );
+        
+        assertFalse( cursor.hasNext() );
+        assertFalse( cursor.hasPrev() );
+        
+        try
+        {
+            cursor.next();
+            fail();
+        }
+        catch ( NoSuchElementException nsee )
+        {
+            // Expected
+        }
+        
+        try
+        {
+            cursor.prev();
+            fail();
+        }
+        catch ( NoSuchElementException nsee )
+        {
+            // Expected
+        }
+        
+        assertEquals( -1L, cursor.getRevision() );
+    }
+
+
+    /**
+     * Test the browseFrom methods on a btree containing just a leaf
+     */
+    @Test
+    public void testBrowseFromBTreeLeaf() throws IOException, BTreeAlreadyManagedException
+    {
+        // Inject some data
+        btree.insert( 1L, "1" );
+        btree.insert( 7L, "7" );
+        btree.insert( 3L, "3" );
+        btree.insert( 5L, "5" );
+        btree.insert( 9L, "9" );
+
+        // Create the cursor, starting at 5
+        TupleCursor<Long, String> cursor = btree.browseFrom( 5L );
+        
+        assertTrue( cursor.hasPrev() );
+        assertTrue( cursor.hasNext() );
+        
+        // Move forward
+        checkNext( cursor, 5L, "5", true, true );
+        checkNext( cursor, 7L, "7", true, true );
+        checkNext( cursor, 9L, "9", false, true );
+        
+        cursor.close();
+        
+        // now, start at 5 and move backward
+        cursor = btree.browseFrom( 5L );
+        
+        assertTrue( cursor.hasPrev() );
+        assertTrue( cursor.hasNext() );
+        
+        // Move backward
+        checkPrev( cursor, 3L, "3", true, true );
+        checkPrev( cursor, 1L, "1", true, false );
+        cursor.close();
+        
+        // Start at the first key
+        cursor = btree.browseFrom( 1L );
+        assertFalse( cursor.hasPrev() );
+        assertTrue( cursor.hasNext() );
+
+        checkNext( cursor, 1L, "1", true, false );
+        checkNext( cursor, 3L, "3", true, true );
+        
+        // Start before the first key
+        cursor = btree.browseFrom( 0L );
+        assertFalse( cursor.hasPrev() );
+        assertTrue( cursor.hasNext() );
+
+        checkNext( cursor, 1L, "1", true, false );
+        checkNext( cursor, 3L, "3", true, true );
+        
+        // Start at the last key
+        cursor = btree.browseFrom( 9L );
+        assertTrue( cursor.hasPrev() );
+        assertTrue( cursor.hasNext() );
+
+        checkNext( cursor, 9L, "9", false, true );
+        checkPrev( cursor, 7L, "7", true, true );
+
+        // Start after the last key
+        cursor = btree.browseFrom( 10L );
+        assertTrue( cursor.hasPrev() );
+        assertFalse( cursor.hasNext() );
+
+        checkPrev( cursor, 9L, "9", false, true );
+        checkPrev( cursor, 7L, "7", true, true );
+
+        // Start in the middle with a non existent key
+        cursor = btree.browseFrom( 4L );
+        assertTrue( cursor.hasPrev() );
+        assertTrue( cursor.hasNext() );
+
+        checkNext( cursor, 5L, "5", true, true );
+
+        // Start in the middle with a non existent key
+        cursor = btree.browseFrom( 4L );
+
+        checkPrev( cursor, 3L, "3", true, true );
+    }
+    
+    
+    /**
+     * Test the browseFrom method on a btree containing nodes with duplicate values
+     */
+    @Test
+    public void testBrowseFromBTreeNodesPrevDupsN() throws IOException, BTreeAlreadyManagedException
+    {
+        // Inject some data
+        for ( long i = 1; i < 1000L; i += 2 )
+        {
+            for ( int j = 1; j < 10; j++ )
+            {
+                btree.insert( i, Long.toString( j ) );
+            }
+        }
+
+        // Create the cursor
+        TupleCursor<Long, String> cursor = btree.browseFrom( 500L );
+        
+        // Move forward
+        
+        assertTrue( cursor.hasPrev() );
+        assertTrue( cursor.hasNext() );
+        boolean next = true;
+        boolean prev = true;
+        
+        for ( long i = 501L; i < 1000L; i += 2 )
+        {
+            for ( long j = 1L; j < 10L; j++ )
+            {
+                if ( ( i == 999L ) && ( j == 9L ) )
+                {
+                    next = false;
+                }
+
+                checkNext( cursor, i, Long.toString( j ), next, prev );
+            }
+        }
     }
 }
