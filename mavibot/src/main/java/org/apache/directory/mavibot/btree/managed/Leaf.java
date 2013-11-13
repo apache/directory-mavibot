@@ -667,9 +667,28 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
                 cursor = new TupleCursorImpl<K, V>( btree, transaction, stack, 0 );
             }
+            else if ( nbElems > 0 )
+            {
+                // after the last element
+                ParentPos<K, V> parentPos = new ParentPos<K, V>( this, nbElems - 1 );
+                
+                stack[depth] = parentPos;
+
+                cursor = new TupleCursorImpl<K, V>( btree, transaction, stack, 0 );
+                
+                try
+                {
+                    cursor.afterLast();
+                }
+                catch ( IOException e )
+                {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+            }
             else
             {
-                // Not found : return a null cursor
+                // Not found, because there are no elements : return a null cursor
                 stack[depth] = null;
 
                 return new TupleCursorImpl<K, V>( btree, transaction, null, 0 );

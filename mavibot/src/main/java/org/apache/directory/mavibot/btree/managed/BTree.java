@@ -956,7 +956,9 @@ public class BTree<K, V> implements Closeable
         Transaction<K, V> transaction = beginReadTransaction();
 
         // Fetch the root page for this revision
-        TupleCursor<K, V> cursor = rootPage.browse( key, transaction, new ParentPos[32], 0 );
+        @SuppressWarnings("unchecked")
+        ParentPos<K, V>[] stack = new ParentPos[32];
+        TupleCursor<K, V> cursor = rootPage.browse( key, transaction, stack, 0 );
 
         return cursor;
     }
