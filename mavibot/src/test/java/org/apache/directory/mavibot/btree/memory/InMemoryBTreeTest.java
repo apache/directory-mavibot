@@ -1953,7 +1953,7 @@ public class InMemoryBTreeTest
         }
 
         System.out.println( btree.rootPage );
-        assertEquals( 1, btree.rootPage.getNbElems() );
+        assertEquals( 2, btree.rootPage.getNbElems() );
 
         assertEquals( 7, btree.rootPage.findRightMost().getKey().intValue() );
 
