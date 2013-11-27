@@ -32,32 +32,6 @@ import java.io.IOException;
 @SuppressWarnings("all")
 /* No qualifier */class InternalUtil
 {
-
-
-    /**
-     * Sets the multi-value container(a.k.a dupsContainer) of the key at the given position
-     * and resets the 'dupsPos' to zero. This is mostly used by Cursor while navigating using
-     * next() 
-     *
-     * @param parentPos the parent position object
-     * @param btree the BTree
-     */
-    public static void changeNextDupsContainer( ParentPos parentPos, BTree btree ) throws IOException
-    {
-        if ( !btree.isAllowDuplicates() )
-        {
-            return;
-        }
-
-        if ( parentPos.pos < parentPos.page.getNbElems() )
-        {
-            Leaf leaf = ( Leaf ) ( parentPos.page );
-            ValueHolder valueHolder = leaf.values[parentPos.pos];
-            parentPos.valueCursor = valueHolder.getCursor();
-        }
-    }
-
-
     /**
      * Sets the multi-value container(a.k.a dupsContainer) of the key at the index below the given position( i.e pos - 1)
      * and resets the 'dupsPos' to the number of elements present in the multi-value container.
@@ -73,12 +47,10 @@ import java.io.IOException;
             return;
         }
 
-        int index = parentPos.pos - 1;
-
-        if ( index >= 0 )
+        if ( parentPos.pos >= 0 )
         {
             Leaf leaf = ( Leaf ) ( parentPos.page );
-            ValueHolder valueHolder = leaf.values[index];
+            ValueHolder valueHolder = leaf.values[parentPos.pos];
             parentPos.valueCursor = valueHolder.getCursor();
         }
     }

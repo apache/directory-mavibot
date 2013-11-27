@@ -23,6 +23,8 @@ package org.apache.directory.mavibot.btree.memory;
 
 import java.io.IOException;
 
+import org.apache.directory.mavibot.btree.TupleCursor;
+
 
 /**
  * A class containing utility methods to be used internally. 
@@ -52,11 +54,22 @@ import java.io.IOException;
         if ( parentPos.dupsContainer == null )
         {
             Leaf leaf = ( Leaf ) ( parentPos.page );
-            MultipleMemoryHolder mvHolder = ( MultipleMemoryHolder ) leaf.values[parentPos.pos];
-            if( !mvHolder.isSingleValue() )
+            
+            // Deal with BEFORE_FIRST and AFTER_LAST cases
+            if ( ( parentPos.pos == TupleCursor.BEFORE_FIRST ) || ( parentPos.pos == TupleCursor.AFTER_LAST ) )
             {
-                BTree dupsContainer = ( BTree ) mvHolder.getValue( btree );
-                parentPos.dupsContainer = dupsContainer;
+                // Nothing to do in this case
+                return;
+            }
+            else
+            {
+                MultipleMemoryHolder mvHolder = ( MultipleMemoryHolder ) leaf.values[parentPos.pos];
+                
+                if ( !mvHolder.isSingleValue() )
+                {
+                    BTree dupsContainer = ( BTree ) mvHolder.getValue( btree );
+                    parentPos.dupsContainer = dupsContainer;
+                }
             }
         }
     }

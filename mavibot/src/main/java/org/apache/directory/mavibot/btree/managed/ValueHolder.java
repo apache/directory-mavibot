@@ -31,6 +31,7 @@ import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
+import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
 
 /**
@@ -49,9 +50,12 @@ public class ValueHolder<V> implements Cloneable
 
     /** The serialized value */
     private byte[] raw;
-
-    /** A flag set to true if the values are stored in a BTree */
-    private boolean isSubBtree = false;
+    
+    /** A flag set to true when the raw value has been deserialized */
+    private boolean isDeserialized = false;
+    
+    /** A flag to signal that the raw value represent the serialized values in their last state */
+    private boolean isRawUpToDate = false;
 
     /** The RecordManager */
     private BTree<?, V> btree;
@@ -59,59 +63,36 @@ public class ValueHolder<V> implements Cloneable
     /** The Value serializer */
     private ElementSerializer<V> valueSerializer;
 
-    /** An internal flag used when the values are not yet deserialized */
-    private boolean isRaw = true;
-
 
     /**
-     * Creates a new instance of a ValueHolder, containing the serialized values
+     * Creates a new instance of a ValueHolder, containing the serialized values.
      * 
+     * @param btree the container BTree
      * @param valueSerializer The Value's serializer
      * @param raw The raw data containing the values
+     * @param nbValues the number of stored values
+     * @param raw the byte[] containing either the serialized array of values or the sub-btree offset
      */
-    /* No qualifier */ValueHolder( BTree<?, V> btree, ElementSerializer<V> valueSerializer,
-        boolean isSubBtree, int nbValues,
-        byte[] raw )
+    /* No qualifier */ValueHolder( BTree<?, V> btree, ElementSerializer<V> valueSerializer, int nbValues, byte[] raw )
     {
         this.valueSerializer = valueSerializer;
         this.raw = raw;
-        this.isSubBtree = isSubBtree;
         this.btree = btree;
+        isRawUpToDate = true;
 
+        // We create the array of values if they fit in an array. If they are stored in a 
+        // BTree, we do nothing atm.
         if ( nbValues < BTree.valueThresholdUp )
         {
-            // Keep an array
+            // The values are contained into an array
             valueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), nbValues );
         }
-        else
-        {
-            // Use a sub btree
-
-            //raw = ByteBuffer.wrap( valueSerializer.serialize( key ) );
-        }
     }
 
 
     /**
-     * Creates a new instance of a ValueHolder, containing the serialized values
-     * 
-     * @param valueSerializer The Value's serializer
-     * @param raw The raw data containing the values
-     */
-    /* No qualifier */ValueHolder( BTree<?, V> btree, ElementSerializer<V> valueSerializer,
-        BTree<V, V> subBtree )
-    {
-        this.valueSerializer = valueSerializer;
-        this.btree = btree;
-        raw = null;
-        isRaw = false;
-        isSubBtree = true;
-        valueBtree = subBtree;
-    }
-
-
-    /**
-     * Creates a new instance of a ValueHolder, containing Values
+     * Creates a new instance of a ValueHolder, containing Values. This constructor is called
+     * whe we need to create a new ValueHolder with deserialized values.
      * 
      * @param valueSerializer The Value's serializer
      * @param values The Values stored in the ValueHolder
@@ -139,28 +120,6 @@ public class ValueHolder<V> implements Cloneable
                     ase.printStackTrace();
                     throw ase;
                 }
-
-                // Serialize the values
-                byte[][] data = new byte[nbValues][];
-                int pos = 0;
-                int length = 0;
-
-                for ( V value : values )
-                {
-                    byte[] serializedValue = valueSerializer.serialize( value );
-
-                    data[pos++] = serializedValue;
-                    length += serializedValue.length;
-                }
-
-                raw = new byte[length];
-                pos = 0;
-
-                for ( byte[] bytes : data )
-                {
-                    System.arraycopy( bytes, 0, raw, pos, bytes.length );
-                    pos += bytes.length;
-                }
             }
             else
             {
@@ -185,11 +144,9 @@ public class ValueHolder<V> implements Cloneable
         {
             // No value, we create an empty array
             valueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), 0 );
-
-            //raw = ByteBuffer.wrap( valueSerializer.serialize( key ) );
         }
-
-        isRaw = false;
+        
+        isDeserialized = true;
     }
 
 
@@ -198,11 +155,12 @@ public class ValueHolder<V> implements Cloneable
      */
     public ValueCursor<V> getCursor()
     {
-        checkRaw();
-
         ValueCursor<V> cursor;
 
-        if ( isSubBtree )
+        // Check that the values are deserialized before doing anything
+        checkAndDeserialize();
+
+        if ( valueArray == null )
         {
             cursor = new ValueBtreeCursor();
         }
@@ -213,6 +171,7 @@ public class ValueHolder<V> implements Cloneable
 
         return cursor;
     }
+
 
     /**
      * A class that encapsulate the values into an array
@@ -229,7 +188,7 @@ public class ValueHolder<V> implements Cloneable
         private ValueArrayCursor()
         {
             // Start at -1 to be positioned before the first element
-            currentPos = -1;
+            currentPos = BEFORE_FIRST;
         }
 
 
@@ -239,15 +198,7 @@ public class ValueHolder<V> implements Cloneable
         @Override
         public boolean hasNext()
         {
-            if ( valueArray == null )
-            {
-                // Load the array from the raw data
-                return false;
-            }
-            else
-            {
-                return currentPos < valueArray.length - 1;
-            }
+            return ( currentPos < valueArray.length - 1 ) && ( currentPos != AFTER_LAST );
         }
 
 
@@ -267,6 +218,8 @@ public class ValueHolder<V> implements Cloneable
 
                 if ( currentPos == valueArray.length )
                 {
+                    currentPos = AFTER_LAST;
+                    
                     // We have reached the end of the array
                     return null;
                 }
@@ -284,15 +237,7 @@ public class ValueHolder<V> implements Cloneable
         @Override
         public boolean hasPrev() throws EndOfFileExceededException, IOException
         {
-            if ( valueArray == null )
-            {
-                // Load the array from the raw data
-                return false;
-            }
-            else
-            {
-                return currentPos > 0;
-            }
+            return currentPos > 0 || currentPos == AFTER_LAST;
         }
 
 
@@ -311,7 +256,7 @@ public class ValueHolder<V> implements Cloneable
         @Override
         public void beforeFirst() throws IOException
         {
-            currentPos = -1;
+            currentPos = BEFORE_FIRST;
         }
 
 
@@ -321,7 +266,7 @@ public class ValueHolder<V> implements Cloneable
         @Override
         public void afterLast() throws IOException
         {
-            currentPos = valueArray.length;
+            currentPos = AFTER_LAST;
         }
 
 
@@ -338,9 +283,16 @@ public class ValueHolder<V> implements Cloneable
             }
             else
             {
-                currentPos--;
+                if ( currentPos == AFTER_LAST )
+                {
+                    currentPos = valueArray.length - 1;
+                }
+                else
+                {
+                    currentPos--;
+                }
 
-                if ( currentPos == -1 )
+                if ( currentPos == BEFORE_FIRST )
                 {
                     // We have reached the end of the array
                     return null;
@@ -359,14 +311,7 @@ public class ValueHolder<V> implements Cloneable
         @Override
         public int size()
         {
-            if ( valueArray != null )
-            {
-                return valueArray.length;
-            }
-            else
-            {
-                return 0;
-            }
+            return valueArray.length;
         }
     }
 
@@ -384,7 +329,7 @@ public class ValueHolder<V> implements Cloneable
          */
         private ValueBtreeCursor()
         {
-            // Start at -1 to be positionned before the first element
+            // Start at -1 to be positioned before the first element
             try
             {
                 if ( valueBtree != null )
@@ -418,13 +363,11 @@ public class ValueHolder<V> implements Cloneable
                 }
                 catch ( EndOfFileExceededException e )
                 {
-                    // TODO Auto-generated catch block
                     e.printStackTrace();
                     return false;
                 }
                 catch ( IOException e )
                 {
-                    // TODO Auto-generated catch block
                     e.printStackTrace();
                     return false;
                 }
@@ -443,13 +386,11 @@ public class ValueHolder<V> implements Cloneable
             }
             catch ( EndOfFileExceededException e )
             {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
                 return null;
             }
             catch ( IOException e )
             {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
                 return null;
             }
@@ -474,13 +415,11 @@ public class ValueHolder<V> implements Cloneable
                 }
                 catch ( EndOfFileExceededException e )
                 {
-                    // TODO Auto-generated catch block
                     e.printStackTrace();
                     return false;
                 }
                 catch ( IOException e )
                 {
-                    // TODO Auto-generated catch block
                     e.printStackTrace();
                     return false;
                 }
@@ -539,13 +478,11 @@ public class ValueHolder<V> implements Cloneable
             }
             catch ( EndOfFileExceededException e )
             {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
                 return null;
             }
             catch ( IOException e )
             {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
                 return null;
             }
@@ -558,61 +495,71 @@ public class ValueHolder<V> implements Cloneable
         @Override
         public int size()
         {
-            if ( valueBtree != null )
-            {
-                return ( int ) valueBtree.getNbElems();
-            }
-            else
-            {
-                return 0;
-            }
+            return ( int ) valueBtree.getNbElems();
         }
     }
 
 
     /**
-     * @return the raw representation of the value holder. 
+     * @return the raw representation of the value holder. The serialized value will not be the same
+     * if the values are stored in an array or in a btree. <br/>
+     * If they are stored in a BTree, the raw value will contain the offset of the btree, otherwise
+     * it will contain a byte[] which will contain each serialized value, prefixed by their length. 
+     * 
      */
-    public byte[] getRaw()
+    /* No qualifier*/ byte[] getRaw()
     {
-        if ( isRaw )
+        if ( isRawUpToDate )
         {
-            // We don't have to serialize the ValueHolder, it has not been changed 
+            // Just have to return the raw value
             return raw;
+        }
+
+        if ( isSubBtree() )
+        {
+            // The values are stored into a subBtree, return the offset of this subBtree
+            long btreeOffset = valueBtree.getBtreeOffset();
+            raw = LongSerializer.serialize( btreeOffset );
         }
         else
         {
-            // Ok, some values have been added/modified/removed, we have to serialize the ValueHolder
+            // Create as many byte[] as we have length and serialized values to store
             byte[][] valueBytes = new byte[valueArray.length * 2][];
             int length = 0;
             int pos = 0;
-
+    
+            // Process each value now
             for ( V value : valueArray )
             {
                 // Serialize the value
                 byte[] bytes = valueSerializer.serialize( value );
                 length += bytes.length;
-
+    
                 // Serialize the value's length
                 byte[] sizeBytes = IntSerializer.serialize( bytes.length );
                 length += sizeBytes.length;
-
+    
                 // And store the two byte[]
                 valueBytes[pos++] = sizeBytes;
                 valueBytes[pos++] = bytes;
             }
-
+    
+            // Last, not least, create a buffer large enough to contain all the created byte[],
+            // and copy all those byte[] into this buffer
             raw = new byte[length];
             pos = 0;
-
+    
             for ( byte[] bytes : valueBytes )
             {
                 System.arraycopy( bytes, 0, raw, pos, bytes.length );
                 pos += bytes.length;
             }
-
-            return raw;
         }
+        
+        // Update the flags
+        isRawUpToDate = true;
+
+        return raw;
     }
 
 
@@ -621,7 +568,7 @@ public class ValueHolder<V> implements Cloneable
      */
     public boolean isSubBtree()
     {
-        return isSubBtree;
+        return valueArray == null;
     }
 
 
@@ -630,7 +577,9 @@ public class ValueHolder<V> implements Cloneable
      */
     public int size()
     {
-        if ( isSubBtree )
+        checkAndDeserialize();
+
+        if ( valueArray == null )
         {
             return ( int ) valueBtree.getNbElems();
         }
@@ -661,8 +610,6 @@ public class ValueHolder<V> implements Cloneable
             try
             {
                 btree.getRecordManager().manage( valueBtree, true );
-                isSubBtree = true;
-                isRaw = false;
                 raw = null;
             }
             catch ( BTreeAlreadyManagedException e )
@@ -685,9 +632,113 @@ public class ValueHolder<V> implements Cloneable
     {
         valueBtree = subBtree;
         raw = null;
-        isRaw = false;
-        isSubBtree = true;
         valueArray = null;
+        isDeserialized = true;
+        isRawUpToDate = false;
+    }
+    
+    
+    /**
+     * Check that the values are stored as raw value
+     */
+    private void checkAndDeserialize()
+    {
+        if ( !isDeserialized )
+        {
+            if ( valueArray == null )
+            {
+                // the values are stored into a sub-btree. Read it now if it's not already done
+                deserializeSubBtree();
+            }
+            else
+            {
+                // The values are stored into an array. Deserialize it now
+                deserializeArray();
+            }
+
+            // Change the flag
+            isDeserialized = true;
+        }
+    }
+    
+    /**
+     * Add the value in an array
+     */
+    private void addInArray( V value )
+    {
+        checkAndDeserialize();
+
+        // We have to check that we have reached the threshold or not
+        if ( valueArray.length + 1 > BTree.valueThresholdUp )
+        {
+            // Ok, transform the array into a btree
+            createSubTree();
+
+            try
+            {
+                for ( V val : valueArray )
+                {
+                    // Here, we should insert all the values in one shot then 
+                    // write the btree on disk only once.
+                    valueBtree.insert( val, null );
+                }
+
+                // We can delete the array now
+                valueArray = null;
+
+                // And inject the new value
+                valueBtree.insert( value, null );
+            }
+            catch ( IOException e )
+            {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        else
+        {
+            // First check that the value is not already present in the ValueHolder
+            int pos = findPos( value );
+
+            if ( pos >= 0 )
+            {
+                // The value exists : nothing to do
+                return;
+            }
+
+            // Ok, we just have to insert the new element at the right position
+            // We transform the position to a positive value 
+            pos = -( pos + 1 );
+            // First, copy the array
+            V[] newValueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), valueArray.length + 1 );
+
+            System.arraycopy( valueArray, 0, newValueArray, 0, pos );
+            newValueArray[pos] = value;
+            System.arraycopy( valueArray, pos, newValueArray, pos + 1, valueArray.length - pos );
+
+            // And switch the arrays
+            valueArray = newValueArray;
+        }
+    }
+    
+
+    /**
+     * Add the value in the subBTree
+     */
+    private void addInBtree( V value )
+    {
+        // First check that we have a loaded BTree
+        checkAndDeserialize();
+        
+        try
+        {
+            valueBtree.insert( value, null );
+        }
+        catch ( IOException e )
+        {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
     }
 
 
@@ -698,67 +749,74 @@ public class ValueHolder<V> implements Cloneable
      */
     public void add( V value )
     {
-        checkRaw();
-
-        if ( !isSubBtree )
+        if ( valueArray != null )
         {
-            // We have to check that we have reached the threshold or not
-            if ( valueArray.length + 1 > BTree.valueThresholdUp )
-            {
-                // Ok, transform the array into a btree
-                createSubTree();
-
-                try
-                {
-                    for ( V val : valueArray )
-                    {
-                        // Here, we should insert all the values in one shot then 
-                        // write the btree on disk only once.
-                        valueBtree.insert( val, null );
-                    }
-
-                    // We can delete the array now
-                    valueArray = null;
-
-                    // And inject the new value
-                    valueBtree.insert( value, null );
-                }
-                catch ( IOException e )
-                {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-            }
-            else
-            {
-                // First check that the value is not already present in the ValueHolder
-                int pos = findPos( value );
-
-                if ( pos >= 0 )
-                {
-                    // The value exists : nothing to do
-                    return;
-                }
-
-                // Ok, we just have to insert the new element at the right position
-                // We transform the position to a positive value 
-                pos = -( pos + 1 );
-                // First, copy the array
-                V[] newValueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), valueArray.length + 1 );
-
-                System.arraycopy( valueArray, 0, newValueArray, 0, pos );
-                newValueArray[pos] = value;
-                System.arraycopy( valueArray, pos, newValueArray, pos + 1, valueArray.length - pos );
-
-                // And switch the arrays
-                valueArray = newValueArray;
-            }
+            addInArray( value );
         }
         else
         {
+            addInBtree( value );
+        }
+        
+        // The raw value is not anymore up to date with the content
+        isRawUpToDate = false;
+        raw = null;
+    }
+    
+    
+    /**
+     * Remove a value from an array
+     */
+    private void removeFromArray( V value )
+    {
+        checkAndDeserialize();
+
+        // First check that the value is not already present in the ValueHolder
+        int pos = findPos( value );
+
+        if ( pos < 0 )
+        {
+            // The value does not exists : nothing to do
+            return;
+        }
+
+        // Ok, we just have to delete the new element at the right position
+        // First, copy the array
+        V[] newValueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), valueArray.length - 1 );
+
+        System.arraycopy( valueArray, 0, newValueArray, 0, pos );
+        System.arraycopy( valueArray, pos + 1, newValueArray, pos, valueArray.length - pos - 1 );
+
+        // And switch the arrays
+        valueArray = newValueArray;
+    }
+
+    
+    /**
+     * Remove the value from a sub btree
+     */
+    private void removeFromBtree( V value )
+    {
+        // First check that we have a loaded BTree
+        checkAndDeserialize();
+
+        if ( btreeContains( value ) )
+        {
             try
             {
-                valueBtree.insert( value, null );
+                if ( valueBtree.getNbElems() - 1 < BTree.valueThresholdLow )
+                {
+                    int nbValues = (int)(valueBtree.getNbElems() - 1);
+                        
+                    // We have to switch to an Array of values
+                    valueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), nbValues );
+    
+                    // Now copy all the value sbut the one we have removed
+                }
+                else
+                {
+                    valueBtree.delete( value );
+                }
             }
             catch ( IOException e )
             {
@@ -768,7 +826,6 @@ public class ValueHolder<V> implements Cloneable
         }
     }
 
-
     /**
      * Add a new value in the ValueHolder
      * 
@@ -776,40 +833,56 @@ public class ValueHolder<V> implements Cloneable
      */
     public void remove( V value )
     {
-        checkRaw();
-
-        if ( !isSubBtree )
+        if ( valueArray != null )
         {
-            // First check that the value is not already present in the ValueHolder
-            int pos = findPos( value );
-
-            if ( pos < 0 )
-            {
-                // The value does not exists : nothing to do
-                return;
-            }
-
-            // Ok, we just have to delete the new element at the right position
-            // First, copy the array
-            V[] newValueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), valueArray.length - 1 );
-
-            System.arraycopy( valueArray, 0, newValueArray, 0, pos );
-            System.arraycopy( valueArray, pos + 1, newValueArray, pos, valueArray.length - pos - 1 );
-
-            // And switch the arrays
-            valueArray = newValueArray;
+            removeFromArray( value );
         }
         else
         {
-            try
-            {
-                valueBtree.delete( value );
-            }
-            catch ( IOException e )
-            {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
+            removeFromBtree( value );
+        }
+
+        // The raw value is not anymore up to date wth the content
+        isRawUpToDate = false;
+        raw = null;
+    }
+    
+    
+    /**
+     * Check if the array of values contains a given value
+     */
+    private boolean arrayContains( V value )
+    {
+        // First, deserialize the value if it's still a byte[]
+        checkAndDeserialize();
+        
+        if ( valueArray.length == 0 )
+        {
+            return false;
+        }
+
+        // Do a search using dichotomy
+        return findPos( value ) >= 0;
+    }
+    
+    
+    /**
+     * Check if the subBtree contains a given value
+     */
+    private boolean btreeContains( V value )
+    {
+        // First, deserialize the value if it's still a byte[]
+        checkAndDeserialize();
+        
+        try
+        {
+            return valueBtree.hasKey( value );
+        }
+        catch ( IOException e )
+        {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+            return false;
         }
     }
 
@@ -821,32 +894,14 @@ public class ValueHolder<V> implements Cloneable
      */
     public boolean contains( V value )
     {
-        checkRaw();
-
-        if ( isSubBtree )
+        if ( valueArray == null )
         {
-            try
-            {
-                return valueBtree.hasKey( value );
-            }
-            catch ( IOException e )
-            {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
+            return btreeContains( value );
         }
         else
         {
-            if ( valueArray.length == 0 )
-            {
-                return false;
-            }
-
-            // Do a search using dichotomy
-            return findPos( value ) >= 0;
+            return arrayContains( value );
         }
-
-        return true;
     }
 
 
@@ -984,13 +1039,20 @@ public class ValueHolder<V> implements Cloneable
     {
         ValueHolder<V> copy = ( ValueHolder<V> ) super.clone();
 
-        //copy the valueArray if it's not null
+        // copy the valueArray if it's not null
         // We don't clone the BTree, as we will create new revisions when 
-        //modifying it
-        if ( ( !isSubBtree ) && ( valueArray != null ) )
+        // modifying it
+        if ( valueArray != null )
         {
             copy.valueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), valueArray.length );
             System.arraycopy( valueArray, 0, copy.valueArray, 0, valueArray.length );
+        }
+        
+        // Also clone the raw value if its up to date
+        if ( isRawUpToDate )
+        {
+            copy.raw = new byte[raw.length];
+            System.arraycopy( raw,  0,  copy.raw, 0, raw.length );
         }
 
         return copy;
@@ -998,53 +1060,52 @@ public class ValueHolder<V> implements Cloneable
 
 
     /**
-     * Check if we haven't yet deserialized the values, and if so, do it
+     * Deserialize the values stored in an array
      */
-    private void checkRaw()
+    private void deserializeArray()
     {
-        if ( isRaw )
+        // We haven't yet deserialized the values. Let's do it now. The values are
+        // necessarily stored in an array at this point
+        int index = 0;
+        int pos = 0;
+
+        while ( pos < raw.length )
         {
-            // We haven't yet deserialized the values. Let's do it now
-            if ( isSubBtree )
+            try
             {
-                // This is a sub BTree, we have to read the tree from the offsets
+                int size = IntSerializer.deserialize( raw, pos );
+                pos += 4;
 
+                V value = valueSerializer.fromBytes( raw, pos );
+                pos += size;
+                valueArray[index++] = value;
             }
-            else
+            catch ( IOException e )
             {
-                // We have to deserialize the array of values
-                int index = 0;
-                int pos = 0;
-
-                while ( pos < raw.length )
-                {
-                    try
-                    {
-                        int size = IntSerializer.deserialize( raw, pos );
-                        pos += 4;
-
-                        V value = valueSerializer.fromBytes( raw, pos );
-                        pos += size;
-                        valueArray[index++] = value;
-                    }
-                    catch ( IOException e )
-                    {
-                        e.printStackTrace();
-                    }
-                }
+                e.printStackTrace();
             }
-
-            isRaw = false;
         }
     }
 
+
+    /**
+     * Deserialize the values stored in a sub-btree
+     */
+    private void deserializeSubBtree()
+    {
+        // Get the sub-btree offset
+        long offset = LongSerializer.deserialize( raw );
+        
+        // and reload the sub btree
+        valueBtree = btree.getRecordManager().loadDupsBTree( offset );
+    }
 
     /**
      * @return The sub-btree offset
      */
     /* No qualifier */long getOffset()
     {
-        if ( isSubBtree )
+        if ( valueArray == null )
         {
             return valueBtree.getBtreeOffset();
         }
@@ -1064,13 +1125,13 @@ public class ValueHolder<V> implements Cloneable
 
         sb.append( "ValueHolder[" ).append( valueSerializer.getClass().getSimpleName() );
 
-        if ( isRaw )
+        if ( !isDeserialized )
         {
             sb.append( ", isRaw[" ).append( raw.length ).append( "]" );
         }
         else
         {
-            if ( isSubBtree )
+            if ( valueArray == null )
             {
                 sb.append( ", SubBTree" );
             }

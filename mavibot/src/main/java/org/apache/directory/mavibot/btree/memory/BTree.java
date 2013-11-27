@@ -31,7 +31,6 @@ import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Comparator;
-import java.util.LinkedList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -934,9 +933,7 @@ public class BTree<K, V> implements Closeable
         Transaction<K, V> transaction = beginReadTransaction();
 
         // Fetch the root page for this revision
-        LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
-
-        TupleCursor<K, V> cursor = rootPage.browse( transaction, stack );
+        TupleCursor<K, V> cursor = rootPage.browse( transaction, new ParentPos[32], 0 );
 
         return cursor;
     }
@@ -958,8 +955,7 @@ public class BTree<K, V> implements Closeable
         Page<K, V> revisionRootPage = getRootPage( revision );
 
         // And get the cursor
-        LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
-        TupleCursor<K, V> cursor = revisionRootPage.browse( transaction, stack );
+        TupleCursor<K, V> cursor = revisionRootPage.browse( transaction, new ParentPos[32], 0 );
 
         return cursor;
     }
@@ -978,7 +974,7 @@ public class BTree<K, V> implements Closeable
         Transaction<K, V> transaction = beginReadTransaction();
 
         // Fetch the root page for this revision
-        TupleCursor<K, V> cursor = rootPage.browse( key, transaction, new LinkedList<ParentPos<K, V>>() );
+        TupleCursor<K, V> cursor = rootPage.browse( key, transaction, new ParentPos[32], 0 );
 
         return cursor;
     }
@@ -1002,8 +998,7 @@ public class BTree<K, V> implements Closeable
         Page<K, V> revisionRootPage = getRootPage( revision );
 
         // And get the cursor
-        LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
-        TupleCursor<K, V> cursor = revisionRootPage.browse( key, transaction, stack );
+        TupleCursor<K, V> cursor = revisionRootPage.browse( key, transaction, new ParentPos[32], 0 );
 
         return cursor;
     }

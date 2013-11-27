@@ -594,12 +594,12 @@ public class RecordManager
         if ( nbElems >= 0 )
         {
             // It's a leaf
-            page = readLeaf( btree, nbElems, revision, byteBuffer, pageIos );
+            page = readLeafKeysAndValues( btree, nbElems, revision, byteBuffer, pageIos );
         }
         else
         {
             // It's a node
-            page = readNode( btree, -nbElems, revision, byteBuffer, pageIos );
+            page = readNodeKeysAndValues( btree, -nbElems, revision, byteBuffer, pageIos );
         }
 
         return page;
@@ -609,7 +609,7 @@ public class RecordManager
     /**
      * Deserialize a Leaf from some PageIOs
      */
-    private <K, V> Leaf<K, V> readLeaf( BTree<K, V> btree, int nbElems, long revision, ByteBuffer byteBuffer,
+    private <K, V> Leaf<K, V> readLeafKeysAndValues( BTree<K, V> btree, int nbElems, long revision, ByteBuffer byteBuffer,
         PageIO[] pageIos )
     {
         // Its a leaf, create it
@@ -632,40 +632,12 @@ public class RecordManager
             if ( nbValues < 0 )
             {
                 // This is a sub-btree
-                long btreeOffset = byteBuffer.getLong();
-
-                // Load the BTree now.
-                try
-                {
-                    PageIO[] rootPageIos = readPageIOs( btreeOffset, Long.MAX_VALUE );
-
-                    BTree<V, V> subBtree = BTreeFactory.createBTree();
-                    subBtree.setBtreeOffset( btreeOffset );
-
-                    try
-                    {
-                        loadBTree( rootPageIos, subBtree );
-                    }
-                    catch ( Exception e )
-                    {
-                        // should not happen
-                        throw new RuntimeException( e );
-                    }
-
-                    valueHolder = new ValueHolder<V>( btree, btree.getValueSerializer(), subBtree );
-
-                    valueHolder.setSubBtree( subBtree );
-                }
-                catch ( EndOfFileExceededException e1 )
-                {
-                    // TODO Auto-generated catch block
-                    e1.printStackTrace();
-                }
-                catch ( IOException e1 )
-                {
-                    // TODO Auto-generated catch block
-                    e1.printStackTrace();
-                }
+                byte[] btreeOffsetBytes = new byte[LONG_SIZE];
+                byteBuffer.get( btreeOffsetBytes );
+                
+                // Create the valueHolder. As the number of values is negative, we have to switch
+                // to a positive value but as we start at -1 for 0 value, add 1.
+                valueHolder = new ValueHolder<V>( btree, btree.getValueSerializer(), 1 - nbValues, btreeOffsetBytes );
             }
             else
             {
@@ -674,10 +646,9 @@ public class RecordManager
                 valueLengths[i] = byteBuffer.getInt();
 
                 // This is an Array of values, read the byte[] associated with it
-                byte[] valueBytes = new byte[valueLengths[i]];
-                byteBuffer.get( valueBytes );
-                valueHolder = new ValueHolder<V>( btree, btree.getValueSerializer(), false, nbValues,
-                    valueBytes );
+                byte[] arrayBytes = new byte[valueLengths[i]];
+                byteBuffer.get( arrayBytes );
+                valueHolder = new ValueHolder<V>( btree, btree.getValueSerializer(), nbValues, arrayBytes );
             }
 
             BTreeFactory.setValue( leaf, i, valueHolder );
@@ -695,7 +666,7 @@ public class RecordManager
     /**
      * Deserialize a Node from some PageIos
      */
-    private <K, V> Node<K, V> readNode( BTree<K, V> btree, int nbElems, long revision, ByteBuffer byteBuffer,
+    private <K, V> Node<K, V> readNodeKeysAndValues( BTree<K, V> btree, int nbElems, long revision, ByteBuffer byteBuffer,
         PageIO[] pageIos ) throws IOException
     {
         Node<K, V> node = BTreeFactory.createNode( btree, revision, nbElems );
@@ -1256,7 +1227,7 @@ public class RecordManager
     private <K, V> int serializeNodeKey( Node<K, V> node, int pos, List<byte[]> serializedData )
     {
         KeyHolder<K> holder = node.getKeyHolder( pos );
-        byte[] buffer = holder.getBuffer();
+        byte[] buffer = holder.getRaw();
         
         // We have to store the serialized key length
         byte[] length = IntSerializer.serialize( buffer.length );
@@ -1265,7 +1236,7 @@ public class RecordManager
         // And store the serialized key now
         serializedData.add( buffer );
 
-        return buffer.length + 4;
+        return buffer.length + INT_SIZE;
     }
 
 
@@ -1299,7 +1270,7 @@ public class RecordManager
     {
         int dataSize = 0;
         KeyHolder<K> keyHolder = leaf.getKeyHolder( pos );
-        byte[] keyData = keyHolder.getBuffer();
+        byte[] keyData = keyHolder.getRaw();
 
         if ( keyData != null )
         {
@@ -1309,12 +1280,12 @@ public class RecordManager
 
             // And the key data
             serializedData.add( keyData );
-            dataSize += keyData.length + 4;
+            dataSize += keyData.length + INT_SIZE;
         }
         else
         {
             serializedData.add( IntSerializer.serialize( 0 ) );
-            dataSize += 4;
+            dataSize += INT_SIZE;
         }
 
         return dataSize;
@@ -1330,50 +1301,75 @@ public class RecordManager
         // The value can be an Array or a sub-btree, but we don't care
         // we just iterate on all the values
         ValueHolder<V> valueHolder = leaf.getValue( pos );
-
-        // First take the number of values
-        int nbValues = valueHolder.size();
         int dataSize = 0;
 
-        if ( nbValues == 0 )
+        if ( !valueHolder.isSubBtree() )
         {
-            // No value. 
+            int nbValues = valueHolder.size();
+            
+            // Write the nb elements first
             byte[] buffer = IntSerializer.serialize( nbValues );
             serializedData.add( buffer );
+            dataSize = INT_SIZE;
 
-            return buffer.length;
-        }
-
-        if ( valueHolder.isSubBtree() )
-        {
-            byte[] buffer = IntSerializer.serialize( -nbValues );
+            // We have a serialized value. Just flush it
+            byte[] data = valueHolder.getRaw();
+            dataSize += data.length;
+            
+            // Store the data size
+            buffer = IntSerializer.serialize( data.length );
             serializedData.add( buffer );
-            dataSize += buffer.length;
+            dataSize += INT_SIZE;
 
-            // the BTree offset
-            buffer = LongSerializer.serialize( valueHolder.getOffset() );
-            serializedData.add( buffer );
-            dataSize += buffer.length;
+            // and add the data
+            serializedData.add( data );
         }
         else
         {
-            // This is an array, store the nb of values as a positive number
-            byte[] buffer = IntSerializer.serialize( nbValues );
-            serializedData.add( buffer );
-            dataSize += buffer.length;
-
-            // Now store each value
-            byte[] data = valueHolder.getRaw();
-            buffer = IntSerializer.serialize( data.length );
-            serializedData.add( buffer );
-            dataSize += buffer.length;
-
-            if ( data.length > 0 )
+            // First take the number of values
+            int nbValues = valueHolder.size();
+    
+            if ( nbValues == 0 )
             {
-                serializedData.add( data );
+                // No value. 
+                byte[] buffer = IntSerializer.serialize( nbValues );
+                serializedData.add( buffer );
+    
+                return buffer.length;
             }
 
-            dataSize += data.length;
+            if ( valueHolder.isSubBtree() )
+            {
+                // Store the nbVlues as a negative number. We add 1 so that 0 is not confused with an Array value 
+                byte[] buffer = IntSerializer.serialize( -( nbValues + 1 ) );
+                serializedData.add( buffer );
+                dataSize += buffer.length;
+    
+                // the BTree offset
+                buffer = LongSerializer.serialize( valueHolder.getOffset() );
+                serializedData.add( buffer );
+                dataSize += buffer.length;
+            }
+            else
+            {
+                // This is an array, store the nb of values as a positive number
+                byte[] buffer = IntSerializer.serialize( nbValues );
+                serializedData.add( buffer );
+                dataSize += buffer.length;
+    
+                // Now store each value
+                byte[] data = valueHolder.getRaw();
+                buffer = IntSerializer.serialize( data.length );
+                serializedData.add( buffer );
+                dataSize += buffer.length;
+    
+                if ( data.length > 0 )
+                {
+                    serializedData.add( data );
+                }
+    
+                dataSize += data.length;
+            }
         }
 
         return dataSize;

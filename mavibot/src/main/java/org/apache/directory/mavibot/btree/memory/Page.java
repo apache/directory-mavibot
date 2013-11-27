@@ -131,10 +131,11 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @param key The key we are looking for.
      * @param transaction The started transaction for this operation
      * @param stack The stack of parents we go through to get to this page
+     * @param depth The current depth
      * @return A Cursor to browse the next elements
      * @throws IOException If we have an error while trying to access the page
      */
-    TupleCursorImpl<K, V> browse( K key, Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
+    TupleCursorImpl<K, V> browse( K key, Transaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
         throws IOException;
 
 
@@ -146,7 +147,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @return A Cursor to browse the next elements
      * @throws IOException If we have an error while trying to access the page
      */
-    TupleCursorImpl<K, V> browse( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
+    TupleCursorImpl<K, V> browse( Transaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
         throws EndOfFileExceededException, IOException;
 
 

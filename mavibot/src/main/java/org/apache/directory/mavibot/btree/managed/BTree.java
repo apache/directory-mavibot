@@ -1028,7 +1028,7 @@ public class BTree<K, V> implements Closeable
             // remain in memory.
             ElementHolder<Page<K, V>, K, V> holder = recordManager.writePage( this, modifiedPage,
                 revision );
-
+            
             // The root has just been modified, we haven't split it
             // Get it and make it the current root page
             rootPage = modifiedPage;

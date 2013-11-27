@@ -37,6 +37,10 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
  */
 public interface Cursor<K>
 {
+    /** Static value for the beforeFrst and afterLast positions */
+    static final int BEFORE_FIRST = -1; 
+    static final int AFTER_LAST = -2; 
+
     /**
      * Tells if the cursor can return a next element
      * @return true if there are some more elements

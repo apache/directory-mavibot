@@ -72,8 +72,8 @@ public class ManagedBTreeBrowseTest
 
         try
         {
-            // Create a new BTree
-            btree = recordManager1.addBTree( "test", new LongSerializer(), new StringSerializer(), false );
+            // Create a new BTree which allows duplicate values
+            btree = recordManager1.addBTree( "test", new LongSerializer(), new StringSerializer(), true );
         }
         catch ( Exception e )
         {
@@ -111,14 +111,24 @@ public class ManagedBTreeBrowseTest
 
 
     /**
+     * Check a tuple
+     */
+    private void checkTuple( Tuple<Long, String> tuple, long key, String value ) throws EndOfFileExceededException, IOException
+    {
+        assertNotNull( tuple );
+        assertEquals( key, (long)tuple.getKey() );
+        assertEquals( value, tuple.getValue() );
+    }
+
+
+    /**
      * Check a next() call
      */
     private void checkNext( TupleCursor<Long, String> cursor, long key, String value, boolean next, boolean prev ) throws EndOfFileExceededException, IOException
     {
         Tuple<Long, String> tuple = cursor.next();
-        assertNotNull( tuple );
-        assertEquals( key, (long)tuple.getKey() );
-        assertEquals( value, tuple.getValue() );
+        
+        checkTuple( tuple, key, value );
         assertEquals( next, cursor.hasNext() );
         assertEquals( prev, cursor.hasPrev() );
     }
@@ -899,5 +909,105 @@ public class ManagedBTreeBrowseTest
                 checkNext( cursor, i, Long.toString( j ), next, prev );
             }
         }
+    }
+    
+    
+    //----------------------------------------------------------------------------------------
+    // The TupleCursor.moveToNext/PrevNonDuplicateKey method tests
+    //----------------------------------------------------------------------------------------
+   /**
+     * Test the TupleCursor.nextKey method on a btree containing nodes 
+     * with duplicate values.
+     */
+    @Test
+    public void testNextKey() throws IOException, BTreeAlreadyManagedException
+    {
+        // Inject some data
+        for ( long i = 1; i < 1000L; i++ )
+        {
+            for ( long j = 1; j < 10; j++ )
+            {
+                btree.insert( i, Long.toString( j ) );
+            }
+        }
+
+        // Create the cursor
+        TupleCursor<Long, String> cursor = btree.browse();
+        
+        // Move forward
+        cursor.beforeFirst();
+        
+        assertFalse( cursor.hasPrev() );
+        assertTrue( cursor.hasNext() );
+        boolean next = true;
+        boolean prev = false;
+        
+        for ( long i = 1L; i < 999L; i++ )
+        {
+            Tuple<Long, String> tuple = cursor.nextKey();
+            
+            checkTuple( tuple, i, "1" );
+
+            if ( i == 999L ) 
+            {
+                next = false;
+            }
+
+            assertEquals( next, cursor.hasNext() );
+            assertEquals( prev, cursor.hasPrev() );
+            
+            if ( i == 1L )
+            {
+                prev = true;
+            }
+       }
+    }
+    
+    
+    /**
+     * Test the TupleCursor.moveToPrevNonDuplicateKey method on a btree containing nodes 
+     * with duplicate values.
+     */
+    @Test
+    public void testPrevKey() throws IOException, BTreeAlreadyManagedException
+    {
+        // Inject some data
+        for ( long i = 1; i < 1000L; i++ )
+        {
+            for ( long j = 1; j < 10; j++ )
+            {
+                btree.insert( i, Long.toString( j ) );
+            }
+        }
+
+        // Create the cursor
+        TupleCursor<Long, String> cursor = btree.browse();
+        
+        // Move backward
+        cursor.afterLast();
+        
+        assertTrue( cursor.hasPrev() );
+        assertFalse( cursor.hasNext() );
+        boolean next = true;
+        boolean prev = true;
+        
+        for ( long i = 999L; i > 0L; i-- )
+        {
+            Tuple<Long, String> tuple = cursor.prevKey();
+            
+            if ( i == 1L ) 
+            {
+                prev = false;
+            }
+
+            checkTuple( tuple, i, "1" );
+            assertEquals( next, cursor.hasNext() );
+            assertEquals( prev, cursor.hasPrev() );
+
+            if ( i == 999L )
+            {
+                next = true;
+            }
+       }
     }
 }

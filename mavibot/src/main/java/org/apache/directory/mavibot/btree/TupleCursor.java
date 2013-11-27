@@ -39,6 +39,15 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 public interface TupleCursor<K, V> extends Cursor<K>
 {
     /**
+     * Tells if the cursor can return a next element
+     * 
+     * @return true if there are some more elements
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
+     */
+    public boolean hasNext() throws EndOfFileExceededException, IOException;
+
+    /**
      * Find the next key/value
      * 
      * @return A Tuple containing the found key and value
@@ -48,6 +57,16 @@ public interface TupleCursor<K, V> extends Cursor<K>
     Tuple<K, V> next() throws EndOfFileExceededException, IOException;
 
 
+    /**
+     * Tells if the cursor can return a previous element
+     * 
+     * @return true if there are some more elements
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
+     */
+    public boolean hasPrev() throws EndOfFileExceededException, IOException;
+    
+    
     /**
      * Find the previous key/value
      * 
@@ -71,40 +90,75 @@ public interface TupleCursor<K, V> extends Cursor<K>
 
 
     /**
-     * Moves the cursor to the next non-duplicate key.
-
-     * If the BTree contains 
+     * Tells if the cursor can return a next key
+     * 
+     * @return true if there are some more keys
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
+     */
+    public boolean hasNextKey() throws EndOfFileExceededException, IOException;
+    
+    
+    /**
+     * Get the next non-duplicate key.
+     * If the BTree contains :
      * 
      *  <ul>
      *    <li><1,0></li>
      *    <li><1,1></li>
+     *    <li><1,2></li>
      *    <li><2,0></li>
      *    <li><2,1></li>
      *  </ul>
      *   
-     *  and cursor is present at <1,0> then the cursor will move to <2,0>
+     *  and cursor is present at <1,1> then the returned tuple will be <2,0> (not <1,2>)
      *  
+     * @return A Tuple containing the found key and value
      * @throws EndOfFileExceededException
      * @throws IOException
      */
-    void moveToNextNonDuplicateKey() throws EndOfFileExceededException, IOException;
+    Tuple<K, V> nextKey() throws EndOfFileExceededException, IOException;
 
 
     /**
-     * Moves the cursor to the previous non-duplicate key
-     * If the BTree contains 
+     * Tells if the cursor can return a previous key
+     * 
+     * @return true if there are some more keys
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
+     */
+    public boolean hasPrevKey() throws EndOfFileExceededException, IOException;
+
+    
+    /**
+     * Get the previous non-duplicate key.
+     * If the BTree contains :
      * 
      *  <ul>
      *    <li><1,0></li>
      *    <li><1,1></li>
+     *    <li><1,2></li>
      *    <li><2,0></li>
      *    <li><2,1></li>
      *  </ul>
      *   
-     *  and cursor is present at <2,1> then the cursor will move to <1,1>
-     * 
+     *  and cursor is present at <2,1> then the returned tuple will be <1,0> (not <2,0>)
+     *  
+     * @return A Tuple containing the found key and value
      * @throws EndOfFileExceededException
      * @throws IOException
      */
-    void moveToPrevNonDuplicateKey() throws EndOfFileExceededException, IOException;
+    Tuple<K, V> prevKey() throws EndOfFileExceededException, IOException;
+    
+    
+    /**
+     * Change the position in the current cursor tbefore the first key
+     */
+    void beforeFirst() throws IOException;
+    
+    
+    /**
+     * Change the position in the current cursor to set it after the last key
+     */
+    void afterLast() throws IOException;
 }

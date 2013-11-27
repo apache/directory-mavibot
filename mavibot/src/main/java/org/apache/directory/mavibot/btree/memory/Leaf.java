@@ -24,7 +24,6 @@ import static org.apache.directory.mavibot.btree.memory.InternalUtil.setDupsCont
 
 import java.io.IOException;
 import java.lang.reflect.Array;
-import java.util.LinkedList;
 
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
@@ -670,7 +669,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
-    public TupleCursorImpl<K, V> browse( K key, Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
+    public TupleCursorImpl<K, V> browse( K key, Transaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
     {
         int pos = findPos( key );
         TupleCursorImpl<K, V> cursor = null;
@@ -682,9 +681,9 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             // The first element has been found. Create the cursor
             ParentPos<K, V> parentPos = new ParentPos<K, V>( this, index );
             setDupsContainer( parentPos, btree );
-            stack.push( parentPos );
+            stack[depth] = parentPos;
 
-            cursor = new TupleCursorImpl<K, V>( btree, transaction, stack );
+            cursor = new TupleCursorImpl<K, V>( btree, transaction, stack, depth );
         }
         else
         {
@@ -693,16 +692,17 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             {
                 ParentPos<K, V> parentPos = new ParentPos<K, V>( this, pos );
                 setDupsContainer( parentPos, btree );
-                stack.push( parentPos );
+                stack[depth] = parentPos;
 
-                cursor = new TupleCursorImpl<K, V>( btree, transaction, stack );
+                cursor = new TupleCursorImpl<K, V>( btree, transaction, stack, depth );
             }
             else
             {
                 // Not found : return a null cursor
-                stack.push( new ParentPos<K, V>( null, -1 ) );
+                ParentPos<K, V> parentPos = new ParentPos<K, V>( null, -1 );
+                stack[depth] = parentPos;
 
-                return new TupleCursorImpl<K, V>( btree, transaction, stack );
+                return new TupleCursorImpl<K, V>( btree, transaction, stack, depth );
             }
         }
 
@@ -713,7 +713,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
-    public TupleCursorImpl<K, V> browse( Transaction<K, V> transaction, LinkedList<ParentPos<K, V>> stack )
+    public TupleCursorImpl<K, V> browse( Transaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
     {
         int pos = 0;
         TupleCursorImpl<K, V> cursor = null;
@@ -721,9 +721,9 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         if ( nbElems == 0 )
         {
             // The tree is empty, it's the root, we have nothing to return
-            stack.push( new ParentPos<K, V>( null, -1 ) );
+            stack[depth] = new ParentPos<K, V>( null, -1 );
 
-            return new TupleCursorImpl<K, V>( btree, transaction, stack );
+            return new TupleCursorImpl<K, V>( btree, transaction, stack, depth );
         }
         else
         {
@@ -732,9 +732,9 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
             setDupsContainer( parentPos, btree );
 
-            stack.push( parentPos );
+            stack[depth] = parentPos;
 
-            cursor = new TupleCursorImpl<K, V>( btree, transaction, stack );
+            cursor = new TupleCursorImpl<K, V>( btree, transaction, stack, depth );
         }
 
         return cursor;

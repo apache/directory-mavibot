@@ -104,7 +104,7 @@ public class KeyHolder<K>
     /**
      * @return The internal serialized byte[]
      */
-    /* No qualifier */byte[] getBuffer()
+    /* No qualifier */byte[] getRaw()
     {
         return raw;
     }
