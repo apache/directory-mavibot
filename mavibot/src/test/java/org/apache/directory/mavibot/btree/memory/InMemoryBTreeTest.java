@@ -1938,4 +1938,28 @@ public class InMemoryBTreeTest
         cursor.close();
     }
 
+    
+    @Test
+    public void testCheckRootPageContents() throws Exception
+    {
+        IntSerializer ser = new IntSerializer();
+        BTree<Integer, Integer> btree = new BTree<Integer,Integer>( "master1", ser, ser );
+        btree.setPageSize( 4 );
+        btree.init();
+
+        for( int i=1; i < 8; i++ )
+        {
+            btree.insert( i, i );
+        }
+
+        System.out.println( btree.rootPage );
+        assertEquals( 1, btree.rootPage.getNbElems() );
+
+        assertEquals( 7, btree.rootPage.findRightMost().getKey().intValue() );
+
+        assertEquals( 1, btree.rootPage.findLeftMost().getKey().intValue() );
+
+        btree.close();
+    }
+
 }
