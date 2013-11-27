@@ -39,7 +39,7 @@ import org.apache.directory.mavibot.btree.util.TupleReaderWriter;
 
 
 /**
- * A utility class for sorting a large number of keys before building a BTree using {@link BTreeBuilder}.
+ * A utility class for sorting a large number of keys before building a BTree using {@link ManagedBTreeBuilder}.
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
@@ -84,7 +84,7 @@ public class BulkDataSorter<K, V>
 
         DataInputStream in = new DataInputStream( new FileInputStream( dataFile ) );
 
-        while ( ( t = readerWriter.readTuple( in ) ) != null )
+        while ( ( t = readerWriter.readUnsortedTuple( in ) ) != null )
         {
             arr[i++] = t;
 
@@ -117,7 +117,7 @@ public class BulkDataSorter<K, V>
 
         for ( Tuple<K, V> t : arr )
         {
-            readerWriter.writeTuple( t, out );
+            readerWriter.storeSortedTuple( t, out );
         }
 
         out.flush();
@@ -178,7 +178,7 @@ public class BulkDataSorter<K, V>
                 {
                     if ( heads[i] == null )
                     {
-                        heads[i] = readerWriter.readTuple( streams[i] );
+                        heads[i] = readerWriter.readSortedTuple( streams[i] );
                     }
 
                     if ( available == null )
@@ -209,7 +209,7 @@ public class BulkDataSorter<K, V>
                         if ( heads[i] != null )
                         {
                             available = heads[i];
-                            heads[i] = readerWriter.readTuple( streams[i] );
+                            heads[i] = readerWriter.readUnsortedTuple( streams[i] );
                             break;
                         }
                     }

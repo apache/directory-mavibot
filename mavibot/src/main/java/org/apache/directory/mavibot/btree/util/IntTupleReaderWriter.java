@@ -36,7 +36,7 @@ public class IntTupleReaderWriter implements TupleReaderWriter<Integer, Integer>
 {
 
     @Override
-    public void writeTuple( Tuple<Integer, Integer> t, DataOutputStream out ) throws IOException
+    public void storeSortedTuple( Tuple<Integer, Integer> t, DataOutputStream out ) throws IOException
     {
         out.writeInt( t.getKey() );
         out.writeInt( t.getValue() );
@@ -44,7 +44,14 @@ public class IntTupleReaderWriter implements TupleReaderWriter<Integer, Integer>
 
 
     @Override
-    public Tuple<Integer, Integer> readTuple( DataInputStream in )
+    public Tuple<Integer, Integer> readSortedTuple( DataInputStream in )
+    {
+        return readUnsortedTuple( in );
+    }
+
+
+    @Override
+    public Tuple<Integer, Integer> readUnsortedTuple( DataInputStream in )
     {
 
         try
@@ -60,6 +67,7 @@ public class IntTupleReaderWriter implements TupleReaderWriter<Integer, Integer>
         }
         catch ( IOException e )
         {
+            e.printStackTrace();
         }
 
         return null;

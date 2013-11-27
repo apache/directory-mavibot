@@ -125,6 +125,8 @@ public class BTreeBuilder<K, V>
 
         Page<K, V> rootPage = attachNodes( lstLeaves, btree );
 
+        System.out.println("built rootpage : " + rootPage);
+        
         btree.rootPage = rootPage;
 
         return btree;

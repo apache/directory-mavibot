@@ -80,7 +80,7 @@ public class BulkDataSorterTest
 
             arr[i] = t;
 
-            itrw.writeTuple( t, out );
+            itrw.storeSortedTuple( t, out );
         }
 
         out.close();
@@ -131,7 +131,7 @@ public class BulkDataSorterTest
 
             arr[i] = t;
 
-            itrw.writeTuple( t, out );
+            itrw.storeSortedTuple( t, out );
         }
 
         out.close();

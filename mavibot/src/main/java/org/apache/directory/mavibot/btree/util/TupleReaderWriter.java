@@ -34,8 +34,9 @@ import org.apache.directory.mavibot.btree.Tuple;
  */
 public interface TupleReaderWriter<K, V>
 {
-    Tuple<K, V> readTuple( DataInputStream in );
+    Tuple<K, V> readUnsortedTuple( DataInputStream in );
 
-
-    void writeTuple( Tuple<K, V> t, DataOutputStream out ) throws IOException;
+    Tuple<K, V> readSortedTuple( DataInputStream in );
+    
+    void storeSortedTuple( Tuple<K, V> t, DataOutputStream out ) throws IOException;
 }

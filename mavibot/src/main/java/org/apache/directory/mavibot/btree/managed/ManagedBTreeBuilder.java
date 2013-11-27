@@ -29,6 +29,7 @@ import static org.apache.directory.mavibot.btree.managed.BTreeFactory.setValue;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
@@ -41,7 +42,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class BTreeBuilder<K, V>
+public class ManagedBTreeBuilder<K, V>
 {
     private String name;
 
@@ -51,10 +52,12 @@ public class BTreeBuilder<K, V>
 
     private ElementSerializer<V> valueSerializer;
 
+    private RecordManager rm;
 
-    public BTreeBuilder( String name, int numKeysInNode, ElementSerializer<K> keySerializer,
+    public ManagedBTreeBuilder( RecordManager rm, String name, int numKeysInNode, ElementSerializer<K> keySerializer,
         ElementSerializer<V> valueSerializer )
     {
+        this.rm = rm;
         this.name = name;
         this.numKeysInNode = numKeysInNode;
         this.keySerializer = keySerializer;
@@ -63,11 +66,13 @@ public class BTreeBuilder<K, V>
 
 
     @SuppressWarnings("unchecked")
-    public BTree<K, V> build( Iterator<Tuple<K, V>> sortedTupleItr ) throws IOException
+    public BTree<K, V> build( Iterator<Tuple<K, V>> sortedTupleItr ) throws Exception
     {
         BTree<K, V> btree = new BTree<K, V>( name, keySerializer, valueSerializer );
         btree.init();
 
+        rm.manage( btree );
+        
         List<Page<K, V>> lstLeaves = new ArrayList<Page<K, V>>();
 
         int totalTupleCount = 0;
@@ -80,7 +85,7 @@ public class BTreeBuilder<K, V>
         while ( sortedTupleItr.hasNext() )
         {
             Tuple<K, V> tuple = sortedTupleItr.next();
-
+            
             setKey( leaf1, leafIndex, tuple.getKey() );
 
             ValueHolder<V> eh = new ValueHolder<V>( btree, btree.getValueSerializer(),
@@ -93,9 +98,14 @@ public class BTreeBuilder<K, V>
             if ( ( totalTupleCount % numKeysInNode ) == 0 )
             {
                 leafIndex = 0;
+                
+                PageHolder<K, V> pageHolder = ( PageHolder<K, V> ) rm.writePage( btree, leaf1, 1 );
+                
                 leaf1 = createLeaf( btree, 0, numKeysInNode );
                 lstLeaves.add( leaf1 );
             }
+            
+            //TODO build the whole tree in chunks rather than processing *all* leaves at first
         }
 
         if ( lstLeaves.isEmpty() )
@@ -120,14 +130,25 @@ public class BTreeBuilder<K, V>
                 lastLeaf.values = ( ValueHolder<V>[] ) Array.newInstance( ValueHolder.class, n );
                 System.arraycopy( values, 0, lastLeaf.values, 0, n );
 
+                PageHolder<K, V> pageHolder = ( PageHolder<K, V> ) rm.writePage( btree, lastLeaf, 1 );
+
                 break;
             }
         }
 
+        // make sure either one of the root pages is reclaimed, cause when we call rm.manage()
+        // there is already a root page created
         Page<K, V> rootPage = attachNodes( lstLeaves, btree );
 
+        //System.out.println("built rootpage : " + rootPage);
+        btree.setNbElems( totalTupleCount );
+        
+        rm.updateBtreeHeader( btree, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
+        
+        rm.addFreePages( btree, Arrays.asList( btree.rootPage ) );
+        
         btree.rootPage = rootPage;
-
+        
         return btree;
     }
 
@@ -164,6 +185,9 @@ public class BTreeBuilder<K, V>
             if ( ( totalNodes % numChildren ) == 0 )
             {
                 i = 0;
+                
+                PageHolder<K, V> pageHolder = ( PageHolder<K, V> ) rm.writePage( btree, node, 1 );
+
                 node = createNode( btree, 0, numKeysInNode );
                 lstNodes.add( node );
             }
@@ -182,6 +206,8 @@ public class BTreeBuilder<K, V>
 
                 lastNode.keys = ( KeyHolder[] ) Array.newInstance( KeyHolder.class, n );
                 System.arraycopy( keys, 0, lastNode.keys, 0, n );
+
+                PageHolder<K, V> pageHolder = ( PageHolder<K, V> ) rm.writePage( btree, lastNode, 1 );
 
                 break;
             }
