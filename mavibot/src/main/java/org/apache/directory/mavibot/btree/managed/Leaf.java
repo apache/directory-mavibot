@@ -984,7 +984,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      */
     public Tuple<K, V> findRightMost() throws EndOfFileExceededException, IOException
     {
-        ValueCursor<V> cursor = values[0].getCursor();
+        ValueCursor<V> cursor = values[nbElems - 1].getCursor();
 
         try
         {
@@ -992,12 +992,12 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
             if ( cursor.hasPrev() )
             {
-                return new Tuple<K, V>( keys[0].getKey(), cursor.prev() );
+                return new Tuple<K, V>( keys[nbElems - 1].getKey(), cursor.prev() );
             }
             else
             {
                 // Null value
-                return new Tuple<K, V>( keys[0].getKey(), null );
+                return new Tuple<K, V>( keys[nbElems - 1].getKey(), null );
             }
         }
         finally
