@@ -82,7 +82,7 @@ public class ValueHolder<V> implements Cloneable
 
         // We create the array of values if they fit in an array. If they are stored in a 
         // BTree, we do nothing atm.
-        if ( nbValues < BTree.valueThresholdUp )
+        if ( nbValues <= BTree.valueThresholdUp )
         {
             // The values are contained into an array
             valueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), nbValues );
@@ -669,7 +669,7 @@ public class ValueHolder<V> implements Cloneable
         checkAndDeserialize();
 
         // We have to check that we have reached the threshold or not
-        if ( valueArray.length + 1 > BTree.valueThresholdUp )
+        if ( valueArray.length >= BTree.valueThresholdUp )
         {
             // Ok, transform the array into a btree
             createSubTree();

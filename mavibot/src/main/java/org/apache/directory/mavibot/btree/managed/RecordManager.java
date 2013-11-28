@@ -1510,6 +1510,14 @@ public class RecordManager
      */
     private void flushPages( PageIO... pageIos ) throws IOException
     {
+        if ( LOG.isDebugEnabled() )
+        {
+            for ( PageIO pageIo : pageIos )
+            {
+                dump( pageIo );
+            }
+        }
+
         for ( PageIO pageIo : pageIos )
         {
             pageIo.getData().rewind();
@@ -1899,9 +1907,9 @@ public class RecordManager
     {
         // We first need to save the new page on disk
         PageIO[] pageIos = serializePage( btree, newRevision, newPage );
-
+        
         LOG.debug( "Write data for '{}' btree ", btree.getName() );
-
+        
         // Write the page on disk
         flushPages( pageIos );
 
@@ -2126,6 +2134,68 @@ public class RecordManager
 
         // And close the channel
         fileChannel.close();
+    }
+    
+    
+    /** Hex chars */
+    private static final byte[] HEX_CHAR = new byte[]
+        { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
+
+    
+    public static String dump( byte octet )
+    {
+        return new String( new byte[]
+            { HEX_CHAR[( octet & 0x00F0 ) >> 4], HEX_CHAR[octet & 0x000F] } );
+    }
+
+    /**
+     * Dump a pageIO
+     */
+    private void dump( PageIO pageIo )
+    {
+        ByteBuffer buffer = pageIo.getData();
+        buffer.mark();
+        byte[] longBuffer = new byte[LONG_SIZE];
+        byte[] intBuffer = new byte[INT_SIZE]; 
+        
+        // get the next page offset
+        buffer.get( longBuffer );
+        long nextOffset = LongSerializer.deserialize( longBuffer );
+        
+        // Get the data size 
+        buffer.get( intBuffer );
+        int size = IntSerializer.deserialize( intBuffer );
+        
+        buffer.reset();
+        
+        System.out.println( "PageIO[" + Long.toHexString( pageIo.getOffset() ) + "], size = " + size + ", NEXT PageIO:" + Long.toHexString( nextOffset ) );
+        System.out.println( " 0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F " );
+        System.out.println( "+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+" );
+        
+        int position = buffer.position();
+        
+        for ( int i = 0; i < buffer.limit(); i+= 16 )
+        {
+            System.out.print( "|" );
+            
+            for ( int j = 0; j < 16; j++ )
+            {
+                System.out.print( dump( buffer.get() ) );
+                
+                if ( j == 15 )
+                {
+                    System.out.println( "|" );
+                }
+                else
+                {
+                    System.out.print( " " );
+                }
+            }
+        }
+        
+        System.out.println( "+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+" );
+
+        buffer.reset();
     }
 
 
