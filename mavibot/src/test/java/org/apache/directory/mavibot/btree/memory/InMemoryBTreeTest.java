@@ -719,8 +719,6 @@ public class InMemoryBTreeTest
             Integer val = sortedValues[pos];
             Integer res = tuple.getKey();
             assertEquals( val, res );
-            
-            System.out.println( tuple );
         }
 
         cursor.close();
@@ -740,8 +738,6 @@ public class InMemoryBTreeTest
             Integer val = sortedValues[pos];
             Integer res = tuple.getKey();
             assertEquals( val, res );
-            
-            System.out.println( tuple );
         }
 
         cursor.close();
@@ -1217,7 +1213,6 @@ public class InMemoryBTreeTest
 
                 assertTrue( expected.contains( value ) );
                 expected.remove( value );
-                System.out.println( value );
             }
 
             assertEquals( 0, expected.size() );
