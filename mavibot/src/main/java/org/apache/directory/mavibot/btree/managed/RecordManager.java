@@ -159,6 +159,12 @@ public class RecordManager
 
     /** A flag set to true if we want to keep old revisions */
     private boolean keepRevisions;
+    
+    /** A flag used by internal btrees */
+    public static final boolean INTERNAL_BTREE = true;
+    
+    /** A flag used by internal btrees */
+    public static final boolean NORMAL_BTREE = false;
 
 
     /**
@@ -970,7 +976,7 @@ public class RecordManager
      */
     public synchronized <K, V> void manage( BTree<K, V> btree ) throws BTreeAlreadyManagedException, IOException
     {
-        manage( ( BTree<Object, Object> ) btree, false );
+        manage( ( BTree<Object, Object> ) btree, NORMAL_BTREE );
     }
 
 
@@ -1000,7 +1006,12 @@ public class RecordManager
             throw new BTreeAlreadyManagedException( name );
         }
 
-        managedBTrees.put( name, ( BTree<Object, Object> ) btree );
+        // Do not add the BTree if it's internal into the Map of managed btrees, otherwise we will 
+        // not discard it when reloading a page wth internal btrees
+        if ( !internalTree )
+        {
+            managedBTrees.put( name, ( BTree<Object, Object> ) btree );
+        } 
 
         // We will add the newly managed BTree at the end of the header.
         byte[] btreeNameBytes = Strings.getBytesUtf8( name );

@@ -609,7 +609,7 @@ public class ValueHolder<V> implements Cloneable
 
             try
             {
-                btree.getRecordManager().manage( valueBtree, true );
+                btree.getRecordManager().manage( valueBtree, RecordManager.INTERNAL_BTREE );
                 raw = null;
             }
             catch ( BTreeAlreadyManagedException e )
