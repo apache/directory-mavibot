@@ -600,14 +600,24 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
         {
             // End of the leaf. We have to go back into the stack up to the
             // parent, and down to the next leaf
-            parentPos = findNextParentPos();
+            ParentPos<K, V> newParentPos = findNextParentPos();
 
             // we also need to check the result of the call to
             // findNextParentPos as it will return a null ParentPos
-            if ( ( parentPos == null ) || ( parentPos.page == null ) )
+            if ( ( newParentPos == null ) || ( newParentPos.page == null ) )
             {
                 // This is the end : no more value
-                throw new NoSuchElementException( "No more tuples present" );
+                Leaf<K, V> leaf = ( Leaf<K, V> ) ( parentPos.page );
+                ValueHolder<V> valueHolder = leaf.values[parentPos.pos];
+                parentPos.pos = AFTER_LAST;
+                parentPos.valueCursor = valueHolder.getCursor();
+                parentPos.valueCursor.afterLast();
+                
+                return null;
+            }
+            else
+            {
+                parentPos = newParentPos;
             }
         }
         else
