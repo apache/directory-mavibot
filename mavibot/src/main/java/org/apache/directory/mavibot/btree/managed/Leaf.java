@@ -792,6 +792,14 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             valueHolder.add( value );
             newLeaf.values[pos] = valueHolder;
         }
+        else
+        {
+            // As strange as it sounds, we need to remove the value to reinject it.
+            // There are cases where the value retrieval just use one part of the
+            // value only (typically for LDAP Entries, where we use the DN)
+            valueHolder.remove( value );
+            valueHolder.add( value );
+        }
 
         // Create the result
         InsertResult<K, V> result = new ModifyResult<K, V>( newLeaf, ( V ) valueHolder );
