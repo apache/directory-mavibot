@@ -757,6 +757,12 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 // TODO Auto-generated catch block
                 e.printStackTrace();
             }
+            
+            // Stop when we have copied nbElems values
+            if ( pos == nbElems )
+            {
+                break;
+            }
         }
 
         return newLeaf;
