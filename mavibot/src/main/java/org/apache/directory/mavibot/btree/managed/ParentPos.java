@@ -52,20 +52,6 @@ import org.apache.directory.mavibot.btree.ValueCursor;
     {
         this.page = page;
         this.pos = pos;
-        
-        if ( page instanceof Leaf )
-        {
-            try
-            {
-                ValueHolder<V> valueHolder = ( ( Leaf<K, V> ) page ).getValue( pos );
-                
-                valueCursor = valueHolder.getCursor();
-            }
-            catch ( IllegalArgumentException e )
-            {
-                e.printStackTrace();
-            }
-        }
     }
 
 

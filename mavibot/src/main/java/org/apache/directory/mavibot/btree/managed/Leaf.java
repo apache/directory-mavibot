@@ -651,6 +651,9 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
             // Start at the beginning of the page
             ParentPos<K, V> parentPos = new ParentPos<K, V>( this, pos );
+            
+            // Create the value cursor
+            parentPos.valueCursor = values[pos].getCursor();
 
             stack[depth] = parentPos;
 
@@ -662,7 +665,10 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             if ( pos < nbElems )
             {
                 ParentPos<K, V> parentPos = new ParentPos<K, V>( this, pos );
-                
+
+                // Create the value cursor
+                parentPos.valueCursor = values[pos].getCursor();
+
                 stack[depth] = parentPos;
 
                 cursor = new TupleCursorImpl<K, V>( btree, transaction, stack, depth );
@@ -671,6 +677,9 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             {
                 // after the last element
                 ParentPos<K, V> parentPos = new ParentPos<K, V>( this, nbElems - 1 );
+
+                // Create the value cursor
+                parentPos.valueCursor = values[nbElems - 1].getCursor();
                 
                 stack[depth] = parentPos;
 
@@ -718,6 +727,9 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         {
             // Start at the beginning of the page
             ParentPos<K, V> parentPos = new ParentPos<K, V>( this, pos );
+            
+            // Create the value cursor
+            parentPos.valueCursor = values[0].getCursor();
 
             stack[depth] = parentPos;
 
