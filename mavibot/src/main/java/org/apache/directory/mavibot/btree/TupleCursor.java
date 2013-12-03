@@ -152,7 +152,7 @@ public interface TupleCursor<K, V> extends Cursor<K>
     
     
     /**
-     * Change the position in the current cursor tbefore the first key
+     * Change the position in the current cursor before the first key
      */
     void beforeFirst() throws IOException;
     

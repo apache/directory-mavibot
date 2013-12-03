@@ -41,9 +41,7 @@ public interface ElementHolder<E, K, V>
     /**
      * Get back the element
      * 
-     * @param btree The Btree storing the element
-     * 
      * @return The stored element
      */
-    E getValue( BTree<K, V> btree ) throws EndOfFileExceededException, IOException;
+    E getValue() throws EndOfFileExceededException, IOException;
 }

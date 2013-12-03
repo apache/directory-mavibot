@@ -21,9 +21,9 @@ package org.apache.directory.mavibot.btree.memory;
 
 
 import java.io.IOException;
-import java.util.LinkedList;
 
 import org.apache.directory.mavibot.btree.Tuple;
+import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
@@ -135,7 +135,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @return A Cursor to browse the next elements
      * @throws IOException If we have an error while trying to access the page
      */
-    TupleCursorImpl<K, V> browse( K key, Transaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
+    TupleCursor<K, V> browse( K key, Transaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
         throws IOException;
 
 
@@ -147,7 +147,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @return A Cursor to browse the next elements
      * @throws IOException If we have an error while trying to access the page
      */
-    TupleCursorImpl<K, V> browse( Transaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
+    TupleCursor<K, V> browse( Transaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
         throws EndOfFileExceededException, IOException;
 
 

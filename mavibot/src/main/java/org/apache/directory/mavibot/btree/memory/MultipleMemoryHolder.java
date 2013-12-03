@@ -88,7 +88,7 @@ public class MultipleMemoryHolder<K, V> implements ElementHolder<V, K, V>
      * {@inheritDoc}
      */
     @Override
-    public V getValue( BTree<K, V> btree )
+    public V getValue()
     {
         if ( valueContainer != null )
         {
@@ -167,7 +167,7 @@ public class MultipleMemoryHolder<K, V> implements ElementHolder<V, K, V>
 
         sb.append( "'" );
 
-        V value = getValue( btree );
+        V value = getValue();
 
         sb.append( value );
 

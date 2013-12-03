@@ -132,17 +132,17 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
 
             if ( mvHolder.isSingleValue() )
             {
-                tuple.setValue( mvHolder.getValue( btree ) );
+                tuple.setValue( mvHolder.getValue() );
                 parentPos.pos++;
             }
             else
             {
                 setDupsContainer( parentPos, btree );
 
-                tuple.setValue( parentPos.dupsContainer.rootPage.getKey( parentPos.dupPos ) );
+                tuple.setValue( parentPos.valueCursor.rootPage.getKey( parentPos.dupPos ) );
                 parentPos.dupPos++;
 
-                if ( parentPos.dupsContainer.getNbElems() == parentPos.dupPos )
+                if ( parentPos.valueCursor.getNbElems() == parentPos.dupPos )
                 {
                     parentPos.pos++;
                     changeNextDupsContainer( parentPos, btree );
@@ -151,7 +151,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
         }
         else
         {
-            tuple.setValue( leaf.values[parentPos.pos].getValue( btree ) );
+            tuple.setValue( leaf.values[parentPos.pos].getValue() );
             parentPos.pos++;
         }
 
@@ -193,7 +193,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
             {
                 // We can pick the next element at this level
                 parentPos.pos++;
-                child = ((Node<K, V>)parentPos.page).children[parentPos.pos].getValue( btree );
+                child = ((Node<K, V>)parentPos.page).children[parentPos.pos].getValue();
                 
                 // and go down the tree through the nodes
                 while ( currentDepth < depth - 1 )
@@ -202,7 +202,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
                     parentPos = stack[currentDepth];
                     parentPos.page = child;
                     parentPos.pos = 0;
-                    child = ((Node<K, V>)parentPos.page).children[parentPos.pos].getValue( btree );
+                    child = ((Node<K, V>)parentPos.page).children[parentPos.pos].getValue();
                 }
 
                 // and the leaf
@@ -257,7 +257,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
             {
                 // We can pick the next element at this level
                 parentPos.pos--;
-                child = ((Node<K, V>)parentPos.page).children[parentPos.pos].getValue( btree );
+                child = ((Node<K, V>)parentPos.page).children[parentPos.pos].getValue();
                 
                 // and go down the tree through the nodes
                 while ( currentDepth < depth - 1 )
@@ -266,7 +266,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
                     parentPos = stack[currentDepth];
                     parentPos.pos = child.getNbElems();
                     parentPos.page = child;
-                    child = ((Node<K, V>)parentPos.page).children[((Node<K, V>)parentPos.page).nbElems].getValue( btree );
+                    child = ((Node<K, V>)parentPos.page).children[((Node<K, V>)parentPos.page).nbElems].getValue();
                 }
 
                 // and the leaf
@@ -354,7 +354,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
                 if ( mvHolder.isSingleValue() )
                 {
                     tuple.setKey( leaf.keys[parentPos.pos] );
-                    tuple.setValue( mvHolder.getValue( btree ) );
+                    tuple.setValue( mvHolder.getValue() );
                 }
                 else
                 {
@@ -370,7 +370,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
             {
                 setDupsContainer( parentPos, btree );
 
-                if ( parentPos.dupPos == parentPos.dupsContainer.getNbElems() )
+                if ( parentPos.dupPos == parentPos.valueCursor.getNbElems() )
                 {
                     parentPos.dupPos--;
                 }
@@ -379,7 +379,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
                     changePrevDupsContainer( parentPos, btree );
                     parentPos.pos--;
 
-                    if ( parentPos.dupsContainer != null )
+                    if ( parentPos.valueCursor != null )
                     {
                         parentPos.dupPos--;
                     }
@@ -391,13 +391,13 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
 
                 tuple.setKey( leaf.keys[parentPos.pos] );
 
-                if ( parentPos.dupsContainer != null )
+                if ( parentPos.valueCursor != null )
                 {
-                    tuple.setValue( parentPos.dupsContainer.rootPage.getKey( parentPos.dupPos ) );
+                    tuple.setValue( parentPos.valueCursor.rootPage.getKey( parentPos.dupPos ) );
                 }
                 else
                 {
-                    tuple.setValue( leaf.values[parentPos.pos].getValue( btree ) );
+                    tuple.setValue( leaf.values[parentPos.pos].getValue() );
                 }
             }
         }
@@ -405,7 +405,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
         {
             parentPos.pos--;
             tuple.setKey( leaf.keys[parentPos.pos] );
-            tuple.setValue( leaf.values[parentPos.pos].getValue( btree ) );
+            tuple.setValue( leaf.values[parentPos.pos].getValue() );
         }
 
         return tuple;
@@ -444,7 +444,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
         else
         {
             // Check if we have some more value
-            if ( allowDuplicates && ( parentPos.dupsContainer != null )  && ( parentPos.dupPos < parentPos.dupsContainer.getNbElems() - 1 ) )
+            if ( allowDuplicates && ( parentPos.valueCursor != null )  && ( parentPos.dupPos < parentPos.valueCursor.getNbElems() - 1 ) )
             {
                 // We have some more values
                 return true;
@@ -663,12 +663,12 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
 
             if( !mvHolder.isSingleValue() )
             {
-                BTree<V, V> dupsContainer = ( BTree ) mvHolder.getValue( btree );
-                parentPos.dupsContainer = dupsContainer;
+                BTree<V, V> valueCursor = ( BTree ) mvHolder.getValue();
+                parentPos.valueCursor = valueCursor;
                 parentPos.dupPos = 0;
             }
             
-            TupleCursor<V, V> cursor = parentPos.dupsContainer.browse();
+            TupleCursor<V, V> cursor = parentPos.valueCursor.browse();
             cursor.beforeFirst();
             
             V value = cursor.next().getKey();
@@ -676,7 +676,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
         }
         else
         {
-            V value = leaf.values[parentPos.pos].getValue( btree );
+            V value = leaf.values[parentPos.pos].getValue();
             tuple.setValue( value );
         }
 
@@ -798,12 +798,11 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
 
             if( !mvHolder.isSingleValue() )
             {
-                BTree<V, V> dupsContainer = ( BTree ) mvHolder.getValue( btree );
-                parentPos.dupsContainer = dupsContainer;
+                parentPos.valueCursor = ( BTree ) mvHolder.getValue();
                 parentPos.dupPos = 0;
             }
             
-            TupleCursor<V, V> cursor = parentPos.dupsContainer.browse();
+            TupleCursor<V, V> cursor = parentPos.valueCursor.browse();
             cursor.beforeFirst();
             
             V value = cursor.next().getKey();
@@ -811,7 +810,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
         }
         else
         {
-            V value = leaf.values[parentPos.pos].getValue( btree );
+            V value = leaf.values[parentPos.pos].getValue();
             tuple.setValue( value );
         }
         
@@ -842,7 +841,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
                 parentPos.page = child;
             }
 
-            child = ((Node<K, V>)parentPos.page).children[0].getValue( btree );
+            child = ((Node<K, V>)parentPos.page).children[0].getValue();
         }
         
         // and leaf
@@ -876,6 +875,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
 
         Page<K, V> child = null;
 
+        // Go fown the tree picking the rightmost element of each Node
         for ( int i = 0; i < depth; i++ )
         {
             ParentPos<K, V> parentPos = stack[i];
@@ -891,20 +891,15 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
                 parentPos.pos = ((Node<K, V>)parentPos.page).nbElems;
             }
 
-            child = ((Node<K, V>)parentPos.page).children[parentPos.pos].getValue( btree );
+            child = ((Node<K, V>)parentPos.page).children[parentPos.pos].getValue();
         }
         
-        // and leaf
+        // and now, the leaf
         ParentPos<K, V> parentPos = stack[depth];
 
-        if ( child == null )
-        {
-            parentPos.pos = ((Leaf<K, V>)parentPos.page).nbElems - 1;
-        }
-        else
+        if ( child != null )
         {
             parentPos.page = child;
-            parentPos.pos = ((Leaf<K, V>)child).nbElems - 1;
         }
 
         parentPos.pos = AFTER_LAST;

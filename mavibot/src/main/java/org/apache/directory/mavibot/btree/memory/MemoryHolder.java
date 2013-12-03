@@ -54,7 +54,7 @@ public class MemoryHolder<K, V> implements ElementHolder<V, K, V>
      * {@inheritDoc}
      */
     @Override
-    public V getValue( BTree<K, V> btree )
+    public V getValue()
     {
         return value;
     }
@@ -69,7 +69,7 @@ public class MemoryHolder<K, V> implements ElementHolder<V, K, V>
 
         sb.append( "'" );
 
-        V value = getValue( btree );
+        V value = getValue();
 
         sb.append( value );
 

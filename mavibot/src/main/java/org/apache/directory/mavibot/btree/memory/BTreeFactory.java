@@ -256,7 +256,7 @@ public class BTreeFactory
 
             while ( true )
             {
-                Page<K, V> p = node.children[node.getNbElems()].getValue( btree );
+                Page<K, V> p = node.children[node.getNbElems()].getValue();
 
                 last = new ParentPos<K, V>( p, p.getNbElems() );
                 stack.push( last );

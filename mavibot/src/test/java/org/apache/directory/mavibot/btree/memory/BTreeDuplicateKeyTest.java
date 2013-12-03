@@ -371,6 +371,7 @@ public class BTreeDuplicateKeyTest
         assertEquals( "a", cursor.nextKey().getKey() );
 
         i = 0;
+        
         while ( cursor.hasNext() )
         {
             assertNotNull( cursor.nextKey() );

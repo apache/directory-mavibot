@@ -36,7 +36,7 @@ import org.apache.directory.mavibot.btree.TupleCursor;
 {
 
     /**
-     * Sets the multi-value container(a.k.a dupsContainer) of the key at the given position.
+     * Sets the multi-value container(a.k.a valueCursor) of the key at the given position.
      * 
      * This method will not update the existing value of 'dupsPos'. To change this value
      * use {@link #changeNextDupsContainer(ParentPos, BTree)} or {@link #changePrevDupsContainer(ParentPos, BTree)}
@@ -51,7 +51,7 @@ import org.apache.directory.mavibot.btree.TupleCursor;
             return;
         }
 
-        if ( parentPos.dupsContainer == null )
+        if ( parentPos.valueCursor == null )
         {
             Leaf leaf = ( Leaf ) ( parentPos.page );
             
@@ -67,8 +67,8 @@ import org.apache.directory.mavibot.btree.TupleCursor;
                 
                 if ( !mvHolder.isSingleValue() )
                 {
-                    BTree dupsContainer = ( BTree ) mvHolder.getValue( btree );
-                    parentPos.dupsContainer = dupsContainer;
+                    BTree valueCursor = ( BTree ) mvHolder.getValue();
+                    parentPos.valueCursor = valueCursor;
                 }
             }
         }
@@ -76,7 +76,7 @@ import org.apache.directory.mavibot.btree.TupleCursor;
 
 
     /**
-     * Sets the multi-value container(a.k.a dupsContainer) of the key at the given position
+     * Sets the multi-value container(a.k.a valueCursor) of the key at the given position
      * and resets the 'dupsPos' to zero. This is mostly used by Cursor while navigating using
      * next() 
      *
@@ -96,8 +96,8 @@ import org.apache.directory.mavibot.btree.TupleCursor;
             MultipleMemoryHolder mvHolder = ( MultipleMemoryHolder ) leaf.values[parentPos.pos];
             if( !mvHolder.isSingleValue() )
             {
-                BTree dupsContainer = ( BTree ) mvHolder.getValue( btree );
-                parentPos.dupsContainer = dupsContainer;
+                BTree valueCursor = ( BTree ) mvHolder.getValue();
+                parentPos.valueCursor = valueCursor;
                 parentPos.dupPos = 0;
             }
         }
@@ -105,7 +105,7 @@ import org.apache.directory.mavibot.btree.TupleCursor;
 
 
     /**
-     * Sets the multi-value container(a.k.a dupsContainer) of the key at the index below the given position( i.e pos - 1)
+     * Sets the multi-value container(a.k.a valueCursor) of the key at the index below the given position( i.e pos - 1)
      * and resets the 'dupsPos' to the number of elements present in the multi-value container.
      * This is used by Cursor while navigating using prev() 
      *
@@ -126,13 +126,12 @@ import org.apache.directory.mavibot.btree.TupleCursor;
             MultipleMemoryHolder mvHolder = ( MultipleMemoryHolder ) leaf.values[index];
             if( !mvHolder.isSingleValue() )
             {
-                BTree dupsContainer = ( BTree ) mvHolder.getValue( btree );
-                parentPos.dupsContainer = dupsContainer;
-                parentPos.dupPos = ( int ) parentPos.dupsContainer.getNbElems();
+                parentPos.valueCursor = ( BTree ) mvHolder.getValue();
+                parentPos.dupPos = ( int ) parentPos.valueCursor.getNbElems();
             }
             else
             {
-                parentPos.dupsContainer = null;
+                parentPos.valueCursor = null;
                 parentPos.dupPos = -1;
             }
         }
