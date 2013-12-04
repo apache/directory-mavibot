@@ -45,7 +45,7 @@ public class ValueHolder<V> implements Cloneable
     /** The deserialized value */
     private V[] valueArray;
 
-    /** The BTree storing multiple value, if we have moe than a threashold values */
+    /** The BTree storing multiple value, if we have more than a threshold values */
     private BTree<V, V> valueBtree;
 
     /** The serialized value */
