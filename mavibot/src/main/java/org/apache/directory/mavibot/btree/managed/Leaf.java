@@ -22,8 +22,12 @@ package org.apache.directory.mavibot.btree.managed;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
-import java.util.LinkedList;
 
+import org.apache.directory.mavibot.btree.DeleteResult;
+import org.apache.directory.mavibot.btree.InsertResult;
+import org.apache.directory.mavibot.btree.Page;
+import org.apache.directory.mavibot.btree.ParentPos;
+import org.apache.directory.mavibot.btree.Transaction;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.ValueCursor;
@@ -159,17 +163,9 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         {
             if ( valueHolder.contains( value ) )
             {
+                keyRemoved = ( valueHolder.size() == 1 );
 
-                if ( valueHolder.size() == 1 )
-                {
-                    removedElement = new Tuple<K, V>( keys[index].getKey(), null ); // the entire value was removed
-                    keyRemoved = true;
-                }
-                else
-                {
-                    removedElement = new Tuple<K, V>( keys[index].getKey(), value ); // only one value was removed
-                    //valueHolder.remove( value );
-                }
+                removedElement = new Tuple<K, V>( keys[index].getKey(), value ); // only one value was removed
             }
             else
             {
@@ -647,8 +643,6 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         {
             pos = -( pos + 1 );
 
-            cursor = new TupleCursorImpl<K, V>( btree, transaction, null, 0 );
-
             // Start at the beginning of the page
             ParentPos<K, V> parentPos = new ParentPos<K, V>( this, pos );
             
@@ -700,7 +694,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 // Not found, because there are no elements : return a null cursor
                 stack[depth] = null;
 
-                return new TupleCursorImpl<K, V>( btree, transaction, null, 0 );
+                cursor = new TupleCursorImpl<K, V>( btree, transaction, null, 0 );
             }
         }
 
@@ -804,6 +798,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         // Get the previous value from the leaf (it's a copy)
         ValueHolder<V> valueHolder = newLeaf.values[pos];
+        V replacedValue = null;
 
         if ( !valueHolder.contains( value ) )
         {
@@ -815,12 +810,12 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             // As strange as it sounds, we need to remove the value to reinject it.
             // There are cases where the value retrieval just use one part of the
             // value only (typically for LDAP Entries, where we use the DN)
-            valueHolder.remove( value );
+            replacedValue = valueHolder.remove( value );
             valueHolder.add( value );
         }
 
         // Create the result
-        InsertResult<K, V> result = new ModifyResult<K, V>( newLeaf, ( V ) valueHolder );
+        InsertResult<K, V> result = new ModifyResult<K, V>( newLeaf, replacedValue );
         result.addCopiedPage( this );
 
         return result;

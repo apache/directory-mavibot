@@ -26,6 +26,9 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 
+import org.apache.directory.mavibot.btree.DeleteResult;
+import org.apache.directory.mavibot.btree.InsertResult;
+import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
@@ -241,9 +244,9 @@ public class LeafTest
         right = insert( right, 12L, "v12" );
         right = insert( right, 13L, "v13" );
 
-        parent.children[0] = new MemoryHolder( btree, left );
-        parent.children[1] = new MemoryHolder( btree, target );
-        parent.children[2] = new MemoryHolder( btree, right );
+        parent.children[0] = left;
+        parent.children[1] = target;
+        parent.children[2] = right;
 
         // Update the parent
         parent.keys[0] = 6L;
@@ -311,9 +314,9 @@ public class LeafTest
         right = insert( right, 13L, "v13" );
         right = insert( right, 14L, "v14" );
 
-        parent.children[0] = new MemoryHolder( null, left );
-        parent.children[1] = new MemoryHolder( null, target );
-        parent.children[2] = new MemoryHolder( null, right );
+        parent.children[0] = left;
+        parent.children[1] = target;
+        parent.children[2] = right;
 
         // Update the parent
         parent.keys[0] = 6L;
@@ -381,9 +384,9 @@ public class LeafTest
         right = insert( right, 11L, "v11" );
         right = insert( right, 12L, "v12" );
 
-        parent.children[0] = new MemoryHolder( null, left );
-        parent.children[1] = new MemoryHolder( null, target );
-        parent.children[2] = new MemoryHolder( null, right );
+        parent.children[0] = left;
+        parent.children[1] = target;
+        parent.children[2] = right;
 
         // Update the parent
         parent.keys[0] = 5L;

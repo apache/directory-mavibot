@@ -22,6 +22,9 @@ package org.apache.directory.mavibot.btree.managed;
 
 import java.util.List;
 
+import org.apache.directory.mavibot.btree.InsertResult;
+import org.apache.directory.mavibot.btree.Page;
+
 
 /**
  * The result of an insert operation, when the child has not been split. It contains the

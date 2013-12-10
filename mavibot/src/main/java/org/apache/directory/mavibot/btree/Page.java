@@ -17,13 +17,11 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.memory;
+package org.apache.directory.mavibot.btree;
 
 
 import java.io.IOException;
 
-import org.apache.directory.mavibot.btree.Tuple;
-import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
@@ -39,7 +37,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier */interface Page<K, V>
+public interface Page<K, V>
 {
     /**
      * @return The number of keys present in this page
@@ -111,7 +109,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @throws IOException If we have an error while trying to access the page
      * @throws IllegalArgumentException If duplicates are not enabled 
      */
-    DuplicateKeyVal<V> getValues( K key ) throws KeyNotFoundException, IOException, IllegalArgumentException;
+    ValueCursor<V> getValues( K key ) throws KeyNotFoundException, IOException, IllegalArgumentException;
 
 
     /**
@@ -131,7 +129,6 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @param key The key we are looking for.
      * @param transaction The started transaction for this operation
      * @param stack The stack of parents we go through to get to this page
-     * @param depth The current depth
      * @return A Cursor to browse the next elements
      * @throws IOException If we have an error while trying to access the page
      */

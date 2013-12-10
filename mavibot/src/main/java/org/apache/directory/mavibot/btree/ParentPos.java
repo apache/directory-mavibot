@@ -17,9 +17,8 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.managed;
+package org.apache.directory.mavibot.btree;
 
-import org.apache.directory.mavibot.btree.ValueCursor;
 
 
 /**
@@ -31,16 +30,19 @@ import org.apache.directory.mavibot.btree.ValueCursor;
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier*/class ParentPos<K, V>
+public class ParentPos<K, V>
 {
     /** The page we are browsing */
-    /* No qualifier*/Page<K, V> page;
+    public Page<K, V> page;
 
     /** The current position in the page */
-    /* No qualifier*/int pos;
+    public int pos;
 
     /** The current position of the duplicate container in the page */
-    /* No qualifier*/ValueCursor<V> valueCursor;
+    public int dupPos;
+
+    /** The current position of the duplicate container in the page */
+    public ValueCursor<V> valueCursor;
 
 
     /**
@@ -48,7 +50,7 @@ import org.apache.directory.mavibot.btree.ValueCursor;
      * @param page The current Page
      * @param pos The current position in the page
      */
-    /* No qualifier*/ParentPos( Page<K, V> page, int pos )
+    public ParentPos( Page<K, V> page, int pos )
     {
         this.page = page;
         this.pos = pos;

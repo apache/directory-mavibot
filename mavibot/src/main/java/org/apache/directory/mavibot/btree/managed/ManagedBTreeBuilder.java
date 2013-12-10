@@ -33,6 +33,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
+import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
@@ -88,8 +89,7 @@ public class ManagedBTreeBuilder<K, V>
             
             setKey( leaf1, leafIndex, tuple.getKey() );
 
-            ValueHolder<V> eh = new ValueHolder<V>( btree, btree.getValueSerializer(),
-                tuple.getValue() );
+            ValueHolder<V> eh = new ValueHolder<V>( btree, tuple.getValue() );
 
             setValue( leaf1, leafIndex, eh );
 

@@ -23,6 +23,7 @@ package org.apache.directory.mavibot.btree.memory;
 import java.io.IOException;
 import java.lang.reflect.Array;
 
+import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
 
@@ -114,8 +115,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             return parentPos - 1;
         }
 
-        Page<K, V> prevPage = parent.children[parentPos - 1].getValue();
-        Page<K, V> nextPage = parent.children[parentPos + 1].getValue();
+        Page<K, V> prevPage = parent.children[parentPos - 1];
+        Page<K, V> nextPage = parent.children[parentPos + 1];
 
         int prevPageSize = prevPage.getNbElems();
         int nextPageSize = nextPage.getNbElems();

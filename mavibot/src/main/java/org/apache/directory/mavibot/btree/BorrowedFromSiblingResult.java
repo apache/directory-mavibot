@@ -17,22 +17,38 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.memory;
+package org.apache.directory.mavibot.btree;
 
-
-import org.apache.directory.mavibot.btree.Result;
 
 
 /**
- * The result of an insert operation. This is just a container that stores either
- * the new pivot that has been extracted after a page split, or a modified page if
- * the child page hasn't been split.
+ * The result of an delete operation, when we have borrowed some element from a sibling.
  * 
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-interface InsertResult<K, V> extends Result<Page<K, V>>
+public interface BorrowedFromSiblingResult<K, V> extends DeleteResult<K, V>
 {
+    /**
+     * @return the modifiedSibling
+     */
+    Page<K, V> getModifiedSibling();
+
+
+    /**
+     * Tells if the sibling is on the left
+     * 
+     * @return True if the sibling is on the left
+     */
+    boolean isFromLeft();
+
+
+    /**
+     * Tells if the sibling is on the right
+     * 
+     * @return True if the sibling is on the right
+     */
+    boolean isFromRight();
 }

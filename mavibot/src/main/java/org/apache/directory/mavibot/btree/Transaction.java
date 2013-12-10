@@ -17,7 +17,7 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.memory;
+package org.apache.directory.mavibot.btree;
 
 
 import java.util.Date;

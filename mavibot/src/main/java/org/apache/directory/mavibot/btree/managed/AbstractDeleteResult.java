@@ -22,6 +22,8 @@ package org.apache.directory.mavibot.btree.managed;
 
 import java.util.List;
 
+import org.apache.directory.mavibot.btree.DeleteResult;
+import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.Tuple;
 
 

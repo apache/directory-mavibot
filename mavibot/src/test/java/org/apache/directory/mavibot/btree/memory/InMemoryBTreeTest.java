@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
+import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
@@ -628,7 +629,7 @@ public class InMemoryBTreeTest
         while ( cursor.hasNext() )
         {
             Tuple<Integer, String> tuple = cursor.next();
-
+            
             assertNotNull( tuple );
             Integer val = sortedValues[pos];
             Integer res = tuple.getKey();
@@ -665,7 +666,7 @@ public class InMemoryBTreeTest
         while ( cursor.hasNext() )
         {
             Tuple<Integer, String> tuple = cursor.next();
-
+            
             assertNotNull( tuple );
             Integer val = sortedValues[pos];
             Integer res = tuple.getKey();
@@ -812,10 +813,7 @@ public class InMemoryBTreeTest
 
         assertTrue( cursor.hasPrev() );
 
-        // Lets go backward. We should get the same value, as the next() call have incremented the counter
-        assertEquals( 12, cursor.prev().getKey().intValue() );
-
-        // Get 11
+        // Lets go backward.
         assertEquals( 11, cursor.prev().getKey().intValue() );
 
         // Get 10
@@ -1038,8 +1036,8 @@ public class InMemoryBTreeTest
         leaf.revision = revision;
         leaf.nbElems = tuples.length;
         leaf.keys = new Integer[leaf.nbElems];
-        leaf.values = ( MemoryHolder<Integer, String>[] ) Array
-            .newInstance( MemoryHolder.class, leaf.nbElems );
+        leaf.values = ( ValueHolder<String>[] ) Array
+            .newInstance( ValueHolder.class, leaf.nbElems );
 
         for ( Tuple<Integer, String> tuple : tuples )
         {
@@ -1062,7 +1060,7 @@ public class InMemoryBTreeTest
             node.keys[pos - 1] = leftmost.getKey();
         }
 
-        node.children[pos] = btree.createPageHolder( page );
+        node.children[pos] = page;
     }
 
 
@@ -1873,10 +1871,7 @@ public class InMemoryBTreeTest
         assertFalse( cursor.hasNext() );
         assertTrue( cursor.hasPrev() );
 
-        // Lets go backward. We should get the same value, as the next() call have incremented the counter
-        assertEquals( 12, cursor.prev().getKey().intValue() );
-
-        // Get 11
+        // Lets go backward.
         assertEquals( 11, cursor.prev().getKey().intValue() );
 
         // Get 10
@@ -1923,8 +1918,8 @@ public class InMemoryBTreeTest
 
         assertTrue( cursor.hasPrev() );
         tuple = cursor.prev();
-        assertEquals( Integer.valueOf( 4 ), tuple.getKey() );
-        assertEquals( Integer.valueOf( 4 ), tuple.getValue() );
+        assertEquals( Integer.valueOf( 3 ), tuple.getKey() );
+        assertEquals( Integer.valueOf( 3 ), tuple.getValue() );
 
         assertTrue( cursor.hasNext() );
         tuple = cursor.next();

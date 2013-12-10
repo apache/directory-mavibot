@@ -35,7 +35,6 @@ import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
-import org.junit.Ignore;
 import org.junit.Test;
 
 
@@ -144,25 +143,11 @@ public class BTreeDuplicateKeyTest
         t = cursor.prev();
 
         assertEquals( Integer.valueOf( 1 ), t.getKey() );
-        assertEquals( Integer.valueOf( 2 ), t.getValue() );
-
-        assertTrue( cursor.hasPrev() );
-
-        t = cursor.prev();
-
-        assertEquals( Integer.valueOf( 1 ), t.getKey() );
         assertEquals( Integer.valueOf( 1 ), t.getValue() );
 
         assertFalse( cursor.hasPrev() );
 
         // again forward
-        assertTrue( cursor.hasNext() );
-
-        t = cursor.next();
-
-        assertEquals( Integer.valueOf( 1 ), t.getKey() );
-        assertEquals( Integer.valueOf( 1 ), t.getValue() );
-
         assertTrue( cursor.hasNext() );
 
         t = cursor.next();
@@ -226,6 +211,7 @@ public class BTreeDuplicateKeyTest
         btree.insert( 1, 1 );
         btree.insert( 1, 2 );
 
+        // We should have only one element in the tree (even if it has 2 values)
         assertEquals( 2l, btree.getNbElems() );
 
         Tuple<Integer, Integer> t = btree.delete( 1, 1 );
@@ -236,7 +222,7 @@ public class BTreeDuplicateKeyTest
 
         t = btree.delete( 1, 2 );
         assertEquals( Integer.valueOf( 1 ), t.getKey() );
-        assertEquals( Integer.valueOf( 2 ), t.getValue() );
+        assertNull( t.getValue() );
 
         assertEquals( 0l, btree.getNbElems() );
 
@@ -262,7 +248,8 @@ public class BTreeDuplicateKeyTest
         {
             for ( int k = 0; k < i; k++ )
             {
-                btree.insert( String.valueOf( ch ), UUID.randomUUID().toString() );
+                String val = ch + Integer.toString( k );
+                btree.insert( String.valueOf( ch ), val );
             }
         }
 
@@ -286,6 +273,7 @@ public class BTreeDuplicateKeyTest
         assertEquals( ( 'z' + 1 ), ch );
 
         ch = 'z';
+        cursor.afterLast();
 
         while ( cursor.hasPrev() )
         {
@@ -305,7 +293,6 @@ public class BTreeDuplicateKeyTest
 
 
     @Test
-    @Ignore
     public void testMoveFirst() throws Exception
     {
         StringSerializer serializer = new StringSerializer();
@@ -321,8 +308,12 @@ public class BTreeDuplicateKeyTest
             btree.insert( String.valueOf( ch ), UUID.randomUUID().toString() );
         }
 
+        assertEquals( 26, btree.getNbElems() );
+
         // add one more value for 'a'
         btree.insert( String.valueOf( 'a' ), UUID.randomUUID().toString() );
+
+        assertEquals( 27, btree.getNbElems() );
 
         TupleCursor<String, String> cursor = btree.browseFrom( "c" );
 
@@ -351,18 +342,22 @@ public class BTreeDuplicateKeyTest
             assertNotNull( tuple );
             i++;
         }
+        
         assertEquals( 26, i );
 
         cursor.close();
 
+        // Rebrowse
         cursor = btree.browse();
 
         i = 0;
+        
         while ( cursor.hasNext() )
         {
             assertNotNull( cursor.next() );
             i++;
         }
+        
         assertEquals( 27, i );
 
         // now move the cursor first
@@ -374,15 +369,17 @@ public class BTreeDuplicateKeyTest
         
         while ( cursor.hasNext() )
         {
-            assertNotNull( cursor.nextKey() );
+            tuple = cursor.nextKey();
+            String key = tuple.getKey();
+            assertNotNull( key );
             i++;
         }
-        assertEquals( 26, i );
+        
+        assertEquals( 25, i );
     }
 
 
     @Test(expected = NoSuchElementException.class)
-    @Ignore
     public void testMoveLast() throws Exception
     {
         StringSerializer serializer = new StringSerializer();
@@ -411,7 +408,7 @@ public class BTreeDuplicateKeyTest
         assertEquals( "y", cursor.prev().getKey() );
 
         cursor.beforeFirst();
-        assertEquals( "c", cursor.next().getKey() );
+        assertEquals( "a", cursor.next().getKey() );
 
         cursor.afterLast();
         assertFalse( cursor.hasNext() );
@@ -421,7 +418,6 @@ public class BTreeDuplicateKeyTest
 
 
     @Test(expected = NoSuchElementException.class)
-    @Ignore
     public void testNextPrevKey() throws Exception
     {
         StringSerializer serializer = new StringSerializer();
@@ -527,7 +523,6 @@ public class BTreeDuplicateKeyTest
      * @throws Exception
      */
     @Test
-    @Ignore
     public void testMoveToNextAndPrevWithPageBoundaries() throws Exception
     {
         IntSerializer serializer = new IntSerializer();
@@ -558,8 +553,8 @@ public class BTreeDuplicateKeyTest
         tuple = cursor.prevKey();
 
         assertNotNull( tuple );
-        assertEquals( Integer.valueOf( 3 ), tuple.getKey() );
-        assertEquals( Integer.valueOf( 3 ), tuple.getValue() );
+        assertEquals( Integer.valueOf( 2 ), tuple.getKey() );
+        assertEquals( Integer.valueOf( 2 ), tuple.getValue() );
         cursor.close();
 
         // 4 is the first element of the second leaf
@@ -579,7 +574,7 @@ public class BTreeDuplicateKeyTest
         cursor.close();
 
         // test the extremes of the BTree instead of that of leaves
-        cursor = btree.browseFrom( 6 );
+        cursor = btree.browseFrom( 5 );
         tuple = cursor.nextKey();
         assertFalse( cursor.hasNext() );
         assertTrue( cursor.hasPrev() );
@@ -589,10 +584,12 @@ public class BTreeDuplicateKeyTest
         cursor.close();
 
         cursor = btree.browse();
-        cursor.prevKey();
+        cursor.beforeFirst();
         assertTrue( cursor.hasNext() );
         assertFalse( cursor.hasPrev() );
 
+        tuple = cursor.next();
+        
         assertEquals( Integer.valueOf( 0 ), tuple.getKey() );
         assertEquals( Integer.valueOf( 0 ), tuple.getValue() );
         cursor.close();
@@ -627,8 +624,8 @@ public class BTreeDuplicateKeyTest
 
         assertTrue( cursor.hasPrev() );
         tuple = cursor.prev();
-        assertEquals( Integer.valueOf( 4 ), tuple.getKey() );
-        assertEquals( Integer.valueOf( 4 ), tuple.getValue() );
+        assertEquals( Integer.valueOf( 3 ), tuple.getKey() );
+        assertEquals( Integer.valueOf( 3 ), tuple.getValue() );
 
         assertTrue( cursor.hasNext() );
         tuple = cursor.next();
@@ -645,7 +642,6 @@ public class BTreeDuplicateKeyTest
      * @throws Exception
      */
     @Test
-    @Ignore
     public void testMoveToNextAndTraverseBackward() throws Exception
     {
         IntSerializer serializer = new IntSerializer();
@@ -684,7 +680,6 @@ public class BTreeDuplicateKeyTest
      * @throws Exception
      */
     @Test
-    @Ignore
     public void testMoveToPrevAndTraverseForward() throws Exception
     {
         IntSerializer serializer = new IntSerializer();
@@ -697,6 +692,7 @@ public class BTreeDuplicateKeyTest
         BTree<Integer, Integer> btree = new BTree<Integer, Integer>( config );
 
         int i = 5;
+        
         for ( int k = 0; k < i; k++ )
         {
             btree.insert( k, k );
@@ -704,9 +700,9 @@ public class BTreeDuplicateKeyTest
 
         // 4 is the last element in the tree
         TupleCursor<Integer, Integer> cursor = btree.browseFrom( 0 );
-        cursor.prevKey();
 
         int currentKey = 0;
+        
         while ( cursor.hasNext() )
         {
             assertEquals( Integer.valueOf( currentKey ), cursor.next().getKey() );
@@ -715,5 +711,4 @@ public class BTreeDuplicateKeyTest
 
         cursor.close();
     }
-
 }

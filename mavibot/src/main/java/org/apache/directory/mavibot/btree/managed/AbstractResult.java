@@ -23,6 +23,7 @@ package org.apache.directory.mavibot.btree.managed;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.Result;
 
 

@@ -39,10 +39,16 @@ import net.sf.ehcache.config.CacheConfiguration;
 
 import org.apache.directory.mavibot.btree.Addition;
 import org.apache.directory.mavibot.btree.BTreeHeader;
+import org.apache.directory.mavibot.btree.DeleteResult;
 import org.apache.directory.mavibot.btree.Deletion;
+import org.apache.directory.mavibot.btree.InsertResult;
 import org.apache.directory.mavibot.btree.Modification;
+import org.apache.directory.mavibot.btree.Page;
+import org.apache.directory.mavibot.btree.ParentPos;
+import org.apache.directory.mavibot.btree.Transaction;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
+import org.apache.directory.mavibot.btree.ValueCursor;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.BufferHandler;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
@@ -824,7 +830,7 @@ public class BTree<K, V> implements Closeable
     /**
      * @see Page#getValues(Object)
      */
-    public DuplicateKeyVal<V> getValues( K key ) throws IOException, KeyNotFoundException
+    public ValueCursor<V> getValues( K key ) throws IOException, KeyNotFoundException
     {
         return rootPage.getValues( key );
     }
@@ -934,6 +940,9 @@ public class BTree<K, V> implements Closeable
 
         // Fetch the root page for this revision
         TupleCursor<K, V> cursor = rootPage.browse( transaction, new ParentPos[32], 0 );
+        
+        // Set the position before the first element
+        cursor.beforeFirst();
 
         return cursor;
     }
@@ -1499,28 +1508,9 @@ public class BTree<K, V> implements Closeable
      * @param value The value to store
      * @return The value holder
      */
-    /* no qualifier */ElementHolder<V, K, V> createValueHolder( V value )
+    /* no qualifier */ValueHolder<V> createValueHolder( V value )
     {
-        if ( isAllowDuplicates() )
-        {
-            return new MultipleMemoryHolder<K, V>( this, value );
-        }
-        else
-        {
-            return new MemoryHolder( this, value );
-        }
-    }
-
-
-    /**
-     * Create a ValueHolder depending on the kind of holder we want.
-     * 
-     * @param value The value to store
-     * @return The value holder
-     */
-    /* no qualifier */ElementHolder<Page<K, V>, K, V> createPageHolder( Page<K, V> value )
-    {
-        return new MemoryHolder( this, value );
+        return new ValueHolder<V>( this, value );
     }
 
 

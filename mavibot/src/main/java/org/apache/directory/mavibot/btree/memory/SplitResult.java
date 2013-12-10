@@ -22,6 +22,9 @@ package org.apache.directory.mavibot.btree.memory;
 
 import java.util.List;
 
+import org.apache.directory.mavibot.btree.InsertResult;
+import org.apache.directory.mavibot.btree.Page;
+
 
 /**
  * The result of an insert operation, when the page has been split. It contains

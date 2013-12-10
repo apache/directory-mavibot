@@ -19,6 +19,9 @@
  */
 package org.apache.directory.mavibot.btree.memory;
 
+import org.apache.directory.mavibot.btree.DeleteResult;
+import org.apache.directory.mavibot.btree.Page;
+
 
 /**
  * The result of an delete operation, when we have borrowed some element from a sibling.

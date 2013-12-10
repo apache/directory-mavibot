@@ -17,22 +17,29 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.managed;
+package org.apache.directory.mavibot.btree;
 
 
-import org.apache.directory.mavibot.btree.Result;
 
 
 /**
- * The result of an insert operation. This is just a container that stores either
- * the new pivot that has been extracted after a page split, or a modified page if
- * the child page hasn't been split.
+ * The result of an delete operation.
  * 
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-interface InsertResult<K, V> extends Result<Page<K, V>>
+public interface DeleteResult<K, V> extends Result<Page<K, V>>
 {
+    /**
+     * @return the modifiedPage
+     */
+    Page<K, V> getModifiedPage();
+
+
+    /**
+     * @return the removed element
+     */
+    Tuple<K, V> getRemovedElement();
 }

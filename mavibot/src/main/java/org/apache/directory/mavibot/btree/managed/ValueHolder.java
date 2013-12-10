@@ -25,6 +25,7 @@ import java.lang.reflect.Array;
 import java.util.Comparator;
 import java.util.UUID;
 
+import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.ValueCursor;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
@@ -57,7 +58,7 @@ public class ValueHolder<V> implements Cloneable
     /** A flag to signal that the raw value represent the serialized values in their last state */
     private boolean isRawUpToDate = false;
 
-    /** The RecordManager */
+    /** The parent BTree */
     private BTree<?, V> btree;
 
     /** The Value serializer */
@@ -68,16 +69,15 @@ public class ValueHolder<V> implements Cloneable
      * Creates a new instance of a ValueHolder, containing the serialized values.
      * 
      * @param btree the container BTree
-     * @param valueSerializer The Value's serializer
      * @param raw The raw data containing the values
      * @param nbValues the number of stored values
      * @param raw the byte[] containing either the serialized array of values or the sub-btree offset
      */
-    /* No qualifier */ValueHolder( BTree<?, V> btree, ElementSerializer<V> valueSerializer, int nbValues, byte[] raw )
+    /* No qualifier */ValueHolder( BTree<?, V> btree, int nbValues, byte[] raw )
     {
-        this.valueSerializer = valueSerializer;
-        this.raw = raw;
         this.btree = btree;
+        this.valueSerializer = btree.getValueSerializer();
+        this.raw = raw;
         isRawUpToDate = true;
 
         // We create the array of values if they fit in an array. If they are stored in a 
@@ -97,10 +97,10 @@ public class ValueHolder<V> implements Cloneable
      * @param valueSerializer The Value's serializer
      * @param values The Values stored in the ValueHolder
      */
-    /* No qualifier */ValueHolder( BTree<?, V> btree, ElementSerializer<V> valueSerializer, V... values )
+    /* No qualifier */ValueHolder( BTree<?, V> btree, V... values )
     {
-        this.valueSerializer = valueSerializer;
         this.btree = btree;
+        this.valueSerializer = btree.getValueSerializer();
 
         if ( values != null )
         {
@@ -767,7 +767,7 @@ public class ValueHolder<V> implements Cloneable
     /**
      * Remove a value from an array
      */
-    private void removeFromArray( V value )
+    private V removeFromArray( V value )
     {
         checkAndDeserialize();
 
@@ -777,7 +777,7 @@ public class ValueHolder<V> implements Cloneable
         if ( pos < 0 )
         {
             // The value does not exists : nothing to do
-            return;
+            return null;
         }
 
         // Ok, we just have to delete the new element at the right position
@@ -787,20 +787,25 @@ public class ValueHolder<V> implements Cloneable
         System.arraycopy( valueArray, 0, newValueArray, 0, pos );
         System.arraycopy( valueArray, pos + 1, newValueArray, pos, valueArray.length - pos - 1 );
 
+        // Get the removed element
+        V removedValue = valueArray[pos];
+        
         // And switch the arrays
         valueArray = newValueArray;
+        
+        return removedValue;
     }
 
     
     /**
      * Remove the value from a sub btree
      */
-    private void removeFromBtree( V value )
+    private V removeFromBtree( V removedValue )
     {
         // First check that we have a loaded BTree
         checkAndDeserialize();
 
-        if ( btreeContains( value ) )
+        if ( btreeContains( removedValue ) )
         {
             try
             {
@@ -811,18 +816,54 @@ public class ValueHolder<V> implements Cloneable
                     // We have to switch to an Array of values
                     valueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), nbValues );
     
-                    // Now copy all the value sbut the one we have removed
+                    // Now copy all the value but the one we have removed
+                    TupleCursor<V,V> cursor = valueBtree.browse();
+                    V returnedValue = null;
+                    int pos = 0;
+                    
+                    while ( cursor.hasNext() )
+                    {
+                        Tuple<V, V> tuple = cursor.next();
+                        
+                        V value = tuple.getKey();
+                        
+                        if ( valueSerializer.getComparator().compare( removedValue, value ) == 0 )
+                        {
+                            // This is the removed value : skip it
+                            returnedValue = value;
+                        }
+                        else
+                        {
+                            valueArray[pos++] = value;
+                        }
+                    }
+                    
+                    return returnedValue;
                 }
                 else
                 {
-                    valueBtree.delete( value );
+                    Tuple<V, V> removedTuple = valueBtree.delete( removedValue );
+                    
+                    if ( removedTuple != null )
+                    {
+                        return removedTuple.getKey();
+                    }
+                    else
+                    {
+                        return null;
+                    }
                 }
             }
             catch ( IOException e )
             {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
+                return null;
             }
+        }
+        else
+        {
+            return null;
         }
     }
 
@@ -831,20 +872,24 @@ public class ValueHolder<V> implements Cloneable
      * 
      * @param value The added value
      */
-    public void remove( V value )
+    public V remove( V value )
     {
+        V removedValue = null;
+        
         if ( valueArray != null )
         {
-            removeFromArray( value );
+            removedValue = removeFromArray( value );
         }
         else
         {
-            removeFromBtree( value );
+            removedValue = removeFromBtree( value );
         }
 
         // The raw value is not anymore up to date wth the content
         isRawUpToDate = false;
         raw = null;
+        
+        return removedValue;
     }
     
     

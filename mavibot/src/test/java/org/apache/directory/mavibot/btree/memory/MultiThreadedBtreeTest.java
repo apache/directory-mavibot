@@ -137,7 +137,7 @@ public class MultiThreadedBtreeTest
 
 
     /**
-     * Chack that we can read the btree while it is being modified. We will start
+     * Check that we can read the btree while it is being modified. We will start
      * 100 readers for one writer.
      * 
      * @throws InterruptedException If the btree access failed.

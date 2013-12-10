@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
@@ -643,7 +644,7 @@ public class RecordManager
                 
                 // Create the valueHolder. As the number of values is negative, we have to switch
                 // to a positive value but as we start at -1 for 0 value, add 1.
-                valueHolder = new ValueHolder<V>( btree, btree.getValueSerializer(), 1 - nbValues, btreeOffsetBytes );
+                valueHolder = new ValueHolder<V>( btree, 1 - nbValues, btreeOffsetBytes );
             }
             else
             {
@@ -654,7 +655,7 @@ public class RecordManager
                 // This is an Array of values, read the byte[] associated with it
                 byte[] arrayBytes = new byte[valueLengths[i]];
                 byteBuffer.get( arrayBytes );
-                valueHolder = new ValueHolder<V>( btree, btree.getValueSerializer(), nbValues, arrayBytes );
+                valueHolder = new ValueHolder<V>( btree, nbValues, arrayBytes );
             }
 
             BTreeFactory.setValue( leaf, i, valueHolder );
@@ -1912,7 +1913,7 @@ public class RecordManager
      * @return The offset of the new page
      * @throws IOException 
      */
-    /* No qualifier*/<K, V> ElementHolder<Page<K, V>, K, V> writePage( BTree<K, V> btree, Page<K, V> newPage,
+    /* No qualifier*/<K, V> PageHolder<K, V> writePage( BTree<K, V> btree, Page<K, V> newPage,
         long newRevision )
         throws IOException
     {
@@ -1927,7 +1928,7 @@ public class RecordManager
         // Build the resulting reference
         long offset = pageIos[0].getOffset();
         long lastOffset = pageIos[pageIos.length - 1].getOffset();
-        ElementHolder<Page<K, V>, K, V> valueHolder = new PageHolder<K, V>( btree, newPage, offset,
+        PageHolder<K, V> valueHolder = new PageHolder<K, V>( btree, newPage, offset,
             lastOffset );
 
         if ( LOG_CHECK.isDebugEnabled() )

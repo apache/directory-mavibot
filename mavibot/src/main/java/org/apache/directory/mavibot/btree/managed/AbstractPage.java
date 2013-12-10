@@ -23,6 +23,7 @@ package org.apache.directory.mavibot.btree.managed;
 import java.io.IOException;
 import java.lang.reflect.Array;
 
+import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
 

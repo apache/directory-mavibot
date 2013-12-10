@@ -24,6 +24,12 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.List;
 
+import org.apache.directory.mavibot.btree.BorrowedFromSiblingResult;
+import org.apache.directory.mavibot.btree.DeleteResult;
+import org.apache.directory.mavibot.btree.InsertResult;
+import org.apache.directory.mavibot.btree.Page;
+import org.apache.directory.mavibot.btree.ParentPos;
+import org.apache.directory.mavibot.btree.Transaction;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.ValueCursor;
@@ -43,7 +49,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 /* No qualifier */class Node<K, V> extends AbstractPage<K, V>
 {
     /** Children pages associated with keys. */
-    protected ElementHolder<Page<K, V>, K, V>[] children;
+    protected PageHolder<K, V>[] children;
 
 
     /**
@@ -61,7 +67,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         super( btree, revision, nbElems );
 
         // Create the children array
-        children = ( ElementHolder<Page<K, V>, K, V>[] ) Array.newInstance( ElementHolder.class, nbElems + 1 );
+        children = ( PageHolder<K, V>[] ) Array.newInstance( PageHolder.class, nbElems + 1 );
     }
 
 
@@ -109,8 +115,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @param rightPage The right page
      */
     @SuppressWarnings("unchecked")
-    /* No qualifier */Node( BTree<K, V> btree, long revision, K key, ElementHolder<Page<K, V>, K, V> leftPage,
-        ElementHolder<Page<K, V>, K, V> rightPage )
+    /* No qualifier */Node( BTree<K, V> btree, long revision, K key, PageHolder<K, V> leftPage,
+        PageHolder<K, V> rightPage )
     {
         super( btree, revision, 1 );
 
@@ -616,7 +622,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         // the current page
         if ( deleteResult instanceof BorrowedFromSiblingResult )
         {
-            RemoveResult<K, V> removeResult = handleBorrowedResult( ( BorrowedFromSiblingResult<K, V> ) deleteResult,
+            RemoveResult<K, V> removeResult = handleBorrowedResult( (org.apache.directory.mavibot.btree.BorrowedFromSiblingResult<K, V> ) deleteResult,
                 pos );
 
             return removeResult;
@@ -942,7 +948,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    public void setValue( int pos, ElementHolder<Page<K, V>, K, V> value )
+    public void setValue( int pos, PageHolder<K, V> value )
     {
         children[pos] = value;
     }
@@ -1039,9 +1045,9 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @return A holder contaning a reference to the child page
      * @throws IOException If we have an error while trying to access the page
      */
-    private ElementHolder<Page<K, V>, K, V> createHolder( Page<K, V> page ) throws IOException
+    private PageHolder<K, V> createHolder( Page<K, V> page ) throws IOException
     {
-        ElementHolder<Page<K, V>, K, V> holder = btree.getRecordManager().writePage( btree,
+        PageHolder<K, V> holder = btree.getRecordManager().writePage( btree,
             page,
             revision );
 

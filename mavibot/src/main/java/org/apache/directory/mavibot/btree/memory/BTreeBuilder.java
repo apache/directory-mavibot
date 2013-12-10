@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
@@ -82,7 +83,7 @@ public class BTreeBuilder<K, V>
 
             setKey( leaf1, leafIndex, tuple.getKey() );
 
-            MemoryHolder<K, V> eh = new MemoryHolder<K, V>( btree, tuple.getValue() );
+            ValueHolder<V> eh = new ValueHolder<V>( btree, tuple.getValue() );
 
             setValue( leaf1, leafIndex, eh );
 
@@ -115,8 +116,8 @@ public class BTreeBuilder<K, V>
                 lastLeaf.keys = ( K[] ) Array.newInstance( keyType, n );
                 System.arraycopy( keys, 0, lastLeaf.keys, 0, n );
 
-                ElementHolder<V, K, V>[] values = lastLeaf.values;
-                lastLeaf.values = ( MemoryHolder<K, V>[] ) Array.newInstance( MemoryHolder.class, n );
+                ValueHolder<V>[] values = lastLeaf.values;
+                lastLeaf.values = ( ValueHolder<V>[] ) Array.newInstance( ValueHolder.class, n );
                 System.arraycopy( values, 0, lastLeaf.values, 0, n );
 
                 break;
@@ -157,7 +158,7 @@ public class BTreeBuilder<K, V>
                 setKey( node, i - 1, p.getLeftMostKey() );
             }
 
-            node.children[i] = btree.createPageHolder( p );
+            node.children[i] = p;
 
             i++;
             totalNodes++;

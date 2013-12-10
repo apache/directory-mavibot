@@ -24,6 +24,7 @@ import java.io.IOException;
 
 import net.sf.ehcache.Element;
 
+import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
 
@@ -38,7 +39,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class PageHolder<K, V> implements ElementHolder<Page<K, V>, K, V>
+public class PageHolder<K, V>
 {
     /** The BTree */
     private BTree<K, V> btree;
@@ -77,7 +78,6 @@ public class PageHolder<K, V> implements ElementHolder<Page<K, V>, K, V>
      * @throws IOException 
      * @throws EndOfFileExceededException 
      */
-    @Override
     public Page<K, V> getValue( BTree<K, V> btree ) throws EndOfFileExceededException, IOException
     {
         Element element = btree.getCache().get( offset );
@@ -93,7 +93,7 @@ public class PageHolder<K, V> implements ElementHolder<Page<K, V>, K, V>
             return page;
         }
 
-        Page<K, V> page = ( Page<K, V> ) element.getObjectValue();
+        Page<K, V> page = (org.apache.directory.mavibot.btree.Page<K, V> ) element.getObjectValue();
 
         if ( page == null )
         {

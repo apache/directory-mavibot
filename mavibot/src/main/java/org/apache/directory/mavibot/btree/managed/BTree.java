@@ -32,6 +32,12 @@ import net.sf.ehcache.Cache;
 import net.sf.ehcache.config.CacheConfiguration;
 
 import org.apache.directory.mavibot.btree.BTreeHeader;
+import org.apache.directory.mavibot.btree.Cursor;
+import org.apache.directory.mavibot.btree.DeleteResult;
+import org.apache.directory.mavibot.btree.InsertResult;
+import org.apache.directory.mavibot.btree.Page;
+import org.apache.directory.mavibot.btree.ParentPos;
+import org.apache.directory.mavibot.btree.Transaction;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.ValueCursor;
@@ -744,7 +750,7 @@ public class BTree<K, V> implements Closeable
                 // Write the modified page on disk
                 // Note that we don't use the holder, the new root page will
                 // remain in memory.
-                ElementHolder<Page<K, V>, K, V> holder = recordManager.writePage( this, modifiedPage,
+                PageHolder<K, V> holder = recordManager.writePage( this, modifiedPage,
                     revision );
 
                 // Store the offset on disk in the page in memory
@@ -915,7 +921,11 @@ public class BTree<K, V> implements Closeable
         Transaction<K, V> transaction = beginReadTransaction();
 
         // Fetch the root page for this revision
-        TupleCursor<K, V> cursor = rootPage.browse( transaction, new ParentPos[32], 0 );
+        ParentPos<K, V>[] stack = new ParentPos[32];
+        TupleCursor<K, V> cursor = rootPage.browse( transaction, stack, 0 );
+        
+        // Set the position before the first element
+        cursor.beforeFirst();
 
         return cursor;
     }
@@ -1026,7 +1036,7 @@ public class BTree<K, V> implements Closeable
             // Write the modified page on disk
             // Note that we don't use the holder, the new root page will
             // remain in memory.
-            ElementHolder<Page<K, V>, K, V> holder = recordManager.writePage( this, modifiedPage,
+            PageHolder<K, V> holder = recordManager.writePage( this, modifiedPage,
                 revision );
             
             // The root has just been modified, we haven't split it
@@ -1048,10 +1058,10 @@ public class BTree<K, V> implements Closeable
 
             // If the BTree is managed, we have to write the two pages that were created
             // and to keep a track of the two offsets for the upper node
-            ElementHolder<Page<K, V>, K, V> holderLeft = recordManager.writePage( this,
+            PageHolder<K, V> holderLeft = recordManager.writePage( this,
                 leftPage, revision );
 
-            ElementHolder<Page<K, V>, K, V> holderRight = recordManager.writePage( this,
+            PageHolder<K, V> holderRight = recordManager.writePage( this,
                 rightPage, revision );
 
             // Create the new rootPage
@@ -1059,7 +1069,7 @@ public class BTree<K, V> implements Closeable
 
             // If the BTree is managed, we now have to write the page on disk
             // and to add this page to the list of modified pages
-            ElementHolder<Page<K, V>, K, V> holder = recordManager
+            PageHolder<K, V> holder = recordManager
                 .writePage( this, newRootPage, revision );
 
             rootPage = newRootPage;
@@ -1259,7 +1269,7 @@ public class BTree<K, V> implements Closeable
     @SuppressWarnings("unchecked")
     /* no qualifier */ValueHolder<V> createValueHolder( V value )
     {
-        return new ValueHolder<V>( this, valueSerializer, value );
+        return new ValueHolder<V>( this, value );
     }
 
 
@@ -1269,7 +1279,7 @@ public class BTree<K, V> implements Closeable
      * @param value The value to store
      * @return The value holder
      */
-    /* no qualifier */ElementHolder<Page<K, V>, K, V> createPageHolder( Page<K, V> value )
+    /* no qualifier */PageHolder<K, V> createPageHolder( Page<K, V> value )
     {
         return new PageHolder<K, V>( this, value,
             value.getOffset(), value.getLastOffset() );

@@ -20,6 +20,8 @@
 package org.apache.directory.mavibot.btree.memory;
 
 
+import org.apache.directory.mavibot.btree.DeleteResult;
+import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.Tuple;
 
 

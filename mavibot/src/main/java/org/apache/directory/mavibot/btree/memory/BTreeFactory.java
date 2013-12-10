@@ -23,6 +23,8 @@ package org.apache.directory.mavibot.btree.memory;
 import java.io.IOException;
 import java.util.LinkedList;
 
+import org.apache.directory.mavibot.btree.Page;
+import org.apache.directory.mavibot.btree.ParentPos;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 
@@ -215,7 +217,7 @@ public class BTreeFactory
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    public static <K, V> void setValue( Leaf<K, V> page, int pos, ElementHolder<V, K, V> value )
+    public static <K, V> void setValue( Leaf<K, V> page, int pos, ValueHolder<V> value )
     {
         page.setValue( pos, value );
     }
@@ -226,9 +228,9 @@ public class BTreeFactory
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    public static <K, V> void setValue( Node<K, V> page, int pos, ElementHolder<Page<K, V>, K, V> value )
+    public static <K, V> void setValue( Node<K, V> page, int pos, Page<K, V> value )
     {
-        page.setValue( pos, value );
+        page.children[pos] = value;
     }
 
 
@@ -248,7 +250,9 @@ public class BTreeFactory
 
         if ( btree.rootPage instanceof Leaf )
         {
-            InternalUtil.setLastDupsContainer( last, btree );
+            Leaf<K, V> leaf = ( Leaf<K, V> ) ( btree.rootPage );
+            ValueHolder<V> valueHolder = leaf.values[last.pos];
+            last.valueCursor = valueHolder.getCursor();
         }
         else
         {
@@ -256,14 +260,16 @@ public class BTreeFactory
 
             while ( true )
             {
-                Page<K, V> p = node.children[node.getNbElems()].getValue();
+                Page<K, V> p = node.children[node.getNbElems()];
 
                 last = new ParentPos<K, V>( p, p.getNbElems() );
                 stack.push( last );
 
                 if ( p instanceof Leaf )
                 {
-                    InternalUtil.setLastDupsContainer( last, btree );
+                    Leaf<K, V> leaf = ( Leaf<K, V> ) ( last.page );
+                    ValueHolder<V> valueHolder = leaf.values[last.pos];
+                    last.valueCursor = valueHolder.getCursor();
                     break;
                 }
             }

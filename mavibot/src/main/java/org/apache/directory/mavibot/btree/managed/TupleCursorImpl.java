@@ -23,6 +23,9 @@ package org.apache.directory.mavibot.btree.managed;
 import java.io.IOException;
 import java.util.NoSuchElementException;
 
+import org.apache.directory.mavibot.btree.Page;
+import org.apache.directory.mavibot.btree.ParentPos;
+import org.apache.directory.mavibot.btree.Transaction;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
@@ -76,11 +79,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
 
 
     /**
-     * Find the next key/value
-     * 
-     * @return A Tuple containing the found key and value
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
+     * {@inheritDoc}
      */
     public Tuple<K, V> next() throws EndOfFileExceededException, IOException
     {
@@ -141,7 +140,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
             {
                 parentPos.pos++;
             }
-                
+
             try
             {
                 ValueHolder<V> valueHolder = ( ( Leaf<K, V> ) parentPos.page ).getValue( parentPos.pos );
@@ -189,7 +188,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
             // is not the last one
             ParentPos<K, V> parentPos = stack[currentDepth];
 
-            if ( parentPos.pos == parentPos.page.getNbElems() )
+            if ( parentPos.pos + 1 > parentPos.page.getNbElems() )
             {
                 // No more element on the right : go up
                 currentDepth--;
@@ -205,15 +204,15 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
                 {
                     currentDepth++;
                     parentPos = stack[currentDepth];
-                    parentPos.page = child;
                     parentPos.pos = 0;
-                    child = ((Node<K, V>)parentPos.page).children[parentPos.pos].getValue( btree );
+                    parentPos.page = child;
+                    child = ((Node<K, V>)child).children[0].getValue( btree );
                 }
 
                 // and the leaf
                 parentPos = stack[depth];
-                parentPos.pos = 0;
                 parentPos.page = child;
+                parentPos.pos = 0;
                 parentPos.valueCursor = ((Leaf<K, V>)child).values[0].getCursor();
 
                 return parentPos;
@@ -221,6 +220,106 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
         }
 
         return null;
+    }
+
+
+    /**
+     * Tells if there is a next ParentPos
+     * 
+     * @return the new ParentPos instance, or null if we have no following leaf
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
+     */
+    private boolean hasNextParentPos() throws EndOfFileExceededException, IOException
+    {
+        if ( depth == 0 )
+        {
+            // No need to go any further, there is only one leaf in the btree
+            return false;
+        }
+
+        int currentDepth = depth - 1;
+        Page<K, V> child = null;
+
+        // First, go up the tree until we find a Node which has some element on the right
+        while ( currentDepth >= 0 )
+        {
+            // We first go up the tree, until we reach a page whose current position
+            // is not the last one
+            ParentPos<K, V> parentPos = stack[currentDepth];
+
+            if ( parentPos.pos + 1 > parentPos.page.getNbElems() )
+            {
+                // No more element on the right : go up
+                currentDepth--;
+            }
+            else
+            {
+                // We can pick the next element at this level
+                child = ((Node<K, V>)parentPos.page).children[parentPos.pos + 1].getValue( btree );
+                
+                // and go down the tree through the nodes
+                while ( currentDepth < depth - 1 )
+                {
+                    currentDepth++;
+                    child = ((Node<K, V>)child).children[0].getValue( btree );
+                }
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+    
+    
+    /**
+     * Tells if there is a prev ParentPos
+     * 
+     * @return the new ParentPos instance, or null if we have no previous leaf
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
+     */
+    private boolean hasPrevParentPos() throws EndOfFileExceededException, IOException
+    {
+        if ( depth == 0 )
+        {
+            // No need to go any further, there is only one leaf in the btree
+            return false;
+        }
+
+        int currentDepth = depth - 1;
+        Page<K, V> child = null;
+
+        // First, go up the tree until we find a Node which has some element on the right
+        while ( currentDepth >= 0 )
+        {
+            // We first go up the tree, until we reach a page whose current position
+            // is not the last one
+            ParentPos<K, V> parentPos = stack[currentDepth];
+
+            if ( parentPos.pos == 0 )
+            {
+                // No more element on the left : go up
+                currentDepth--;
+            }
+            else
+            {
+                // We can pick the previous element at this level
+                child = ((Node<K, V>)parentPos.page).children[parentPos.pos - 1].getValue( btree );
+                
+                // and go down the tree through the nodes
+                while ( currentDepth < depth - 1 )
+                {
+                    currentDepth++;
+                    child = ((Node<K, V>)child).children[child.getNbElems()].getValue( btree );
+                }
+
+                return true;
+            }
+        }
+
+        return false;
     }
     
     
@@ -287,11 +386,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
 
 
     /**
-     * Find the previous key/value
-     * 
-     * @return A Tuple containing the found key and value
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
+     * {@inheritDoc}
      */
     public Tuple<K, V> prev() throws EndOfFileExceededException, IOException
     {
@@ -504,7 +599,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
 
 
     /**
-     * Closes the cursor, thus releases the associated transaction
+     * {@inheritDoc}
      */
     public void close()
     {
@@ -513,7 +608,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
 
 
     /**
-     * @return The revision this cursor is based on
+     * {@inheritDoc}
      */
     public long getRevision()
     {
@@ -522,7 +617,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
 
 
     /**
-     * @return The creation date for this cursor
+     * {@inheritDoc}
      */
     public long getCreationDate()
     {
@@ -554,20 +649,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
         {
             // End of the leaf. We have to go back into the stack up to the
             // parent, and down to the next leaf
-            parentPos = findNextParentPos();
-
-            // we also need to check the result of the call to
-            // findNextParentPos as it will return a null ParentPos
-            if ( ( parentPos == null ) || ( parentPos.page == null ) )
-            {
-                // This is the end : no more key
-                return false;
-            }
-            else
-            {
-                // We have more keys
-                return true;
-            }
+            return hasNextParentPos();
         }
         else
         {
@@ -664,17 +746,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
         {
             // Beginning of the leaf. We have to go back into the stack up to the
             // parent, and down to the leaf
-            parentPos = findPrevParentPos();
-
-            if ( ( parentPos == null ) || ( parentPos.page == null ) )
-            {
-                // This is the end : no more key
-                return false;
-            }
-            else
-            {
-                return true;
-            }
+            return hasPrevParentPos();
         }
         else
         {
@@ -778,15 +850,16 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
             parentPos.page = child;
         }
         
-        parentPos.valueCursor = ((Leaf<K, V>)parentPos.page).values[0].getCursor();
-        parentPos.valueCursor.beforeFirst();
+        if ( parentPos.valueCursor != null )
+        {
+            parentPos.valueCursor = ((Leaf<K, V>)parentPos.page).values[0].getCursor();
+            parentPos.valueCursor.beforeFirst();
+        }
     }
 
 
     /**
-     * Places the cursor at the end of the last position
-     * 
-     * @throws IOException
+     * {@inheritDoc}
      */
     public void afterLast() throws IOException
     {

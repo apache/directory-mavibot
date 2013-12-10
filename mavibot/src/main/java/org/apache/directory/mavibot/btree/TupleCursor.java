@@ -78,12 +78,15 @@ public interface TupleCursor<K, V> extends Cursor<K>
 
 
     /**
+     * Get the current revision
+     * 
      * @return The revision this cursor is based on
      */
     long getRevision();
 
 
     /**
+     * Get the creation date
      * @return The creation date for this cursor
      */
     long getCreationDate();
