@@ -70,16 +70,16 @@ public class MultiThreadedBtreeTest
 
 
     /**
-     * Create a btree with 500 000 elements in it
+     * Create a btree with 50 000 elements in it
      * @throws IOException If the creation failed
      */
-    private void create500KBTree() throws IOException
+    private void create50KBTree() throws IOException
     {
         Random random = new Random( System.nanoTime() );
 
-        int nbElems = 500000;
+        int nbElems = 50000;
 
-        // Create a BTree with 500 000 entries
+        // Create a BTree with 50 000 entries
         btree.setPageSize( 32 );
 
         for ( int i = 0; i < nbElems; i++ )
@@ -91,7 +91,7 @@ public class MultiThreadedBtreeTest
             {
                 btree.insert( key, value );
 
-                if ( i % 100000 == 0 )
+                if ( i % 10000 == 0 )
                 {
                     System.out.println( "Written " + i + " elements" );
                 }
@@ -154,7 +154,7 @@ public class MultiThreadedBtreeTest
             {
                 try
                 {
-                    create500KBTree();
+                    create50KBTree();
                 }
                 catch ( Exception e )
                 {
@@ -202,7 +202,7 @@ public class MultiThreadedBtreeTest
 
         long t1 = System.currentTimeMillis();
 
-        System.out.println( " Time to create 500K entries and to have " + nbThreads + " threads reading them : "
+        System.out.println( " Time to create 50K entries and to have " + nbThreads + " threads reading them : "
             + ( ( t1 - t0 ) / 1000 ) + " seconds" );
     }
 
