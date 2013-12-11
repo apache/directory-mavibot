@@ -17,13 +17,10 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.managed;
+package org.apache.directory.mavibot.btree;
 
 
 import java.util.List;
-
-import org.apache.directory.mavibot.btree.Page;
-import org.apache.directory.mavibot.btree.Tuple;
 
 
 /**
@@ -35,7 +32,7 @@ import org.apache.directory.mavibot.btree.Tuple;
 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier */class RemoveResult<K, V> extends AbstractDeleteResult<K, V>
+public class RemoveResult<K, V> extends AbstractDeleteResult<K, V>
 {
     /**
      * The default constructor for RemoveResult.
@@ -43,7 +40,7 @@ import org.apache.directory.mavibot.btree.Tuple;
      * @param modifiedPage The modified page
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
      */
-    /* No qualifier */RemoveResult( Page<K, V> modifiedPage, Tuple<K, V> removedElement )
+    public RemoveResult( Page<K, V> modifiedPage, Tuple<K, V> removedElement )
     {
         super( modifiedPage, removedElement );
     }
@@ -56,7 +53,7 @@ import org.apache.directory.mavibot.btree.Tuple;
      * @param modifiedPage The modified page
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
      */
-    /* No qualifier */RemoveResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage, Tuple<K, V> removedElement )
+    public RemoveResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage, Tuple<K, V> removedElement )
     {
         super( copiedPages, modifiedPage, removedElement );
     }

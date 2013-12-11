@@ -17,13 +17,10 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.managed;
+package org.apache.directory.mavibot.btree;
 
 
 import java.util.List;
-
-import org.apache.directory.mavibot.btree.Page;
-import org.apache.directory.mavibot.btree.Tuple;
 
 
 /**
@@ -35,7 +32,7 @@ import org.apache.directory.mavibot.btree.Tuple;
 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier */class BorrowedFromRightResult<K, V> extends AbstractBorrowedFromSiblingResult<K, V>
+public class BorrowedFromRightResult<K, V> extends AbstractBorrowedFromSiblingResult<K, V>
 {
     /**
      * The default constructor for BorrowedFromRightResult.
@@ -44,7 +41,7 @@ import org.apache.directory.mavibot.btree.Tuple;
      * @param modifiedSibling The modified sibling
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
      */
-    /* No qualifier */BorrowedFromRightResult( Page<K, V> modifiedPage, Page<K, V> modifiedSibling,
+    public BorrowedFromRightResult( Page<K, V> modifiedPage, Page<K, V> modifiedSibling,
         Tuple<K, V> removedElement )
     {
         super( modifiedPage, modifiedSibling, removedElement, AbstractBorrowedFromSiblingResult.SiblingPosition.RIGHT );
@@ -59,7 +56,7 @@ import org.apache.directory.mavibot.btree.Tuple;
      * @param modifiedSibling The modified sibling
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
      */
-    /* No qualifier */BorrowedFromRightResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage,
+    public BorrowedFromRightResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage,
         Page<K, V> modifiedSibling, Tuple<K, V> removedElement )
     {
         super( copiedPages, modifiedPage, modifiedSibling, removedElement,

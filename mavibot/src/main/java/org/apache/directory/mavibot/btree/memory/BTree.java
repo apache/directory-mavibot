@@ -43,8 +43,12 @@ import org.apache.directory.mavibot.btree.DeleteResult;
 import org.apache.directory.mavibot.btree.Deletion;
 import org.apache.directory.mavibot.btree.InsertResult;
 import org.apache.directory.mavibot.btree.Modification;
+import org.apache.directory.mavibot.btree.ModifyResult;
+import org.apache.directory.mavibot.btree.NotPresentResult;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.ParentPos;
+import org.apache.directory.mavibot.btree.RemoveResult;
+import org.apache.directory.mavibot.btree.SplitResult;
 import org.apache.directory.mavibot.btree.Transaction;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
@@ -663,7 +667,7 @@ public class BTree<K, V> implements Closeable
 
             if ( result instanceof ModifyResult )
             {
-                existingValue = ( ( ModifyResult<K, V> ) result ).getModifiedValue();
+                existingValue = ( (org.apache.directory.mavibot.btree.ModifyResult<K, V> ) result ).getModifiedValue();
             }
         }
         finally
@@ -779,7 +783,7 @@ public class BTree<K, V> implements Closeable
             if ( result instanceof RemoveResult )
             {
                 // The element was found, and removed
-                RemoveResult<K, V> removeResult = ( RemoveResult<K, V> ) result;
+                RemoveResult<K, V> removeResult = (org.apache.directory.mavibot.btree.RemoveResult<K, V> ) result;
 
                 Page<K, V> modifiedPage = removeResult.getModifiedPage();
 
@@ -1044,7 +1048,7 @@ public class BTree<K, V> implements Closeable
 
         if ( result instanceof ModifyResult )
         {
-            ModifyResult<K, V> modifyResult = ( ( ModifyResult<K, V> ) result );
+            ModifyResult<K, V> modifyResult = ( (org.apache.directory.mavibot.btree.ModifyResult<K, V> ) result );
 
             Page<K, V> modifiedPage = modifyResult.getModifiedPage();
 
@@ -1058,7 +1062,7 @@ public class BTree<K, V> implements Closeable
         {
             // We have split the old root, create a new one containing
             // only the pivotal we got back
-            SplitResult<K, V> splitResult = ( ( SplitResult<K, V> ) result );
+            SplitResult<K, V> splitResult = ( (org.apache.directory.mavibot.btree.SplitResult<K, V> ) result );
 
             K pivot = splitResult.getPivot();
             Page<K, V> leftPage = splitResult.getLeftPage();

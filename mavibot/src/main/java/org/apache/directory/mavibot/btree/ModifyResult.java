@@ -17,13 +17,10 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.memory;
+package org.apache.directory.mavibot.btree;
 
 
 import java.util.List;
-
-import org.apache.directory.mavibot.btree.InsertResult;
-import org.apache.directory.mavibot.btree.Page;
 
 
 /**
@@ -35,7 +32,7 @@ import org.apache.directory.mavibot.btree.Page;
 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier */class ModifyResult<K, V> extends AbstractResult<K, V> implements InsertResult<K, V>
+public class ModifyResult<K, V> extends AbstractResult<K, V> implements InsertResult<K, V>
 {
     /** The modified page reference */
     protected Page<K, V> modifiedPage;
@@ -50,7 +47,7 @@ import org.apache.directory.mavibot.btree.Page;
      * @param modifiedPage The modified page
      * @param modifiedvalue The modified value (can be null if the key wasn't present in the tree)
      */
-    /* No qualifier */ModifyResult( Page<K, V> modifiedPage, V modifiedValue )
+    public ModifyResult( Page<K, V> modifiedPage, V modifiedValue )
     {
         super();
         this.modifiedPage = modifiedPage;
@@ -65,7 +62,7 @@ import org.apache.directory.mavibot.btree.Page;
      * @param modifiedPage The modified page
      * @param modifiedvalue The modified value (can be null if the key wasn't present in the tree)
      */
-    /* No qualifier */ModifyResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage, V modifiedValue )
+    public ModifyResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage, V modifiedValue )
     {
         super( copiedPages );
         this.modifiedPage = modifiedPage;
@@ -76,16 +73,26 @@ import org.apache.directory.mavibot.btree.Page;
     /**
      * @return the modifiedPage
      */
-    /* No qualifier */Page<K, V> getModifiedPage()
+    public Page<K, V> getModifiedPage()
     {
         return modifiedPage;
+    }
+
+    
+    /**
+     * Set the modified page
+     * @param modifiedPage The new modified page
+     */
+    public void setModifiedPage( Page<K, V> modifiedPage )
+    {
+        this.modifiedPage = modifiedPage;
     }
 
 
     /**
      * @return the modifiedValue
      */
-    /* No qualifier */V getModifiedValue()
+    public V getModifiedValue()
     {
         return modifiedValue;
     }

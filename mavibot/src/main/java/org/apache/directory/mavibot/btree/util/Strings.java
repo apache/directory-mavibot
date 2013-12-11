@@ -236,14 +236,16 @@ public final class Strings
 
         char[] chars = new char[bytes.limit()];
         int pos = 0;
-
-        byte b;
+        int currentPos = bytes.position();
 
         do
         {
             chars[pos++] = ( char ) UTF8[bytes.get()];
         }
         while ( bytes.position() < bytes.limit() );
+        
+        // restore the buffer
+        bytes.position( currentPos );
 
         return new String( chars );
     }

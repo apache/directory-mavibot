@@ -17,13 +17,10 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.memory;
+package org.apache.directory.mavibot.btree;
 
 
 import java.util.List;
-
-import org.apache.directory.mavibot.btree.InsertResult;
-import org.apache.directory.mavibot.btree.Page;
 
 
 /**
@@ -35,7 +32,7 @@ import org.apache.directory.mavibot.btree.Page;
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier */class SplitResult<K, V> extends AbstractResult<K, V> implements InsertResult<K, V>
+public class SplitResult<K, V> extends AbstractResult<K, V> implements InsertResult<K, V>
 {
     /** The left child */
     protected Page<K, V> leftPage;
@@ -53,7 +50,7 @@ import org.apache.directory.mavibot.btree.Page;
      * @param leftPage The new left page
      * @param rightPage The new right page
      */
-    /* No qualifier */SplitResult( K pivot, Page<K, V> leftPage, Page<K, V> rightPage )
+    public SplitResult( K pivot, Page<K, V> leftPage, Page<K, V> rightPage )
     {
         super();
         this.pivot = pivot;
@@ -70,7 +67,7 @@ import org.apache.directory.mavibot.btree.Page;
      * @param leftPage The new left page
      * @param rightPage The new right page
      */
-    /* No qualifier */SplitResult( List<Page<K, V>> copiedPages, K pivot, Page<K, V> leftPage, Page<K, V> rightPage )
+    public SplitResult( List<Page<K, V>> copiedPages, K pivot, Page<K, V> leftPage, Page<K, V> rightPage )
     {
         super( copiedPages );
         this.pivot = pivot;
@@ -82,7 +79,7 @@ import org.apache.directory.mavibot.btree.Page;
     /**
      * @return the leftPage
      */
-    /* No qualifier */Page<K, V> getLeftPage()
+    public Page<K, V> getLeftPage()
     {
         return leftPage;
     }
@@ -91,7 +88,7 @@ import org.apache.directory.mavibot.btree.Page;
     /**
      * @return the rightPage
      */
-    /* No qualifier */Page<K, V> getRightPage()
+    public Page<K, V> getRightPage()
     {
         return rightPage;
     }
@@ -100,7 +97,7 @@ import org.apache.directory.mavibot.btree.Page;
     /**
      * @return the pivot
      */
-    /* No qualifier */K getPivot()
+    public K getPivot()
     {
         return pivot;
     }

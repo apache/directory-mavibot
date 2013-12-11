@@ -23,10 +23,16 @@ package org.apache.directory.mavibot.btree.managed;
 import java.io.IOException;
 import java.lang.reflect.Array;
 
+import org.apache.directory.mavibot.btree.BorrowedFromLeftResult;
+import org.apache.directory.mavibot.btree.BorrowedFromRightResult;
 import org.apache.directory.mavibot.btree.DeleteResult;
 import org.apache.directory.mavibot.btree.InsertResult;
+import org.apache.directory.mavibot.btree.ModifyResult;
+import org.apache.directory.mavibot.btree.NotPresentResult;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.ParentPos;
+import org.apache.directory.mavibot.btree.RemoveResult;
+import org.apache.directory.mavibot.btree.SplitResult;
 import org.apache.directory.mavibot.btree.Transaction;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;

@@ -22,6 +22,7 @@ package org.apache.directory.mavibot.btree.memory;
 
 import java.util.List;
 
+import org.apache.directory.mavibot.btree.AbstractDeleteResult;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.Tuple;
 

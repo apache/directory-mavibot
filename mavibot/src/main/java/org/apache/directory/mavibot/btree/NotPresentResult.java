@@ -17,12 +17,9 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.memory;
+package org.apache.directory.mavibot.btree;
 
 
-import org.apache.directory.mavibot.btree.DeleteResult;
-import org.apache.directory.mavibot.btree.Page;
-import org.apache.directory.mavibot.btree.Tuple;
 
 
 /**
@@ -33,11 +30,11 @@ import org.apache.directory.mavibot.btree.Tuple;
 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier */class NotPresentResult<K, V> extends AbstractResult<K, V> implements DeleteResult<K, V>
+public class NotPresentResult<K, V> extends AbstractResult<K, V> implements DeleteResult<K, V>
 {
     /** The unique instance for this class */
     @SuppressWarnings("rawtypes")
-    /* No qualifier */static final NotPresentResult NOT_PRESENT = new NotPresentResult();
+    public static final NotPresentResult NOT_PRESENT = new NotPresentResult();
 
 
     /**

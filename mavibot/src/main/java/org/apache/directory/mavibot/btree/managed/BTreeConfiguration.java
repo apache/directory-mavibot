@@ -20,8 +20,6 @@
 package org.apache.directory.mavibot.btree.managed;
 
 
-import net.sf.ehcache.Cache;
-
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 

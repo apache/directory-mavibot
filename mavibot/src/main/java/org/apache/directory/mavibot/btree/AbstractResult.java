@@ -17,14 +17,11 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.memory;
+package org.apache.directory.mavibot.btree;
 
 
 import java.util.ArrayList;
 import java.util.List;
-
-import org.apache.directory.mavibot.btree.Page;
-import org.apache.directory.mavibot.btree.Result;
 
 
 /**
@@ -35,7 +32,7 @@ import org.apache.directory.mavibot.btree.Result;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier */abstract class AbstractResult<K, V> implements Result<Page<K, V>>
+public abstract class AbstractResult<K, V> implements Result<Page<K, V>>
 {
     /** The list of copied page reference */
     private List<Page<K, V>> copiedPage;
@@ -45,7 +42,7 @@ import org.apache.directory.mavibot.btree.Result;
      * The default constructor for AbstractResult.
      * 
      */
-    /* No qualifier */AbstractResult()
+    public AbstractResult()
     {
         copiedPage = new ArrayList<Page<K, V>>();
     }
@@ -56,7 +53,7 @@ import org.apache.directory.mavibot.btree.Result;
      * 
      * @param copiedPages The list of copied pages to store in this result
      */
-    /* No qualifier */AbstractResult( List<Page<K, V>> copiedPages )
+    public AbstractResult( List<Page<K, V>> copiedPages )
     {
         this.copiedPage = copiedPages;
     }

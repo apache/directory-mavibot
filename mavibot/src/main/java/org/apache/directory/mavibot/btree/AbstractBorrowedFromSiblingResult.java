@@ -17,14 +17,10 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.managed;
+package org.apache.directory.mavibot.btree;
 
 
 import java.util.List;
-
-import org.apache.directory.mavibot.btree.BorrowedFromSiblingResult;
-import org.apache.directory.mavibot.btree.Page;
-import org.apache.directory.mavibot.btree.Tuple;
 
 
 /**
@@ -37,7 +33,7 @@ import org.apache.directory.mavibot.btree.Tuple;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier */abstract class AbstractBorrowedFromSiblingResult<K, V> extends AbstractDeleteResult<K, V> implements
+public abstract class AbstractBorrowedFromSiblingResult<K, V> extends AbstractDeleteResult<K, V> implements
     BorrowedFromSiblingResult<K, V>
 {
     /** The modified sibling reference */
@@ -61,7 +57,7 @@ import org.apache.directory.mavibot.btree.Tuple;
      * @param modifiedSibling The modified sibling
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
      */
-    /* No qualifier */AbstractBorrowedFromSiblingResult( Page<K, V> modifiedPage, Page<K, V> modifiedSibling,
+    public AbstractBorrowedFromSiblingResult( Page<K, V> modifiedPage, Page<K, V> modifiedSibling,
         Tuple<K, V> removedElement, SiblingPosition position )
     {
         super( modifiedPage, removedElement );
@@ -78,7 +74,7 @@ import org.apache.directory.mavibot.btree.Tuple;
      * @param modifiedSibling The modified sibling
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
      */
-    /* No qualifier */AbstractBorrowedFromSiblingResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage,
+    public AbstractBorrowedFromSiblingResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage,
         Page<K, V> modifiedSibling,
         Tuple<K, V> removedElement, SiblingPosition position )
     {

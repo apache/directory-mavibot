@@ -25,10 +25,16 @@ import java.lang.reflect.Array;
 import java.util.List;
 
 import org.apache.directory.mavibot.btree.BorrowedFromSiblingResult;
+import org.apache.directory.mavibot.btree.BorrowedFromLeftResult;
+import org.apache.directory.mavibot.btree.BorrowedFromRightResult;
 import org.apache.directory.mavibot.btree.DeleteResult;
 import org.apache.directory.mavibot.btree.InsertResult;
+import org.apache.directory.mavibot.btree.ModifyResult;
+import org.apache.directory.mavibot.btree.NotPresentResult;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.ParentPos;
+import org.apache.directory.mavibot.btree.RemoveResult;
+import org.apache.directory.mavibot.btree.SplitResult;
 import org.apache.directory.mavibot.btree.Transaction;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
@@ -1030,7 +1036,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         // We can return the result, where we update the modifiedPage,
         // to avoid the creation of a new object
-        result.modifiedPage = newPage;
+        result.setModifiedPage( newPage );
 
         result.addCopiedPage( this );
 

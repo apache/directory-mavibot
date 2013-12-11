@@ -17,17 +17,15 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.memory;
+package org.apache.directory.mavibot.btree;
 
 
 import java.util.List;
 
-import org.apache.directory.mavibot.btree.Page;
-import org.apache.directory.mavibot.btree.Tuple;
-
 
 /**
- * The result of a delete operation, when the child has not been merged. It contains the
+ * The result of a delete operation, when the child has not been merged, and when
+ * we have borrowed an element from the left sibling. It contains the
  * reference to the modified page, and the removed element.
  * 
  * @param <K> The type for the Key
@@ -35,35 +33,36 @@ import org.apache.directory.mavibot.btree.Tuple;
 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier */class BorrowedFromRightResult<K, V> extends AbstractBorrowedFromSiblingResult<K, V>
+public class BorrowedFromLeftResult<K, V> extends AbstractBorrowedFromSiblingResult<K, V>
 {
     /**
-     * The default constructor for BorrowedFromRightResult.
+     * The default constructor for BorrowedFromLeftResult.
      * 
      * @param modifiedPage The modified page
      * @param modifiedSibling The modified sibling
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
      */
-    /* No qualifier */BorrowedFromRightResult( Page<K, V> modifiedPage, Page<K, V> modifiedSibling,
+    public BorrowedFromLeftResult( Page<K, V> modifiedPage, Page<K, V> modifiedSibling,
         Tuple<K, V> removedElement )
     {
-        super( modifiedPage, modifiedSibling, removedElement, AbstractBorrowedFromSiblingResult.SiblingPosition.RIGHT );
+        super( modifiedPage, modifiedSibling, removedElement, AbstractBorrowedFromSiblingResult.SiblingPosition.LEFT );
     }
 
 
     /**
-     * A constructor for BorrowedFromRightResult which takes a list of copied pages.
+     * A constructor for BorrowedFromLeftResult which takes a list of copied pages.
      * 
      * @param copiedPages the list of copied pages
      * @param modifiedPage The modified page
      * @param modifiedSibling The modified sibling
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
      */
-    /* No qualifier */BorrowedFromRightResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage,
-        Page<K, V> modifiedSibling, Tuple<K, V> removedElement )
+    public BorrowedFromLeftResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage,
+        Page<K, V> modifiedSibling,
+        Tuple<K, V> removedElement )
     {
         super( copiedPages, modifiedPage, modifiedSibling, removedElement,
-            AbstractBorrowedFromSiblingResult.SiblingPosition.RIGHT );
+            AbstractBorrowedFromSiblingResult.SiblingPosition.LEFT );
     }
 
 
@@ -74,7 +73,7 @@ import org.apache.directory.mavibot.btree.Tuple;
     {
         StringBuilder sb = new StringBuilder();
 
-        sb.append( "Borrowed from right" );
+        sb.append( "Borrowed from left" );
         sb.append( super.toString() );
 
         return sb.toString();

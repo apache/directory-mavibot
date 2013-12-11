@@ -17,14 +17,10 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.memory;
+package org.apache.directory.mavibot.btree;
 
 
 import java.util.List;
-
-import org.apache.directory.mavibot.btree.DeleteResult;
-import org.apache.directory.mavibot.btree.Page;
-import org.apache.directory.mavibot.btree.Tuple;
 
 
 /**
@@ -35,7 +31,7 @@ import org.apache.directory.mavibot.btree.Tuple;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier */abstract class AbstractDeleteResult<K, V> extends AbstractResult<K, V> implements
+public abstract class AbstractDeleteResult<K, V> extends AbstractResult<K, V> implements
     DeleteResult<K, V>
 {
     /** The modified page reference */
@@ -51,7 +47,7 @@ import org.apache.directory.mavibot.btree.Tuple;
      * @param modifiedPage The modified page
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
      */
-    /* No qualifier */AbstractDeleteResult( Page<K, V> modifiedPage, Tuple<K, V> removedElement )
+    public AbstractDeleteResult( Page<K, V> modifiedPage, Tuple<K, V> removedElement )
     {
         super();
         this.modifiedPage = modifiedPage;
@@ -66,7 +62,7 @@ import org.apache.directory.mavibot.btree.Tuple;
      * @param modifiedPage The modified page
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
      */
-    /* No qualifier */AbstractDeleteResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage,
+    public AbstractDeleteResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage,
         Tuple<K, V> removedElement )
     {
         super( copiedPages );
@@ -96,7 +92,7 @@ import org.apache.directory.mavibot.btree.Tuple;
     /**
      * @param modifiedPage the modifiedPage to set
      */
-    /* No qualifier */void setModifiedPage( Page<K, V> modifiedPage )
+    public void setModifiedPage( Page<K, V> modifiedPage )
     {
         this.modifiedPage = modifiedPage;
     }

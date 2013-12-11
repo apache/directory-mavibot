@@ -32,11 +32,14 @@ import net.sf.ehcache.Cache;
 import net.sf.ehcache.config.CacheConfiguration;
 
 import org.apache.directory.mavibot.btree.BTreeHeader;
-import org.apache.directory.mavibot.btree.Cursor;
 import org.apache.directory.mavibot.btree.DeleteResult;
 import org.apache.directory.mavibot.btree.InsertResult;
+import org.apache.directory.mavibot.btree.ModifyResult;
+import org.apache.directory.mavibot.btree.NotPresentResult;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.ParentPos;
+import org.apache.directory.mavibot.btree.RemoveResult;
+import org.apache.directory.mavibot.btree.SplitResult;
 import org.apache.directory.mavibot.btree.Transaction;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;

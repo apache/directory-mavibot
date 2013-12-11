@@ -24,10 +24,17 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.List;
 
+import org.apache.directory.mavibot.btree.BorrowedFromLeftResult;
+import org.apache.directory.mavibot.btree.BorrowedFromRightResult;
+import org.apache.directory.mavibot.btree.BorrowedFromSiblingResult;
 import org.apache.directory.mavibot.btree.DeleteResult;
 import org.apache.directory.mavibot.btree.InsertResult;
+import org.apache.directory.mavibot.btree.ModifyResult;
+import org.apache.directory.mavibot.btree.NotPresentResult;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.ParentPos;
+import org.apache.directory.mavibot.btree.RemoveResult;
+import org.apache.directory.mavibot.btree.SplitResult;
 import org.apache.directory.mavibot.btree.Transaction;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
@@ -129,13 +136,13 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         if ( result instanceof ModifyResult )
         {
             // The child has been modified.
-            return replaceChild( revision, ( ModifyResult<K, V> ) result, pos );
+            return replaceChild( revision, (org.apache.directory.mavibot.btree.ModifyResult<K, V> ) result, pos );
         }
         else
         {
             // The child has been split. We have to insert the new pivot in the
             // current page, and to reference the two new pages
-            SplitResult<K, V> splitResult = ( SplitResult<K, V> ) result;
+            SplitResult<K, V> splitResult = (org.apache.directory.mavibot.btree.SplitResult<K, V> ) result;
             K pivot = splitResult.getPivot();
             Page<K, V> leftPage = splitResult.getLeftPage();
             Page<K, V> rightPage = splitResult.getRightPage();
@@ -573,7 +580,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         // If we just modified the child, return a modified page
         if ( deleteResult instanceof RemoveResult )
         {
-            RemoveResult<K, V> removeResult = handleRemoveResult( ( RemoveResult<K, V> ) deleteResult, index, pos,
+            RemoveResult<K, V> removeResult = handleRemoveResult( (org.apache.directory.mavibot.btree.RemoveResult<K, V> ) deleteResult, index, pos,
                 found );
 
             return removeResult;
@@ -583,7 +590,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         // the current page
         if ( deleteResult instanceof BorrowedFromSiblingResult )
         {
-            RemoveResult<K, V> removeResult = handleBorrowedResult( ( BorrowedFromSiblingResult<K, V> ) deleteResult,
+            RemoveResult<K, V> removeResult = handleBorrowedResult( (org.apache.directory.mavibot.btree.BorrowedFromSiblingResult<K, V> ) deleteResult,
                 pos );
 
             return removeResult;
@@ -972,7 +979,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         // We can return the result, where we update the modifiedPage,
         // to avoid the creation of a new object
-        result.modifiedPage = newPage;
+        result.setModifiedPage( newPage );
 
         result.addCopiedPage( this );
 
