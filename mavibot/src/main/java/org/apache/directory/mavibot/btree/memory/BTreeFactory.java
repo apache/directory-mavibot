@@ -126,24 +126,6 @@ public class BTreeFactory
 
 
     /**
-     * @param rootPageOffset the rootPageOffset to set
-     */
-    public static <K, V> void setRootPageOffset( BTree<K, V> btree, long rootPageOffset )
-    {
-        btree.setRootPageOffset( rootPageOffset );
-    }
-
-
-    /**
-     * @param nextBTreeOffset the nextBTreeOffset to set
-     */
-    public static <K, V> void setNextBTreeOffset( BTree<K, V> btree, long nextBTreeOffset )
-    {
-        btree.setNextBTreeOffset( nextBTreeOffset );
-    }
-
-
-    /**
      * @param name the name to set
      */
     public static <K, V> void setName( BTree<K, V> btree, String name )

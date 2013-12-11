@@ -515,60 +515,6 @@ public class BTree<K, V> implements Closeable
 
 
     /**
-     * @return the btreeOffset
-     */
-    /* No qualifier*/long getBtreeOffset()
-    {
-        return btreeHeader.getBTreeOffset();
-    }
-
-
-    /**
-     * @param btreeOffset the btreeOffset to set
-     */
-    /* No qualifier*/void setBtreeOffset( long btreeOffset )
-    {
-        btreeHeader.setBTreeOffset( btreeOffset );
-    }
-
-
-    /**
-     * @return the rootPageOffset
-     */
-    /* No qualifier*/long getRootPageOffset()
-    {
-        return btreeHeader.getRootPageOffset();
-    }
-
-
-    /**
-     * @param rootPageOffset the rootPageOffset to set
-     */
-    /* No qualifier*/void setRootPageOffset( long rootPageOffset )
-    {
-        btreeHeader.setRootPageOffset( rootPageOffset );
-    }
-
-
-    /**
-     * @return the nextBTreeOffset
-     */
-    /* No qualifier*/long getNextBTreeOffset()
-    {
-        return btreeHeader.getNextBTreeOffset();
-    }
-
-
-    /**
-     * @param nextBTreeOffset the nextBTreeOffset to set
-     */
-    /* No qualifier*/void setNextBTreeOffset( long nextBTreeOffset )
-    {
-        btreeHeader.setNextBTreeOffset( nextBTreeOffset );
-    }
-
-
-    /**
      * Gets the number which is a power of 2 immediately above the given positive number.
      */
     private int getPowerOf2( int size )
