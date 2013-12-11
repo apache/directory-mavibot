@@ -289,6 +289,7 @@ public class BTreeDuplicateKeyTest
 
         assertEquals( ( 'a' - 1 ), ch );
         cursor.close();
+        btree.close();
     }
 
 
@@ -376,6 +377,7 @@ public class BTreeDuplicateKeyTest
         }
         
         assertEquals( 25, i );
+        btree.close();
     }
 
 
@@ -412,8 +414,10 @@ public class BTreeDuplicateKeyTest
 
         cursor.afterLast();
         assertFalse( cursor.hasNext() );
+        
         // make sure it throws NoSuchElementException
         cursor.next();
+        btree.close();
     }
 
 
@@ -513,6 +517,7 @@ public class BTreeDuplicateKeyTest
         assertFalse( cursor.hasPrev() );
         // make sure it throws NoSuchElementException
         cursor.prev();
+        btree.close();
     }
 
 
@@ -565,12 +570,11 @@ public class BTreeDuplicateKeyTest
         assertEquals( Integer.valueOf( 3 ), tuple.getKey() );
         assertEquals( Integer.valueOf( 3 ), tuple.getValue() );
 
-        // the below assertion won't work cause of the index position
-        // issue when prev() and next() are called subsequently (in any order) 
-        //        assertTrue( cursor.hasNext() );
-        //        tuple = cursor.next();
-        //        assertEquals( Integer.valueOf( 4 ), tuple.getKey() );
-        //        assertEquals( Integer.valueOf( 4 ), tuple.getValue() );
+        assertTrue( cursor.hasNext() );
+        tuple = cursor.next();
+        assertEquals( Integer.valueOf( 4 ), tuple.getKey() );
+        assertEquals( Integer.valueOf( 4 ), tuple.getValue() );
+
         cursor.close();
 
         // test the extremes of the BTree instead of that of leaves
@@ -593,6 +597,7 @@ public class BTreeDuplicateKeyTest
         assertEquals( Integer.valueOf( 0 ), tuple.getKey() );
         assertEquals( Integer.valueOf( 0 ), tuple.getValue() );
         cursor.close();
+        btree.close();
     }
 
 
@@ -633,6 +638,7 @@ public class BTreeDuplicateKeyTest
         assertEquals( Integer.valueOf( 4 ), tuple.getValue() );
         cursor.close();
 
+        btree.close();
     }
 
 
@@ -671,6 +677,7 @@ public class BTreeDuplicateKeyTest
         }
 
         cursor.close();
+        btree.close();
     }
 
 
@@ -710,5 +717,6 @@ public class BTreeDuplicateKeyTest
         }
 
         cursor.close();
+        btree.close();
     }
 }

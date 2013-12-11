@@ -224,7 +224,7 @@ public class RecordManagerTest
      * Test the creation of a RecordManager with a BTree containing 100 000 elements
      */
     @Test
-    //@Ignore("This is a performance test")
+    @Ignore("This is a performance test")
     public void testRecordManagerWithBTreeLeafNode100K() throws IOException, BTreeAlreadyManagedException,
         KeyNotFoundException
     {

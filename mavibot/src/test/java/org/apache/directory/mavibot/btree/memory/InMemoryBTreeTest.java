@@ -193,6 +193,8 @@ public class InMemoryBTreeTest
                     System.out.println( btree );
                     System.out.println( "Error while adding " + value );
                     nbError++;
+                    btree.close();
+
                     return;
                 }
             }
@@ -293,6 +295,8 @@ public class InMemoryBTreeTest
                     System.out.println( btree );
                     System.out.println( "Error while adding " + value );
                     nbError++;
+                    btree.close();
+
                     return;
                 }
             }
@@ -400,6 +404,8 @@ public class InMemoryBTreeTest
                 e.printStackTrace();
                 System.out.println( btree );
                 System.out.println( "Error while adding " + value );
+                btree.close();
+
                 return;
             }
         }
@@ -460,6 +466,8 @@ public class InMemoryBTreeTest
                 e.printStackTrace();
                 System.out.println( btree );
                 System.out.println( "Error while adding " + value );
+                btree.close();
+
                 return;
             }
         }
@@ -479,6 +487,8 @@ public class InMemoryBTreeTest
                 e.printStackTrace();
                 System.out.println( btree );
                 System.out.println( "Error while deleting " + key );
+                btree.close();
+
                 return;
             }
 
@@ -494,7 +504,7 @@ public class InMemoryBTreeTest
      * We don't run it except to check a special condition
      */
     @Test
-    @Ignore
+    @Ignore("This is a debug test")
     public void testPageInsertDebug() throws Exception
     {
         BTree<Long, String> btree = new BTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
@@ -1025,6 +1035,7 @@ public class InMemoryBTreeTest
 
         TupleCursor<Integer, String> cursor = btree.browseFrom( 11 );
         assertFalse( cursor.hasNext() );
+        btree.close();
     }
 
 
@@ -1757,6 +1768,8 @@ public class InMemoryBTreeTest
                 System.out.println( btree );
                 System.out.println( "Error while adding " + value );
                 nbError++;
+                btree.close();
+
                 return;
             }
 
@@ -1926,6 +1939,7 @@ public class InMemoryBTreeTest
         assertEquals( Integer.valueOf( 4 ), tuple.getKey() );
         assertEquals( Integer.valueOf( 4 ), tuple.getValue() );
         cursor.close();
+        btree.close();
     }
 
     

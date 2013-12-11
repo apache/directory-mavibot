@@ -148,6 +148,7 @@ public class BTreeFlushTest
                 System.out.println( btree );
                 System.out.println( "Error while adding " + value );
                 nbError++;
+                btree.close();
 
                 return null;
             }
@@ -293,5 +294,6 @@ public class BTreeFlushTest
             new LongSerializer(),
             new StringSerializer() );
         btree.setPageSize( 32 );
+        btree.close();
     }
 }

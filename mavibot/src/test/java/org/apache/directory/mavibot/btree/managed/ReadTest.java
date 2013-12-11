@@ -265,7 +265,6 @@ public class ReadTest
         ByteBuffer readBytes = ( ByteBuffer ) readBytesMethod.invoke( recordManager, pageIos, 0L );
 
         // The byte length
-        int pos = 0;
         assertNotNull( readBytes );
         assertEquals( 4, readBytes.limit() );
         // The data
@@ -281,7 +280,6 @@ public class ReadTest
         readBytes = ( ByteBuffer ) readBytesMethod.invoke( recordManager, pageIos, 12L );
 
         // The byte length
-        pos = 0;
         assertNotNull( readBytes );
         assertEquals( 4, readBytes.limit() );
         // The data
@@ -304,7 +302,6 @@ public class ReadTest
         readBytes = ( ByteBuffer ) readBytesMethod.invoke( recordManager, pageIos, 0L );
 
         // The byte length
-        pos = 0;
         assertNotNull( readBytes );
         assertEquals( 16, readBytes.limit() );
 
@@ -321,7 +318,6 @@ public class ReadTest
         readBytes = ( ByteBuffer ) readBytesMethod.invoke( recordManager, pageIos, 15L );
 
         // The byte length
-        pos = 0;
         assertNotNull( readBytes );
         assertEquals( 16, readBytes.limit() );
         // The data
@@ -344,9 +340,9 @@ public class ReadTest
         readBytes = ( ByteBuffer ) readBytesMethod.invoke( recordManager, pageIos, 2L );
 
         // The byte length
-        pos = 0;
         assertNotNull( readBytes );
         assertEquals( 80, readBytes.limit() );
+        
         // The data
         for ( int i = 0; i < 80; i++ )
         {
