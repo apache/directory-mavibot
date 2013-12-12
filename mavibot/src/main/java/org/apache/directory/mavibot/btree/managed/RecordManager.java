@@ -1420,7 +1420,7 @@ public class RecordManager
     /**
      * Update the header, injecting the nbBtree, firstFreePage and lastFreePage
      */
-    private void updateRecordManagerHeader() throws IOException
+    public void updateRecordManagerHeader() throws IOException
     {
         // The page size
         HEADER_BYTES[0] = ( byte ) ( pageSize >>> 24 );
@@ -2067,9 +2067,6 @@ public class RecordManager
                 lastFreePage = NO_PAGE;
             }
 
-            // Update the header
-            updateRecordManagerHeader();
-
             return pageIo;
         }
     }
@@ -2445,9 +2442,6 @@ public class RecordManager
                     firstFreePage = firstOffset;
                 }
             }
-
-            // Last, not least, flush the header
-            updateRecordManagerHeader();
         }
         else
         {

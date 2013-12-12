@@ -782,6 +782,9 @@ public class BTree<K, V> implements Closeable
 
             recordManager.addFreePages( this, result.getCopiedPages() );
 
+            // Update the RecordManager header
+            recordManager.updateRecordManagerHeader();
+
             // Store the created rootPage into the revision BTree, this will be stored in RecordManager only if revisions are set to keep
             recordManager.storeRootPage( this, rootPage );
 
@@ -1086,6 +1089,9 @@ public class BTree<K, V> implements Closeable
         }
 
         // If the BTree is managed, we have to update the rootPage on disk
+        // Update the RecordManager header
+        recordManager.updateRecordManagerHeader();
+
         // Update the BTree header now
         recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
 
