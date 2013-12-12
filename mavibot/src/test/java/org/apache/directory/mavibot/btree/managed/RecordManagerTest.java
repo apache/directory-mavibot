@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.ValueCursor;
@@ -239,6 +240,7 @@ public class RecordManagerTest
 
         // Now, add some elements in the BTree
         long t0 = System.currentTimeMillis();
+        
         for ( Long i = 0L; i < nbElems; i++ )
         {
             String value = "V" + i;
@@ -830,7 +832,7 @@ public class RecordManagerTest
         String name = "duplicateTree";
         String[] testValues = new String[]{ "00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "0A", "0B", "0C", "0D", "0E", "0F", "10" };
 
-        BTree<Long, String> dupsTree = new BTree<Long, String>( name, null, new LongSerializer(),
+        BTree<Long, String> dupsTree = new PersistedBTree<Long, String>( name, null, new LongSerializer(),
             new StringSerializer(), pageSize,
             true );
 

@@ -22,6 +22,7 @@ package org.apache.directory.mavibot.btree.managed;
 
 import java.io.IOException;
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
 

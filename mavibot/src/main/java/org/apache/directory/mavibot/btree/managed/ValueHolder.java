@@ -25,8 +25,10 @@ import java.lang.reflect.Array;
 import java.util.Comparator;
 import java.util.UUID;
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
+import org.apache.directory.mavibot.btree.ValueBTreeCursor;
 import org.apache.directory.mavibot.btree.ValueCursor;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
@@ -82,7 +84,7 @@ public class ValueHolder<V> implements Cloneable
 
         // We create the array of values if they fit in an array. If they are stored in a 
         // BTree, we do nothing atm.
-        if ( nbValues <= BTree.valueThresholdUp )
+        if ( nbValues <= PersistedBTree.valueThresholdUp )
         {
             // The values are contained into an array
             valueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), nbValues );
@@ -106,7 +108,7 @@ public class ValueHolder<V> implements Cloneable
         {
             int nbValues = values.length;
 
-            if ( nbValues < BTree.valueThresholdUp )
+            if ( nbValues < PersistedBTree.valueThresholdUp )
             {
                 // Keep an array
                 valueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), nbValues );
@@ -162,7 +164,7 @@ public class ValueHolder<V> implements Cloneable
 
         if ( valueArray == null )
         {
-            cursor = new ValueBtreeCursor();
+            cursor = new ValueBTreeCursor<V>( valueBtree );
         }
         else
         {
@@ -316,191 +318,6 @@ public class ValueHolder<V> implements Cloneable
     }
 
     /**
-     * A class that encapsulate the values into an sub-btree
-     */
-    private class ValueBtreeCursor implements ValueCursor<V>
-    {
-        /** Store the current position in the array or in the BTree */
-        private TupleCursor<V, V> cursor;
-
-
-        /**
-         * Create an instance
-         */
-        private ValueBtreeCursor()
-        {
-            // Start at -1 to be positioned before the first element
-            try
-            {
-                if ( valueBtree != null )
-                {
-                    cursor = valueBtree.browse();
-                }
-            }
-            catch ( IOException e )
-            {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-        }
-
-
-        /**
-         * {@inheritDoc}}
-         */
-        @Override
-        public boolean hasNext()
-        {
-            if ( cursor == null )
-            {
-                return false;
-            }
-            else
-            {
-                try
-                {
-                    return cursor.hasNext();
-                }
-                catch ( EndOfFileExceededException e )
-                {
-                    e.printStackTrace();
-                    return false;
-                }
-                catch ( IOException e )
-                {
-                    e.printStackTrace();
-                    return false;
-                }
-            }
-        }
-
-
-        /**
-         * {@inheritDoc}}
-         */
-        public V next()
-        {
-            try
-            {
-                return cursor.next().getKey();
-            }
-            catch ( EndOfFileExceededException e )
-            {
-                e.printStackTrace();
-                return null;
-            }
-            catch ( IOException e )
-            {
-                e.printStackTrace();
-                return null;
-            }
-        }
-
-
-        /**
-         * {@inheritDoc}}
-         */
-        @Override
-        public boolean hasPrev() throws EndOfFileExceededException, IOException
-        {
-            if ( cursor == null )
-            {
-                return false;
-            }
-            else
-            {
-                try
-                {
-                    return cursor.hasPrev();
-                }
-                catch ( EndOfFileExceededException e )
-                {
-                    e.printStackTrace();
-                    return false;
-                }
-                catch ( IOException e )
-                {
-                    e.printStackTrace();
-                    return false;
-                }
-            }
-        }
-
-
-        /**
-         * {@inheritDoc}}
-         */
-        @Override
-        public void close()
-        {
-            if ( cursor != null )
-            {
-                cursor.close();
-            }
-        }
-
-
-        /**
-         * {@inheritDoc}}
-         */
-        @Override
-        public void beforeFirst() throws IOException
-        {
-            if ( cursor != null )
-            {
-                cursor.beforeFirst();
-            }
-        }
-
-
-        /**
-         * {@inheritDoc}}
-         */
-        @Override
-        public void afterLast() throws IOException
-        {
-            if ( cursor != null )
-            {
-                cursor.afterLast();
-            }
-        }
-
-
-        /**
-         * {@inheritDoc}}
-         */
-        @Override
-        public V prev() throws EndOfFileExceededException, IOException
-        {
-            try
-            {
-                return cursor.prev().getKey();
-            }
-            catch ( EndOfFileExceededException e )
-            {
-                e.printStackTrace();
-                return null;
-            }
-            catch ( IOException e )
-            {
-                e.printStackTrace();
-                return null;
-            }
-        }
-
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public int size()
-        {
-            return ( int ) valueBtree.getNbElems();
-        }
-    }
-
-
-    /**
      * @return the raw representation of the value holder. The serialized value will not be the same
      * if the values are stored in an array or in a btree. <br/>
      * If they are stored in a BTree, the raw value will contain the offset of the btree, otherwise
@@ -518,7 +335,7 @@ public class ValueHolder<V> implements Cloneable
         if ( isSubBtree() )
         {
             // The values are stored into a subBtree, return the offset of this subBtree
-            long btreeOffset = valueBtree.getBtreeOffset();
+            long btreeOffset = ((PersistedBTree<V, V>)valueBtree).getBtreeOffset();
             raw = LongSerializer.serialize( btreeOffset );
         }
         else
@@ -605,11 +422,11 @@ public class ValueHolder<V> implements Cloneable
             configuration.setParentBTree( btree );
             configuration.setSubBtree( true );
             
-            valueBtree = new BTree<V, V>( configuration );
+            valueBtree = BTreeFactory.createBTree( configuration );
 
             try
             {
-                btree.getRecordManager().manage( valueBtree, RecordManager.INTERNAL_BTREE );
+                ((PersistedBTree<V, V>)btree).getRecordManager().manage( valueBtree, RecordManager.INTERNAL_BTREE );
                 raw = null;
             }
             catch ( BTreeAlreadyManagedException e )
@@ -669,7 +486,7 @@ public class ValueHolder<V> implements Cloneable
         checkAndDeserialize();
 
         // We have to check that we have reached the threshold or not
-        if ( valueArray.length >= BTree.valueThresholdUp )
+        if ( valueArray.length >= PersistedBTree.valueThresholdUp )
         {
             // Ok, transform the array into a btree
             createSubTree();
@@ -809,7 +626,7 @@ public class ValueHolder<V> implements Cloneable
         {
             try
             {
-                if ( valueBtree.getNbElems() - 1 < BTree.valueThresholdLow )
+                if ( valueBtree.getNbElems() - 1 < PersistedBTree.valueThresholdLow )
                 {
                     int nbValues = (int)(valueBtree.getNbElems() - 1);
                         
@@ -1142,8 +959,9 @@ public class ValueHolder<V> implements Cloneable
         long offset = LongSerializer.deserialize( raw );
         
         // and reload the sub btree
-        valueBtree = btree.getRecordManager().loadDupsBTree( offset );
+        valueBtree = ((PersistedBTree<V, V>)btree).getRecordManager().loadDupsBTree( offset );
     }
+    
 
     /**
      * @return The sub-btree offset
@@ -1152,7 +970,7 @@ public class ValueHolder<V> implements Cloneable
     {
         if ( valueArray == null )
         {
-            return valueBtree.getBtreeOffset();
+            return ((PersistedBTree<V, V>)valueBtree).getBtreeOffset();
         }
         else
         {

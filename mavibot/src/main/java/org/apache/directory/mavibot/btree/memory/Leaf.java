@@ -23,6 +23,7 @@ package org.apache.directory.mavibot.btree.memory;
 import java.io.IOException;
 import java.lang.reflect.Array;
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.BorrowedFromLeftResult;
 import org.apache.directory.mavibot.btree.BorrowedFromRightResult;
 import org.apache.directory.mavibot.btree.DeleteResult;

@@ -28,6 +28,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.UUID;
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
 import org.junit.After;
@@ -44,7 +45,6 @@ import org.junit.rules.TemporaryFolder;
  */
 public class RecordManagerPrivateMethodTest
 {
-
     private BTree<Long, String> btree = null;
 
     private RecordManager recordManager = null;

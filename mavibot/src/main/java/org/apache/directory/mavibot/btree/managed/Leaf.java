@@ -23,6 +23,7 @@ package org.apache.directory.mavibot.btree.managed;
 import java.io.IOException;
 import java.lang.reflect.Array;
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.BorrowedFromLeftResult;
 import org.apache.directory.mavibot.btree.BorrowedFromRightResult;
 import org.apache.directory.mavibot.btree.DeleteResult;
@@ -844,7 +845,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems + 1 );
 
         // Create the value holder
-        ValueHolder<V> valueHolder = btree.createValueHolder( value );
+        ValueHolder<V> valueHolder = new ValueHolder<V>( btree, value );
 
         // Deal with the special case of an empty page
         if ( nbElems == 0 )
@@ -892,7 +893,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         int middle = btree.getPageSize() >> 1;
         Leaf<K, V> leftLeaf = null;
         Leaf<K, V> rightLeaf = null;
-        ValueHolder<V> valueHolder = btree.createValueHolder( value );
+        ValueHolder<V> valueHolder = new ValueHolder<V>( btree, value );
 
         // Determinate where to store the new value
         if ( pos <= middle )

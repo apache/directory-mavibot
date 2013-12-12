@@ -39,7 +39,7 @@ import org.apache.directory.mavibot.btree.util.TupleReaderWriter;
 
 
 /**
- * A utility class for sorting a large number of keys before building a BTree using {@link BTreeBuilder}.
+ * A utility class for sorting a large number of keys before building a BTree using {@link InMemoryBTreeBuilder}.
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */

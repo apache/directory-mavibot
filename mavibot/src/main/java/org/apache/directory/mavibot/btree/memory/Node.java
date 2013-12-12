@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.List;
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.BorrowedFromLeftResult;
 import org.apache.directory.mavibot.btree.BorrowedFromRightResult;
 import org.apache.directory.mavibot.btree.BorrowedFromSiblingResult;

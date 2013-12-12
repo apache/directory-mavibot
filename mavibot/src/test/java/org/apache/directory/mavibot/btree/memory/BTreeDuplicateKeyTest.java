@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
@@ -50,7 +51,7 @@ public class BTreeDuplicateKeyTest
     {
         IntSerializer serializer = new IntSerializer();
 
-        BTree<Integer, Integer> btree = new BTree<Integer, Integer>( "master", serializer, serializer );
+        BTree<Integer, Integer> btree = new InMemoryBTree<Integer, Integer>( "master", serializer, serializer );
         btree.init();
 
         btree.insert( 1, null );
@@ -74,7 +75,7 @@ public class BTreeDuplicateKeyTest
     {
         IntSerializer serializer = new IntSerializer();
 
-        BTree<Integer, Integer> btree = new BTree<Integer, Integer>( "master", serializer, serializer );
+        BTree<Integer, Integer> btree = new InMemoryBTree<Integer, Integer>( "master", serializer, serializer );
         btree.init();
 
         TupleCursor<Integer, Integer> cursor = btree.browse();
@@ -115,7 +116,7 @@ public class BTreeDuplicateKeyTest
         config.setAllowDuplicates( true );
         config.setName( "master" );
         config.setSerializers( serializer, serializer );
-        BTree<Integer, Integer> btree = new BTree<Integer, Integer>( config );
+        BTree<Integer, Integer> btree = new InMemoryBTree<Integer, Integer>( config );
 
         btree.insert( 1, 1 );
         btree.insert( 1, 2 );
@@ -171,7 +172,7 @@ public class BTreeDuplicateKeyTest
         config.setAllowDuplicates( true );
         config.setName( "master" );
         config.setSerializers( serializer, serializer );
-        BTree<Integer, Integer> btree = new BTree<Integer, Integer>( config );
+        BTree<Integer, Integer> btree = new InMemoryBTree<Integer, Integer>( config );
 
         Integer retVal = btree.insert( 1, 1 );
         assertNull( retVal );
@@ -206,7 +207,7 @@ public class BTreeDuplicateKeyTest
         config.setAllowDuplicates( true );
         config.setName( "master" );
         config.setSerializers( serializer, serializer );
-        BTree<Integer, Integer> btree = new BTree<Integer, Integer>( config );
+        BTree<Integer, Integer> btree = new InMemoryBTree<Integer, Integer>( config );
 
         btree.insert( 1, 1 );
         btree.insert( 1, 2 );
@@ -241,7 +242,7 @@ public class BTreeDuplicateKeyTest
         config.setAllowDuplicates( true );
         config.setName( "master" );
         config.setSerializers( serializer, serializer );
-        BTree<String, String> btree = new BTree<String, String>( config );
+        BTree<String, String> btree = new InMemoryBTree<String, String>( config );
 
         int i = 7;
         for ( char ch = 'a'; ch <= 'z'; ch++ )
@@ -302,7 +303,7 @@ public class BTreeDuplicateKeyTest
         config.setAllowDuplicates( true );
         config.setName( "master" );
         config.setSerializers( serializer, serializer );
-        BTree<String, String> btree = new BTree<String, String>( config );
+        BTree<String, String> btree = new InMemoryBTree<String, String>( config );
 
         for ( char ch = 'a'; ch <= 'z'; ch++ )
         {
@@ -390,7 +391,7 @@ public class BTreeDuplicateKeyTest
         config.setAllowDuplicates( true );
         config.setName( "master" );
         config.setSerializers( serializer, serializer );
-        BTree<String, String> btree = new BTree<String, String>( config );
+        BTree<String, String> btree = new InMemoryBTree<String, String>( config );
 
         for ( char ch = 'a'; ch <= 'z'; ch++ )
         {
@@ -430,7 +431,7 @@ public class BTreeDuplicateKeyTest
         config.setAllowDuplicates( true );
         config.setName( "master" );
         config.setSerializers( serializer, serializer );
-        BTree<String, String> btree = new BTree<String, String>( config );
+        BTree<String, String> btree = new InMemoryBTree<String, String>( config );
 
         int i = 7;
         
@@ -537,7 +538,7 @@ public class BTreeDuplicateKeyTest
         config.setName( "master" );
         config.setPageSize( 4 );
         config.setSerializers( serializer, serializer );
-        BTree<Integer, Integer> btree = new BTree<Integer, Integer>( config );
+        BTree<Integer, Integer> btree = new InMemoryBTree<Integer, Integer>( config );
 
         int i = 7;
         for ( int k = 0; k < i; k++ )
@@ -611,7 +612,7 @@ public class BTreeDuplicateKeyTest
         config.setName( "master" );
         config.setPageSize( 4 );
         config.setSerializers( serializer, serializer );
-        BTree<Integer, Integer> btree = new BTree<Integer, Integer>( config );
+        BTree<Integer, Integer> btree = new InMemoryBTree<Integer, Integer>( config );
 
         int i = 7;
         for ( int k = 0; k < i; k++ )
@@ -657,7 +658,7 @@ public class BTreeDuplicateKeyTest
         config.setName( "master" );
         config.setPageSize( 8 );
         config.setSerializers( serializer, serializer );
-        BTree<Integer, Integer> btree = new BTree<Integer, Integer>( config );
+        BTree<Integer, Integer> btree = new InMemoryBTree<Integer, Integer>( config );
 
         int i = 5;
         for ( int k = 0; k < i; k++ )
@@ -696,7 +697,7 @@ public class BTreeDuplicateKeyTest
         config.setName( "master" );
         config.setPageSize( 8 );
         config.setSerializers( serializer, serializer );
-        BTree<Integer, Integer> btree = new BTree<Integer, Integer>( config );
+        BTree<Integer, Integer> btree = new InMemoryBTree<Integer, Integer>( config );
 
         int i = 5;
         

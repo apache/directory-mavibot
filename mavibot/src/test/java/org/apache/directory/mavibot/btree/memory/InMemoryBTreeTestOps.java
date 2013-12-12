@@ -23,6 +23,7 @@ package org.apache.directory.mavibot.btree.memory;
 import java.io.IOException;
 import java.util.Random;
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
 import org.junit.AfterClass;
@@ -48,7 +49,7 @@ public class InMemoryBTreeTestOps
     @BeforeClass
     public static void setup() throws IOException
     {
-        btree = new BTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
+        btree = new InMemoryBTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
     }
 
 

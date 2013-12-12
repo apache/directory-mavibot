@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
@@ -55,7 +56,7 @@ public class MultiThreadedBtreeTest
     @BeforeClass
     public static void setup() throws IOException
     {
-        btree = new BTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
+        btree = new InMemoryBTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
     }
 
 

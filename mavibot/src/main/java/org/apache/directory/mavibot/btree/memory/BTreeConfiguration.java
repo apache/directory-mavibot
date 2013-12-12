@@ -20,6 +20,7 @@
 package org.apache.directory.mavibot.btree.memory;
 
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 
@@ -35,10 +36,10 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 public class BTreeConfiguration<K, V>
 {
     /** Number of entries in each Page. */
-    private int pageSize = BTree.DEFAULT_PAGE_SIZE;
+    private int pageSize = InMemoryBTree.DEFAULT_PAGE_SIZE;
 
     /** The size of the buffer used to write data in disk */
-    private int writeBufferSize = BTree.DEFAULT_WRITE_BUFFER_SIZE;
+    private int writeBufferSize = InMemoryBTree.DEFAULT_WRITE_BUFFER_SIZE;
 
     /** The Key and Value serializer used for this tree. If none is provided, 
      * the BTree will deduce the serializer to use from the generic type, and
@@ -61,7 +62,7 @@ public class BTreeConfiguration<K, V>
      * The default value is 10000 (10 seconds). If the value is 0 or below,
      * the delay is considered as infinite
      */
-    private long readTimeOut = BTree.DEFAULT_READ_TIMEOUT;
+    private long readTimeOut = InMemoryBTree.DEFAULT_READ_TIMEOUT;
 
     /** The maximal size of the journal. When this size is reached, the tree is 
      * flushed on disk.
@@ -72,7 +73,7 @@ public class BTreeConfiguration<K, V>
     /**
      * The journal's name. Default to "mavibot.log".
      */
-    private String journalName = BTree.DEFAULT_JOURNAL;
+    private String journalName = InMemoryBTree.DEFAULT_JOURNAL;
 
     /** 
      * The delay between two checkpoints. When we reach the maximum delay,

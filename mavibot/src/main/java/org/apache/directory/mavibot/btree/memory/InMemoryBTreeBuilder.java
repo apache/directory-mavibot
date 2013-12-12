@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
@@ -42,7 +43,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class BTreeBuilder<K, V>
+public class InMemoryBTreeBuilder<K, V>
 {
     private String name;
 
@@ -53,7 +54,7 @@ public class BTreeBuilder<K, V>
     private ElementSerializer<V> valueSerializer;
 
 
-    public BTreeBuilder( String name, int numKeysInNode, ElementSerializer<K> keySerializer,
+    public InMemoryBTreeBuilder( String name, int numKeysInNode, ElementSerializer<K> keySerializer,
         ElementSerializer<V> valueSerializer )
     {
         this.name = name;
@@ -66,7 +67,7 @@ public class BTreeBuilder<K, V>
     @SuppressWarnings("unchecked")
     public BTree<K, V> build( Iterator<Tuple<K, V>> sortedTupleItr ) throws IOException
     {
-        BTree<K, V> btree = new BTree<K, V>( name, keySerializer, valueSerializer );
+        BTree<K, V> btree = new InMemoryBTree<K, V>( name, keySerializer, valueSerializer );
         btree.init();
 
         List<Page<K, V>> lstLeaves = new ArrayList<Page<K, V>>();
@@ -128,7 +129,7 @@ public class BTreeBuilder<K, V>
 
         System.out.println("built rootpage : " + rootPage);
         
-        btree.rootPage = rootPage;
+        btree.setRootPage( rootPage );
 
         return btree;
     }

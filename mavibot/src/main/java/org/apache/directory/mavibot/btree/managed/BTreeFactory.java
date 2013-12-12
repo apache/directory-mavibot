@@ -23,6 +23,7 @@ package org.apache.directory.mavibot.btree.managed;
 import java.io.IOException;
 import java.util.LinkedList;
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.ParentPos;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
@@ -45,7 +46,20 @@ public class BTreeFactory
      */
     public static <K, V> BTree<K, V> createBTree()
     {
-        BTree<K, V> btree = new BTree<K, V>();
+        BTree<K, V> btree = new PersistedBTree<K, V>();
+
+        return btree;
+    }
+    
+    
+    /**
+     * Create a new BTree.
+     * 
+     * @return The created BTree
+     */
+    public static <K, V> BTree<K, V> createBTree( BTreeConfiguration<K, V> configuration)
+    {
+        BTree<K, V> btree = new PersistedBTree<K, V>( configuration );
 
         return btree;
     }
@@ -89,9 +103,9 @@ public class BTreeFactory
      * 
      * @param root the new root page.
      */
-    public static <K, V> void setRoot( BTree<K, V> btree, Page<K, V> root )
+    public static <K, V> void setRootPage( BTree<K, V> btree, Page<K, V> root )
     {
-        btree.setRoot( root );
+        btree.setRootPage( root );
     }
 
 
@@ -103,7 +117,7 @@ public class BTreeFactory
      */
     public static <K, V> Page<K, V> getRoot( BTree<K, V> btree )
     {
-        return btree.rootPage;
+        return btree.getRootPage();
     }
 
 
@@ -112,7 +126,7 @@ public class BTreeFactory
      */
     public static <K, V> void setNbElems( BTree<K, V> btree, long nbElems )
     {
-        btree.setNbElems( nbElems );
+        ((PersistedBTree<K, V>)btree).setNbElems( nbElems );
     }
 
 
@@ -121,7 +135,7 @@ public class BTreeFactory
      */
     public static <K, V> void setRevision( BTree<K, V> btree, long revision )
     {
-        btree.setRevision( revision );
+        ((PersistedBTree<K, V>)btree).setRevision( revision );
     }
 
 
@@ -130,7 +144,7 @@ public class BTreeFactory
      */
     public static <K, V> void setRootPageOffset( BTree<K, V> btree, long rootPageOffset )
     {
-        btree.setRootPageOffset( rootPageOffset );
+        ((PersistedBTree<K, V>)btree).setRootPageOffset( rootPageOffset );
     }
 
 
@@ -139,7 +153,7 @@ public class BTreeFactory
      */
     public static <K, V> void setNextBTreeOffset( BTree<K, V> btree, long nextBTreeOffset )
     {
-        btree.setNextBTreeOffset( nextBTreeOffset );
+        ((PersistedBTree<K, V>)btree).setNextBTreeOffset( nextBTreeOffset );
     }
 
 
@@ -208,7 +222,7 @@ public class BTreeFactory
      */
     public static <K, V> void setRecordManager( BTree<K, V> btree, RecordManager recordManager )
     {
-        btree.setRecordManager( recordManager );
+        ((PersistedBTree<K, V>)btree).setRecordManager( recordManager );
     }
 
 
@@ -268,18 +282,18 @@ public class BTreeFactory
     {
         LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
 
-        ParentPos<K, V> last = new ParentPos<K, V>( btree.rootPage, btree.rootPage.getNbElems() );
+        ParentPos<K, V> last = new ParentPos<K, V>( btree.getRootPage(), btree.getRootPage().getNbElems() );
         stack.push( last );
 
-        if ( btree.rootPage instanceof Leaf )
+        if ( btree.getRootPage() instanceof Leaf )
         {
-            Leaf<K, V> leaf = ( Leaf<K, V> ) ( btree.rootPage );
+            Leaf<K, V> leaf = ( Leaf<K, V> ) ( btree.getRootPage() );
             ValueHolder<V> valueHolder = leaf.values[last.pos];
             last.valueCursor = valueHolder.getCursor();
         }
         else
         {
-            Node<K, V> node = ( Node<K, V> ) btree.rootPage;
+            Node<K, V> node = ( Node<K, V> ) btree.getRootPage();
 
             while ( true )
             {
@@ -313,18 +327,18 @@ public class BTreeFactory
     {
         LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
 
-        ParentPos<K, V> first = new ParentPos<K, V>( btree.rootPage, 0 );
+        ParentPos<K, V> first = new ParentPos<K, V>( btree.getRootPage(), 0 );
         stack.push( first );
 
-        if ( btree.rootPage instanceof Leaf )
+        if ( btree.getRootPage() instanceof Leaf )
         {
-            Leaf<K, V> leaf = ( Leaf<K, V> ) ( btree.rootPage );
+            Leaf<K, V> leaf = ( Leaf<K, V> ) ( btree.getRootPage() );
             ValueHolder<V> valueHolder = leaf.values[first.pos];
             first.valueCursor = valueHolder.getCursor();
         }
         else
         {
-            Node<K, V> node = ( Node<K, V> ) btree.rootPage;
+            Node<K, V> node = ( Node<K, V> ) btree.getRootPage();
 
             while ( true )
             {

@@ -23,6 +23,7 @@ package org.apache.directory.mavibot.btree.memory;
 import java.io.IOException;
 import java.util.LinkedList;
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.ParentPos;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
@@ -45,7 +46,7 @@ public class BTreeFactory
      */
     public static <K, V> BTree<K, V> createBTree()
     {
-        BTree<K, V> btree = new BTree<K, V>();
+        BTree<K, V> btree = new InMemoryBTree<K, V>();
 
         return btree;
     }
@@ -91,7 +92,7 @@ public class BTreeFactory
      */
     public static <K, V> void setRoot( BTree<K, V> btree, Page<K, V> root )
     {
-        btree.setRoot( root );
+        btree.setRootPage( root );
     }
 
 
@@ -103,7 +104,7 @@ public class BTreeFactory
      */
     public static <K, V> Page<K, V> getRoot( BTree<K, V> btree )
     {
-        return btree.rootPage;
+        return btree.getRootPage();
     }
 
 
@@ -227,18 +228,18 @@ public class BTreeFactory
     {
         LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
 
-        ParentPos<K, V> last = new ParentPos<K, V>( btree.rootPage, btree.rootPage.getNbElems() );
+        ParentPos<K, V> last = new ParentPos<K, V>( btree.getRootPage(), btree.getRootPage().getNbElems() );
         stack.push( last );
 
-        if ( btree.rootPage instanceof Leaf )
+        if ( btree.getRootPage() instanceof Leaf )
         {
-            Leaf<K, V> leaf = ( Leaf<K, V> ) ( btree.rootPage );
+            Leaf<K, V> leaf = ( Leaf<K, V> ) ( btree.getRootPage() );
             ValueHolder<V> valueHolder = leaf.values[last.pos];
             last.valueCursor = valueHolder.getCursor();
         }
         else
         {
-            Node<K, V> node = ( Node<K, V> ) btree.rootPage;
+            Node<K, V> node = ( Node<K, V> ) btree.getRootPage();
 
             while ( true )
             {

@@ -27,6 +27,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
@@ -45,6 +46,7 @@ public class ManagedBTreeBuilderTest
     public void testManagedBTreeBuilding() throws Exception
     {
         List<Tuple<Integer, Integer>> sortedTuple = new ArrayList<Tuple<Integer, Integer>>();
+        
         for ( int i = 1; i < 8; i++ )
         {
             Tuple<Integer, Integer> t = new Tuple<Integer, Integer>( i, i );
@@ -57,7 +59,7 @@ public class ManagedBTreeBuilderTest
         RecordManager rm = new RecordManager( file.getAbsolutePath() );
         
         IntSerializer ser = new IntSerializer();
-        ManagedBTreeBuilder<Integer, Integer> bb = new ManagedBTreeBuilder<Integer, Integer>( rm, "master", 4, ser, ser );
+        PersistedBTreeBuilder<Integer, Integer> bb = new PersistedBTreeBuilder<Integer, Integer>( rm, "master", 4, ser, ser );
 
         // contains 1, 2, 3, 4, 5, 6, 7
         BTree<Integer, Integer> btree = bb.build( sortedTuple.iterator() );
@@ -67,11 +69,11 @@ public class ManagedBTreeBuilderTest
         rm = new RecordManager( file.getAbsolutePath() );
         btree = rm.getManagedTree( "master" );
         
-        assertEquals( 1, btree.rootPage.getNbElems() );
+        assertEquals( 1, btree.getRootPage().getNbElems() );
 
-        assertEquals( 7, btree.rootPage.findRightMost().getKey().intValue() );
+        assertEquals( 7, btree.getRootPage().findRightMost().getKey().intValue() );
 
-        assertEquals( 1, btree.rootPage.findLeftMost().getKey().intValue() );
+        assertEquals( 1, btree.getRootPage().findLeftMost().getKey().intValue() );
 
         TupleCursor<Integer, Integer> cursor = btree.browse();
         int i = 0;

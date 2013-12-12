@@ -37,6 +37,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import net.sf.ehcache.Cache;
 import net.sf.ehcache.config.CacheConfiguration;
 
+import org.apache.directory.mavibot.btree.AbstractBTree;
 import org.apache.directory.mavibot.btree.Addition;
 import org.apache.directory.mavibot.btree.BTreeHeader;
 import org.apache.directory.mavibot.btree.DeleteResult;
@@ -69,19 +70,10 @@ import org.slf4j.LoggerFactory;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class BTree<K, V> implements Closeable
+public class InMemoryBTree<K, V> extends AbstractBTree<K, V> implements Closeable
 {
     /** The LoggerFactory used by this class */
-    protected static final Logger LOG = LoggerFactory.getLogger( BTree.class );
-
-    /** The Header for a managed BTree */
-    private BTreeHeader btreeHeader;
-
-    /** Default page size (number of entries per node) */
-    public static final int DEFAULT_PAGE_SIZE = 16;
-
-    /** Default size of the buffer used to write data on disk. Around 1Mb */
-    public static final int DEFAULT_WRITE_BUFFER_SIZE = 4096 * 250;
+    protected static final Logger LOG = LoggerFactory.getLogger( InMemoryBTree.class );
 
     /** The default journal name */
     public static final String DEFAULT_JOURNAL = "mavibot.log";
@@ -92,23 +84,8 @@ public class BTree<K, V> implements Closeable
     /** The default journal file suffix */
     public static final String JOURNAL_SUFFIX = ".log";
 
-    /** The current rootPage */
-    protected volatile Page<K, V> rootPage;
-
-    /** The list of read transactions being executed */
-    private ConcurrentLinkedQueue<Transaction<K, V>> readTransactions;
-
-    /** The size of the buffer used to write data in disk */
-    private int writeBufferSize;
-
     /** The type to use to create the keys */
     protected Class<?> keyType;
-
-    /** The Key serializer used for this tree.*/
-    private ElementSerializer<K> keySerializer;
-
-    /** The Value serializer used for this tree. */
-    private ElementSerializer<V> valueSerializer;
 
     /** The associated file. If null, this is an in-memory btree  */
     private File file;
@@ -122,109 +99,17 @@ public class BTree<K, V> implements Closeable
     /** The associated journal. If null, this is an in-memory btree  */
     private File journal;
 
-    /** A lock used to protect the write operation against concurrent access */
-    private ReentrantLock writeLock;
-
-    /** The thread responsible for the cleanup of timed out reads */
-    private Thread readTransactionsThread;
-
-    /** Define a default delay for a read transaction. This is 10 seconds */
-    public static final long DEFAULT_READ_TIMEOUT = 10 * 1000L;
-
-    /** The read transaction timeout */
-    private long readTimeOut = DEFAULT_READ_TIMEOUT;
-
     private File envDir;
 
     private FileChannel journalChannel = null;
-
-    /** The cache associated with this BTree */
-    private Cache cache;
-
-    /** The cache size, default to 1000 elements */
-    private int cacheSize = DEFAULT_CACHE_SIZE;
-
-    /** The default number of pages to keep in memory */
-    private static final int DEFAULT_CACHE_SIZE = 1000;
-
-
-    /**
-     * Create a thread that is responsible of cleaning the transactions when
-     * they hit the timeout
-     */
-    private void createTransactionManager()
-    {
-        Runnable readTransactionTask = new Runnable()
-        {
-            public void run()
-            {
-                try
-                {
-                    Transaction<K, V> transaction = null;
-
-                    while ( !Thread.currentThread().isInterrupted() )
-                    {
-                        long timeoutDate = System.currentTimeMillis() - readTimeOut;
-                        long t0 = System.currentTimeMillis();
-                        int nbTxns = 0;
-
-                        // Loop on all the transactions from the queue
-                        while ( ( transaction = readTransactions.peek() ) != null )
-                        {
-                            nbTxns++;
-
-                            if ( transaction.isClosed() )
-                            {
-                                // The transaction is already closed, remove it from the queue
-                                readTransactions.poll();
-                                continue;
-                            }
-
-                            // Check if the transaction has timed out
-                            if ( transaction.getCreationDate() < timeoutDate )
-                            {
-                                transaction.close();
-                                readTransactions.poll();
-                                continue;
-                            }
-
-                            // We need to stop now
-                            break;
-                        }
-
-                        long t1 = System.currentTimeMillis();
-
-                        if ( nbTxns > 0 )
-                        {
-                            System.out.println( "Processing old txn : " + nbTxns + ", " + ( t1 - t0 ) + "ms" );
-                        }
-
-                        // Wait until we reach the timeout
-                        Thread.sleep( readTimeOut );
-                    }
-                }
-                catch ( InterruptedException ie )
-                {
-                    //System.out.println( "Interrupted" );
-                }
-                catch ( Exception e )
-                {
-                    throw new RuntimeException( e );
-                }
-            }
-        };
-
-        readTransactionsThread = new Thread( readTransactionTask );
-        readTransactionsThread.setDaemon( true );
-        readTransactionsThread.start();
-    }
 
 
     /**
      * Creates a new BTree, with no initialization. 
      */
-    public BTree()
+    public InMemoryBTree()
     {
+        super();
         btreeHeader = new BTreeHeader();
         type = BTreeTypeEnum.IN_MEMORY;
     }
@@ -236,8 +121,9 @@ public class BTree<K, V> implements Closeable
      * 
      * @param comparator The comparator to use
      */
-    public BTree( BTreeConfiguration<K, V> configuration ) throws IOException
+    public InMemoryBTree( BTreeConfiguration<K, V> configuration ) throws IOException
     {
+        super();
         String name = configuration.getName();
 
         if ( name == null )
@@ -287,14 +173,14 @@ public class BTree<K, V> implements Closeable
      * 
      * @param comparator The comparator to use
      */
-    public BTree( String name, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer )
+    public InMemoryBTree( String name, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer )
         throws IOException
     {
         this( name, keySerializer, valueSerializer, false );
     }
 
 
-    public BTree( String name, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer,
+    public InMemoryBTree( String name, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer,
         boolean allowDuplicates )
         throws IOException
     {
@@ -307,7 +193,7 @@ public class BTree<K, V> implements Closeable
      * 
      * @param comparator The comparator to use
      */
-    public BTree( String name, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer, int pageSize )
+    public InMemoryBTree( String name, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer, int pageSize )
         throws IOException
     {
         this( name, null, keySerializer, valueSerializer, pageSize );
@@ -319,7 +205,7 @@ public class BTree<K, V> implements Closeable
      * @param comparator The comparator to use
      * @param serializer The serializer to use
      */
-    public BTree( String name, String path, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer )
+    public InMemoryBTree( String name, String path, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer )
         throws IOException
     {
         this( name, path, keySerializer, valueSerializer, DEFAULT_PAGE_SIZE );
@@ -337,7 +223,7 @@ public class BTree<K, V> implements Closeable
      * @param pageSize size of the page
      * @throws IOException
      */
-    public BTree( String name, String dataDir, ElementSerializer<K> keySerializer,
+    public InMemoryBTree( String name, String dataDir, ElementSerializer<K> keySerializer,
         ElementSerializer<V> valueSerializer,
         int pageSize )
         throws IOException
@@ -346,7 +232,7 @@ public class BTree<K, V> implements Closeable
     }
 
 
-    public BTree( String name, String dataDir, ElementSerializer<K> keySerializer,
+    public InMemoryBTree( String name, String dataDir, ElementSerializer<K> keySerializer,
         ElementSerializer<V> valueSerializer,
         int pageSize, boolean allowDuplicates )
         throws IOException
@@ -355,11 +241,12 @@ public class BTree<K, V> implements Closeable
     }
 
 
-    public BTree( String name, String dataDir, ElementSerializer<K> keySerializer,
+    public InMemoryBTree( String name, String dataDir, ElementSerializer<K> keySerializer,
         ElementSerializer<V> valueSerializer,
         int pageSize, boolean allowDuplicates, int cacheSize )
         throws IOException
     {
+        super();
         btreeHeader = new BTreeHeader();
         btreeHeader.setName( name );
 
@@ -515,183 +402,6 @@ public class BTree<K, V> implements Closeable
 
 
     /**
-     * Gets the number which is a power of 2 immediately above the given positive number.
-     */
-    private int getPowerOf2( int size )
-    {
-        int newSize = --size;
-        newSize |= newSize >> 1;
-        newSize |= newSize >> 2;
-        newSize |= newSize >> 4;
-        newSize |= newSize >> 8;
-        newSize |= newSize >> 16;
-        newSize++;
-
-        return newSize;
-    }
-
-
-    /**
-     * Set the maximum number of elements we can store in a page. This must be a
-     * number greater than 1, and a power of 2. The default page size is 16.
-     * <br/>
-     * If the provided size is below 2, we will default to DEFAULT_PAGE_SIZE.<br/>
-     * If the provided size is not a power of 2, we will select the closest power of 2
-     * higher than the given number<br/>
-     * 
-     * @param pageSize The requested page size
-     */
-    public void setPageSize( int pageSize )
-    {
-        if ( pageSize <= 2 )
-        {
-            btreeHeader.setPageSize( DEFAULT_PAGE_SIZE );
-        }
-        else
-        {
-            btreeHeader.setPageSize( getPowerOf2( pageSize ) );
-        }
-    }
-
-
-    /**
-     * Set the new root page for this tree. Used for debug purpose only. The revision
-     * will always be 0;
-     * 
-     * @param root the new root page.
-     */
-    /* No qualifier */void setRoot( Page<K, V> root )
-    {
-        rootPage = root;
-    }
-
-
-    /**
-     * @return the pageSize
-     */
-    public int getPageSize()
-    {
-        return btreeHeader.getPageSize();
-    }
-
-
-    /**
-     * Generates a new revision number. It's only used by the Page instances.
-     * 
-     * @return a new incremental revision number
-     */
-    /** No qualifier */
-    long generateRevision()
-    {
-        return btreeHeader.incrementRevision();
-    }
-
-
-    /**
-     * Insert an entry in the BTree.
-     * <p>
-     * We will replace the value if the provided key already exists in the
-     * btree.
-     *
-     * @param key Inserted key
-     * @param value Inserted value
-     * @return Existing value, if any.
-     * @throws IOException TODO
-     */
-    public V insert( K key, V value ) throws IOException
-    {
-        long revision = generateRevision();
-
-        V existingValue = null;
-
-        try
-        {
-            // Commented atm, we will have to play around the idea of transactions later
-            writeLock.lock();
-
-            InsertResult<K, V> result = insert( key, value, revision );
-
-            if ( result instanceof ModifyResult )
-            {
-                existingValue = ( (org.apache.directory.mavibot.btree.ModifyResult<K, V> ) result ).getModifiedValue();
-            }
-        }
-        finally
-        {
-            // See above
-            writeLock.unlock();
-        }
-
-        return existingValue;
-    }
-
-
-    /**
-     * Delete the entry which key is given as a parameter. If the entry exists, it will
-     * be removed from the tree, the old tuple will be returned. Otherwise, null is returned.
-     * 
-     * @param key The key for the entry we try to remove
-     * @return A Tuple<K, V> containing the removed entry, or null if it's not found.
-     */
-    public Tuple<K, V> delete( K key ) throws IOException
-    {
-        if ( key == null )
-        {
-            throw new IllegalArgumentException( "Key must not be null" );
-        }
-
-        long revision = generateRevision();
-
-        Tuple<K, V> deleted = delete( key, revision );
-
-        return deleted;
-    }
-
-
-    /**
-     * Delete the value from an entry associated with the given key. If the value
-     * If the value is present, it will be deleted first, later if there are no other 
-     * values associated with this key(which can happen when duplicates are enabled), 
-     * we will remove the key from the tree.
-     * 
-     * @param key The key for the entry we try to remove
-     * @param value The value to delete (can be null)
-     * @return A Tuple<K, V> containing the removed entry, or null if it's not found.
-     */
-    public Tuple<K, V> delete( K key, V value ) throws IOException
-    {
-        if ( key == null )
-        {
-            throw new IllegalArgumentException( "Key must not be null" );
-        }
-
-        if ( value == null )
-        {
-            throw new IllegalArgumentException( "Value must not be null" );
-        }
-
-        long revision = generateRevision();
-
-        Tuple<K, V> deleted = delete( key, value, revision );
-
-        return deleted;
-    }
-
-
-    /**
-     * Delete the entry which key is given as a parameter. If the entry exists, it will
-     * be removed from the tree, the old tuple will be returned. Otherwise, null is returned.
-     * 
-     * @param key The key for the entry we try to remove
-     * @return A Tuple<K, V> containing the removed entry, or null if it's not found.
-     */
-    private Tuple<K, V> delete( K key, long revision ) throws IOException
-    {
-        return delete( key, null, revision );
-    }
-
-
-    /**
      * 
      * Deletes the given <key,value> pair if both key and value match. If the given value is null
      * and there is no null value associated with the given key then the entry with the given key
@@ -703,7 +413,7 @@ public class BTree<K, V> implements Closeable
      * @return
      * @throws IOException
      */
-    private Tuple<K, V> delete( K key, V value, long revision ) throws IOException
+    protected Tuple<K, V> delete( K key, V value, long revision ) throws IOException
     {
         writeLock.lock();
 
@@ -762,208 +472,6 @@ public class BTree<K, V> implements Closeable
 
 
     /**
-     * Find a value in the tree, given its key. If the key is not found,
-     * it will throw a KeyNotFoundException. <br/>
-     * Note that we can get a null value stored, or many values.
-     * 
-     * @param key The key we are looking at
-     * @return The found value, or null if the key is not present in the tree
-     * @throws KeyNotFoundException If the key is not found in the BTree
-     * @throws IOException TODO
-     */
-    public V get( K key ) throws IOException, KeyNotFoundException
-    {
-        return rootPage.get( key );
-    }
-
-
-    /**
-     * @see Page#getValues(Object)
-     */
-    public ValueCursor<V> getValues( K key ) throws IOException, KeyNotFoundException
-    {
-        return rootPage.getValues( key );
-    }
-
-
-    /**
-     * Find a value in the tree, given its key, at a specific revision. If the key is not found,
-     * it will throw a KeyNotFoundException. <br/>
-     * Note that we can get a null value stored, or many values.
-     * 
-     * @param revision The revision for which we want to find a key
-     * @param key The key we are looking at
-     * @return The found value, or null if the key is not present in the tree
-     * @throws KeyNotFoundException If the key is not found in the BTree
-     * @throws IOException If there was an issue while fetching data from the disk
-     */
-    public V get( long revision, K key ) throws IOException, KeyNotFoundException
-    {
-        // Fetch the root page for this revision
-        Page<K, V> revisionRootPage = getRootPage( revision );
-
-        return revisionRootPage.get( key );
-    }
-
-
-    /**
-     * Checks if the given key exists.
-     *  
-     * @param key The key we are looking at
-     * @return true if the key is present, false otherwise
-     * @throws IOException If we have an error while trying to access the page
-     */
-    public boolean hasKey( K key ) throws IOException
-    {
-        if ( key == null )
-        {
-            return false;
-        }
-
-        return rootPage.hasKey( key );
-    }
-
-
-    /**
-     * Checks if the given key exists for a given revision.
-     *  
-     * @param revision The revision for which we want to find a key
-     * @param key The key we are looking at
-     * @return true if the key is present, false otherwise
-     * @throws IOException If we have an error while trying to access the page
-     * @throws KeyNotFoundException If the key is not found in the BTree
-     */
-    public boolean hasKey( long revision, K key ) throws IOException, KeyNotFoundException
-    {
-        if ( key == null )
-        {
-            return false;
-        }
-
-        // Fetch the root page for this revision
-        Page<K, V> revisionRootPage = getRootPage( revision );
-
-        return revisionRootPage.hasKey( key );
-    }
-
-
-    /**
-     * Checks if the BTree contains the given key with the given value.
-     * 
-     * @param key The key we are looking for
-     * @param value The value associated with the given key
-     * @return true if the key and value are associated with each other, false otherwise
-     */
-    public boolean contains( K key, V value ) throws IOException
-    {
-        return rootPage.contains( key, value );
-    }
-
-
-    /**
-     * Checks if the BTree contains the given key with the given value for a given revision
-     * 
-     * @param revision The revision we would like to browse
-     * @param key The key we are looking for
-     * @param value The value associated with the given key
-     * @return true if the key and value are associated with each other, false otherwise
-     * @throws KeyNotFoundException If the key is not found in the BTree
-     */
-    public boolean contains( long revision, K key, V value ) throws IOException, KeyNotFoundException
-    {
-        // Fetch the root page for this revision
-        Page<K, V> revisionRootPage = getRootPage( revision );
-
-        return revisionRootPage.contains( key, value );
-    }
-
-
-    /**
-     * Creates a cursor starting at the beginning of the tree
-     * 
-     * @return A cursor on the btree
-     * @throws IOException
-     */
-    public TupleCursor<K, V> browse() throws IOException
-    {
-        Transaction<K, V> transaction = beginReadTransaction();
-
-        // Fetch the root page for this revision
-        TupleCursor<K, V> cursor = rootPage.browse( transaction, new ParentPos[32], 0 );
-        
-        // Set the position before the first element
-        cursor.beforeFirst();
-
-        return cursor;
-    }
-
-
-    /**
-     * Creates a cursor starting at the beginning of the tree, for a given revision
-     * 
-     * @param revision The revision we would like to browse
-     * @return A cursor on the btree
-     * @throws IOException If we had an issue while fetching data from the disk
-     * @throws KeyNotFoundException If the key is not found in the BTree
-     */
-    public TupleCursor<K, V> browse( long revision ) throws IOException, KeyNotFoundException
-    {
-        Transaction<K, V> transaction = beginReadTransaction();
-
-        // Fetch the root page for this revision
-        Page<K, V> revisionRootPage = getRootPage( revision );
-
-        // And get the cursor
-        TupleCursor<K, V> cursor = revisionRootPage.browse( transaction, new ParentPos[32], 0 );
-
-        return cursor;
-    }
-
-
-    /**
-     * Creates a cursor starting on the given key
-     * 
-     * @param key The key which is the starting point. If the key is not found,
-     * then the cursor will always return null.
-     * @return A cursor on the btree
-     * @throws IOException
-     */
-    public TupleCursor<K, V> browseFrom( K key ) throws IOException
-    {
-        Transaction<K, V> transaction = beginReadTransaction();
-
-        // Fetch the root page for this revision
-        TupleCursor<K, V> cursor = rootPage.browse( key, transaction, new ParentPos[32], 0 );
-
-        return cursor;
-    }
-
-
-    /**
-     * Creates a cursor starting on the given key at the given revision
-     * 
-     * @param The revision we are looking for
-     * @param key The key which is the starting point. If the key is not found,
-     * then the cursor will always return null.
-     * @return A cursor on the btree
-     * @throws IOException If wxe had an issue reading the BTree from disk
-     * @throws KeyNotFoundException  If we can't find a rootPage for this revision
-     */
-    public TupleCursor<K, V> browseFrom( long revision, K key ) throws IOException, KeyNotFoundException
-    {
-        Transaction<K, V> transaction = beginReadTransaction();
-
-        // Fetch the rootPage for this revision
-        Page<K, V> revisionRootPage = getRootPage( revision );
-
-        // And get the cursor
-        TupleCursor<K, V> cursor = revisionRootPage.browse( key, transaction, new ParentPos[32], 0 );
-
-        return cursor;
-    }
-
-
-    /**
      * Insert an entry in the BTree.
      * <p>
      * We will replace the value if the provided key already exists in the
@@ -976,7 +484,7 @@ public class BTree<K, V> implements Closeable
      * @param revision The revision to use
      * @return an instance of the InsertResult.
      */
-    /*No qualifier*/InsertResult<K, V> insert( K key, V value, long revision ) throws IOException
+    public InsertResult<K, V> insert( K key, V value, long revision ) throws IOException
     {
         if ( key == null )
         {
@@ -1040,56 +548,11 @@ public class BTree<K, V> implements Closeable
 
 
     /**
-     * Starts a Read Only transaction. If the transaction is not closed, it will be 
-     * automatically closed after the timeout
-     * @return The created transaction
-     */
-    private Transaction<K, V> beginReadTransaction()
-    {
-        Transaction<K, V> readTransaction = new Transaction<K, V>( rootPage, btreeHeader.getRevision() - 1,
-            System.currentTimeMillis() );
-
-        readTransactions.add( readTransaction );
-
-        return readTransaction;
-    }
-
-
-    /**
      * @return the type for the keys
      */
-    /* No qualifier*/Class<?> getKeyType()
+    public Class<?> getKeyType()
     {
         return keyType;
-    }
-
-
-    /**
-     * @return the comparator
-     */
-    public Comparator<K> getComparator()
-    {
-        return keySerializer.getComparator();
-    }
-
-
-    /**
-     * @param keySerializer the Key serializer to set
-     */
-    public void setKeySerializer( ElementSerializer<K> keySerializer )
-    {
-        this.keySerializer = keySerializer;
-        btreeHeader.setKeySerializerFQCN( keySerializer.getClass().getName() );
-    }
-
-
-    /**
-     * @param valueSerializer the Value serializer to set
-     */
-    public void setValueSerializer( ElementSerializer<V> valueSerializer )
-    {
-        this.valueSerializer = valueSerializer;
-        btreeHeader.setValueSerializerFQCN( valueSerializer.getClass().getName() );
     }
 
 
@@ -1340,7 +803,7 @@ public class BTree<K, V> implements Closeable
      * @throws IOException If we had an issue while accessing the underlying file
      * @throws KeyNotFoundException If the revision does not exist for this Btree
      */
-    private Page<K, V> getRootPage( long revision ) throws IOException, KeyNotFoundException
+    public Page<K, V> getRootPage( long revision ) throws IOException, KeyNotFoundException
     {
         // Atm, the in-memory BTree does not support searches in many revisions
         return rootPage;
@@ -1363,42 +826,6 @@ public class BTree<K, V> implements Closeable
 
 
     /**
-     * @return the readTimeOut
-     */
-    public long getReadTimeOut()
-    {
-        return readTimeOut;
-    }
-
-
-    /**
-     * @param readTimeOut the readTimeOut to set
-     */
-    public void setReadTimeOut( long readTimeOut )
-    {
-        this.readTimeOut = readTimeOut;
-    }
-
-
-    /**
-     * @return the name
-     */
-    public String getName()
-    {
-        return btreeHeader.getName();
-    }
-
-
-    /**
-     * @param name the name to set
-     */
-    public void setName( String name )
-    {
-        btreeHeader.setName( name );
-    }
-
-
-    /**
      * @return the file
      */
     public File getFile()
@@ -1417,24 +844,6 @@ public class BTree<K, V> implements Closeable
 
 
     /**
-     * @return the writeBufferSize
-     */
-    public int getWriteBufferSize()
-    {
-        return writeBufferSize;
-    }
-
-
-    /**
-     * @param writeBufferSize the writeBufferSize to set
-     */
-    public void setWriteBufferSize( int writeBufferSize )
-    {
-        this.writeBufferSize = writeBufferSize;
-    }
-
-
-    /**
      * @return true if the BTree is fully in memory
      */
     public boolean isInMemory()
@@ -1449,105 +858,6 @@ public class BTree<K, V> implements Closeable
     public boolean isPersistent()
     {
         return type == BTreeTypeEnum.IN_MEMORY;
-    }
-
-
-    /**
-     * Create a ValueHolder depending on the kind of holder we want.
-     * 
-     * @param value The value to store
-     * @return The value holder
-     */
-    /* no qualifier */ValueHolder<V> createValueHolder( V value )
-    {
-        return new ValueHolder<V>( this, value );
-    }
-
-
-    /**
-     * @return the keySerializer
-     */
-    public ElementSerializer<K> getKeySerializer()
-    {
-        return keySerializer;
-    }
-
-
-    /**
-     * @return the keySerializer FQCN
-     */
-    public String getKeySerializerFQCN()
-    {
-        return btreeHeader.getKeySerializerFQCN();
-    }
-
-
-    /**
-     * @return the valueSerializer
-     */
-    public ElementSerializer<V> getValueSerializer()
-    {
-        return valueSerializer;
-    }
-
-
-    /**
-     * @return the valueSerializer FQCN
-     */
-    public String getValueSerializerFQCN()
-    {
-        return btreeHeader.getValueSerializerFQCN();
-    }
-
-
-    /** 
-     * @return The current BTree revision
-     */
-    public long getRevision()
-    {
-        return btreeHeader.getRevision();
-    }
-
-
-    /**
-     * @param revision the revision to set
-     */
-    /* No qualifier */void setRevision( long revision )
-    {
-        btreeHeader.setRevision( revision );
-    }
-
-
-    /** 
-     * @return The current number of elements in the BTree
-     */
-    public long getNbElems()
-    {
-        return btreeHeader.getNbElems();
-    }
-
-
-    /**
-     * @param nbElems the nbElems to set
-     */
-    /* No qualifier */void setNbElems( long nbElems )
-    {
-        btreeHeader.setNbElems( nbElems );
-    }
-
-
-    /**
-     * @return true if this BTree allow duplicate values
-     */
-    public boolean isAllowDuplicates()
-    {
-        return btreeHeader.isAllowDuplicates();
-    }
-
-
-    /* No qualifier */void setAllowDuplicates( boolean allowDuplicates )
-    {
-        btreeHeader.setAllowDuplicates( allowDuplicates );
     }
 
 

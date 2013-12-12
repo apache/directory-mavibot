@@ -20,6 +20,7 @@
 package org.apache.directory.mavibot.btree.managed;
 
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 
@@ -61,25 +62,7 @@ public class BTreeConfiguration<K, V>
      * The default value is 10000 (10 seconds). If the value is 0 or below,
      * the delay is considered as infinite
      */
-    private long readTimeOut = BTree.DEFAULT_READ_TIMEOUT;
-
-    /** The maximal size of the journal. When this size is reached, the tree is 
-     * flushed on disk.
-     * The default size is 10 Mb
-     */
-    private long journalSize = 10 * 1024 * 1024L;
-
-    /**
-     * The journal's name. Default to "mavibot.log".
-     */
-    private String journalName = BTree.DEFAULT_JOURNAL;
-
-    /** 
-     * The delay between two checkpoints. When we reach the maximum delay,
-     * the BTree is flushed on disk, but only if we have had some modifications.
-     * The default value is 60 seconds.
-     */
-    private long checkPointDelay = 60 * 1000L;
+    private long readTimeOut = PersistedBTree.DEFAULT_READ_TIMEOUT;
 
     /** Flag to enable duplicate key support */
     private boolean allowDuplicates;
@@ -177,42 +160,6 @@ public class BTreeConfiguration<K, V>
 
 
     /**
-     * @return the journalSize
-     */
-    public long getJournalSize()
-    {
-        return journalSize;
-    }
-
-
-    /**
-     * @param journalSize the journalSize to set
-     */
-    public void setJournalSize( long journalSize )
-    {
-        this.journalSize = journalSize;
-    }
-
-
-    /**
-     * @return the checkPointDelay
-     */
-    public long getCheckPointDelay()
-    {
-        return checkPointDelay;
-    }
-
-
-    /**
-     * @param checkPointDelay the checkPointDelay to set
-     */
-    public void setCheckPointDelay( long checkPointDelay )
-    {
-        this.checkPointDelay = checkPointDelay;
-    }
-
-
-    /**
      * @return the filePath
      */
     public String getFilePath()
@@ -227,24 +174,6 @@ public class BTreeConfiguration<K, V>
     public void setFilePath( String filePath )
     {
         this.filePath = filePath;
-    }
-
-
-    /**
-     * @return the journal name
-     */
-    public String getJournalName()
-    {
-        return journalName;
-    }
-
-
-    /**
-     * @param journalName the journal name to set
-     */
-    public void setJournalName( String journalName )
-    {
-        this.journalName = journalName;
     }
 
 

@@ -26,6 +26,7 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.BorrowedFromLeftResult;
 import org.apache.directory.mavibot.btree.BorrowedFromRightResult;
 import org.apache.directory.mavibot.btree.DeleteResult;
@@ -58,7 +59,7 @@ public class LeafTest
     @Before
     public void setup() throws IOException
     {
-        btree = new BTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
+        btree = new InMemoryBTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
         btree.setPageSize( 8 );
     }
 

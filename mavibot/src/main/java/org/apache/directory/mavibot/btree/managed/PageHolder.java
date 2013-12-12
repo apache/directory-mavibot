@@ -24,6 +24,7 @@ import java.io.IOException;
 
 import net.sf.ehcache.Element;
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
@@ -54,22 +55,42 @@ public class PageHolder<K, V>
     /**
      * Create a new holder storing an offset and a SoftReference containing the element.
      * 
-     * @param offset The offset in disk for this value
-     * @param element The element to store into a SoftReference
+     * @param page The element to store into a SoftReference
      */
-    public PageHolder( BTree<K, V> btree, Page<K, V> element, long offset, long lastOffset )
+    public PageHolder( BTree<K, V> btree, Page<K, V> page )
+    {
+        this.btree = btree;
+        this.offset = page.getOffset();
+        this.lastOffset = page.getLastOffset();
+
+        if ( page instanceof Page<?, ?> )
+        {
+            ( ( AbstractPage<K, V> ) page ).setOffset( offset );
+            ( ( AbstractPage<K, V> ) page ).setLastOffset( lastOffset );
+        }
+
+        ((PersistedBTree<K, V>)btree).getCache().put( new Element( offset, page ) );
+    }
+
+
+    /**
+     * Create a new holder storing an offset and a SoftReference containing the element.
+     * 
+     * @param page The element to store into a SoftReference
+     */
+    public PageHolder( BTree<K, V> btree, Page<K, V> page, long offset, long lastOffset )
     {
         this.btree = btree;
         this.offset = offset;
         this.lastOffset = lastOffset;
 
-        if ( element instanceof Page<?, ?> )
+        if ( page instanceof Page<?, ?> )
         {
-            ( ( AbstractPage<K, V> ) element ).setOffset( offset );
-            ( ( AbstractPage<K, V> ) element ).setLastOffset( lastOffset );
+            ( ( AbstractPage<K, V> ) page ).setOffset( offset );
+            ( ( AbstractPage<K, V> ) page ).setLastOffset( lastOffset );
         }
 
-        btree.getCache().put( new Element( offset, element ) );
+        ((PersistedBTree<K, V>)btree).getCache().put( new Element( offset, page ) );
     }
 
 
@@ -80,7 +101,7 @@ public class PageHolder<K, V>
      */
     public Page<K, V> getValue( BTree<K, V> btree ) throws EndOfFileExceededException, IOException
     {
-        Element element = btree.getCache().get( offset );
+        Element element = ((PersistedBTree<K, V>)btree).getCache().get( offset );
 
         if ( element == null )
         {
@@ -88,12 +109,12 @@ public class PageHolder<K, V>
             // We have to fetch the element from disk, using the offset now
             Page<K, V> page = fetchElement( btree );
 
-            btree.getCache().put( new Element( offset, page ) );
+            ((PersistedBTree<K, V>)btree).getCache().put( new Element( offset, page ) );
 
             return page;
         }
 
-        Page<K, V> page = (org.apache.directory.mavibot.btree.Page<K, V> ) element.getObjectValue();
+        Page<K, V> page = (Page<K, V> ) element.getObjectValue();
 
         if ( page == null )
         {
@@ -106,7 +127,7 @@ public class PageHolder<K, V>
                 ( ( AbstractPage<K, V> ) page ).setLastOffset( lastOffset );
             }
 
-            btree.getCache().put( new Element( offset, page ) );
+            ((PersistedBTree<K, V>)btree).getCache().put( new Element( offset, page ) );
         }
 
         return page;
@@ -121,7 +142,7 @@ public class PageHolder<K, V>
      */
     private Page<K, V> fetchElement( BTree<K, V> btree ) throws EndOfFileExceededException, IOException
     {
-        Page<K, V> element = btree.getRecordManager().deserialize( btree, offset );
+        Page<K, V> element = ((PersistedBTree<K, V>)btree).getRecordManager().deserialize( btree, offset );
 
         return element;
     }

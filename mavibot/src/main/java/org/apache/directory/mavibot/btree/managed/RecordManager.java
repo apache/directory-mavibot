@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
@@ -306,11 +307,11 @@ public class RecordManager
         endOfFileOffset = fileChannel.size();
 
         // Now, initialize the Copied Page BTree
-        copiedPageBTree = new BTree<RevisionName, long[]>( COPIED_PAGE_BTREE_NAME, new RevisionNameSerializer(),
+        copiedPageBTree = new PersistedBTree<RevisionName, long[]>( COPIED_PAGE_BTREE_NAME, new RevisionNameSerializer(),
             new LongArraySerializer() );
 
         // and initialize the Revision BTree
-        revisionBTree = new BTree<RevisionName, Long>( REVISION_BTREE_NAME, new RevisionNameSerializer(),
+        revisionBTree = new PersistedBTree<RevisionName, Long>( REVISION_BTREE_NAME, new RevisionNameSerializer(),
             new LongSerializer() );
 
         // Inject these BTrees into the RecordManager
@@ -367,26 +368,26 @@ public class RecordManager
 
             // Create the BTree
             copiedPageBTree = BTreeFactory.<RevisionName, long[]> createBTree();
-            copiedPageBTree.setBtreeOffset( btreeOffset );
+            ((PersistedBTree<RevisionName, long[]>)copiedPageBTree).setBtreeOffset( btreeOffset );
 
             loadBTree( pageIos, copiedPageBTree );
-            long nextBtreeOffset = copiedPageBTree.getNextBTreeOffset();
+            long nextBtreeOffset = ((PersistedBTree<RevisionName, long[]>)copiedPageBTree).getNextBTreeOffset();
 
             // And the Revision BTree
             pageIos = readPageIOs( nextBtreeOffset, Long.MAX_VALUE );
 
             revisionBTree = BTreeFactory.<RevisionName, Long> createBTree();
-            revisionBTree.setBtreeOffset( nextBtreeOffset );
+            ((PersistedBTree<RevisionName, Long>)revisionBTree).setBtreeOffset( nextBtreeOffset );
 
             loadBTree( pageIos, revisionBTree );
-            nextBtreeOffset = revisionBTree.getNextBTreeOffset();
+            nextBtreeOffset = ((PersistedBTree<RevisionName, Long>)revisionBTree).getNextBTreeOffset();
 
             // Then process the next ones
             for ( int i = 2; i < nbBtree; i++ )
             {
                 // Create the BTree
                 BTree<Object, Object> btree = BTreeFactory.createBTree();
-                btree.setBtreeOffset( nextBtreeOffset );
+                ((PersistedBTree<Object, Object>)btree).setBtreeOffset( nextBtreeOffset );
                 lastAddedBTreeOffset = nextBtreeOffset;
 
                 // Read the associated pages
@@ -394,7 +395,7 @@ public class RecordManager
 
                 // Load the BTree
                 loadBTree( pageIos, btree );
-                nextBtreeOffset = btree.getNextBTreeOffset();
+                nextBtreeOffset = ((PersistedBTree<Object, Object>)btree).getNextBTreeOffset();
 
                 // Store it into the managedBtrees map
                 managedBTrees.put( btree.getName(), btree );
@@ -529,7 +530,7 @@ public class RecordManager
 
         // The BTree allowDuplicates flag
         int allowDuplicates = readInt( pageIos, dataPos );
-        btree.setAllowDuplicates( allowDuplicates != 0 );
+        ((PersistedBTree<K, V>)btree).setAllowDuplicates( allowDuplicates != 0 );
         dataPos += INT_SIZE;
 
         // Now, init the BTree
@@ -545,7 +546,7 @@ public class RecordManager
         Page<K, V> btreeRoot = readPage( btree, rootPageIos );
         BTreeFactory.setRecordManager( btree, this );
 
-        BTreeFactory.setRoot( btree, btreeRoot );
+        BTreeFactory.setRootPage( btree, btreeRoot );
     }
 
 
@@ -1038,7 +1039,7 @@ public class RecordManager
 
         // Store the BTree Offset into the BTree
         long btreeOffset = pageIos[0].getOffset();
-        btree.setBtreeOffset( btreeOffset );
+        ((PersistedBTree<K, V>)btree).setBtreeOffset( btreeOffset );
 
         // Now store the BTree data in the pages :
         // - the BTree revision
@@ -1069,7 +1070,7 @@ public class RecordManager
 
         // Now, we can inject the BTree rootPage offset into the BTree header
         position = store( position, rootPageIo.getOffset(), pageIos );
-        btree.setRootPageOffset( rootPageIo.getOffset() );
+        ((PersistedBTree<K, V>)btree).setRootPageOffset( rootPageIo.getOffset() );
         ( ( Leaf<K, V> ) rootPage ).setOffset( rootPageIo.getOffset() );
 
         // The next BTree Header offset (-1L, as it's a new BTree)
@@ -1482,7 +1483,7 @@ public class RecordManager
         IOException
     {
         // Read the pageIOs associated with this BTree
-        long offset = btree.getBtreeOffset();
+        long offset = ((PersistedBTree<K, V>)btree).getBtreeOffset();
         long headerSize = LONG_SIZE + LONG_SIZE + LONG_SIZE;
 
         PageIO[] pageIos = readPageIOs( offset, headerSize );
@@ -2336,7 +2337,7 @@ public class RecordManager
         if ( btree.getRevision() == revision )
         {
             // We are asking for the current revision
-            return btree.rootPage;
+            return btree.getRootPage();
         }
 
         RevisionName revisionName = new RevisionName( revision, btree.getName() );
@@ -2533,7 +2534,7 @@ public class RecordManager
         config.setValueSerializer( valueSerializer );
         config.setAllowDuplicates( allowDuplicates );
 
-        BTree btree = new BTree( config );
+        BTree btree = new PersistedBTree( config );
         manage( btree );
 
         if ( LOG_CHECK.isDebugEnabled() )
@@ -3007,12 +3008,12 @@ public class RecordManager
         {
             PageIO[] pageIos = readPageIOs( offset, Long.MAX_VALUE );
 
-            BTree<K, V> dupValueContainer = BTreeFactory.createBTree();
-            dupValueContainer.setBtreeOffset( offset );
+            BTree<K, V> subBtree = BTreeFactory.createBTree();
+            ((PersistedBTree<K, V>)subBtree).setBtreeOffset( offset );
 
-            loadBTree( pageIos, dupValueContainer );
+            loadBTree( pageIos, subBtree );
 
-            return dupValueContainer;
+            return subBtree;
         }
         catch ( Exception e )
         {

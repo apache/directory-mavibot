@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.List;
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.BorrowedFromSiblingResult;
 import org.apache.directory.mavibot.btree.BorrowedFromLeftResult;
 import org.apache.directory.mavibot.btree.BorrowedFromRightResult;
@@ -97,8 +98,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         children = ( PageHolder<K, V>[] ) Array.newInstance( PageHolder.class,
             btree.getPageSize() + 1 );
 
-        children[0] = btree.createPageHolder( leftPage );
-        children[1] = btree.createPageHolder( rightPage );
+        children[0] = new PageHolder<K, V>( btree, leftPage );
+        children[1] = new PageHolder<K, V>( btree, rightPage );
 
         // Create the keys array and store the pivot into it
         // We get the type of array to create from the btree
@@ -1053,7 +1054,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      */
     private PageHolder<K, V> createHolder( Page<K, V> page ) throws IOException
     {
-        PageHolder<K, V> holder = btree.getRecordManager().writePage( btree,
+        PageHolder<K, V> holder = ((PersistedBTree<K, V>)btree).getRecordManager().writePage( btree,
             page,
             revision );
 

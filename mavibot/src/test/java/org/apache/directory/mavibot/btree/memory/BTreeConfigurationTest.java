@@ -25,6 +25,7 @@ import static org.junit.Assert.assertNotNull;
 import java.io.File;
 import java.io.IOException;
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
@@ -126,7 +127,7 @@ public class BTreeConfigurationTest
         try
         {
             // Create the BTree
-            BTree<Integer, String> btree = new BTree<Integer, String>( config );
+            BTree<Integer, String> btree = new InMemoryBTree<Integer, String>( config );
 
             // Inject the values
             for ( int value : sortedValues )
@@ -188,7 +189,7 @@ public class BTreeConfigurationTest
             config.setName( "mavibot" );
 
             // Create the BTree
-            BTree<Integer, String> btree = new BTree<Integer, String>( config );
+            BTree<Integer, String> btree = new InMemoryBTree<Integer, String>( config );
 
             // Inject the values
             for ( int value : sortedValues )
@@ -210,7 +211,7 @@ public class BTreeConfigurationTest
             btree.close();
 
             // Now, create a new BTree using the same configuration
-            BTree<Integer, String> btreeCopy = new BTree<Integer, String>( config );
+            BTree<Integer, String> btreeCopy = new InMemoryBTree<Integer, String>( config );
 
             // Check that the tree contains all the values
             for ( int key : sortedValues )

@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;

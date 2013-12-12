@@ -33,6 +33,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
@@ -43,7 +44,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class ManagedBTreeBuilder<K, V>
+public class PersistedBTreeBuilder<K, V>
 {
     private String name;
 
@@ -55,7 +56,7 @@ public class ManagedBTreeBuilder<K, V>
 
     private RecordManager rm;
 
-    public ManagedBTreeBuilder( RecordManager rm, String name, int numKeysInNode, ElementSerializer<K> keySerializer,
+    public PersistedBTreeBuilder( RecordManager rm, String name, int numKeysInNode, ElementSerializer<K> keySerializer,
         ElementSerializer<V> valueSerializer )
     {
         this.rm = rm;
@@ -69,7 +70,7 @@ public class ManagedBTreeBuilder<K, V>
     @SuppressWarnings("unchecked")
     public BTree<K, V> build( Iterator<Tuple<K, V>> sortedTupleItr ) throws Exception
     {
-        BTree<K, V> btree = new BTree<K, V>( name, keySerializer, valueSerializer );
+        BTree<K, V> btree = new PersistedBTree<K, V>( name, keySerializer, valueSerializer );
         btree.init();
 
         rm.manage( btree );
@@ -141,13 +142,13 @@ public class ManagedBTreeBuilder<K, V>
         Page<K, V> rootPage = attachNodes( lstLeaves, btree );
 
         //System.out.println("built rootpage : " + rootPage);
-        btree.setNbElems( totalTupleCount );
+        ((PersistedBTree<K, V>)btree).setNbElems( totalTupleCount );
         
         rm.updateBtreeHeader( btree, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
         
-        rm.addFreePages( btree, Arrays.asList( btree.rootPage ) );
+        rm.addFreePages( btree, Arrays.asList( btree.getRootPage() ) );
         
-        btree.rootPage = rootPage;
+        btree.setRootPage( rootPage );
         
         return btree;
     }
@@ -170,14 +171,14 @@ public class ManagedBTreeBuilder<K, V>
         int i = 0;
         int totalNodes = 0;
 
-        for ( Page<K, V> p : children )
+        for ( Page<K, V> page : children )
         {
             if ( i != 0 )
             {
-                setKey( node, i - 1, p.getLeftMostKey() );
+                setKey( node, i - 1, page.getLeftMostKey() );
             }
 
-            node.children[i] = btree.createPageHolder( p );
+            node.children[i] = new PageHolder<K, V>( btree, page );
 
             i++;
             totalNodes++;

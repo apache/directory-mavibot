@@ -23,6 +23,7 @@ package org.apache.directory.mavibot.btree.memory;
 import java.io.IOException;
 import java.util.NoSuchElementException;
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.ParentPos;
 import org.apache.directory.mavibot.btree.Transaction;

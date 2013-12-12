@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.util.Random;
 import java.util.Set;
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
@@ -130,7 +131,7 @@ public class BTreeFlushTest
         long delta = l1;
         int nbElems = 100000;
 
-        BTree<Long, String> btree = new BTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
+        BTree<Long, String> btree = new InMemoryBTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
         btree.setPageSize( 32 );
 
         for ( int i = 0; i < nbElems; i++ )
@@ -177,7 +178,7 @@ public class BTreeFlushTest
 
         long t0 = System.currentTimeMillis();
 
-        btree.flush( tempFile );
+        ((InMemoryBTree<Long, String>)btree).flush( tempFile );
 
         long t1 = System.currentTimeMillis();
 
@@ -221,12 +222,12 @@ public class BTreeFlushTest
         // Create a BTree with pages containing 8 elements
         String path = tempFolder.getRoot().getCanonicalPath();
 
-        BTree<Integer, String> btree = new BTree<Integer, String>( "test", path, new IntSerializer(),
+        BTree<Integer, String> btree = new InMemoryBTree<Integer, String>( "test", path, new IntSerializer(),
             new StringSerializer() );
         btree.setPageSize( 8 );
 
-        File journal = btree.getJournal();
-        File data = btree.getFile();
+        File journal = ((InMemoryBTree<Integer, String>)btree).getJournal();
+        File data = ((InMemoryBTree<Integer, String>)btree).getFile();
 
         try
         {
@@ -248,7 +249,7 @@ public class BTreeFlushTest
             assertEquals( 0, journal.length() );
 
             // Load the data into a new tree
-            BTree<Integer, String> btreeLoaded = new BTree<Integer, String>( "test", path, new IntSerializer(),
+            BTree<Integer, String> btreeLoaded = new InMemoryBTree<Integer, String>( "test", path, new IntSerializer(),
                 new StringSerializer() );
             btree.setPageSize( 8 );
 
@@ -288,7 +289,7 @@ public class BTreeFlushTest
     {
         String data100K = create100KElementsFile();
         File dataFile = new File( data100K );
-        BTree<Long, String> btree = new BTree<Long, String>(
+        BTree<Long, String> btree = new InMemoryBTree<Long, String>(
             "test",
             dataFile.getParent(),
             new LongSerializer(),

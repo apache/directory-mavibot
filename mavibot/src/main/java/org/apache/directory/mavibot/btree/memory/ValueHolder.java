@@ -24,9 +24,11 @@ import java.io.IOException;
 import java.util.Comparator;
 import java.util.UUID;
 
+import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.ValueCursor;
+import org.apache.directory.mavibot.btree.ValueBTreeCursor;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
 
@@ -199,199 +201,6 @@ public class ValueHolder<V> implements Cloneable
 
     
     /**
-     * A class that encapsulate the values into an sub-btree
-     */
-    private class ValueBtreeCursor implements ValueCursor<V>
-    {
-        /** Store the current position in the array or in the BTree */
-        private TupleCursor<V, V> cursor;
-
-
-        /**
-         * Create an instance
-         */
-        private ValueBtreeCursor()
-        {
-            // Start at -1 to be positioned before the first element
-            try
-            {
-                if ( valueBtree != null )
-                {
-                    cursor = valueBtree.browse();
-                }
-            }
-            catch ( IOException e )
-            {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-        }
-
-
-        /**
-         * {@inheritDoc}}
-         */
-        @Override
-        public boolean hasNext()
-        {
-            if ( cursor == null )
-            {
-                return false;
-            }
-            else
-            {
-                try
-                {
-                    return cursor.hasNext();
-                }
-                catch ( EndOfFileExceededException e )
-                {
-                    e.printStackTrace();
-                    return false;
-                }
-                catch ( IOException e )
-                {
-                    e.printStackTrace();
-                    return false;
-                }
-            }
-        }
-
-
-        /**
-         * {@inheritDoc}}
-         */
-        public V next()
-        {
-            try
-            {
-                return cursor.next().getKey();
-            }
-            catch ( EndOfFileExceededException e )
-            {
-                e.printStackTrace();
-                return null;
-            }
-            catch ( IOException e )
-            {
-                e.printStackTrace();
-                return null;
-            }
-        }
-
-
-        /**
-         * {@inheritDoc}}
-         */
-        @Override
-        public boolean hasPrev() throws EndOfFileExceededException, IOException
-        {
-            if ( cursor == null )
-            {
-                return false;
-            }
-            else
-            {
-                try
-                {
-                    return cursor.hasPrev();
-                }
-                catch ( EndOfFileExceededException e )
-                {
-                    e.printStackTrace();
-                    return false;
-                }
-                catch ( IOException e )
-                {
-                    e.printStackTrace();
-                    return false;
-                }
-            }
-        }
-
-
-        /**
-         * {@inheritDoc}}
-         */
-        @Override
-        public void close()
-        {
-            if ( cursor != null )
-            {
-                cursor.close();
-            }
-        }
-
-
-        /**
-         * {@inheritDoc}}
-         */
-        @Override
-        public void beforeFirst() throws IOException
-        {
-            if ( cursor != null )
-            {
-                cursor.beforeFirst();
-            }
-        }
-
-
-        /**
-         * {@inheritDoc}}
-         */
-        @Override
-        public void afterLast() throws IOException
-        {
-            if ( cursor != null )
-            {
-                cursor.afterLast();
-            }
-        }
-
-
-        /**
-         * {@inheritDoc}}
-         */
-        @Override
-        public V prev() throws EndOfFileExceededException, IOException
-        {
-            try
-            {
-                return cursor.prev().getKey();
-            }
-            catch ( EndOfFileExceededException e )
-            {
-                e.printStackTrace();
-                return null;
-            }
-            catch ( IOException e )
-            {
-                e.printStackTrace();
-                return null;
-            }
-        }
-
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public int size()
-        {
-            return ( int ) valueBtree.getNbElems();
-        }
-
-
-        /**
-         * @see Object#toString()
-         */
-        public String toString()
-        {
-            return "BTreeCursor";
-        }
-    }
-
-    /**
      * Creates a new instance of a ValueHolder, containing the serialized values.
      * 
      * @param btree the container BTree
@@ -457,7 +266,7 @@ public class ValueHolder<V> implements Cloneable
 
         if ( valueBtree != null )
         {
-            cursor = new ValueBtreeCursor();
+            cursor = new ValueBTreeCursor<V>( valueBtree );
         }
         else
         {
@@ -504,7 +313,7 @@ public class ValueHolder<V> implements Cloneable
             configuration.setAllowDuplicates( false );
             configuration.setName( UUID.randomUUID().toString() );
             
-            valueBtree = new BTree<V, V>( configuration );
+            valueBtree = new InMemoryBTree<V, V>( configuration );
         }
         catch ( IOException e )
         {
@@ -531,7 +340,7 @@ public class ValueHolder<V> implements Cloneable
         // Ok, create a sub-btree
         try
         {
-            valueBtree = new BTree<V, V>( UUID.randomUUID().toString(), btree.getValueSerializer(),
+            valueBtree = new InMemoryBTree<V, V>( UUID.randomUUID().toString(), btree.getValueSerializer(),
                 btree.getValueSerializer() );
 
             valueBtree.insert( value, null, 0 );
@@ -556,7 +365,7 @@ public class ValueHolder<V> implements Cloneable
         {
             try
             {
-                valueBtree = new BTree<V, V>( UUID.randomUUID().toString(), btree.getValueSerializer(),
+                valueBtree = new InMemoryBTree<V, V>( UUID.randomUUID().toString(), btree.getValueSerializer(),
                     btree.getValueSerializer() );
 
                 valueBtree.insert( value, null, 0 );
