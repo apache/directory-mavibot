@@ -28,7 +28,6 @@ import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.KeyHolder;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
-import org.apache.directory.mavibot.btree.managed.PersistedKeyHolder;
 
 
 /**

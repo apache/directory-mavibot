@@ -18,7 +18,7 @@
  *
  */
 
-package org.apache.directory.mavibot.btree.managed;
+package org.apache.directory.mavibot.btree.persisted;
 
 
 import static org.junit.Assert.assertEquals;
@@ -30,6 +30,8 @@ import java.util.List;
 import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
+import org.apache.directory.mavibot.btree.persisted.PersistedBTreeBuilder;
+import org.apache.directory.mavibot.btree.persisted.RecordManager;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.junit.Test;
 

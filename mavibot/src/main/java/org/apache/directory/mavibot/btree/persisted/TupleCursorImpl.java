@@ -17,7 +17,7 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.managed;
+package org.apache.directory.mavibot.btree.persisted;
 
 
 import java.io.IOException;

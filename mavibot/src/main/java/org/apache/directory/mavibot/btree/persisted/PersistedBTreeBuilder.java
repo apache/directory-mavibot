@@ -18,13 +18,13 @@
  *
  */
 
-package org.apache.directory.mavibot.btree.managed;
+package org.apache.directory.mavibot.btree.persisted;
 
 
-import static org.apache.directory.mavibot.btree.managed.BTreeFactory.createLeaf;
-import static org.apache.directory.mavibot.btree.managed.BTreeFactory.createNode;
-import static org.apache.directory.mavibot.btree.managed.BTreeFactory.setKey;
-import static org.apache.directory.mavibot.btree.managed.BTreeFactory.setValue;
+import static org.apache.directory.mavibot.btree.persisted.BTreeFactory.createLeaf;
+import static org.apache.directory.mavibot.btree.persisted.BTreeFactory.createNode;
+import static org.apache.directory.mavibot.btree.persisted.BTreeFactory.setKey;
+import static org.apache.directory.mavibot.btree.persisted.BTreeFactory.setValue;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
