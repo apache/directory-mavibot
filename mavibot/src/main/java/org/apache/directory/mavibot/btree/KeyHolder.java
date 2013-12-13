@@ -17,34 +17,46 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.managed;
-
-
-import java.io.IOException;
-
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
-
+package org.apache.directory.mavibot.btree;
 
 /**
- * A Value holder. As we may not store all the values in memory (except for an in-memory
- * BTree), we will use a SoftReference to keep a reference to a Value, and if it's null,
- * then we will load the Value from the underlying physical support, using the offset. 
+ * The data structure holding a key and the way to access it
  * 
- * @param <E> The type for the stored element (either a V or a Page<K, V>)
- * @param <K> The type of the BTree key
- * @param <V> The type of the BTree value
- *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
+ * 
+ * <K> The key type
  */
-public interface ElementHolder<E, K, V>
+public class KeyHolder<K>
 {
+    /** The deserialized key */
+    protected K key;
+
+
     /**
-     * Get back the element
+     * Create a new KeyHolder instance
      * 
-     * @param btree The Btree storing the element
-     * 
-     * @return The stored element
+     * @param key The key to store
      */
-    E getValue( BTree<K, V> btree ) throws EndOfFileExceededException, IOException;
+    public KeyHolder( K key )
+    {
+        this.key = key;
+    }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    public void setKey( K key )
+    {
+        this.key = key;
+    }
+
+    
+    /**
+     * {@inheritDoc}
+     */
+    public K getKey()
+    {
+        return key;
+    }
 }

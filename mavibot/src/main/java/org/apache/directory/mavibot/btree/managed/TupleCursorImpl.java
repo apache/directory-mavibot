@@ -23,6 +23,7 @@ package org.apache.directory.mavibot.btree.managed;
 import java.io.IOException;
 import java.util.NoSuchElementException;
 
+import org.apache.directory.mavibot.btree.AbstractTupleCursor;
 import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.ParentPos;
@@ -43,25 +44,11 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
+public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
 {
-    /** The transaction used for this cursor */
-    private Transaction<K, V> transaction;
-
-    /** The Tuple used to return the results */
-    private Tuple<K, V> tuple = new Tuple<K, V>();
-
-    /** The stack of pages from the root down to the leaf */
-    private ParentPos<K, V>[] stack;
-    
-    /** The stack's depth */
-    private int depth = 0;
-
     /** The BTree we are walking */
-    private BTree<K, V> btree;
-
-    private boolean allowDuplicates;
-
+    protected BTree<K, V> btree;
+    
 
     /**
      * Creates a new instance of Cursor, starting on a page at a given position.
@@ -71,11 +58,9 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
      */
     TupleCursorImpl( BTree<K, V> btree, Transaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
     {
-        this.transaction = transaction;
-        this.stack = stack;
+        super( transaction, stack, depth );
+
         this.btree = btree;
-        this.allowDuplicates = btree.isAllowDuplicates();
-        this.depth = depth;
     }
 
 
@@ -157,7 +142,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
         }
         
         Leaf<K, V> leaf = ( Leaf<K, V> ) ( parentPos.page );
-        tuple.setKey( leaf.keys[parentPos.pos].getKey() );
+        tuple.setKey( leaf.getKey( parentPos.pos ) );
         tuple.setValue( value );
 
         return tuple;
@@ -367,7 +352,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
                     parentPos = stack[currentDepth];
                     parentPos.pos = child.getNbElems();
                     parentPos.page = child;
-                    child = ((Node<K, V>)parentPos.page).children[((Node<K, V>)parentPos.page).nbElems].getValue( btree );
+                    child = ((Node<K, V>)parentPos.page).children[parentPos.page.getNbElems()].getValue( btree );
                 }
 
                 // and the leaf
@@ -466,7 +451,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
 
 
         Leaf<K, V> leaf = ( Leaf<K, V> ) ( parentPos.page );
-        tuple.setKey( leaf.keys[parentPos.pos].getKey() );
+        tuple.setKey( leaf.getKey( parentPos.pos ) );
         tuple.setValue( value );
 
         return tuple;
@@ -602,33 +587,6 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
     /**
      * {@inheritDoc}
      */
-    public void close()
-    {
-        transaction.close();
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    public long getRevision()
-    {
-        return transaction.getRevision();
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    public long getCreationDate()
-    {
-        return transaction.getCreationDate();
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
     public boolean hasNextKey() throws EndOfFileExceededException, IOException
     {
         // First check that we have elements in the BTree
@@ -711,7 +669,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
 
         // The key
         Leaf<K, V> leaf = ( Leaf<K, V> ) ( parentPos.page );
-        tuple.setKey( leaf.keys[parentPos.pos].getKey() );
+        tuple.setKey( leaf.getKey( parentPos.pos ) );
         
         // The value
         ValueHolder<V> valueHolder = leaf.values[parentPos.pos];
@@ -804,7 +762,7 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
         Leaf<K, V> leaf = ( Leaf<K, V> ) ( parentPos.page );
 
         // The key
-        tuple.setKey( leaf.keys[parentPos.pos].getKey() );
+        tuple.setKey( leaf.getKey( parentPos.pos ) );
 
         // The value
         ValueHolder<V> valueHolder = leaf.values[parentPos.pos];
@@ -879,12 +837,12 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
             if ( child != null )
             {
                 parentPos.page = child;
-                parentPos.pos = ((Node<K, V>)child).nbElems;
+                parentPos.pos = child.getNbElems();
             }
             else
             {
                 // We have N+1 children if the page is a Node, so we don't decrement the nbElems field
-                parentPos.pos = ((Node<K, V>)parentPos.page).nbElems;
+                parentPos.pos = parentPos.page.getNbElems();
             }
 
             child = ((Node<K, V>)parentPos.page).children[parentPos.pos].getValue( btree );
@@ -895,12 +853,12 @@ public class TupleCursorImpl<K, V> implements TupleCursor<K, V>
 
         if ( child == null )
         {
-            parentPos.pos = ((Leaf<K, V>)parentPos.page).nbElems - 1;
+            parentPos.pos = parentPos.page.getNbElems() - 1;
         }
         else
         {
             parentPos.page = child;
-            parentPos.pos = ((Leaf<K, V>)child).nbElems - 1;
+            parentPos.pos = child.getNbElems() - 1;
         }
 
         parentPos.valueCursor = ((Leaf<K, V>)parentPos.page).values[parentPos.pos].getCursor();

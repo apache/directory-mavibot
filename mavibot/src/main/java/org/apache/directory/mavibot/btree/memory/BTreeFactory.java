@@ -191,7 +191,7 @@ public class BTreeFactory
      */
     public static <K, V> void setKey( Page<K, V> page, int pos, K key )
     {
-        ( ( AbstractPage<K, V> ) page ).setKey( pos, key );
+        ( ( AbstractInMemoryPage<K, V> ) page ).setKey( pos, key );
     }
 
 

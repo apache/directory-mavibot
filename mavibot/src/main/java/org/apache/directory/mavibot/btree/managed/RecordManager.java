@@ -34,6 +34,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.directory.mavibot.btree.BTree;
+import org.apache.directory.mavibot.btree.KeyHolder;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
@@ -568,8 +569,8 @@ public class RecordManager
 
         Page<K, V> page = readPage( btree, rootPageIos );
 
-        ( ( AbstractPage<K, V> ) page ).setOffset( rootPageIos[0].getOffset() );
-        ( ( AbstractPage<K, V> ) page ).setLastOffset( rootPageIos[rootPageIos.length - 1].getOffset() );
+        ( ( AbstractPersistedPage<K, V> ) page ).setOffset( rootPageIos[0].getOffset() );
+        ( ( AbstractPersistedPage<K, V> ) page ).setLastOffset( rootPageIos[rootPageIos.length - 1].getOffset() );
 
         return page;
     }
@@ -1240,7 +1241,7 @@ public class RecordManager
     private <K, V> int serializeNodeKey( Node<K, V> node, int pos, List<byte[]> serializedData )
     {
         KeyHolder<K> holder = node.getKeyHolder( pos );
-        byte[] buffer = holder.getRaw();
+        byte[] buffer = ((PersistedKeyHolder<K>)holder).getRaw();
         
         // We have to store the serialized key length
         byte[] length = IntSerializer.serialize( buffer.length );
@@ -1283,7 +1284,7 @@ public class RecordManager
     {
         int dataSize = 0;
         KeyHolder<K> keyHolder = leaf.getKeyHolder( pos );
-        byte[] keyData = keyHolder.getRaw();
+        byte[] keyData = ((PersistedKeyHolder<K>)keyHolder).getRaw();
 
         if ( keyData != null )
         {

@@ -31,7 +31,6 @@ import net.sf.ehcache.Cache;
 import net.sf.ehcache.config.CacheConfiguration;
 
 import org.apache.directory.mavibot.btree.AbstractBTree;
-import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.BTreeHeader;
 import org.apache.directory.mavibot.btree.DeleteResult;
 import org.apache.directory.mavibot.btree.InsertResult;
@@ -445,11 +444,11 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
                     revision );
 
                 // Store the offset on disk in the page in memory
-                ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( PageHolder<K, V> ) holder )
+                ( ( AbstractPersistedPage<K, V> ) modifiedPage ).setOffset( ( ( PageHolder<K, V> ) holder )
                     .getOffset() );
 
                 // Store the last offset on disk in the page in memory
-                ( ( AbstractPage<K, V> ) modifiedPage )
+                ( ( AbstractPersistedPage<K, V> ) modifiedPage )
                     .setLastOffset( ( ( PageHolder<K, V> ) holder )
                         .getLastOffset() );
 
@@ -465,7 +464,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
                 // We have to update the rootPage on disk
                 // Update the BTree header now
-                recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
+                recordManager.updateBtreeHeader( this, ( ( AbstractPersistedPage<K, V> ) rootPage ).getOffset() );
             }
 
             recordManager.addFreePages( this, result.getCopiedPages() );
@@ -576,7 +575,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
         recordManager.updateRecordManagerHeader();
 
         // Update the BTree header now
-        recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
+        recordManager.updateBtreeHeader( this, ( ( AbstractPersistedPage<K, V> ) rootPage ).getOffset() );
 
         // Moved the free pages into the list of free pages
         recordManager.addFreePages( this, result.getCopiedPages() );
@@ -650,15 +649,6 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
      */
     public void flush() throws IOException
     {
-    }
-
-
-    /**
-     * @return the type for the keys
-     */
-    public Class<?> getKeyType()
-    {
-        return KeyHolder.class;
     }
 
 

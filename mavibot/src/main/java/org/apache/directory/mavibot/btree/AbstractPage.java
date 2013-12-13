@@ -17,13 +17,10 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.memory;
+package org.apache.directory.mavibot.btree;
 
 
-import java.io.IOException;
-import java.lang.reflect.Array;
-
-import org.apache.directory.mavibot.btree.BTree;
+import org.apache.directory.mavibot.btree.KeyHolder;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
@@ -37,30 +34,29 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier */abstract class AbstractPage<K, V> implements Page<K, V>
+public abstract class AbstractPage<K, V> implements Page<K, V>
 {
     /** Parent B+Tree. */
     protected transient BTree<K, V> btree;
 
-    /** This BPage's revision */
-    protected long revision;
-
     /** Keys of children nodes */
-    protected K[] keys;
+    protected KeyHolder<K>[] keys;
 
     /** The number of current values in the Page */
     protected int nbElems;
 
+    /** This BPage's revision */
+    protected long revision;
+
     /** The first {@link PageIO} storing the serialized Page on disk */
-    private long offset = -1L;
+    protected long offset = -1L;
 
     /** The last {@link PageIO} storing the serialized Page on disk */
-    private long lastOffset = -1L;
+    protected long lastOffset = -1L;
 
     /** A static Exception used to avoid creating a new one every time */
     protected KeyNotFoundException KEY_NOT_FOUND_EXCEPTION = new KeyNotFoundException(
         "Cannot find an entry associated with this key" );
-
 
     /**
      * Creates a default empty AbstractPage
@@ -72,73 +68,153 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         this.btree = btree;
     }
 
-
-    /**
-     * Internal constructor used to create Page instance used when a page is being copied or overflow
-     */
-    @SuppressWarnings("unchecked")
-    // Cannot create an array of generic objects
-    protected AbstractPage( BTree<K, V> btree, long revision, int nbElems )
-    {
-        this.btree = btree;
-        this.revision = revision;
-        this.nbElems = nbElems;
-
-        // We get the type of array to create from the btree
-        // Yes, this is an hack...
-        Class<?> keyType = btree.getKeyType();
-        this.keys = ( K[] ) Array.newInstance( keyType, nbElems );
-    }
-
-
-    /**
-     * Selects the sibling (the previous or next page with the same parent) which has
-     * the more element assuming it's above N/2
-     * 
-     * @param parent The parent of the current page
-     * @param The position of the current page reference in its parent
-     * @return The position of the sibling, or -1 if we have'nt found any sibling
-     * @throws IOException If we have an error while trying to access the page
-     */
-    protected int selectSibling( Node<K, V> parent, int parentPos ) throws IOException
-    {
-        if ( parentPos == 0 )
-        {
-            // The current page is referenced on the left of its parent's page :
-            // we will not have a previous page with the same parent
-            return 1;
-        }
-
-        if ( parentPos == parent.getNbElems() )
-        {
-            // The current page is referenced on the right of its parent's page :
-            // we will not have a next page with the same parent
-            return parentPos - 1;
-        }
-
-        Page<K, V> prevPage = parent.children[parentPos - 1];
-        Page<K, V> nextPage = parent.children[parentPos + 1];
-
-        int prevPageSize = prevPage.getNbElems();
-        int nextPageSize = nextPage.getNbElems();
-
-        if ( prevPageSize >= nextPageSize )
-        {
-            return parentPos - 1;
-        }
-        else
-        {
-            return parentPos + 1;
-        }
-    }
-
-
     /**
      * {@inheritDoc}
      */
     public int getNbElems()
     {
         return nbElems;
+    }
+
+
+    public void setNbElems( int nbElems )
+    {
+        this.nbElems = nbElems;
+    }
+
+    
+    /**
+     * {@inheritDoc}
+     */
+    public K getKey( int pos )
+    {
+        if ( ( pos < nbElems ) && ( keys[pos] != null ) )
+        {
+            return keys[pos].getKey();
+        }
+        else
+        {
+            return null;
+        }
+    }
+
+    
+    /**
+     * {@inheritDoc}
+     */
+    public K getLeftMostKey()
+    {
+        return keys[0].getKey();
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public K getRightMostKey()
+    {
+        return keys[nbElems - 1].getKey();
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public long getOffset()
+    {
+        return offset;
+    }
+
+
+    /**
+     * @param offset the offset to set
+     */
+    public void setOffset( long offset )
+    {
+        this.offset = offset;
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public long getLastOffset()
+    {
+        return lastOffset;
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public void setLastOffset( long lastOffset )
+    {
+        this.lastOffset = lastOffset;
+    }
+
+
+    /**
+     * @return the leys
+     */
+    public KeyHolder<K>[] getKeys()
+    {
+        return keys;
+    }
+
+
+    /**
+     * @param revision the keys to set
+     */
+    public void setKeys( KeyHolder<K>[] keys )
+    {
+        this.keys = keys;
+    }
+
+
+    /**
+     * @return the revision
+     */
+    public long getRevision()
+    {
+        return revision;
+    }
+
+
+    /**
+     * @param revision the revision to set
+     */
+    public void setRevision( long revision )
+    {
+        this.revision = revision;
+    }
+    
+    
+    /**
+     * Compares two keys
+     * 
+     * @param key1 The first key
+     * @param key2 The second key
+     * @return -1 if the first key is above the second one, 1 if it's below, and 0
+     * if the two keys are equal
+     */
+    protected final int compare( K key1, K key2 )
+    {
+        if ( key1 == key2 )
+        {
+            return 0;
+        }
+
+        if ( key1 == null )
+        {
+            return 1;
+        }
+
+        if ( key2 == null )
+        {
+            return -1;
+        }
+
+        return btree.getComparator().compare( key1, key2 );
     }
 
 
@@ -194,7 +270,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         {
             int middle = ( min + max + 1 ) >> 1;
 
-            int comp = compare( keys[middle], key );
+            int comp = compare( keys[middle].getKey(), key );
 
             if ( comp < 0 )
             {
@@ -214,7 +290,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
 
         // Special case : we don't know if the key is present
-        int comp = compare( keys[max], key );
+        int comp = compare( keys[max].getKey(), key );
 
         if ( comp == 0 )
         {
@@ -235,104 +311,11 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
 
     /**
-     * Compares two keys
-     * 
-     * @param key1 The first key
-     * @param key2 The second key
-     * @return -1 if the first key is above the second one, 1 if it's below, and 0
-     * if the two keys are equal
-     */
-    private final int compare( K key1, K key2 )
-    {
-        if ( key1 == key2 )
-        {
-            return 0;
-        }
-
-        if ( key1 == null )
-        {
-            return 1;
-        }
-
-        if ( key2 == null )
-        {
-            return -1;
-        }
-
-        return btree.getComparator().compare( key1, key2 );
-    }
-
-
-    /**
      * {@inheritDoc}
      */
-    public long getRevision()
+    public String dumpPage( String tabs )
     {
-        return revision;
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    public K getKey( int pos )
-    {
-        if ( pos < nbElems )
-        {
-            return keys[pos];
-        }
-        else
-        {
-            return null;
-        }
-    }
-
-
-    /**
-     * Sets the key at a give position
-     * 
-     * @param pos The position in the keys array
-     * @param key the key to inject
-     */
-    /* No qualifier*/void setKey( int pos, K key )
-    {
-        keys[pos] = key;
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    public long getOffset()
-    {
-        return offset;
-    }
-
-
-    /**
-     * @param offset the offset to set
-     */
-    /* No qualifier */void setOffset( long offset )
-    {
-        this.offset = offset;
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    public long getLastOffset()
-    {
-        return lastOffset;
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    /* No qualifier */void setLastOffset( long lastOffset )
-    {
-        this.lastOffset = lastOffset;
+        return "";
     }
 
 
@@ -352,14 +335,5 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
 
         return sb.toString();
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    public String dumpPage( String tabs )
-    {
-        return "";
     }
 }

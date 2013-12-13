@@ -30,6 +30,7 @@ import org.apache.directory.mavibot.btree.BorrowedFromRightResult;
 import org.apache.directory.mavibot.btree.BorrowedFromSiblingResult;
 import org.apache.directory.mavibot.btree.DeleteResult;
 import org.apache.directory.mavibot.btree.InsertResult;
+import org.apache.directory.mavibot.btree.KeyHolder;
 import org.apache.directory.mavibot.btree.ModifyResult;
 import org.apache.directory.mavibot.btree.NotPresentResult;
 import org.apache.directory.mavibot.btree.Page;
@@ -53,7 +54,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier */class Node<K, V> extends AbstractPage<K, V>
+/* No qualifier */class Node<K, V> extends AbstractInMemoryPage<K, V>
 {
     /** Children pages associated with keys. */
     protected Page<K, V>[] children;
@@ -104,10 +105,9 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         // Create the keys array and store the pivot into it
         // We get the type of array to create from the btree
         // Yes, this is an hack...
-        Class<?> keyType = btree.getKeyType();
-        keys = ( K[] ) Array.newInstance( keyType, btree.getPageSize() );
+        setKeys( ( KeyHolder<K>[] ) Array.newInstance( KeyHolder.class, btree.getPageSize() ) );
 
-        keys[0] = key;
+        setKey( 0, key );
     }
 
 
@@ -199,7 +199,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         if ( pos < 0 )
         {
-            newPage.keys[index] = removeResult.getModifiedPage().getLeftMostKey();
+            newPage.setKey( index, removeResult.getModifiedPage().getLeftMostKey() );
         }
 
         // Modify the result and return
@@ -264,7 +264,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         K siblingKey = sibling.children[0].getLeftMostKey();
 
         // Copy the keys and children of the old sibling in the new sibling
-        System.arraycopy( sibling.keys, 1, newSibling.keys, 0, newSibling.getNbElems() );
+        System.arraycopy( sibling.getKeys(), 1, newSibling.getKeys(), 0, newSibling.getNbElems() );
         System.arraycopy( sibling.children, 1, newSibling.children, 0, newSibling.getNbElems() + 1 );
 
         // Create the new page and add the new element at the end
@@ -275,13 +275,13 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         int index = Math.abs( pos );
 
         // Copy the key and children from sibling
-        newNode.keys[nbElems - 1] = siblingKey; // 1
+        newNode.setKey( nbElems - 1, siblingKey ); // 1
         newNode.children[nbElems] = sibling.children[0]; // 8
 
         if ( index < 2 )
         {
             // Copy the keys
-            System.arraycopy( keys, 1, newNode.keys, 0, nbElems - 1 );
+            System.arraycopy( getKeys(), 1, newNode.getKeys(), 0, nbElems - 1 );
 
             // Inject the modified page
             Page<K, V> modifiedPage = mergedResult.getModifiedPage();
@@ -295,16 +295,16 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             if ( index > 2 )
             {
                 // Copy the keys before the deletion point
-                System.arraycopy( keys, 0, newNode.keys, 0, index - 2 ); // 4
+                System.arraycopy( getKeys(), 0, newNode.getKeys(), 0, index - 2 ); // 4
             }
 
             // Inject the new modified page key
-            newNode.keys[index - 2] = mergedResult.getModifiedPage().getLeftMostKey(); // 2
+            newNode.setKey( index - 2, mergedResult.getModifiedPage().getLeftMostKey() ); // 2
 
             if ( index < nbElems )
             {
                 // Copy the remaining keys after the deletion point
-                System.arraycopy( keys, index, newNode.keys, index - 1, nbElems - index ); // 3
+                System.arraycopy( getKeys(), index, newNode.getKeys(), index - 1, nbElems - index ); // 3
 
                 // Copy the remaining children after the deletion point
                 System.arraycopy( children, index + 1, newNode.children, index, nbElems - index ); // 7
@@ -350,7 +350,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         Node<K, V> newSibling = new Node<K, V>( btree, revision, sibling.getNbElems() - 1 );
 
         // Copy the keys and children of the old sibling in the new sibling
-        System.arraycopy( sibling.keys, 0, newSibling.keys, 0, newSibling.getNbElems() );
+        System.arraycopy( sibling.getKeys(), 0, newSibling.getKeys(), 0, newSibling.getNbElems() );
         System.arraycopy( sibling.children, 0, newSibling.children, 0, newSibling.getNbElems() + 1 );
 
         // Create the new page and add the new element at the beginning
@@ -364,8 +364,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         if ( index < 2 )
         {
-            newNode.keys[0] = mergedResult.getModifiedPage().getLeftMostKey();
-            System.arraycopy( keys, 1, newNode.keys, 1, nbElems - 1 );
+            newNode.setKey( 0, mergedResult.getModifiedPage().getLeftMostKey() );
+            System.arraycopy( getKeys(), 1, newNode.getKeys(), 1, nbElems - 1 );
 
             Page<K, V> modifiedPage = mergedResult.getModifiedPage();
             newNode.children[1] = modifiedPage;
@@ -374,21 +374,21 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         else
         {
             // Set the first key
-            newNode.keys[0] = children[0].getLeftMostKey(); //2
+            newNode.setKey( 0, children[0].getLeftMostKey() ); //2
 
             if ( index > 2 )
             {
                 // Copy the keys before the deletion point
-                System.arraycopy( keys, 0, newNode.keys, 1, index - 2 ); // 4
+                System.arraycopy( getKeys(), 0, newNode.getKeys(), 1, index - 2 ); // 4
             }
 
             // Inject the modified key
-            newNode.keys[index - 1] = mergedResult.getModifiedPage().getLeftMostKey(); // 3
+            newNode.setKey( index - 1, mergedResult.getModifiedPage().getLeftMostKey() ); // 3
 
             if ( index < nbElems )
             {
                 // Add copy the remaining keys after the deletion point
-                System.arraycopy( keys, index, newNode.keys, index, nbElems - index ); // 5
+                System.arraycopy( getKeys(), index, newNode.getKeys(), index, nbElems - index ); // 5
 
                 // Copy the remaining children after the insertion point
                 System.arraycopy( children, index + 1, newNode.children, index + 1, nbElems - index ); // 8
@@ -439,14 +439,14 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         if ( isLeft )
         {
             // The sibling is on the left. Copy all of its elements in the new node first
-            System.arraycopy( sibling.keys, 0, newNode.keys, 0, half ); //1
+            System.arraycopy( sibling.getKeys(), 0, newNode.getKeys(), 0, half ); //1
             System.arraycopy( sibling.children, 0, newNode.children, 0, half + 1 ); //2
 
             // Then copy all the elements up to the deletion point
             if ( index < 2 )
             {
-                newNode.keys[half] = mergedResult.getModifiedPage().getLeftMostKey();
-                System.arraycopy( keys, 1, newNode.keys, half + 1, half - 1 );
+                newNode.setKey( half, mergedResult.getModifiedPage().getLeftMostKey() );
+                System.arraycopy( getKeys(), 1, newNode.getKeys(), half + 1, half - 1 );
 
                 Page<K, V> modifiedPage = mergedResult.getModifiedPage();
                 newNode.children[half + 1] = modifiedPage;
@@ -456,19 +456,19 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             {
                 // Copy the left part of the node keys up to the deletion point
                 // Insert the new key
-                newNode.keys[half] = children[0].getLeftMostKey(); // 3
+                newNode.setKey( half, children[0].getLeftMostKey() ); // 3
 
                 if ( index > 2 )
                 {
-                    System.arraycopy( keys, 0, newNode.keys, half + 1, index - 2 ); //4
+                    System.arraycopy( getKeys(), 0, newNode.getKeys(), half + 1, index - 2 ); //4
                 }
 
                 // Inject the new merged key
-                newNode.keys[half + index - 1] = mergedResult.getModifiedPage().getLeftMostKey(); //5
+                newNode.setKey( half + index - 1, mergedResult.getModifiedPage().getLeftMostKey() ); //5
 
                 if ( index < half )
                 {
-                    System.arraycopy( keys, index, newNode.keys, half + index, half - index ); //6
+                    System.arraycopy( getKeys(), index, newNode.getKeys(), half + index, half - index ); //6
                     System.arraycopy( children, index + 1, newNode.children, half + index + 1, half - index ); //9
                 }
 
@@ -486,7 +486,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             if ( index < 2 )
             {
                 // Copy the keys
-                System.arraycopy( keys, 1, newNode.keys, 0, half - 1 );
+                System.arraycopy( getKeys(), 1, newNode.getKeys(), 0, half - 1 );
 
                 // Insert the first child
                 Page<K, V> modifiedPage = mergedResult.getModifiedPage();
@@ -501,14 +501,14 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 if ( index > 2 )
                 {
                     // Copy the first keys
-                    System.arraycopy( keys, 0, newNode.keys, 0, index - 2 ); //1
+                    System.arraycopy( getKeys(), 0, newNode.getKeys(), 0, index - 2 ); //1
                 }
 
                 // Copy the first children
                 System.arraycopy( children, 0, newNode.children, 0, index - 1 ); //6
 
                 // Inject the modified key
-                newNode.keys[index - 2] = mergedResult.getModifiedPage().getLeftMostKey(); //2
+                newNode.setKey( index - 2, mergedResult.getModifiedPage().getLeftMostKey() ); //2
 
                 // Inject the modified children
                 Page<K, V> modifiedPage = mergedResult.getModifiedPage();
@@ -517,7 +517,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 // Add the remaining node's key if needed
                 if ( index < half )
                 {
-                    System.arraycopy( keys, index, newNode.keys, index - 1, half - index ); //5
+                    System.arraycopy( getKeys(), index, newNode.getKeys(), index - 1, half - index ); //5
 
                     // Add the remining children if below half
                     System.arraycopy( children, index + 1, newNode.children, index, half - index ); // 8
@@ -525,10 +525,10 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             }
 
             // Inject the new key from sibling
-            newNode.keys[half - 1] = sibling.findLeftMost().getKey(); //3
+            newNode.setKey( half - 1, sibling.findLeftMost().getKey() ); //3
 
             // Copy the sibling keys
-            System.arraycopy( sibling.keys, 0, newNode.keys, half, half );
+            System.arraycopy( sibling.getKeys(), 0, newNode.getKeys(), half, half );
 
             // Add the sibling children
             System.arraycopy( sibling.children, 0, newNode.children, half, half + 1 ); // 9
@@ -690,8 +690,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             if ( borrowedResult.isFromRight() )
             {
                 // Update the keys
-                newPage.keys[pos] = modifiedPage.findLeftMost().getKey();
-                newPage.keys[pos + 1] = modifiedSibling.findLeftMost().getKey();
+                newPage.setKey( pos, modifiedPage.findLeftMost().getKey() );
+                newPage.setKey( pos + 1, modifiedSibling.findLeftMost().getKey() );
 
                 // Update the children
                 newPage.children[pos + 1] = modifiedPage;
@@ -700,7 +700,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             else
             {
                 // Update the keys
-                newPage.keys[pos] = modifiedPage.findLeftMost().getKey();
+                newPage.setKey( pos, modifiedPage.findLeftMost().getKey() );
 
                 // Update the children
                 newPage.children[pos] = modifiedSibling;
@@ -712,7 +712,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             if ( borrowedResult.isFromRight() )
             {
                 // Update the keys
-                newPage.keys[pos] = modifiedSibling.findLeftMost().getKey();
+                newPage.setKey( pos, modifiedSibling.findLeftMost().getKey() );
 
                 // Update the children
                 newPage.children[pos] = modifiedPage;
@@ -721,7 +721,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             else
             {
                 // Update the keys
-                newPage.keys[pos - 1] = modifiedPage.findLeftMost().getKey();
+                newPage.setKey( pos - 1, modifiedPage.findLeftMost().getKey() );
 
                 // Update the children
                 newPage.children[pos - 1] = modifiedSibling;
@@ -760,7 +760,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         if ( index < 0 )
         {
             // Copy the keys and the children
-            System.arraycopy( keys, 1, newNode.keys, 0, newNode.nbElems );
+            System.arraycopy( getKeys(), 1, newNode.getKeys(), 0, newNode.nbElems );
             Page<K, V> modifiedPage = mergedResult.getModifiedPage();
             newNode.children[0] = modifiedPage;
             System.arraycopy( children, 2, newNode.children, 1, nbElems - 1 );
@@ -770,14 +770,14 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             // Copy the keys
             if ( index > 0 )
             {
-                System.arraycopy( keys, 0, newNode.keys, 0, index );
+                System.arraycopy( getKeys(), 0, newNode.getKeys(), 0, index );
             }
 
-            newNode.keys[index] = mergedResult.getModifiedPage().findLeftMost().getKey();
+            newNode.setKey( index, mergedResult.getModifiedPage().findLeftMost().getKey() );
 
             if ( index < nbElems - 2 )
             {
-                System.arraycopy( keys, index + 2, newNode.keys, index + 1, nbElems - index - 2 );
+                System.arraycopy( getKeys(), index + 2, newNode.getKeys(), index + 1, nbElems - index - 2 );
             }
 
             // Copy the children
@@ -1011,12 +1011,12 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         // Copy the keys and the children up to the insertion position
         if ( nbElems > 0 )
         {
-            System.arraycopy( keys, 0, newNode.keys, 0, pos );
+            System.arraycopy( getKeys(), 0, newNode.getKeys(), 0, pos );
             System.arraycopy( children, 0, newNode.children, 0, pos );
         }
 
         // Add the new key and children
-        newNode.keys[pos] = key;
+        newNode.setKey( pos, key );
 
         // If the BTree is managed, we now have to write the modified page on disk
         // and to add this page to the list of modified pages
@@ -1026,7 +1026,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         // And copy the remaining keys and children
         if ( nbElems > 0 )
         {
-            System.arraycopy( keys, pos, newNode.keys, pos + 1, keys.length - pos );
+            System.arraycopy( getKeys(), pos, newNode.getKeys(), pos + 1, getKeys().length - pos );
             System.arraycopy( children, pos + 1, newNode.children, pos + 2, children.length - pos - 1 );
         }
 
@@ -1071,24 +1071,24 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         if ( pos < middle )
         {
             // Copy the keys and the children up to the insertion position
-            System.arraycopy( keys, 0, newLeftPage.keys, 0, pos );
+            System.arraycopy( getKeys(), 0, newLeftPage.getKeys(), 0, pos );
             System.arraycopy( children, 0, newLeftPage.children, 0, pos );
 
             // Add the new element
-            newLeftPage.keys[pos] = pivot;
+            newLeftPage.setKey( pos, pivot );
             newLeftPage.children[pos] = leftPage;
             newLeftPage.children[pos + 1] = rightPage;
 
             // And copy the remaining elements minus the new pivot
-            System.arraycopy( keys, pos, newLeftPage.keys, pos + 1, middle - pos - 1 );
+            System.arraycopy( getKeys(), pos, newLeftPage.getKeys(), pos + 1, middle - pos - 1 );
             System.arraycopy( children, pos + 1, newLeftPage.children, pos + 2, middle - pos - 1 );
 
             // Copy the keys and the children in the right page
-            System.arraycopy( keys, middle, newRightPage.keys, 0, middle );
+            System.arraycopy( getKeys(), middle, newRightPage.getKeys(), 0, middle );
             System.arraycopy( children, middle, newRightPage.children, 0, middle + 1 );
 
             // Create the result
-            InsertResult<K, V> result = new SplitResult<K, V>( copiedPages, keys[middle - 1], newLeftPage, newRightPage );
+            InsertResult<K, V> result = new SplitResult<K, V>( copiedPages, getKey( middle - 1 ), newLeftPage, newRightPage );
             result.addCopiedPage( this );
 
             return result;
@@ -1098,12 +1098,12 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             // A special case : the pivot will be propagated up in the tree
             // The left and right pages will be spread on the two new pages
             // Copy the keys and the children up to the insertion position (here, middle)
-            System.arraycopy( keys, 0, newLeftPage.keys, 0, middle );
+            System.arraycopy( getKeys(), 0, newLeftPage.getKeys(), 0, middle );
             System.arraycopy( children, 0, newLeftPage.children, 0, middle );
             newLeftPage.children[middle] = leftPage;
 
             // And process the right page now
-            System.arraycopy( keys, middle, newRightPage.keys, 0, middle );
+            System.arraycopy( getKeys(), middle, newRightPage.getKeys(), 0, middle );
             System.arraycopy( children, middle + 1, newRightPage.children, 1, middle );
             newRightPage.children[0] = rightPage;
 
@@ -1116,24 +1116,24 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         else
         {
             // Copy the keys and the children up to the middle
-            System.arraycopy( keys, 0, newLeftPage.keys, 0, middle );
+            System.arraycopy( getKeys(), 0, newLeftPage.getKeys(), 0, middle );
             System.arraycopy( children, 0, newLeftPage.children, 0, middle + 1 );
 
             // Copy the keys and the children in the right page up to the pos
-            System.arraycopy( keys, middle + 1, newRightPage.keys, 0, pos - middle - 1 );
+            System.arraycopy( getKeys(), middle + 1, newRightPage.getKeys(), 0, pos - middle - 1 );
             System.arraycopy( children, middle + 1, newRightPage.children, 0, pos - middle - 1 );
 
             // Add the new element
-            newRightPage.keys[pos - middle - 1] = pivot;
+            newRightPage.setKey( pos - middle - 1, pivot );
             newRightPage.children[pos - middle - 1] = leftPage;
             newRightPage.children[pos - middle] = rightPage;
 
             // And copy the remaining elements minus the new pivot
-            System.arraycopy( keys, pos, newRightPage.keys, pos - middle, nbElems - pos );
+            System.arraycopy( getKeys(), pos, newRightPage.getKeys(), pos - middle, nbElems - pos );
             System.arraycopy( children, pos + 1, newRightPage.children, pos + 1 - middle, nbElems - pos );
 
             // Create the result
-            InsertResult<K, V> result = new SplitResult<K, V>( copiedPages, keys[middle], newLeftPage, newRightPage );
+            InsertResult<K, V> result = new SplitResult<K, V>( copiedPages, getKey( middle ), newLeftPage, newRightPage );
             result.addCopiedPage( this );
 
             return result;
@@ -1152,7 +1152,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         Node<K, V> newPage = new Node<K, V>( btree, revision, nbElems );
 
         // Copy the keys
-        System.arraycopy( keys, 0, newPage.keys, 0, nbElems );
+        System.arraycopy( getKeys(), 0, newPage.getKeys(), 0, nbElems );
 
         // Copy the children
         System.arraycopy( children, 0, newPage.children, 0, nbElems + 1 );
@@ -1164,7 +1164,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
-    public K getLeftMostKey() throws EndOfFileExceededException, IOException
+    public K getLeftMostKey()
     {
         return children[0].getLeftMostKey();
     }
@@ -1173,7 +1173,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
-    public K getRightMostKey() throws EndOfFileExceededException, IOException
+    public K getRightMostKey()
     {
         int index = ( nbElems + 1 ) - 1;
 
@@ -1229,7 +1229,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
             for ( int i = 0; i < nbElems; i++ )
             {
-                sb.append( "|<" ).append( keys[i] ).append( ">|" );
+                sb.append( "|<" ).append( getKey( i ) ).append( ">|" );
 
                 if ( children[i + 1] == null )
                 {
@@ -1264,7 +1264,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             {
                 sb.append( tabs );
                 sb.append( "<" );
-                sb.append( keys[i] ).append( ">\n" );
+                sb.append( getKey( i ) ).append( ">\n" );
                 sb.append( children[i + 1].dumpPage( tabs + "    " ) );
             }
         }

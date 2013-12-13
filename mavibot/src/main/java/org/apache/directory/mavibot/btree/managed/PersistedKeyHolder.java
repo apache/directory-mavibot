@@ -22,6 +22,7 @@ package org.apache.directory.mavibot.btree.managed;
 
 import java.io.IOException;
 
+import org.apache.directory.mavibot.btree.KeyHolder;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 
@@ -32,11 +33,8 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
  * 
  * <K> The key type
  */
-public class KeyHolder<K>
+public class PersistedKeyHolder<K> extends KeyHolder<K>
 {
-    /** The deserialized key */
-    private K key;
-
     /** The ByteBuffer storing the key */
     private byte[] raw;
 
@@ -49,9 +47,9 @@ public class KeyHolder<K>
      * @param keySerializer The KeySerializer instance
      * @param key The key to store
      */
-    /* No Qualifier */KeyHolder( ElementSerializer<K> keySerializer, K key )
+    PersistedKeyHolder( ElementSerializer<K> keySerializer, K key )
     {
-        this.key = key;
+        super( key );
         this.keySerializer = keySerializer;
         raw = keySerializer.serialize( key );
     }
@@ -62,9 +60,9 @@ public class KeyHolder<K>
      * @param keySerializer The KeySerializer instance
      * @param raw the bytes representing the serialized key
      */
-    /* No Qualifier */KeyHolder( ElementSerializer<K> keySerializer, byte[] raw )
+    PersistedKeyHolder( ElementSerializer<K> keySerializer, byte[] raw )
     {
-        this.key = null;
+        super( null );
         this.keySerializer = keySerializer;
         this.raw = raw;
     }
@@ -117,7 +115,7 @@ public class KeyHolder<K>
     {
         StringBuilder sb = new StringBuilder();
 
-        sb.append( "KeyHolder[" );
+        sb.append( "PersistedKeyHolder[" );
 
         if ( key != null )
         {

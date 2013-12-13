@@ -65,8 +65,8 @@ public class PageHolder<K, V>
 
         if ( page instanceof Page<?, ?> )
         {
-            ( ( AbstractPage<K, V> ) page ).setOffset( offset );
-            ( ( AbstractPage<K, V> ) page ).setLastOffset( lastOffset );
+            ( ( AbstractPersistedPage<K, V> ) page ).setOffset( offset );
+            ( ( AbstractPersistedPage<K, V> ) page ).setLastOffset( lastOffset );
         }
 
         ((PersistedBTree<K, V>)btree).getCache().put( new Element( offset, page ) );
@@ -86,8 +86,8 @@ public class PageHolder<K, V>
 
         if ( page instanceof Page<?, ?> )
         {
-            ( ( AbstractPage<K, V> ) page ).setOffset( offset );
-            ( ( AbstractPage<K, V> ) page ).setLastOffset( lastOffset );
+            ( ( AbstractPersistedPage<K, V> ) page ).setOffset( offset );
+            ( ( AbstractPersistedPage<K, V> ) page ).setLastOffset( lastOffset );
         }
 
         ((PersistedBTree<K, V>)btree).getCache().put( new Element( offset, page ) );
@@ -123,8 +123,8 @@ public class PageHolder<K, V>
 
             if ( page instanceof Page<?, ?> )
             {
-                ( ( AbstractPage<K, V> ) page ).setOffset( offset );
-                ( ( AbstractPage<K, V> ) page ).setLastOffset( lastOffset );
+                ( ( AbstractPersistedPage<K, V> ) page ).setOffset( offset );
+                ( ( AbstractPersistedPage<K, V> ) page ).setLastOffset( lastOffset );
             }
 
             ((PersistedBTree<K, V>)btree).getCache().put( new Element( offset, page ) );

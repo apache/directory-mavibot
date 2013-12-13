@@ -36,6 +36,7 @@ import java.util.Random;
 import java.util.Set;
 
 import org.apache.directory.mavibot.btree.BTree;
+import org.apache.directory.mavibot.btree.KeyHolder;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
@@ -1045,15 +1046,15 @@ public class InMemoryBTreeTest
     {
         Leaf<Integer, String> leaf = new Leaf<Integer, String>( btree );
         int pos = 0;
-        leaf.revision = revision;
-        leaf.nbElems = tuples.length;
-        leaf.keys = new Integer[leaf.nbElems];
+        leaf.setRevision( revision );
+        leaf.setNbElems( tuples.length );
+        leaf.setKeys( new KeyHolder[leaf.getNbElems()] );
         leaf.values = ( ValueHolder<String>[] ) Array
-            .newInstance( ValueHolder.class, leaf.nbElems );
+            .newInstance( ValueHolder.class, leaf.getNbElems() );
 
         for ( Tuple<Integer, String> tuple : tuples )
         {
-            leaf.keys[pos] = tuple.getKey();
+            leaf.setKey( pos, tuple.getKey() );
             leaf.values[pos] = new ValueHolder<String>( btree, tuple.getValue() );
             pos++;
         }
@@ -1069,7 +1070,7 @@ public class InMemoryBTreeTest
 
         if ( pos > 0 )
         {
-            node.keys[pos - 1] = leftmost.getKey();
+            node.setKey( pos - 1, leftmost.getKey() );
         }
 
         node.children[pos] = page;

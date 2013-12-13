@@ -168,9 +168,8 @@ public interface Page<K, V>
      * down in the leftmost children to recursively find the leftmost key.
      * 
      * @return The leftmost key in the tree
-     * @throws IOException If we have an error while trying to access the page
      */
-    K getLeftMostKey() throws IOException;
+    K getLeftMostKey();
 
 
     /**
@@ -178,9 +177,8 @@ public interface Page<K, V>
      * down in the rightmost children to recursively find the rightmost key.
      * 
      * @return The rightmost key in the tree
-     * @throws IOException If we have an error while trying to access the page
      */
-    K getRightMostKey() throws IOException;
+    K getRightMostKey();
 
 
     /**

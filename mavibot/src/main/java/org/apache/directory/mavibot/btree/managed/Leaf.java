@@ -28,6 +28,7 @@ import org.apache.directory.mavibot.btree.BorrowedFromLeftResult;
 import org.apache.directory.mavibot.btree.BorrowedFromRightResult;
 import org.apache.directory.mavibot.btree.DeleteResult;
 import org.apache.directory.mavibot.btree.InsertResult;
+import org.apache.directory.mavibot.btree.KeyHolder;
 import org.apache.directory.mavibot.btree.ModifyResult;
 import org.apache.directory.mavibot.btree.NotPresentResult;
 import org.apache.directory.mavibot.btree.Page;
@@ -50,7 +51,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier */class Leaf<K, V> extends AbstractPage<K, V>
+/* No qualifier */class Leaf<K, V> extends AbstractPersistedPage<K, V>
 {
     /** Values associated with keys */
     protected ValueHolder<V>[] values;
@@ -377,7 +378,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems );
 
         // Insert the borrowed element
-        newLeaf.keys[0] = new KeyHolder<K>( btree.getKeySerializer(), siblingKey );
+        newLeaf.keys[0] = new PersistedKeyHolder<K>( btree.getKeySerializer(), siblingKey );
         newLeaf.values[0] = siblingValue;
 
         // Copy the keys and the values up to the insertion position,
@@ -428,7 +429,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems );
 
         // Insert the borrowed element at the end
-        newLeaf.keys[nbElems - 1] = new KeyHolder<K>( btree.getKeySerializer(), siblingKey );
+        newLeaf.keys[nbElems - 1] = new PersistedKeyHolder<K>( btree.getKeySerializer(), siblingKey );
         newLeaf.values[nbElems - 1] = siblingHolder;
 
         // Copy the keys and the values up to the deletion position,
@@ -850,7 +851,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         // Deal with the special case of an empty page
         if ( nbElems == 0 )
         {
-            newLeaf.keys[0] = new KeyHolder<K>( btree.getKeySerializer(), key );
+            newLeaf.keys[0] = new PersistedKeyHolder<K>( btree.getKeySerializer(), key );
 
             newLeaf.values[0] = valueHolder;
         }
@@ -861,7 +862,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             System.arraycopy( values, 0, newLeaf.values, 0, pos );
 
             // Add the new element
-            newLeaf.keys[pos] = new KeyHolder<K>( btree.getKeySerializer(), key );
+            newLeaf.keys[pos] = new PersistedKeyHolder<K>( btree.getKeySerializer(), key );
             newLeaf.values[pos] = valueHolder;
 
             // And copy the remaining elements
@@ -906,7 +907,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             System.arraycopy( values, 0, leftLeaf.values, 0, pos );
 
             // Add the new element
-            leftLeaf.keys[pos] = new KeyHolder<K>( btree.getKeySerializer(), key );
+            leftLeaf.keys[pos] = new PersistedKeyHolder<K>( btree.getKeySerializer(), key );
             leftLeaf.values[pos] = valueHolder;
 
             // And copy the remaining elements
@@ -939,7 +940,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             System.arraycopy( values, middle, rightLeaf.values, 0, rightPos );
 
             // Add the new element
-            rightLeaf.keys[rightPos] = new KeyHolder<K>( btree.getKeySerializer(), key );
+            rightLeaf.keys[rightPos] = new PersistedKeyHolder<K>( btree.getKeySerializer(), key );
             rightLeaf.values[rightPos] = valueHolder;
 
             // And copy the remaining elements

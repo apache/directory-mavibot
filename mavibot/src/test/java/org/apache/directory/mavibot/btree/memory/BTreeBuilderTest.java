@@ -45,6 +45,7 @@ public class BTreeBuilderTest
     public void testIntegerTree() throws IOException
     {
         List<Tuple<Integer, Integer>> sortedTuple = new ArrayList<Tuple<Integer, Integer>>();
+        
         for ( int i = 1; i < 8; i++ )
         {
             Tuple<Integer, Integer> t = new Tuple<Integer, Integer>( i, i );

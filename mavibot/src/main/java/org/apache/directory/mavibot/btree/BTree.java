@@ -297,12 +297,6 @@ public interface BTree<K, V>
 
 
     /**
-     * @return the type for the keys
-     */
-    Class<?> getKeyType();
-
-
-    /**
      * @param keySerializer the Key serializer to set
      */
     void setKeySerializer( ElementSerializer<K> keySerializer );

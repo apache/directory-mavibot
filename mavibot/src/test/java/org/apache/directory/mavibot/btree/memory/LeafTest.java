@@ -254,8 +254,8 @@ public class LeafTest
         parent.children[2] = right;
 
         // Update the parent
-        parent.keys[0] = 6L;
-        parent.keys[1] = 10L;
+        parent.setKey( 0, 6L );
+        parent.setKey( 1, 10L );
 
         // Now, delete the element from the target page
         DeleteResult<Long, String> result = target.delete( 2L, 7L, null, parent, 1 );
@@ -270,20 +270,20 @@ public class LeafTest
         // Check the modified leaf
         Leaf<Long, String> newLeaf = ( Leaf<Long, String> ) borrowed.getModifiedPage();
 
-        assertEquals( 4, newLeaf.nbElems );
-        assertEquals( Long.valueOf( 5L ), newLeaf.keys[0] );
-        assertEquals( Long.valueOf( 6L ), newLeaf.keys[1] );
-        assertEquals( Long.valueOf( 8L ), newLeaf.keys[2] );
-        assertEquals( Long.valueOf( 9L ), newLeaf.keys[3] );
+        assertEquals( 4, newLeaf.getNbElems() );
+        assertEquals( Long.valueOf( 5L ), newLeaf.getKey( 0 ) );
+        assertEquals( Long.valueOf( 6L ), newLeaf.getKey( 1 ) );
+        assertEquals( Long.valueOf( 8L ), newLeaf.getKey( 2 ) );
+        assertEquals( Long.valueOf( 9L ), newLeaf.getKey( 3 ) );
 
         // Check the sibling
         Leaf<Long, String> leftSibling = ( Leaf<Long, String> ) borrowed.getModifiedSibling();
 
-        assertEquals( 4, leftSibling.nbElems );
-        assertEquals( Long.valueOf( 1L ), leftSibling.keys[0] );
-        assertEquals( Long.valueOf( 2L ), leftSibling.keys[1] );
-        assertEquals( Long.valueOf( 3L ), leftSibling.keys[2] );
-        assertEquals( Long.valueOf( 4L ), leftSibling.keys[3] );
+        assertEquals( 4, leftSibling.getNbElems() );
+        assertEquals( Long.valueOf( 1L ), leftSibling.getKey( 0 ) );
+        assertEquals( Long.valueOf( 2L ), leftSibling.getKey( 1 ) );
+        assertEquals( Long.valueOf( 3L ), leftSibling.getKey( 2 ) );
+        assertEquals( Long.valueOf( 4L ), leftSibling.getKey( 3 ) );
     }
 
 
@@ -324,8 +324,8 @@ public class LeafTest
         parent.children[2] = right;
 
         // Update the parent
-        parent.keys[0] = 6L;
-        parent.keys[1] = 10L;
+        parent.setKey( 0, 6L );
+        parent.setKey( 1, 10L );
 
         // Now, delete the element from the target page
         DeleteResult<Long, String> result = target.delete( 2L, 7L, null, parent, 1 );
@@ -341,20 +341,20 @@ public class LeafTest
         // Check the modified leaf
         Leaf<Long, String> newLeaf = ( Leaf<Long, String> ) borrowed.getModifiedPage();
 
-        assertEquals( 4, newLeaf.nbElems );
-        assertEquals( Long.valueOf( 6L ), newLeaf.keys[0] );
-        assertEquals( Long.valueOf( 8L ), newLeaf.keys[1] );
-        assertEquals( Long.valueOf( 9L ), newLeaf.keys[2] );
-        assertEquals( Long.valueOf( 10L ), newLeaf.keys[3] );
+        assertEquals( 4, newLeaf.getNbElems() );
+        assertEquals( Long.valueOf( 6L ), newLeaf.getKey( 0 ) );
+        assertEquals( Long.valueOf( 8L ), newLeaf.getKey( 1 ) );
+        assertEquals( Long.valueOf( 9L ), newLeaf.getKey( 2 ) );
+        assertEquals( Long.valueOf( 10L ), newLeaf.getKey( 3 ) );
 
         // Check the sibling
         Leaf<Long, String> rightSibling = ( Leaf<Long, String> ) borrowed.getModifiedSibling();
 
-        assertEquals( 4, rightSibling.nbElems );
-        assertEquals( Long.valueOf( 11L ), rightSibling.keys[0] );
-        assertEquals( Long.valueOf( 12L ), rightSibling.keys[1] );
-        assertEquals( Long.valueOf( 13L ), rightSibling.keys[2] );
-        assertEquals( Long.valueOf( 14L ), rightSibling.keys[3] );
+        assertEquals( 4, rightSibling.getNbElems() );
+        assertEquals( Long.valueOf( 11L ), rightSibling.getKey( 0 ) );
+        assertEquals( Long.valueOf( 12L ), rightSibling.getKey( 1 ) );
+        assertEquals( Long.valueOf( 13L ), rightSibling.getKey( 2 ) );
+        assertEquals( Long.valueOf( 14L ), rightSibling.getKey( 3 ) );
     }
 
 
@@ -394,8 +394,8 @@ public class LeafTest
         parent.children[2] = right;
 
         // Update the parent
-        parent.keys[0] = 5L;
-        parent.keys[1] = 9L;
+        parent.setKey( 0, 5L );
+        parent.setKey( 1, 9L );
 
         // Now, delete the element from the target page
         DeleteResult<Long, String> result = target.delete( 2L, 7L, null, parent, 1 );
@@ -410,14 +410,14 @@ public class LeafTest
         // Check the modified leaf
         Leaf<Long, String> newLeaf = ( Leaf<Long, String> ) merged.getModifiedPage();
 
-        assertEquals( 7, newLeaf.nbElems );
-        assertEquals( Long.valueOf( 1L ), newLeaf.keys[0] );
-        assertEquals( Long.valueOf( 2L ), newLeaf.keys[1] );
-        assertEquals( Long.valueOf( 3L ), newLeaf.keys[2] );
-        assertEquals( Long.valueOf( 4L ), newLeaf.keys[3] );
-        assertEquals( Long.valueOf( 5L ), newLeaf.keys[4] );
-        assertEquals( Long.valueOf( 6L ), newLeaf.keys[5] );
-        assertEquals( Long.valueOf( 8L ), newLeaf.keys[6] );
+        assertEquals( 7, newLeaf.getNbElems() );
+        assertEquals( Long.valueOf( 1L ), newLeaf.getKey( 0 ) );
+        assertEquals( Long.valueOf( 2L ), newLeaf.getKey( 1 ) );
+        assertEquals( Long.valueOf( 3L ), newLeaf.getKey( 2 ) );
+        assertEquals( Long.valueOf( 4L ), newLeaf.getKey( 3 ) );
+        assertEquals( Long.valueOf( 5L ), newLeaf.getKey( 4 ) );
+        assertEquals( Long.valueOf( 6L ), newLeaf.getKey( 5 ) );
+        assertEquals( Long.valueOf( 8L ), newLeaf.getKey( 6 ) );
     }
 
 

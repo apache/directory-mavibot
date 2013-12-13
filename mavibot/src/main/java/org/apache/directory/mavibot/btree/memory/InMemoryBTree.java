@@ -26,11 +26,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.Comparator;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -47,13 +44,11 @@ import org.apache.directory.mavibot.btree.Modification;
 import org.apache.directory.mavibot.btree.ModifyResult;
 import org.apache.directory.mavibot.btree.NotPresentResult;
 import org.apache.directory.mavibot.btree.Page;
-import org.apache.directory.mavibot.btree.ParentPos;
 import org.apache.directory.mavibot.btree.RemoveResult;
 import org.apache.directory.mavibot.btree.SplitResult;
 import org.apache.directory.mavibot.btree.Transaction;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
-import org.apache.directory.mavibot.btree.ValueCursor;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.BufferHandler;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
@@ -85,8 +80,6 @@ public class InMemoryBTree<K, V> extends AbstractBTree<K, V> implements Closeabl
     public static final String JOURNAL_SUFFIX = ".log";
 
     /** The type to use to create the keys */
-    protected Class<?> keyType;
-
     /** The associated file. If null, this is an in-memory btree  */
     private File file;
 
@@ -307,24 +300,6 @@ public class InMemoryBTree<K, V> extends AbstractBTree<K, V> implements Closeabl
         // Create the queue containing the pending read transactions
         readTransactions = new ConcurrentLinkedQueue<Transaction<K, V>>();
 
-        // We will extract the Type to use for keys, using the comparator for that
-        Class<?> comparatorClass = keySerializer.getComparator().getClass();
-        Type[] types = comparatorClass.getGenericInterfaces();
-
-        if ( types[0] instanceof Class )
-        {
-            keyType = ( Class<?> ) types[0];
-        }
-        else
-        {
-            Type[] argumentTypes = ( ( ParameterizedType ) types[0] ).getActualTypeArguments();
-
-            if ( ( argumentTypes != null ) && ( argumentTypes.length > 0 ) && ( argumentTypes[0] instanceof Class<?> ) )
-            {
-                keyType = ( Class<?> ) argumentTypes[0];
-            }
-        }
-
         writeLock = new ReentrantLock();
 
         // Check the files and create them if missing
@@ -544,15 +519,6 @@ public class InMemoryBTree<K, V> extends AbstractBTree<K, V> implements Closeabl
 
         // Return the value we have found if it was modified
         return result;
-    }
-
-
-    /**
-     * @return the type for the keys
-     */
-    public Class<?> getKeyType()
-    {
-        return keyType;
     }
 
 

@@ -34,6 +34,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.apache.directory.mavibot.btree.BTree;
+import org.apache.directory.mavibot.btree.KeyHolder;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
@@ -116,16 +117,16 @@ public class PersistedBTreeBuilder<K, V>
 
         // remove null keys and values from the last leaf and resize
         Leaf<K, V> lastLeaf = ( Leaf<K, V> ) lstLeaves.get( lstLeaves.size() - 1 );
-        for ( int i = 0; i < lastLeaf.nbElems; i++ )
+        for ( int i = 0; i < lastLeaf.getNbElems(); i++ )
         {
-            if ( lastLeaf.keys[i] == null )
+            if ( lastLeaf.getKey( i ) == null )
             {
                 int n = i;
-                lastLeaf.nbElems = n;
-                KeyHolder<K>[] keys = lastLeaf.keys;
+                lastLeaf.setNbElems( n );
+                KeyHolder<K>[] keys = lastLeaf.getKeys();
 
-                lastLeaf.keys = ( KeyHolder[] ) Array.newInstance( KeyHolder.class, n );
-                System.arraycopy( keys, 0, lastLeaf.keys, 0, n );
+                lastLeaf.setKeys( ( KeyHolder[] ) Array.newInstance( PersistedKeyHolder.class, n ) );
+                System.arraycopy( keys, 0, lastLeaf.getKeys(), 0, n );
 
                 ValueHolder<V>[] values = lastLeaf.values;
                 lastLeaf.values = ( ValueHolder<V>[] ) Array.newInstance( ValueHolder.class, n );
@@ -144,7 +145,7 @@ public class PersistedBTreeBuilder<K, V>
         //System.out.println("built rootpage : " + rootPage);
         ((PersistedBTree<K, V>)btree).setNbElems( totalTupleCount );
         
-        rm.updateBtreeHeader( btree, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
+        rm.updateBtreeHeader( btree, ( ( AbstractPersistedPage<K, V> ) rootPage ).getOffset() );
         
         rm.addFreePages( btree, Arrays.asList( btree.getRootPage() ) );
         
@@ -195,18 +196,18 @@ public class PersistedBTreeBuilder<K, V>
         }
 
         // remove null keys and values from the last node and resize
-        AbstractPage<K, V> lastNode = ( AbstractPage<K, V> ) lstNodes.get( lstNodes.size() - 1 );
+        AbstractPersistedPage<K, V> lastNode = ( AbstractPersistedPage<K, V> ) lstNodes.get( lstNodes.size() - 1 );
 
-        for ( int j = 0; j < lastNode.nbElems; j++ )
+        for ( int j = 0; j < lastNode.getNbElems(); j++ )
         {
-            if ( lastNode.keys[j] == null )
+            if ( lastNode.getKey( j ) == null )
             {
                 int n = j;
-                lastNode.nbElems = n;
-                KeyHolder<K>[] keys = lastNode.keys;
+                lastNode.setNbElems( n );
+                KeyHolder<K>[] keys = lastNode.getKeys();
 
-                lastNode.keys = ( KeyHolder[] ) Array.newInstance( KeyHolder.class, n );
-                System.arraycopy( keys, 0, lastNode.keys, 0, n );
+                lastNode.setKeys( ( KeyHolder[] ) Array.newInstance( KeyHolder.class, n ) );
+                System.arraycopy( keys, 0, lastNode.getKeys(), 0, n );
 
                 PageHolder<K, V> pageHolder = ( PageHolder<K, V> ) rm.writePage( btree, lastNode, 1 );
 

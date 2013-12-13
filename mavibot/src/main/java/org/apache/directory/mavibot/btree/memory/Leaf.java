@@ -50,7 +50,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier */class Leaf<K, V> extends AbstractPage<K, V>
+/* No qualifier */class Leaf<K, V> extends AbstractInMemoryPage<K, V>
 {
     /** Values associated with keys */
     protected ValueHolder<V>[] values;
@@ -164,7 +164,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         if ( value == null )
         {
             // we have to delete the whole value
-            removedElement = new Tuple<K, V>( keys[index], valueHolder.getCursor().next() ); // the entire value was removed
+            removedElement = new Tuple<K, V>( getKey( index ), valueHolder.getCursor().next() ); // the entire value was removed
             keyRemoved = true;
         }
         else
@@ -175,14 +175,14 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 if ( valueHolder.size() == 1 ) 
                 {
                     // Ok, we can remove the value
-                    removedElement = new Tuple<K, V>( keys[index], null ); // the entire value was removed
+                    removedElement = new Tuple<K, V>( getKey( index ), null ); // the entire value was removed
                     keyRemoved = true;
                 }
                 else
                 {
                     // Update the ValueHolder
                     valueHolder.remove( value );
-                    removedElement = new Tuple<K, V>( keys[index], value ); // the entire value was removed
+                    removedElement = new Tuple<K, V>( getKey( index ), value ); // the entire value was removed
                 }
             }
             else
@@ -276,7 +276,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         {
             // Last, not least : we can copy the full page
             // Copy the keys and the values
-            System.arraycopy( keys, 0, newLeaf.keys, 0, nbElems );
+            System.arraycopy( getKeys(), 0, newLeaf.getKeys(), 0, nbElems );
             System.arraycopy( values, 0, newLeaf.values, 0, nbElems );
 
             // The current page is added in the copied page list
@@ -309,30 +309,30 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         {
             // The sibling is on the left
             // Copy all the elements from the sibling first
-            System.arraycopy( sibling.keys, 0, newLeaf.keys, 0, sibling.nbElems );
+            System.arraycopy( sibling.getKeys(), 0, newLeaf.getKeys(), 0, sibling.nbElems );
             System.arraycopy( sibling.values, 0, newLeaf.values, 0, sibling.nbElems );
 
             // Copy all the elements from the page up to the deletion position
-            System.arraycopy( keys, 0, newLeaf.keys, sibling.nbElems, pos );
+            System.arraycopy( getKeys(), 0, newLeaf.getKeys(), sibling.nbElems, pos );
             System.arraycopy( values, 0, newLeaf.values, sibling.nbElems, pos );
 
             // And copy the remaining elements after the deletion point
-            System.arraycopy( keys, pos + 1, newLeaf.keys, sibling.nbElems + pos, nbElems - pos - 1 );
+            System.arraycopy( getKeys(), pos + 1, newLeaf.getKeys(), sibling.nbElems + pos, nbElems - pos - 1 );
             System.arraycopy( values, pos + 1, newLeaf.values, sibling.nbElems + pos, nbElems - pos - 1 );
         }
         else
         {
             // The sibling is on the right
             // Copy all the elements from the page up to the deletion position
-            System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
+            System.arraycopy( getKeys(), 0, newLeaf.getKeys(), 0, pos );
             System.arraycopy( values, 0, newLeaf.values, 0, pos );
 
             // Then copy the remaining elements after the deletion point
-            System.arraycopy( keys, pos + 1, newLeaf.keys, pos, nbElems - pos - 1 );
+            System.arraycopy( getKeys(), pos + 1, newLeaf.getKeys(), pos, nbElems - pos - 1 );
             System.arraycopy( values, pos + 1, newLeaf.values, pos, nbElems - pos - 1 );
 
             // And copy all the elements from the sibling
-            System.arraycopy( sibling.keys, 0, newLeaf.keys, nbElems - 1, sibling.nbElems );
+            System.arraycopy( sibling.getKeys(), 0, newLeaf.getKeys(), nbElems - 1, sibling.nbElems );
             System.arraycopy( sibling.values, 0, newLeaf.values, nbElems - 1, sibling.nbElems );
         }
 
@@ -362,7 +362,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         throws IOException
     {
         // The sibling is on the left, borrow the rightmost element
-        K siblingKey = sibling.keys[sibling.getNbElems() - 1];
+        K siblingKey = sibling.getKey( sibling.getNbElems() - 1 );
         ValueHolder<V> siblingValue = sibling.values[sibling.getNbElems() - 1];
 
         // Create the new sibling, with one less element at the end
@@ -373,15 +373,15 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems );
 
         // Insert the borrowed element
-        newLeaf.keys[0] = siblingKey;
+        newLeaf.setKey( 0, siblingKey );
         newLeaf.values[0] = siblingValue;
 
         // Copy the keys and the values up to the insertion position,
-        System.arraycopy( keys, 0, newLeaf.keys, 1, pos );
+        System.arraycopy( getKeys(), 0, newLeaf.getKeys(), 1, pos );
         System.arraycopy( values, 0, newLeaf.values, 1, pos );
 
         // And copy the remaining elements
-        System.arraycopy( keys, pos + 1, newLeaf.keys, pos + 1, keys.length - pos - 1 );
+        System.arraycopy( getKeys(), pos + 1, newLeaf.getKeys(), pos + 1, getKeys().length - pos - 1 );
         System.arraycopy( values, pos + 1, newLeaf.values, pos + 1, values.length - pos - 1 );
 
         DeleteResult<K, V> result = new BorrowedFromLeftResult<K, V>( newLeaf, newSibling, removedElement );
@@ -409,14 +409,14 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         throws IOException
     {
         // The sibling is on the left, borrow the rightmost element
-        K siblingKey = sibling.keys[0];
+        K siblingKey = sibling.getKey( 0 );
         ValueHolder<V> siblingHolder = sibling.values[0];
 
         // Create the new sibling
         Leaf<K, V> newSibling = new Leaf<K, V>( btree, revision, sibling.getNbElems() - 1 );
 
         // Copy the keys and the values from 1 to N in the new sibling
-        System.arraycopy( sibling.keys, 1, newSibling.keys, 0, sibling.nbElems - 1 );
+        System.arraycopy( sibling.getKeys(), 1, newSibling.getKeys(), 0, sibling.nbElems - 1 );
         System.arraycopy( sibling.values, 1, newSibling.values, 0, sibling.nbElems - 1 );
 
         // Create the new page and add the new element at the end
@@ -424,15 +424,15 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems );
 
         // Insert the borrowed element at the end
-        newLeaf.keys[nbElems - 1] = siblingKey;
+        newLeaf.setKey( nbElems - 1, siblingKey );
         newLeaf.values[nbElems - 1] = siblingHolder;
 
         // Copy the keys and the values up to the deletion position,
-        System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
+        System.arraycopy( getKeys(), 0, newLeaf.getKeys(), 0, pos );
         System.arraycopy( values, 0, newLeaf.values, 0, pos );
 
         // And copy the remaining elements
-        System.arraycopy( keys, pos + 1, newLeaf.keys, pos, keys.length - pos - 1 );
+        System.arraycopy( getKeys(), pos + 1, newLeaf.getKeys(), pos, getKeys().length - pos - 1 );
         System.arraycopy( values, pos + 1, newLeaf.values, pos, values.length - pos - 1 );
 
         DeleteResult<K, V> result = new BorrowedFromRightResult<K, V>( newLeaf, newSibling, removedElement );
@@ -465,17 +465,17 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             }
 
             // Copy the keys and the values up to the insertion position
-            System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
+            System.arraycopy( getKeys(), 0, newLeaf.getKeys(), 0, pos );
             System.arraycopy( values, 0, newLeaf.values, 0, pos );
 
             // And copy the elements after the position
-            System.arraycopy( keys, pos + 1, newLeaf.keys, pos, keys.length - pos - 1 );
+            System.arraycopy( getKeys(), pos + 1, newLeaf.getKeys(), pos, getKeys().length - pos - 1 );
             System.arraycopy( values, pos + 1, newLeaf.values, pos, values.length - pos - 1 );
         }
         else
         // one of the many values of the same key was removed, no change in the number of keys
         {
-            System.arraycopy( keys, 0, newLeaf.keys, 0, nbElems );
+            System.arraycopy( getKeys(), 0, newLeaf.getKeys(), 0, nbElems );
             System.arraycopy( values, 0, newLeaf.values, 0, nbElems );
         }
     }
@@ -610,7 +610,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
             stack[depth] = parentPos;
 
-            cursor = new TupleCursorImpl<K, V>( btree, transaction, stack, depth );
+            cursor = new TupleCursorImpl<K, V>( transaction, stack, depth );
         }
         else
         {
@@ -624,7 +624,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 
                 stack[depth] = parentPos;
 
-                cursor = new TupleCursorImpl<K, V>( btree, transaction, stack, depth );
+                cursor = new TupleCursorImpl<K, V>( transaction, stack, depth );
             }
             else if ( nbElems > 0 )
             {
@@ -636,7 +636,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 
                 stack[depth] = parentPos;
 
-                cursor = new TupleCursorImpl<K, V>( btree, transaction, stack, depth );
+                cursor = new TupleCursorImpl<K, V>( transaction, stack, depth );
                 
                 try
                 {
@@ -653,7 +653,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 // Not found, because there are no elements : return a null cursor
                 stack[depth] = null;
 
-                cursor = new TupleCursorImpl<K, V>( btree, transaction, null, 0 );
+                cursor = new TupleCursorImpl<K, V>( transaction, null, 0 );
             }
         }
 
@@ -674,7 +674,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             // The tree is empty, it's the root, we have nothing to return
             stack[depth] = new ParentPos<K, V>( null, -1 );
 
-            return new TupleCursorImpl<K, V>( btree, transaction, stack, depth );
+            return new TupleCursorImpl<K, V>( transaction, stack, depth );
         }
         else
         {
@@ -686,7 +686,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
             stack[depth] = parentPos;
 
-            cursor = new TupleCursorImpl<K, V>( btree, transaction, stack, depth );
+            cursor = new TupleCursorImpl<K, V>( transaction, stack, depth );
         }
 
         return cursor;
@@ -705,7 +705,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems );
 
         // Copy the keys and the values
-        System.arraycopy( keys, 0, newLeaf.keys, 0, nbElems );
+        System.arraycopy( getKeys(), 0, newLeaf.getKeys(), 0, nbElems );
         System.arraycopy( values, 0, newLeaf.values, 0, nbElems );
 
         return newLeaf;
@@ -780,22 +780,21 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         // Deal with the special case of an empty page
         if ( nbElems == 0 )
         {
-            newLeaf.keys[0] = key;
-
+            newLeaf.setKey( 0, key );
             newLeaf.values[0] = valueHolder;
         }
         else
         {
             // Copy the keys and the values up to the insertion position
-            System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
+            System.arraycopy( getKeys(), 0, newLeaf.getKeys(), 0, pos );
             System.arraycopy( values, 0, newLeaf.values, 0, pos );
 
             // Add the new element
-            newLeaf.keys[pos] = key;
+            newLeaf.setKey( pos, key );
             newLeaf.values[pos] = valueHolder;
 
             // And copy the remaining elements
-            System.arraycopy( keys, pos, newLeaf.keys, pos + 1, keys.length - pos );
+            System.arraycopy( getKeys(), pos, newLeaf.getKeys(), pos + 1, getKeys().length - pos );
             System.arraycopy( values, pos, newLeaf.values, pos + 1, values.length - pos );
         }
 
@@ -832,22 +831,22 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             leftLeaf = new Leaf<K, V>( btree, revision, middle + 1 );
 
             // Copy the keys and the values up to the insertion position
-            System.arraycopy( keys, 0, leftLeaf.keys, 0, pos );
+            System.arraycopy( getKeys(), 0, leftLeaf.getKeys(), 0, pos );
             System.arraycopy( values, 0, leftLeaf.values, 0, pos );
 
             // Add the new element
-            leftLeaf.keys[pos] = key;
+            leftLeaf.setKey( pos, key );
             leftLeaf.values[pos] = valueHolder;
 
             // And copy the remaining elements
-            System.arraycopy( keys, pos, leftLeaf.keys, pos + 1, middle - pos );
+            System.arraycopy( getKeys(), pos, leftLeaf.getKeys(), pos + 1, middle - pos );
             System.arraycopy( values, pos, leftLeaf.values, pos + 1, middle - pos );
 
             // Now, create the right page
             rightLeaf = new Leaf<K, V>( btree, revision, middle );
 
             // Copy the keys and the values in the right page
-            System.arraycopy( keys, middle, rightLeaf.keys, 0, middle );
+            System.arraycopy( getKeys(), middle, rightLeaf.getKeys(), 0, middle );
             System.arraycopy( values, middle, rightLeaf.values, 0, middle );
         }
         else
@@ -856,7 +855,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             leftLeaf = new Leaf<K, V>( btree, revision, middle );
 
             // Copy all the element into the left page
-            System.arraycopy( keys, 0, leftLeaf.keys, 0, middle );
+            System.arraycopy( getKeys(), 0, leftLeaf.getKeys(), 0, middle );
             System.arraycopy( values, 0, leftLeaf.values, 0, middle );
 
             // Now, create the right page
@@ -865,43 +864,25 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             int rightPos = pos - middle;
 
             // Copy the keys and the values up to the insertion position
-            System.arraycopy( keys, middle, rightLeaf.keys, 0, rightPos );
+            System.arraycopy( getKeys(), middle, rightLeaf.getKeys(), 0, rightPos );
             System.arraycopy( values, middle, rightLeaf.values, 0, rightPos );
 
             // Add the new element
-            rightLeaf.keys[rightPos] = key;
+            rightLeaf.setKey( rightPos, key );
             rightLeaf.values[rightPos] = valueHolder;
 
             // And copy the remaining elements
-            System.arraycopy( keys, pos, rightLeaf.keys, rightPos + 1, nbElems - pos );
+            System.arraycopy( getKeys(), pos, rightLeaf.getKeys(), rightPos + 1, nbElems - pos );
             System.arraycopy( values, pos, rightLeaf.values, rightPos + 1, nbElems - pos );
         }
 
         // Get the pivot
-        K pivot = rightLeaf.keys[0];
+        K pivot = rightLeaf.getKey( 0 );
 
         // Create the result
         InsertResult<K, V> result = new SplitResult<K, V>( pivot, leftLeaf, rightLeaf );
 
         return result;
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    public K getLeftMostKey()
-    {
-        return keys[0];
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    public K getRightMostKey()
-    {
-        return keys[nbElems - 1];
     }
 
 
@@ -914,7 +895,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         val = values[0].getCursor().next();
 
-        return new Tuple<K, V>( keys[0], val );
+        return new Tuple<K, V>( getKey( 0 ), val );
     }
 
 
@@ -929,7 +910,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         valueCursor.afterLast();
         val = valueCursor.prev();
 
-        return new Tuple<K, V>( keys[nbElems - 1], val );
+        return new Tuple<K, V>( getKey( nbElems - 1 ), val );
     }
 
 
@@ -960,7 +941,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                     sb.append( ", " );
                 }
 
-                sb.append( "<" ).append( keys[i] ).append( "," ).append( values[i] ).append( ">" );
+                sb.append( "<" ).append( getKey( i ) ).append( "," ).append( values[i] ).append( ">" );
             }
         }
 
@@ -994,7 +975,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                     sb.append( ", " );
                 }
 
-                sb.append( "<" ).append( keys[i] ).append( "," ).append( values[i] ).append( ">" );
+                sb.append( "<" ).append( getKey( i) ).append( "," ).append( values[i] ).append( ">" );
             }
         }
 
