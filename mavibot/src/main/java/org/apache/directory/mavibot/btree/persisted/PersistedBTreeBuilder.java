@@ -37,6 +37,7 @@ import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.KeyHolder;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.Tuple;
+import org.apache.directory.mavibot.btree.ValueHolder;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 
@@ -91,7 +92,7 @@ public class PersistedBTreeBuilder<K, V>
             
             setKey( leaf1, leafIndex, tuple.getKey() );
 
-            ValueHolder<V> eh = new ValueHolder<V>( btree, tuple.getValue() );
+            PersistedValueHolder<V> eh = new PersistedValueHolder<V>( btree, tuple.getValue() );
 
             setValue( leaf1, leafIndex, eh );
 
@@ -129,7 +130,7 @@ public class PersistedBTreeBuilder<K, V>
                 System.arraycopy( keys, 0, lastLeaf.getKeys(), 0, n );
 
                 ValueHolder<V>[] values = lastLeaf.values;
-                lastLeaf.values = ( ValueHolder<V>[] ) Array.newInstance( ValueHolder.class, n );
+                lastLeaf.values = ( PersistedValueHolder<V>[] ) Array.newInstance( PersistedValueHolder.class, n );
                 System.arraycopy( values, 0, lastLeaf.values, 0, n );
 
                 PageHolder<K, V> pageHolder = ( PageHolder<K, V> ) rm.writePage( btree, lastLeaf, 1 );

@@ -50,7 +50,7 @@ import org.junit.rules.TemporaryFolder;
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class ManagedBTreeBrowseTest
+public class PersistedBTreeBrowseTest
 {
     private BTree<Long, String> btree = null;
 

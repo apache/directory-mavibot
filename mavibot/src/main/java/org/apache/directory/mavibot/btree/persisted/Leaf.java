@@ -39,6 +39,7 @@ import org.apache.directory.mavibot.btree.Transaction;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.ValueCursor;
+import org.apache.directory.mavibot.btree.ValueHolder;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
@@ -80,7 +81,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /* No qualifier */Leaf( BTree<K, V> btree, long revision, int nbElems )
     {
         super( btree, revision, nbElems );
-        values = ( ValueHolder<V>[] ) Array.newInstance( ValueHolder.class, nbElems );
+        values = ( ValueHolder<V>[] ) Array.newInstance( PersistedValueHolder.class, nbElems );
     }
 
 
@@ -273,7 +274,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             // Replace the ValueHolder now
             try
             {
-                ValueHolder<V> newValueHolder = (ValueHolder<V>)valueHolder.clone();
+                ValueHolder<V> newValueHolder = valueHolder.clone();
                 newValueHolder.remove( value );
                 
                 newLeaf.values[pos] = newValueHolder;
@@ -488,7 +489,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             
             try
             {
-                ValueHolder<V> newValueHolder = (ValueHolder<V>)valueHolder.clone();
+                ValueHolder<V> newValueHolder = valueHolder.clone();
                 
                 newValueHolder.remove( removedValue );
                 
@@ -846,7 +847,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         Leaf<K, V> newLeaf = new Leaf<K, V>( btree, revision, nbElems + 1 );
 
         // Create the value holder
-        ValueHolder<V> valueHolder = new ValueHolder<V>( btree, value );
+        ValueHolder<V> valueHolder = new PersistedValueHolder<V>( btree, value );
 
         // Deal with the special case of an empty page
         if ( nbElems == 0 )
@@ -894,7 +895,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         int middle = btree.getPageSize() >> 1;
         Leaf<K, V> leftLeaf = null;
         Leaf<K, V> rightLeaf = null;
-        ValueHolder<V> valueHolder = new ValueHolder<V>( btree, value );
+        ValueHolder<V> valueHolder = new PersistedValueHolder<V>( btree, value );
 
         // Determinate where to store the new value
         if ( pos <= middle )

@@ -1049,13 +1049,13 @@ public class InMemoryBTreeTest
         leaf.setRevision( revision );
         leaf.setNbElems( tuples.length );
         leaf.setKeys( new KeyHolder[leaf.getNbElems()] );
-        leaf.values = ( ValueHolder<String>[] ) Array
-            .newInstance( ValueHolder.class, leaf.getNbElems() );
+        leaf.values = ( InMemoryValueHolder<String>[] ) Array
+            .newInstance( InMemoryValueHolder.class, leaf.getNbElems() );
 
         for ( Tuple<Integer, String> tuple : tuples )
         {
             leaf.setKey( pos, tuple.getKey() );
-            leaf.values[pos] = new ValueHolder<String>( btree, tuple.getValue() );
+            leaf.values[pos] = new InMemoryValueHolder<String>( btree, tuple.getValue() );
             pos++;
         }
 

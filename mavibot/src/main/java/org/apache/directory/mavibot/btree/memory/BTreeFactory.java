@@ -200,7 +200,7 @@ public class BTreeFactory
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    public static <K, V> void setValue( Leaf<K, V> page, int pos, ValueHolder<V> value )
+    public static <K, V> void setValue( Leaf<K, V> page, int pos, InMemoryValueHolder<V> value )
     {
         page.setValue( pos, value );
     }
@@ -234,7 +234,7 @@ public class BTreeFactory
         if ( btree.getRootPage() instanceof Leaf )
         {
             Leaf<K, V> leaf = ( Leaf<K, V> ) ( btree.getRootPage() );
-            ValueHolder<V> valueHolder = leaf.values[last.pos];
+            InMemoryValueHolder<V> valueHolder = leaf.values[last.pos];
             last.valueCursor = valueHolder.getCursor();
         }
         else
@@ -251,7 +251,7 @@ public class BTreeFactory
                 if ( p instanceof Leaf )
                 {
                     Leaf<K, V> leaf = ( Leaf<K, V> ) ( last.page );
-                    ValueHolder<V> valueHolder = leaf.values[last.pos];
+                    InMemoryValueHolder<V> valueHolder = leaf.values[last.pos];
                     last.valueCursor = valueHolder.getCursor();
                     break;
                 }

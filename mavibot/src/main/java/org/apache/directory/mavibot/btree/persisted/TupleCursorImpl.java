@@ -30,6 +30,7 @@ import org.apache.directory.mavibot.btree.ParentPos;
 import org.apache.directory.mavibot.btree.Transaction;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
+import org.apache.directory.mavibot.btree.ValueHolder;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
 

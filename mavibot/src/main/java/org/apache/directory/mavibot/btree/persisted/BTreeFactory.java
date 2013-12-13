@@ -26,6 +26,7 @@ import java.util.LinkedList;
 import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.ParentPos;
+import org.apache.directory.mavibot.btree.ValueHolder;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 
@@ -254,7 +255,7 @@ public class BTreeFactory
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    public static <K, V> void setValue( Leaf<K, V> page, int pos, ValueHolder<V> value )
+    public static <K, V> void setValue( Leaf<K, V> page, int pos, PersistedValueHolder<V> value )
     {
         page.setValue( pos, value );
     }

@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.KeyHolder;
 import org.apache.directory.mavibot.btree.Page;
+import org.apache.directory.mavibot.btree.ValueHolder;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
@@ -636,7 +637,7 @@ public class RecordManager
         {
             // Read the number of values
             int nbValues = byteBuffer.getInt();
-            ValueHolder<V> valueHolder = null;
+            PersistedValueHolder<V> valueHolder = null;
 
             if ( nbValues < 0 )
             {
@@ -646,7 +647,7 @@ public class RecordManager
                 
                 // Create the valueHolder. As the number of values is negative, we have to switch
                 // to a positive value but as we start at -1 for 0 value, add 1.
-                valueHolder = new ValueHolder<V>( btree, 1 - nbValues, btreeOffsetBytes );
+                valueHolder = new PersistedValueHolder<V>( btree, 1 - nbValues, btreeOffsetBytes );
             }
             else
             {
@@ -657,7 +658,7 @@ public class RecordManager
                 // This is an Array of values, read the byte[] associated with it
                 byte[] arrayBytes = new byte[valueLengths[i]];
                 byteBuffer.get( arrayBytes );
-                valueHolder = new ValueHolder<V>( btree, nbValues, arrayBytes );
+                valueHolder = new PersistedValueHolder<V>( btree, nbValues, arrayBytes );
             }
 
             BTreeFactory.setValue( leaf, i, valueHolder );
@@ -1327,7 +1328,7 @@ public class RecordManager
             dataSize = INT_SIZE;
 
             // We have a serialized value. Just flush it
-            byte[] data = valueHolder.getRaw();
+            byte[] data = ((PersistedValueHolder<V>)valueHolder).getRaw();
             dataSize += data.length;
             
             // Store the data size
@@ -1360,7 +1361,7 @@ public class RecordManager
                 dataSize += buffer.length;
     
                 // the BTree offset
-                buffer = LongSerializer.serialize( valueHolder.getOffset() );
+                buffer = LongSerializer.serialize( ((PersistedValueHolder<V>)valueHolder).getOffset() );
                 serializedData.add( buffer );
                 dataSize += buffer.length;
             }
@@ -1372,7 +1373,7 @@ public class RecordManager
                 dataSize += buffer.length;
     
                 // Now store each value
-                byte[] data = valueHolder.getRaw();
+                byte[] data = ((PersistedValueHolder<V>)valueHolder).getRaw();
                 buffer = IntSerializer.serialize( data.length );
                 serializedData.add( buffer );
                 dataSize += buffer.length;

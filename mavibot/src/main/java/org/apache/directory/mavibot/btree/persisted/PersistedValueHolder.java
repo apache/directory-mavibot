@@ -25,13 +25,15 @@ import java.lang.reflect.Array;
 import java.util.Comparator;
 import java.util.UUID;
 
+import org.apache.directory.mavibot.btree.AbstractValueHolder;
 import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
+import org.apache.directory.mavibot.btree.ValueArrayCursor;
 import org.apache.directory.mavibot.btree.ValueBTreeCursor;
 import org.apache.directory.mavibot.btree.ValueCursor;
+import org.apache.directory.mavibot.btree.ValueHolder;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
-import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
@@ -43,14 +45,8 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  * @param <V> The value type
  */
-public class ValueHolder<V> implements Cloneable
+public class PersistedValueHolder<V> extends AbstractValueHolder<V>
 {
-    /** The deserialized value */
-    private V[] valueArray;
-
-    /** The BTree storing multiple value, if we have more than a threshold values */
-    private BTree<V, V> valueBtree;
-
     /** The serialized value */
     private byte[] raw;
     
@@ -60,9 +56,6 @@ public class ValueHolder<V> implements Cloneable
     /** A flag to signal that the raw value represent the serialized values in their last state */
     private boolean isRawUpToDate = false;
 
-    /** The parent BTree */
-    private BTree<?, V> btree;
-
     /** The Value serializer */
     private ElementSerializer<V> valueSerializer;
 
@@ -70,15 +63,15 @@ public class ValueHolder<V> implements Cloneable
     /**
      * Creates a new instance of a ValueHolder, containing the serialized values.
      * 
-     * @param btree the container BTree
+     * @param parentBtree the parent BTree
      * @param raw The raw data containing the values
      * @param nbValues the number of stored values
      * @param raw the byte[] containing either the serialized array of values or the sub-btree offset
      */
-    /* No qualifier */ValueHolder( BTree<?, V> btree, int nbValues, byte[] raw )
+    PersistedValueHolder( BTree<?, V> parentBtree, int nbValues, byte[] raw )
     {
-        this.btree = btree;
-        this.valueSerializer = btree.getValueSerializer();
+        this.parentBtree = parentBtree;
+        this.valueSerializer = parentBtree.getValueSerializer();
         this.raw = raw;
         isRawUpToDate = true;
 
@@ -96,13 +89,13 @@ public class ValueHolder<V> implements Cloneable
      * Creates a new instance of a ValueHolder, containing Values. This constructor is called
      * whe we need to create a new ValueHolder with deserialized values.
      * 
-     * @param valueSerializer The Value's serializer
+     * @param parentBtree The parent BTree
      * @param values The Values stored in the ValueHolder
      */
-    /* No qualifier */ValueHolder( BTree<?, V> btree, V... values )
+    PersistedValueHolder( BTree<?, V> parentBtree, V... values )
     {
-        this.btree = btree;
-        this.valueSerializer = btree.getValueSerializer();
+        this.parentBtree = parentBtree;
+        this.valueSerializer = parentBtree.getValueSerializer();
 
         if ( values != null )
         {
@@ -168,154 +161,12 @@ public class ValueHolder<V> implements Cloneable
         }
         else
         {
-            cursor = new ValueArrayCursor();
+            cursor = new ValueArrayCursor<V>( valueArray );
         }
 
         return cursor;
     }
 
-
-    /**
-     * A class that encapsulate the values into an array
-     */
-    private class ValueArrayCursor implements ValueCursor<V>
-    {
-        /** Store the current position in the array or in the BTree */
-        private int currentPos;
-
-
-        /**
-         * Create an instance
-         */
-        private ValueArrayCursor()
-        {
-            // Start at -1 to be positioned before the first element
-            currentPos = BEFORE_FIRST;
-        }
-
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public boolean hasNext()
-        {
-            return ( currentPos < valueArray.length - 1 ) && ( currentPos != AFTER_LAST );
-        }
-
-
-        /**
-         * {@inheritDoc}
-         */
-        public V next()
-        {
-            if ( valueArray == null )
-            {
-                // Deserialize the array
-                return null;
-            }
-            else
-            {
-                currentPos++;
-
-                if ( currentPos == valueArray.length )
-                {
-                    currentPos = AFTER_LAST;
-                    
-                    // We have reached the end of the array
-                    return null;
-                }
-                else
-                {
-                    return valueArray[currentPos];
-                }
-            }
-        }
-
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public boolean hasPrev() throws EndOfFileExceededException, IOException
-        {
-            return currentPos > 0 || currentPos == AFTER_LAST;
-        }
-
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void close()
-        {
-        }
-
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void beforeFirst() throws IOException
-        {
-            currentPos = BEFORE_FIRST;
-        }
-
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void afterLast() throws IOException
-        {
-            currentPos = AFTER_LAST;
-        }
-
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public V prev() throws EndOfFileExceededException, IOException
-        {
-            if ( valueArray == null )
-            {
-                // Deserialize the array
-                return null;
-            }
-            else
-            {
-                if ( currentPos == AFTER_LAST )
-                {
-                    currentPos = valueArray.length - 1;
-                }
-                else
-                {
-                    currentPos--;
-                }
-
-                if ( currentPos == BEFORE_FIRST )
-                {
-                    // We have reached the end of the array
-                    return null;
-                }
-                else
-                {
-                    return valueArray[currentPos];
-                }
-            }
-        }
-
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public int size()
-        {
-            return valueArray.length;
-        }
-    }
 
     /**
      * @return the raw representation of the value holder. The serialized value will not be the same
@@ -381,16 +232,7 @@ public class ValueHolder<V> implements Cloneable
 
 
     /**
-     * @return the isSubBtree
-     */
-    public boolean isSubBtree()
-    {
-        return valueArray == null;
-    }
-
-
-    /**
-     * @return the number of stored values
+     * {@inheritDoc}
      */
     public int size()
     {
@@ -419,14 +261,14 @@ public class ValueHolder<V> implements Cloneable
             configuration.setKeySerializer( valueSerializer );
             configuration.setName( UUID.randomUUID().toString() );
             configuration.setValueSerializer( valueSerializer );
-            configuration.setParentBTree( btree );
+            configuration.setParentBTree( parentBtree );
             configuration.setSubBtree( true );
             
             valueBtree = BTreeFactory.createBTree( configuration );
 
             try
             {
-                ((PersistedBTree<V, V>)btree).getRecordManager().manage( valueBtree, RecordManager.INTERNAL_BTREE );
+                ((PersistedBTree<V, V>)parentBtree).getRecordManager().manage( valueBtree, RecordManager.INTERNAL_BTREE );
                 raw = null;
             }
             catch ( BTreeAlreadyManagedException e )
@@ -560,9 +402,7 @@ public class ValueHolder<V> implements Cloneable
 
 
     /**
-     * Add a new value in the ValueHolder
-     * 
-     * @param value The added value
+     * {@inheritDoc}
      */
     public void add( V value )
     {
@@ -684,10 +524,9 @@ public class ValueHolder<V> implements Cloneable
         }
     }
 
+
     /**
-     * Add a new value in the ValueHolder
-     * 
-     * @param value The added value
+     * {@inheritDoc}
      */
     public V remove( V value )
     {
@@ -750,19 +589,17 @@ public class ValueHolder<V> implements Cloneable
 
 
     /**
-     * Add a new value in the ValueHolder
-     * 
-     * @param value The added value
+     * {@inheritDoc}
      */
-    public boolean contains( V value )
+    public boolean contains( V checkedValue )
     {
         if ( valueArray == null )
         {
-            return btreeContains( value );
+            return btreeContains( checkedValue );
         }
         else
         {
-            return arrayContains( value );
+            return arrayContains( checkedValue );
         }
     }
 
@@ -899,7 +736,7 @@ public class ValueHolder<V> implements Cloneable
      */
     public ValueHolder<V> clone() throws CloneNotSupportedException
     {
-        ValueHolder<V> copy = ( ValueHolder<V> ) super.clone();
+        PersistedValueHolder<V> copy = ( PersistedValueHolder<V> ) super.clone();
 
         // copy the valueArray if it's not null
         // We don't clone the BTree, as we will create new revisions when 
@@ -959,7 +796,7 @@ public class ValueHolder<V> implements Cloneable
         long offset = LongSerializer.deserialize( raw );
         
         // and reload the sub btree
-        valueBtree = ((PersistedBTree<V, V>)btree).getRecordManager().loadDupsBTree( offset );
+        valueBtree = ((PersistedBTree<V, V>)parentBtree).getRecordManager().loadDupsBTree( offset );
     }
     
 

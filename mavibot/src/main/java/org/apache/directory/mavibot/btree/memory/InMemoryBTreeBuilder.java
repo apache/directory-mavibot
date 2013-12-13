@@ -86,7 +86,7 @@ public class InMemoryBTreeBuilder<K, V>
 
             setKey( leaf1, leafIndex, tuple.getKey() );
 
-            ValueHolder<V> eh = new ValueHolder<V>( btree, tuple.getValue() );
+            InMemoryValueHolder<V> eh = new InMemoryValueHolder<V>( btree, tuple.getValue() );
 
             setValue( leaf1, leafIndex, eh );
 
@@ -118,8 +118,8 @@ public class InMemoryBTreeBuilder<K, V>
                 lastLeaf.setKeys( ( KeyHolder[] ) Array.newInstance( KeyHolder.class, n ) );
                 System.arraycopy( keys, 0, lastLeaf.getKeys(), 0, n );
 
-                ValueHolder<V>[] values = lastLeaf.values;
-                lastLeaf.values = ( ValueHolder<V>[] ) Array.newInstance( ValueHolder.class, n );
+                InMemoryValueHolder<V>[] values = lastLeaf.values;
+                lastLeaf.values = ( InMemoryValueHolder<V>[] ) Array.newInstance( InMemoryValueHolder.class, n );
                 System.arraycopy( values, 0, lastLeaf.values, 0, n );
 
                 break;
