@@ -166,6 +166,7 @@ public class RecordManagerWithDuplicatesTest
             btree.insert( i, v2 );
         }
 
+        // Check that the elements are present
         for ( long i = 1; i < 128; i++ )
         {
             String v1 = "V" + i;

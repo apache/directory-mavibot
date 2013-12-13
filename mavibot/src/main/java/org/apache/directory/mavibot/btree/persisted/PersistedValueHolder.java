@@ -29,12 +29,9 @@ import org.apache.directory.mavibot.btree.AbstractValueHolder;
 import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
-import org.apache.directory.mavibot.btree.ValueArrayCursor;
-import org.apache.directory.mavibot.btree.ValueBTreeCursor;
 import org.apache.directory.mavibot.btree.ValueCursor;
 import org.apache.directory.mavibot.btree.ValueHolder;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
-import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
@@ -47,6 +44,9 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
  */
 public class PersistedValueHolder<V> extends AbstractValueHolder<V>
 {
+    /** The parent BTree */
+    protected PersistedBTree<V, V> parentBtree;
+
     /** The serialized value */
     private byte[] raw;
     
@@ -55,9 +55,6 @@ public class PersistedValueHolder<V> extends AbstractValueHolder<V>
     
     /** A flag to signal that the raw value represent the serialized values in their last state */
     private boolean isRawUpToDate = false;
-
-    /** The Value serializer */
-    private ElementSerializer<V> valueSerializer;
 
 
     /**
@@ -70,10 +67,12 @@ public class PersistedValueHolder<V> extends AbstractValueHolder<V>
      */
     PersistedValueHolder( BTree<?, V> parentBtree, int nbValues, byte[] raw )
     {
-        this.parentBtree = parentBtree;
+        this.parentBtree = (PersistedBTree<V, V>)parentBtree;
         this.valueSerializer = parentBtree.getValueSerializer();
         this.raw = raw;
         isRawUpToDate = true;
+        valueThresholdUp = PersistedBTree.valueThresholdUp;
+        valueThresholdLow = PersistedBTree.valueThresholdLow;
 
         // We create the array of values if they fit in an array. If they are stored in a 
         // BTree, we do nothing atm.
@@ -94,8 +93,10 @@ public class PersistedValueHolder<V> extends AbstractValueHolder<V>
      */
     PersistedValueHolder( BTree<?, V> parentBtree, V... values )
     {
-        this.parentBtree = parentBtree;
+        this.parentBtree = (PersistedBTree<V, V>)parentBtree;
         this.valueSerializer = parentBtree.getValueSerializer();
+        valueThresholdUp = PersistedBTree.valueThresholdUp;
+        valueThresholdLow = PersistedBTree.valueThresholdLow;
 
         if ( values != null )
         {
@@ -150,21 +151,10 @@ public class PersistedValueHolder<V> extends AbstractValueHolder<V>
      */
     public ValueCursor<V> getCursor()
     {
-        ValueCursor<V> cursor;
-
         // Check that the values are deserialized before doing anything
         checkAndDeserialize();
 
-        if ( valueArray == null )
-        {
-            cursor = new ValueBTreeCursor<V>( valueBtree );
-        }
-        else
-        {
-            cursor = new ValueArrayCursor<V>( valueArray );
-        }
-
-        return cursor;
+        return super.getCursor();
     }
 
 
@@ -252,7 +242,7 @@ public class PersistedValueHolder<V> extends AbstractValueHolder<V>
     /**
      * Create a new Sub-BTree to store the values.
      */
-    private void createSubTree()
+    protected void createSubTree()
     {
         try
         {
@@ -268,7 +258,7 @@ public class PersistedValueHolder<V> extends AbstractValueHolder<V>
 
             try
             {
-                ((PersistedBTree<V, V>)parentBtree).getRecordManager().manage( valueBtree, RecordManager.INTERNAL_BTREE );
+                parentBtree.getRecordManager().manage( valueBtree, RecordManager.INTERNAL_BTREE );
                 raw = null;
             }
             catch ( BTreeAlreadyManagedException e )
@@ -319,86 +309,6 @@ public class PersistedValueHolder<V> extends AbstractValueHolder<V>
             isDeserialized = true;
         }
     }
-    
-    /**
-     * Add the value in an array
-     */
-    private void addInArray( V value )
-    {
-        checkAndDeserialize();
-
-        // We have to check that we have reached the threshold or not
-        if ( valueArray.length >= PersistedBTree.valueThresholdUp )
-        {
-            // Ok, transform the array into a btree
-            createSubTree();
-
-            try
-            {
-                for ( V val : valueArray )
-                {
-                    // Here, we should insert all the values in one shot then 
-                    // write the btree on disk only once.
-                    valueBtree.insert( val, null );
-                }
-
-                // We can delete the array now
-                valueArray = null;
-
-                // And inject the new value
-                valueBtree.insert( value, null );
-            }
-            catch ( IOException e )
-            {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-        }
-        else
-        {
-            // First check that the value is not already present in the ValueHolder
-            int pos = findPos( value );
-
-            if ( pos >= 0 )
-            {
-                // The value exists : nothing to do
-                return;
-            }
-
-            // Ok, we just have to insert the new element at the right position
-            // We transform the position to a positive value 
-            pos = -( pos + 1 );
-            // First, copy the array
-            V[] newValueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), valueArray.length + 1 );
-
-            System.arraycopy( valueArray, 0, newValueArray, 0, pos );
-            newValueArray[pos] = value;
-            System.arraycopy( valueArray, pos, newValueArray, pos + 1, valueArray.length - pos );
-
-            // And switch the arrays
-            valueArray = newValueArray;
-        }
-    }
-    
-
-    /**
-     * Add the value in the subBTree
-     */
-    private void addInBtree( V value )
-    {
-        // First check that we have a loaded BTree
-        checkAndDeserialize();
-        
-        try
-        {
-            valueBtree.insert( value, null );
-        }
-        catch ( IOException e )
-        {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-    }
 
 
     /**
@@ -406,14 +316,10 @@ public class PersistedValueHolder<V> extends AbstractValueHolder<V>
      */
     public void add( V value )
     {
-        if ( valueArray != null )
-        {
-            addInArray( value );
-        }
-        else
-        {
-            addInBtree( value );
-        }
+        // First check that we have a loaded BTree
+        checkAndDeserialize();
+
+        super.add( value );
         
         // The raw value is not anymore up to date with the content
         isRawUpToDate = false;
@@ -550,57 +456,14 @@ public class PersistedValueHolder<V> extends AbstractValueHolder<V>
     
     
     /**
-     * Check if the array of values contains a given value
-     */
-    private boolean arrayContains( V value )
-    {
-        // First, deserialize the value if it's still a byte[]
-        checkAndDeserialize();
-        
-        if ( valueArray.length == 0 )
-        {
-            return false;
-        }
-
-        // Do a search using dichotomy
-        return findPos( value ) >= 0;
-    }
-    
-    
-    /**
-     * Check if the subBtree contains a given value
-     */
-    private boolean btreeContains( V value )
-    {
-        // First, deserialize the value if it's still a byte[]
-        checkAndDeserialize();
-        
-        try
-        {
-            return valueBtree.hasKey( value );
-        }
-        catch ( IOException e )
-        {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-
-    /**
      * {@inheritDoc}
      */
     public boolean contains( V checkedValue )
     {
-        if ( valueArray == null )
-        {
-            return btreeContains( checkedValue );
-        }
-        else
-        {
-            return arrayContains( checkedValue );
-        }
+        // First, deserialize the value if it's still a byte[]
+        checkAndDeserialize();
+        
+        return super.contains( checkedValue );
     }
 
 
@@ -796,7 +659,7 @@ public class PersistedValueHolder<V> extends AbstractValueHolder<V>
         long offset = LongSerializer.deserialize( raw );
         
         // and reload the sub btree
-        valueBtree = ((PersistedBTree<V, V>)parentBtree).getRecordManager().loadDupsBTree( offset );
+        valueBtree = parentBtree.getRecordManager().loadDupsBTree( offset );
     }
     
 

@@ -28,9 +28,6 @@ import java.util.UUID;
 import org.apache.directory.mavibot.btree.AbstractValueHolder;
 import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Tuple;
-import org.apache.directory.mavibot.btree.ValueArrayCursor;
-import org.apache.directory.mavibot.btree.ValueCursor;
-import org.apache.directory.mavibot.btree.ValueBTreeCursor;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
 
@@ -53,7 +50,7 @@ public class InMemoryValueHolder<V> extends AbstractValueHolder<V>
      */
     InMemoryValueHolder( BTree<?, V> parentBtree, int nbValues )
     {
-        this.parentBtree = parentBtree;
+        valueSerializer = parentBtree.getValueSerializer();
     }
 
 
@@ -66,7 +63,7 @@ public class InMemoryValueHolder<V> extends AbstractValueHolder<V>
      */
     InMemoryValueHolder( BTree<?, V> parentBtree, V... values )
     {
-        this.parentBtree = parentBtree;
+        valueSerializer = parentBtree.getValueSerializer();
 
         if ( ( values != null ) && ( values.length > 0 ) )
         {
@@ -100,26 +97,6 @@ public class InMemoryValueHolder<V> extends AbstractValueHolder<V>
 
 
     /**
-     * @return a cursor on top of the values
-     */
-    public ValueCursor<V> getCursor()
-    {
-        ValueCursor<V> cursor;
-
-        if ( valueBtree != null )
-        {
-            cursor = new ValueBTreeCursor<V>( valueBtree );
-        }
-        else
-        {
-            cursor = new ValueArrayCursor<V>( valueArray );
-        }
-
-        return cursor;
-    }
-
-
-    /**
      * {@inheritDoc}
      */
     public int size()
@@ -138,14 +115,16 @@ public class InMemoryValueHolder<V> extends AbstractValueHolder<V>
     /**
      * Create a new Sub-BTree to store the values.
      */
-    private void createSubTree()
+    protected void createSubTree()
     {
         try
         {
             BTreeConfiguration<V, V> configuration = new BTreeConfiguration<V, V>();
             configuration.setAllowDuplicates( false );
             configuration.setName( UUID.randomUUID().toString() );
-            
+            configuration.setKeySerializer( valueSerializer );
+            configuration.setValueSerializer( valueSerializer );
+
             valueBtree = new InMemoryBTree<V, V>( configuration );
         }
         catch ( IOException e )
@@ -162,67 +141,6 @@ public class InMemoryValueHolder<V> extends AbstractValueHolder<V>
     {
         valueBtree = subBtree;
         valueArray = null;
-    }
-    
-    
-    /**
-     * Add the value in an array
-     */
-    private void addInBTree( V newValue )
-    {
-        // Ok, create a sub-btree
-        try
-        {
-            valueBtree = new InMemoryBTree<V, V>( UUID.randomUUID().toString(), parentBtree.getValueSerializer(),
-                parentBtree.getValueSerializer() );
-
-            valueBtree.insert( valueArray[0], null, 0 );
-            valueBtree.insert( newValue, null, 0 );
-            valueArray = null;
-        }
-        catch ( IOException e )
-        {
-            throw new RuntimeException( e );
-        }
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    public void add( V newValue )
-    {
-        if ( ( valueArray != null ) && ( valueArray.length > 0 ) )
-        {
-            try
-            {
-                valueBtree = new InMemoryBTree<V, V>( UUID.randomUUID().toString(), parentBtree.getValueSerializer(),
-                    parentBtree.getValueSerializer() );
-
-                valueBtree.insert( valueArray[0], null, 0 );
-                valueBtree.insert( newValue, null, 0 );
-                valueArray = null;
-            }
-            catch ( IOException e )
-            {
-                throw new RuntimeException( e );
-            }
-        }
-        else if ( valueBtree != null )
-        {
-            try
-            {
-                valueBtree.insert( newValue, null, 0 );
-            }
-            catch ( IOException e )
-            {
-                throw new RuntimeException( e );
-            }
-        }
-        else
-        {
-            this.valueArray[0] = newValue;
-        }
     }
     
     
@@ -271,7 +189,7 @@ public class InMemoryValueHolder<V> extends AbstractValueHolder<V>
         {
             try
             {
-                valueArray = ( V[] ) Array.newInstance( parentBtree.getValueSerializer().getType(), 1 );
+                valueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), 1 );
                 valueArray[0] = valueBtree.browse().next().getKey();
                 valueBtree.close();
                 valueBtree = null;
@@ -296,7 +214,7 @@ public class InMemoryValueHolder<V> extends AbstractValueHolder<V>
     private V removeFromArray( V value )
     {
         // First check that the value is not already present in the ValueHolder
-        Comparator<V> comparator = parentBtree.getValueSerializer().getComparator();
+        Comparator<V> comparator = valueSerializer.getComparator();
 
         int result = comparator.compare( valueArray[0], value );
 
@@ -335,7 +253,7 @@ public class InMemoryValueHolder<V> extends AbstractValueHolder<V>
         }
         else
         {
-            Comparator<V> comparator = parentBtree.getValueSerializer().getComparator();
+            Comparator<V> comparator = valueSerializer.getComparator();
 
             int result = comparator.compare( checkedValue, valueArray[0] );
             
@@ -351,7 +269,7 @@ public class InMemoryValueHolder<V> extends AbstractValueHolder<V>
     {
         StringBuilder sb = new StringBuilder();
 
-        sb.append( "ValueHolder[" ).append( parentBtree.getValueSerializer().getClass().getSimpleName() );
+        sb.append( "ValueHolder[" ).append( valueSerializer.getClass().getSimpleName() );
 
         if ( valueBtree != null )
         {
