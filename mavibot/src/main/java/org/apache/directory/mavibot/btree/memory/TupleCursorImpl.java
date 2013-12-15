@@ -29,6 +29,7 @@ import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.ParentPos;
 import org.apache.directory.mavibot.btree.Transaction;
 import org.apache.directory.mavibot.btree.Tuple;
+import org.apache.directory.mavibot.btree.ValueHolder;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
 
@@ -260,7 +261,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
                 parentPos = stack[depth];
                 parentPos.pos = child.getNbElems() - 1;
                 parentPos.page = child;
-                InMemoryValueHolder<V> valueHolder = ((Leaf<K, V>)parentPos.page).values[parentPos.pos];
+                ValueHolder<V> valueHolder = ((Leaf<K, V>)parentPos.page).values[parentPos.pos];
                 parentPos.valueCursor = valueHolder.getCursor();
                 parentPos.valueCursor.afterLast();
 
@@ -629,7 +630,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
 
             try
             {
-                InMemoryValueHolder<V> valueHolder = ( ( Leaf<K, V> ) parentPos.page ).getValue( parentPos.pos );
+                ValueHolder<V> valueHolder = ( ( Leaf<K, V> ) parentPos.page ).getValue( parentPos.pos );
                 
                 parentPos.valueCursor = valueHolder.getCursor();
                 
@@ -681,7 +682,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
             {
                 // This is the end : no more value
                 Leaf<K, V> leaf = ( Leaf<K, V> ) ( parentPos.page );
-                InMemoryValueHolder<V> valueHolder = leaf.values[parentPos.pos];
+                ValueHolder<V> valueHolder = leaf.values[parentPos.pos];
                 parentPos.pos = AFTER_LAST;
                 parentPos.valueCursor = valueHolder.getCursor();
                 parentPos.valueCursor.afterLast();
@@ -704,7 +705,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
         tuple.setKey( leaf.getKey( parentPos.pos ) );
         
         // The value
-        InMemoryValueHolder<V> valueHolder = leaf.values[parentPos.pos];
+        ValueHolder<V> valueHolder = leaf.values[parentPos.pos];
         parentPos.valueCursor = valueHolder.getCursor();
         V value = parentPos.valueCursor.next();
         tuple.setValue( value );
@@ -777,7 +778,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
                 
                 try
                 {
-                    InMemoryValueHolder<V> valueHolder = ( ( Leaf<K, V> ) parentPos.page ).getValue( parentPos.pos );
+                    ValueHolder<V> valueHolder = ( ( Leaf<K, V> ) parentPos.page ).getValue( parentPos.pos );
                     
                     parentPos.valueCursor = valueHolder.getCursor();
                     parentPos.valueCursor.afterLast();
@@ -851,7 +852,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
         tuple.setKey( leaf.getKey( parentPos.pos ) );
 
         // The value
-        InMemoryValueHolder<V> valueHolder = leaf.values[parentPos.pos];
+        ValueHolder<V> valueHolder = leaf.values[parentPos.pos];
         parentPos.valueCursor = valueHolder.getCursor();
         V value = parentPos.valueCursor.next();
         tuple.setValue( value );

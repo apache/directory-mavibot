@@ -37,6 +37,7 @@ import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.KeyHolder;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.Tuple;
+import org.apache.directory.mavibot.btree.ValueHolder;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 
@@ -118,7 +119,7 @@ public class InMemoryBTreeBuilder<K, V>
                 lastLeaf.setKeys( ( KeyHolder[] ) Array.newInstance( KeyHolder.class, n ) );
                 System.arraycopy( keys, 0, lastLeaf.getKeys(), 0, n );
 
-                InMemoryValueHolder<V>[] values = lastLeaf.values;
+                ValueHolder<V>[] values = lastLeaf.values;
                 lastLeaf.values = ( InMemoryValueHolder<V>[] ) Array.newInstance( InMemoryValueHolder.class, n );
                 System.arraycopy( values, 0, lastLeaf.values, 0, n );
 

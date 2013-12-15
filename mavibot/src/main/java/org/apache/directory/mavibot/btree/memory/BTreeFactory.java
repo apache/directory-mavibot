@@ -26,6 +26,7 @@ import java.util.LinkedList;
 import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.ParentPos;
+import org.apache.directory.mavibot.btree.ValueHolder;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 
@@ -234,7 +235,7 @@ public class BTreeFactory
         if ( btree.getRootPage() instanceof Leaf )
         {
             Leaf<K, V> leaf = ( Leaf<K, V> ) ( btree.getRootPage() );
-            InMemoryValueHolder<V> valueHolder = leaf.values[last.pos];
+            ValueHolder<V> valueHolder = leaf.values[last.pos];
             last.valueCursor = valueHolder.getCursor();
         }
         else
@@ -251,7 +252,7 @@ public class BTreeFactory
                 if ( p instanceof Leaf )
                 {
                     Leaf<K, V> leaf = ( Leaf<K, V> ) ( last.page );
-                    InMemoryValueHolder<V> valueHolder = leaf.values[last.pos];
+                    ValueHolder<V> valueHolder = leaf.values[last.pos];
                     last.valueCursor = valueHolder.getCursor();
                     break;
                 }
