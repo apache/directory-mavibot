@@ -23,6 +23,14 @@ import java.io.IOException;
 
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
+/**
+ * A Page holder. It stores the page and provide a way to access it.
+ * 
+ * @param <K> The type of the BTree key
+ * @param <V> The type of the BTree value
+ *
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
+ */
 public class PageHolder<K, V>
 {
     /** The BTree */
@@ -34,6 +42,7 @@ public class PageHolder<K, V>
     /**
      * Create a new holder storing an offset and a SoftReference containing the element.
      * 
+     * @param btree The associated BTree
      * @param page The element to store into a SoftReference
      **/
     public PageHolder( BTree<K, V> btree, Page<K, V> page )
@@ -44,9 +53,7 @@ public class PageHolder<K, V>
 
     
     /**
-     * {@inheritDoc}
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
+     * @return the stored page
      */
     public Page<K, V> getValue()
     {
