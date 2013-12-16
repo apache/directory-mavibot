@@ -30,7 +30,7 @@ package org.apache.directory.mavibot.btree;
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class ParentPos<K, V>
+/* No qualifier*/class ParentPos<K, V>
 {
     /** The page we are browsing */
     public Page<K, V> page;

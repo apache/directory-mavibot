@@ -32,7 +32,7 @@ import java.util.List;
 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class BorrowedFromRightResult<K, V> extends AbstractBorrowedFromSiblingResult<K, V>
+/* No qualifier*/class BorrowedFromRightResult<K, V> extends AbstractBorrowedFromSiblingResult<K, V>
 {
     /**
      * The default constructor for BorrowedFromRightResult.

@@ -26,7 +26,6 @@ import java.util.Comparator;
 import java.util.UUID;
 
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
-import org.apache.directory.mavibot.btree.persisted.BTreeConfiguration;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
@@ -37,7 +36,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  * @param <V> The value type
  */
-public class PersistedValueHolder<V> extends AbstractValueHolder<V>
+/* No qualifier */class PersistedValueHolder<V> extends AbstractValueHolder<V>
 {
     /** The parent BTree */
     protected PersistedBTree<V, V> parentBtree;
@@ -241,7 +240,7 @@ public class PersistedValueHolder<V> extends AbstractValueHolder<V>
     {
         try
         {
-            BTreeConfiguration<V, V> configuration = new BTreeConfiguration<V, V>();
+            PersistedBTreeConfiguration<V, V> configuration = new PersistedBTreeConfiguration<V, V>();
             configuration.setAllowDuplicates( false );
             configuration.setKeySerializer( valueSerializer );
             configuration.setName( UUID.randomUUID().toString() );

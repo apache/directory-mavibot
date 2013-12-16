@@ -8,7 +8,7 @@ import org.apache.directory.mavibot.btree.BTree;
 /**
  * A class that encapsulate the values into an sub-btree
  */
-public class ValueBTreeCursor<V> implements ValueCursor<V>
+/* No qualifier */class ValueBTreeCursor<V> implements ValueCursor<V>
 {
     /** Store the current position in the array or in the BTree */
     private TupleCursor<V, V> cursor;

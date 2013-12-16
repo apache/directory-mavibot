@@ -30,7 +30,7 @@ package org.apache.directory.mavibot.btree;
 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public interface DeleteResult<K, V> extends Result<Page<K, V>>
+/* No qualifier*/interface DeleteResult<K, V> extends Result<Page<K, V>>
 {
     /**
      * @return the modifiedPage

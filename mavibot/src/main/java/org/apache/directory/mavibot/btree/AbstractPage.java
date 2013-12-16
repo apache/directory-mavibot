@@ -38,7 +38,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public abstract class AbstractPage<K, V> implements Page<K, V>
+/* No qualifier*/abstract class AbstractPage<K, V> implements Page<K, V>
 {
     /** Parent B+Tree. */
     protected transient BTree<K, V> btree;

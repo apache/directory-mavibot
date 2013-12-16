@@ -32,7 +32,7 @@ import java.util.List;
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class SplitResult<K, V> extends AbstractResult<K, V> implements InsertResult<K, V>
+/* No qualifier*/class SplitResult<K, V> extends AbstractResult<K, V> implements InsertResult<K, V>
 {
     /** The left child */
     protected Page<K, V> leftPage;

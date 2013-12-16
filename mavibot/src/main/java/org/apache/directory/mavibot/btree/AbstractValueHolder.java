@@ -32,7 +32,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  * @param <V> The value type
  */
-public abstract class AbstractValueHolder<V> implements ValueHolder<V>
+/* No qualifier*/abstract class AbstractValueHolder<V> implements ValueHolder<V>
 {
     /** The BTree storing multiple value, if we have more than one value */
     protected BTree<V, V> valueBtree;

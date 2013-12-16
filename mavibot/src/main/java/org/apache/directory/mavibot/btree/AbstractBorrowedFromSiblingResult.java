@@ -33,7 +33,7 @@ import java.util.List;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public abstract class AbstractBorrowedFromSiblingResult<K, V> extends AbstractDeleteResult<K, V> implements
+/* No qualifier*/abstract class AbstractBorrowedFromSiblingResult<K, V> extends AbstractDeleteResult<K, V> implements
     BorrowedFromSiblingResult<K, V>
 {
     /** The modified sibling reference */

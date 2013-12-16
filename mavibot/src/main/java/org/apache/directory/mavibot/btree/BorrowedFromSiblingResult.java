@@ -29,7 +29,7 @@ package org.apache.directory.mavibot.btree;
 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public interface BorrowedFromSiblingResult<K, V> extends DeleteResult<K, V>
+/* No qualifier*/interface BorrowedFromSiblingResult<K, V> extends DeleteResult<K, V>
 {
     /**
      * @return the modifiedSibling

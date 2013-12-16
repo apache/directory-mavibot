@@ -32,7 +32,7 @@ import java.util.List;
 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class RemoveResult<K, V> extends AbstractDeleteResult<K, V>
+/* No qualifier*/class RemoveResult<K, V> extends AbstractDeleteResult<K, V>
 {
     /**
      * The default constructor for RemoveResult.

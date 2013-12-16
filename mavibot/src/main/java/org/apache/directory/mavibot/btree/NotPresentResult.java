@@ -30,7 +30,7 @@ package org.apache.directory.mavibot.btree;
 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class NotPresentResult<K, V> extends AbstractResult<K, V> implements DeleteResult<K, V>
+/* No qualifier*/class NotPresentResult<K, V> extends AbstractResult<K, V> implements DeleteResult<K, V>
 {
     /** The unique instance for this class */
     @SuppressWarnings("rawtypes")

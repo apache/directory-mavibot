@@ -49,7 +49,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class BTreeHeader
+/* No qualifier*/class BTreeHeader
 {
     /** The current revision */
     private AtomicLong revision = new AtomicLong( 0L );

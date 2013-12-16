@@ -17,11 +17,9 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.persisted;
+package org.apache.directory.mavibot.btree;
 
 
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.PersistedBTree;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 
@@ -34,7 +32,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class BTreeConfiguration<K, V>
+public class PersistedBTreeConfiguration<K, V>
 {
     /** Number of entries in each Page. */
     private int pageSize = BTree.DEFAULT_PAGE_SIZE;

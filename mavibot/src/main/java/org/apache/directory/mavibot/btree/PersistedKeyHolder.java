@@ -32,7 +32,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
  * 
  * <K> The key type
  */
-public class PersistedKeyHolder<K> extends KeyHolder<K>
+/* No qualifier */class PersistedKeyHolder<K> extends KeyHolder<K>
 {
     /** The ByteBuffer storing the key */
     private byte[] raw;

@@ -31,7 +31,7 @@ import java.util.List;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public abstract class AbstractDeleteResult<K, V> extends AbstractResult<K, V> implements
+/* No qualifier*/abstract class AbstractDeleteResult<K, V> extends AbstractResult<K, V> implements
     DeleteResult<K, V>
 {
     /** The modified page reference */

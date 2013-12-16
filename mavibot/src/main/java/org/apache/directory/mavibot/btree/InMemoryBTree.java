@@ -35,7 +35,6 @@ import net.sf.ehcache.Cache;
 import net.sf.ehcache.config.CacheConfiguration;
 
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
-import org.apache.directory.mavibot.btree.memory.BTreeTypeEnum;
 import org.apache.directory.mavibot.btree.serializer.BufferHandler;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
@@ -51,7 +50,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
- class InMemoryBTree<K, V> extends AbstractBTree<K, V> implements Closeable
+/* No qualifier */class InMemoryBTree<K, V> extends AbstractBTree<K, V> implements Closeable
 {
     /** The LoggerFactory used by this class */
     protected static final Logger LOG = LoggerFactory.getLogger( InMemoryBTree.class );
@@ -280,7 +279,7 @@ import org.slf4j.LoggerFactory;
             this.file = new File( envDir, btreeHeader.getName() + DATA_SUFFIX );
 
             this.journal = new File( envDir, file.getName() + JOURNAL_SUFFIX );
-            type = BTreeTypeEnum.PERSISTENT;
+            type = BTreeTypeEnum.BACKED_ON_DISK;
         }
 
         // Create the queue containing the pending read transactions
@@ -290,7 +289,7 @@ import org.slf4j.LoggerFactory;
 
         // Check the files and create them if missing
         // Create the queue containing the modifications, if it's not a in-memory btree
-        if ( type == BTreeTypeEnum.PERSISTENT )
+        if ( type == BTreeTypeEnum.BACKED_ON_DISK )
         {
             if ( file.length() > 0 )
             {
@@ -351,7 +350,7 @@ import org.slf4j.LoggerFactory;
         // readTransactionsThread.interrupt();
         // readTransactions.clear();
 
-        if ( type == BTreeTypeEnum.PERSISTENT )
+        if ( type == BTreeTypeEnum.BACKED_ON_DISK )
         {
             // Flush the data
             flush();
@@ -768,7 +767,7 @@ import org.slf4j.LoggerFactory;
      */
     public void flush() throws IOException
     {
-        if ( type == BTreeTypeEnum.PERSISTENT )
+        if ( type == BTreeTypeEnum.BACKED_ON_DISK )
         {
             // Then flush the file
             flush( file );
@@ -862,7 +861,7 @@ import org.slf4j.LoggerFactory;
                 sb.append( "In-memory " );
                 break;
 
-            case PERSISTENT:
+            case BACKED_ON_DISK:
                 sb.append( "Persistent " );
                 break;
 
@@ -894,7 +893,7 @@ import org.slf4j.LoggerFactory;
 
         sb.append( ", DuplicatesAllowed: " ).append( btreeHeader.isAllowDuplicates() );
 
-        if ( type == BTreeTypeEnum.PERSISTENT )
+        if ( type == BTreeTypeEnum.BACKED_ON_DISK )
         {
             try
             {

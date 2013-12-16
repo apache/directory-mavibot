@@ -7,7 +7,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 /**
  * A class that encapsulate the values into an array
  */
-public class ValueArrayCursor<V> implements ValueCursor<V>
+/* No qualifier */class ValueArrayCursor<V> implements ValueCursor<V>
 {
     /** Store the current position in the array or in the BTree */
     private int currentPos;

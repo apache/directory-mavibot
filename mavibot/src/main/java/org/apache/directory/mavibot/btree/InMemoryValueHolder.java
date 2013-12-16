@@ -34,7 +34,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  * @param <V> The value type
  */
-public class InMemoryValueHolder<V> extends AbstractValueHolder<V>
+/* No qualifier */class InMemoryValueHolder<V> extends AbstractValueHolder<V>
 {
     /**
      * Creates a new instance of a ValueHolder, containing the serialized values.

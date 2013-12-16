@@ -20,7 +20,6 @@
 package org.apache.directory.mavibot.btree;
 
 
-import org.apache.directory.mavibot.btree.memory.BTreeTypeEnum;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 

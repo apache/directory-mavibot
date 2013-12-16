@@ -31,7 +31,6 @@ import net.sf.ehcache.Cache;
 import net.sf.ehcache.config.CacheConfiguration;
 
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
-import org.apache.directory.mavibot.btree.persisted.BTreeConfiguration;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,7 +81,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
      * 
      * @param comparator The comparator to use
      */
-    public PersistedBTree( BTreeConfiguration<K, V> configuration )
+    public PersistedBTree( PersistedBTreeConfiguration<K, V> configuration )
     {
         super();
         String name = configuration.getName();

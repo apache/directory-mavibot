@@ -32,7 +32,7 @@ import java.util.List;
 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class ModifyResult<K, V> extends AbstractResult<K, V> implements InsertResult<K, V>
+/* No qualifier*/class ModifyResult<K, V> extends AbstractResult<K, V> implements InsertResult<K, V>
 {
     /** The modified page reference */
     protected Page<K, V> modifiedPage;

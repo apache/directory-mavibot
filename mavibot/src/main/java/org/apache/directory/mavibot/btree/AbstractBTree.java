@@ -38,7 +38,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public abstract class AbstractBTree<K, V> implements BTree<K, V>
+/* No qualifier*/abstract class AbstractBTree<K, V> implements BTree<K, V>
 {
     /** The read transaction timeout */
     protected long readTimeOut = DEFAULT_READ_TIMEOUT;

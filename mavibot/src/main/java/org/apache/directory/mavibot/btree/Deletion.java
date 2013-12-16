@@ -28,7 +28,7 @@ package org.apache.directory.mavibot.btree;
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class Deletion<K, V> extends Modification<K, V>
+/* No qualifier*/class Deletion<K, V> extends Modification<K, V>
 {
     /**
      * Create a new Deletion instance.

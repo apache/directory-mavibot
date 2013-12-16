@@ -32,7 +32,7 @@ import java.util.List;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public abstract class AbstractResult<K, V> implements Result<Page<K, V>>
+/* No qualifier*/abstract class AbstractResult<K, V> implements Result<Page<K, V>>
 {
     /** The list of copied page reference */
     private List<Page<K, V>> copiedPage;

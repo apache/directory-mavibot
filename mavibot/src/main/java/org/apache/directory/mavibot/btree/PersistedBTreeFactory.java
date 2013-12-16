@@ -23,7 +23,6 @@ package org.apache.directory.mavibot.btree;
 import java.io.IOException;
 import java.util.LinkedList;
 
-import org.apache.directory.mavibot.btree.persisted.BTreeConfiguration;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 
@@ -55,7 +54,7 @@ public class PersistedBTreeFactory
      * 
      * @return The created BTree
      */
-    public static <K, V> BTree<K, V> createBTree( BTreeConfiguration<K, V> configuration)
+    public static <K, V> BTree<K, V> createBTree( PersistedBTreeConfiguration<K, V> configuration)
     {
         BTree<K, V> btree = new PersistedBTree<K, V>( configuration );
 

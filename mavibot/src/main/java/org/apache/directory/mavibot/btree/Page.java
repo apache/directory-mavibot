@@ -37,7 +37,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public interface Page<K, V>
+/* No qualifier*/interface Page<K, V>
 {
     /**
      * @return The number of keys present in this page

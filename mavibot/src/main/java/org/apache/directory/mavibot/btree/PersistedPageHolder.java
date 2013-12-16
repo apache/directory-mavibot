@@ -39,7 +39,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class PersistedPageHolder<K, V> extends PageHolder<K, V>
+/* No qualifier */class PersistedPageHolder<K, V> extends PageHolder<K, V>
 {
     /** The RecordManager */
     private RecordManager recordManager;

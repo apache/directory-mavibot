@@ -27,7 +27,7 @@ package org.apache.directory.mavibot.btree;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class PageHolder<K, V>
+/* No qualifier*/class PageHolder<K, V>
 {
     /** The BTree */
     protected BTree<K, V> btree;

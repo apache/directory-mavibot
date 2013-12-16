@@ -36,9 +36,9 @@ public enum BTreeTypeEnum
     /** Pure in-memory BTree, not persisted on disk */
     IN_MEMORY,
 
-    /** In-memory BTree but persisted on disk */
+    /** Persisted BTree */
     PERSISTENT,
 
-    /** A BTree associated with a RecordManager */
-    MANAGED
+    /** In-memory BTree but saved on disk */
+    BACKED_ON_DISK
 }

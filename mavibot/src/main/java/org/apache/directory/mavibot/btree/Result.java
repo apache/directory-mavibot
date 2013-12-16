@@ -31,7 +31,7 @@ import java.util.List;
 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public interface Result<P>
+/* No qualifier*/interface Result<P>
 {
     /**
      * @return the copiedPage

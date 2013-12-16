@@ -26,7 +26,7 @@ package org.apache.directory.mavibot.btree;
  * 
  * <K> The key type
  */
-public class KeyHolder<K>
+/* No qualifier*/class KeyHolder<K>
 {
     /** The deserialized key */
     protected K key;

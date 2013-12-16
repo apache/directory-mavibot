@@ -36,7 +36,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
-import org.apache.directory.mavibot.btree.persisted.BTreeConfiguration;
 import org.apache.directory.mavibot.btree.persisted.RevisionName;
 import org.apache.directory.mavibot.btree.persisted.RevisionNameSerializer;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
@@ -2531,7 +2530,7 @@ public class RecordManager
         ElementSerializer<V> valueSerializer,
         boolean allowDuplicates ) throws IOException, BTreeAlreadyManagedException
     {
-        BTreeConfiguration config = new BTreeConfiguration();
+        PersistedBTreeConfiguration config = new PersistedBTreeConfiguration();
 
         config.setName( name );
         config.setKeySerializer( keySerializer );

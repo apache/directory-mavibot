@@ -28,7 +28,7 @@ package org.apache.directory.mavibot.btree;
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public abstract class Modification<K, V> extends Tuple<K, V>
+/* No qualifier*/abstract class Modification<K, V> extends Tuple<K, V>
 {
     /** The byte used to define an Addition in the serialized journal */
     public static final byte ADDITION = 0;
