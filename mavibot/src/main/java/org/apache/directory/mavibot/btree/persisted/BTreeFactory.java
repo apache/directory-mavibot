@@ -302,7 +302,7 @@ public class BTreeFactory
 
             while ( true )
             {
-                Page<K, V> p = node.children[node.getNbElems()].getValue();
+                Page<K, V> p = node.getPage( node.getNbElems() );
 
                 last = new ParentPos<K, V>( p, p.getNbElems() );
                 stack.push( last );
@@ -347,7 +347,7 @@ public class BTreeFactory
 
             while ( true )
             {
-                Page<K, V> page = node.children[0].getValue();
+                Page<K, V> page = node.getPage( 0 );
 
                 first = new ParentPos<K, V>( page, 0 );
                 stack.push( first );

@@ -181,7 +181,7 @@ public class PersistedBTreeBuilder<K, V>
                 setKey( btree, node, i - 1, page.getLeftMostKey() );
             }
 
-            node.children[i] = new PersistedPageHolder<K, V>( btree, page );
+            node.setPageHolder( i, new PersistedPageHolder<K, V>( btree, page ) );
 
             i++;
             totalNodes++;

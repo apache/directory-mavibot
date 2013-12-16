@@ -57,10 +57,6 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
  */
 /* No qualifier */class Node<K, V> extends AbstractPage<K, V>
 {
-    /** Children pages associated with keys. */
-    protected PersistedPageHolder<K, V>[] children;
-
-
     /**
      * Creates a new Node which will contain only one key, with references to
      * a left and right page. This is a specific constructor used by the btree

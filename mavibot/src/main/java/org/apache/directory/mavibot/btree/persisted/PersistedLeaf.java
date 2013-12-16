@@ -222,7 +222,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 // Check in both next and previous page, if they have the same parent
                 // and select the biggest page with the same parent to borrow an element.
                 int siblingPos = selectSibling( ( Node<K, V> ) parent, parentPos );
-                PersistedLeaf<K, V> sibling = ( PersistedLeaf<K, V> ) ( ( ( Node<K, V> ) parent ).children[siblingPos].getValue() );
+                PersistedLeaf<K, V> sibling = ( PersistedLeaf<K, V> ) ( ( ( Node<K, V> ) parent ).getPage( siblingPos ) );
 
                 if ( sibling.getNbElems() == halfSize )
                 {

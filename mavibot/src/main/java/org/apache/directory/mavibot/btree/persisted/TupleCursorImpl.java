@@ -183,7 +183,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
             {
                 // We can pick the next element at this level
                 parentPos.pos++;
-                child = ((Node<K, V>)parentPos.page).children[parentPos.pos].getValue();
+                child = ((Node<K, V>)parentPos.page).getPage( parentPos.pos );
                 
                 // and go down the tree through the nodes
                 while ( currentDepth < depth - 1 )
@@ -192,7 +192,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
                     parentPos = stack[currentDepth];
                     parentPos.pos = 0;
                     parentPos.page = child;
-                    child = ((Node<K, V>)child).children[0].getValue();
+                    child = ((Node<K, V>)child).getPage( 0 );
                 }
 
                 // and the leaf
@@ -242,13 +242,13 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
             else
             {
                 // We can pick the next element at this level
-                child = ((Node<K, V>)parentPos.page).children[parentPos.pos + 1].getValue();
+                child = ((Node<K, V>)parentPos.page).getPage( parentPos.pos + 1 );
                 
                 // and go down the tree through the nodes
                 while ( currentDepth < depth - 1 )
                 {
                     currentDepth++;
-                    child = ((Node<K, V>)child).children[0].getValue();
+                    child = ((Node<K, V>)child).getPage( 0 );
                 }
 
                 return true;
@@ -292,13 +292,13 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
             else
             {
                 // We can pick the previous element at this level
-                child = ((Node<K, V>)parentPos.page).children[parentPos.pos - 1].getValue();
+                child = ((Node<K, V>)parentPos.page).getPage( parentPos.pos - 1 );
                 
                 // and go down the tree through the nodes
                 while ( currentDepth < depth - 1 )
                 {
                     currentDepth++;
-                    child = ((Node<K, V>)child).children[child.getNbElems()].getValue();
+                    child = ((Node<K, V>)child).getPage( child.getNbElems() );
                 }
 
                 return true;
@@ -343,7 +343,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
             {
                 // We can pick the next element at this level
                 parentPos.pos--;
-                child = ((Node<K, V>)parentPos.page).children[parentPos.pos].getValue();
+                child = ((Node<K, V>)parentPos.page).getPage( parentPos.pos );
                 
                 // and go down the tree through the nodes
                 while ( currentDepth < depth - 1 )
@@ -352,7 +352,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
                     parentPos = stack[currentDepth];
                     parentPos.pos = child.getNbElems();
                     parentPos.page = child;
-                    child = ((Node<K, V>)parentPos.page).children[parentPos.page.getNbElems()].getValue();
+                    child = ((Node<K, V>)parentPos.page).getPage( parentPos.page.getNbElems() );
                 }
 
                 // and the leaf
@@ -797,7 +797,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
                 parentPos.page = child;
             }
 
-            child = ((Node<K, V>)parentPos.page).children[0].getValue();
+            child = ((Node<K, V>)parentPos.page).getPage( 0 );
         }
 
         // and leaf
@@ -845,7 +845,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
                 parentPos.pos = parentPos.page.getNbElems();
             }
 
-            child = ((Node<K, V>)parentPos.page).children[parentPos.pos].getValue();
+            child = ((Node<K, V>)parentPos.page).getPage( parentPos.pos );
         }
         
         // and leaf
