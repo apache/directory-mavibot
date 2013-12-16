@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 
 import org.apache.directory.mavibot.btree.AbstractPage;
+import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.BorrowedFromLeftResult;
 import org.apache.directory.mavibot.btree.BorrowedFromRightResult;
@@ -612,7 +613,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
             stack[depth] = parentPos;
 
-            cursor = new TupleCursorImpl<K, V>( transaction, stack, depth );
+            cursor = new TupleCursor<K, V>( transaction, stack, depth );
         }
         else
         {
@@ -626,7 +627,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 
                 stack[depth] = parentPos;
 
-                cursor = new TupleCursorImpl<K, V>( transaction, stack, depth );
+                cursor = new TupleCursor<K, V>( transaction, stack, depth );
             }
             else if ( nbElems > 0 )
             {
@@ -638,7 +639,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 
                 stack[depth] = parentPos;
 
-                cursor = new TupleCursorImpl<K, V>( transaction, stack, depth );
+                cursor = new TupleCursor<K, V>( transaction, stack, depth );
                 
                 try
                 {
@@ -655,7 +656,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 // Not found, because there are no elements : return a null cursor
                 stack[depth] = null;
 
-                cursor = new TupleCursorImpl<K, V>( transaction, null, 0 );
+                cursor = new TupleCursor<K, V>( transaction, null, 0 );
             }
         }
 
@@ -676,7 +677,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             // The tree is empty, it's the root, we have nothing to return
             stack[depth] = new ParentPos<K, V>( null, -1 );
 
-            return new TupleCursorImpl<K, V>( transaction, stack, depth );
+            return new TupleCursor<K, V>( transaction, stack, depth );
         }
         else
         {
@@ -688,7 +689,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
             stack[depth] = parentPos;
 
-            cursor = new TupleCursorImpl<K, V>( transaction, stack, depth );
+            cursor = new TupleCursor<K, V>( transaction, stack, depth );
         }
 
         return cursor;
