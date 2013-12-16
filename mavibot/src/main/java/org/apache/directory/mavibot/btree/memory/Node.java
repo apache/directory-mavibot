@@ -36,15 +36,9 @@ import org.apache.directory.mavibot.btree.ModifyResult;
 import org.apache.directory.mavibot.btree.NotPresentResult;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.PageHolder;
-import org.apache.directory.mavibot.btree.ParentPos;
 import org.apache.directory.mavibot.btree.RemoveResult;
 import org.apache.directory.mavibot.btree.SplitResult;
-import org.apache.directory.mavibot.btree.Transaction;
 import org.apache.directory.mavibot.btree.Tuple;
-import org.apache.directory.mavibot.btree.TupleCursor;
-import org.apache.directory.mavibot.btree.ValueCursor;
-import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
-import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
 
 /**
@@ -578,7 +572,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         // If we just modified the child, return a modified page
         if ( deleteResult instanceof RemoveResult )
         {
-            RemoveResult<K, V> removeResult = handleRemoveResult( (org.apache.directory.mavibot.btree.RemoveResult<K, V> ) deleteResult, index, pos,
+            RemoveResult<K, V> removeResult = handleRemoveResult( (RemoveResult<K, V> ) deleteResult, index, pos,
                 found );
 
             return removeResult;
@@ -800,96 +794,6 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
 
     /**
-     * {@inheritDoc}
-     */
-    public V get( K key ) throws IOException, KeyNotFoundException
-    {
-        int pos = findPos( key );
-
-        if ( pos < 0 )
-        {
-            // Here, if we have found the key in the node, then we must go down into
-            // the right child, not the left one
-            return children[-pos].getValue().get( key );
-        }
-        else
-        {
-            return children[pos].getValue().get( key );
-        }
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public ValueCursor<V> getValues( K key ) throws KeyNotFoundException, IOException, IllegalArgumentException
-    {
-        int pos = findPos( key );
-
-        if ( pos < 0 )
-        {
-            // Here, if we have found the key in the node, then we must go down into
-            // the right child, not the left one
-            return children[-pos].getValue().getValues( key );
-        }
-        else
-        {
-            return children[pos].getValue().getValues( key );
-        }
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean hasKey( K key ) throws IOException
-    {
-        int pos = findPos( key );
-
-        if ( pos < 0 )
-        {
-            // Here, if we have found the key in the node, then we must go down into
-            // the right child, not the left one
-            return children[-pos].getValue().hasKey( key );
-        }
-        else
-        {
-            Page<K, V> page = children[pos].getValue();
-
-            if ( page == null )
-            {
-                System.out.println( "Page is null for pos = " + pos + ", children = " + children[pos] );
-            }
-
-            return page.hasKey( key );
-        }
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean contains( K key, V value ) throws IOException
-    {
-        int pos = findPos( key );
-
-        if ( pos < 0 )
-        {
-            // Here, if we have found the key in the node, then we must go down into
-            // the right child, not the left one
-            return children[-pos].getValue().contains( key, value );
-        }
-        else
-        {
-            return children[pos].getValue().contains( key, value );
-        }
-    }
-
-
-    /**
      * Set the value at a give position
      * 
      * @param pos The position in the values array
@@ -898,58 +802,6 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     public void setValue( int pos, Page<K, V> value )
     {
         children[pos] = new PageHolder<K, V>( btree, value );
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    public Page<K, V> getReference( int pos ) throws IOException
-    {
-        if ( pos < nbElems + 1 )
-        {
-            return children[pos].getValue();
-        }
-        else
-        {
-            return null;
-        }
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    public TupleCursor<K, V> browse( K key, Transaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
-        throws IOException
-    {
-        int pos = findPos( key );
-
-        if ( pos < 0 )
-        {
-            pos = -pos;
-        }
-
-        // We first stack the current page
-        stack[depth++] = new ParentPos<K, V>( this, pos );
-        
-        Page<K, V> page = children[pos].getValue();
-
-        return page.browse( key, transaction, stack, depth );
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    public TupleCursor<K, V> browse( Transaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
-        throws IOException
-    {
-        stack[depth++] = new ParentPos<K, V>( this, 0 );
-        
-        Page<K, V> page = children[0].getValue();
-
-        return page.browse( transaction, stack, depth );
     }
 
 
@@ -1184,24 +1036,6 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
 
     /**
-     * {@inheritDoc}
-     */
-    public Tuple<K, V> findLeftMost() throws EndOfFileExceededException, IOException
-    {
-        return children[0].getValue().findLeftMost();
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    public Tuple<K, V> findRightMost() throws EndOfFileExceededException, IOException
-    {
-        return children[nbElems].getValue().findRightMost();
-    }
-
-
-    /**
      * @see Object#toString()
      */
     public String toString()
@@ -1240,31 +1074,6 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
 
         sb.append( "}" );
-
-        return sb.toString();
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    public String dumpPage( String tabs )
-    {
-        StringBuilder sb = new StringBuilder();
-
-        if ( nbElems > 0 )
-        {
-            // Start with the first child
-            sb.append( children[0].getValue().dumpPage( tabs + "    " ) );
-
-            for ( int i = 0; i < nbElems; i++ )
-            {
-                sb.append( tabs );
-                sb.append( "<" );
-                sb.append( getKey( i ) ).append( ">\n" );
-                sb.append( children[i + 1].getValue().dumpPage( tabs + "    " ) );
-            }
-        }
 
         return sb.toString();
     }
