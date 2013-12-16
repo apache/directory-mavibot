@@ -32,6 +32,7 @@ import org.apache.directory.mavibot.btree.BorrowedFromRightResult;
 import org.apache.directory.mavibot.btree.DeleteResult;
 import org.apache.directory.mavibot.btree.InsertResult;
 import org.apache.directory.mavibot.btree.KeyHolder;
+import org.apache.directory.mavibot.btree.MergedWithSiblingResult;
 import org.apache.directory.mavibot.btree.NotPresentResult;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.PageHolder;
@@ -404,7 +405,7 @@ public class LeafTest
 
         assertTrue( result instanceof MergedWithSiblingResult );
 
-        MergedWithSiblingResult<Long, String> merged = ( MergedWithSiblingResult<Long, String> ) result;
+        MergedWithSiblingResult<Long, String> merged = (org.apache.directory.mavibot.btree.MergedWithSiblingResult<Long, String> ) result;
         Tuple<Long, String> removedKey = merged.getRemovedElement();
 
         assertEquals( Long.valueOf( 7L ), removedKey.getKey() );

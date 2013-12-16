@@ -32,6 +32,7 @@ import org.apache.directory.mavibot.btree.BorrowedFromRightResult;
 import org.apache.directory.mavibot.btree.DeleteResult;
 import org.apache.directory.mavibot.btree.InsertResult;
 import org.apache.directory.mavibot.btree.KeyHolder;
+import org.apache.directory.mavibot.btree.MergedWithSiblingResult;
 import org.apache.directory.mavibot.btree.ModifyResult;
 import org.apache.directory.mavibot.btree.NotPresentResult;
 import org.apache.directory.mavibot.btree.Page;

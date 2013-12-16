@@ -29,7 +29,6 @@ import org.apache.directory.mavibot.btree.AbstractValueHolder;
 import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
-import org.apache.directory.mavibot.btree.persisted.PersistedBTree;
 
 
 /**

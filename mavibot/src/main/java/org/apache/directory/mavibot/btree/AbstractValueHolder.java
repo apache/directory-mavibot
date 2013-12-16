@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.Comparator;
 
-import org.apache.directory.mavibot.btree.persisted.PersistedBTree;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 

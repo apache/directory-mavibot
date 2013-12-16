@@ -19,10 +19,6 @@
  */
 package org.apache.directory.mavibot.btree;
 
-import java.io.IOException;
-
-import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
-
 /**
  * A Page holder. It stores the page and provide a way to access it.
  * 

@@ -20,7 +20,6 @@
 package org.apache.directory.mavibot.btree.memory;
 
 
-import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 

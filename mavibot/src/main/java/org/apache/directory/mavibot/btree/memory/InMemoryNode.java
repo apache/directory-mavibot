@@ -32,6 +32,7 @@ import org.apache.directory.mavibot.btree.BorrowedFromSiblingResult;
 import org.apache.directory.mavibot.btree.DeleteResult;
 import org.apache.directory.mavibot.btree.InsertResult;
 import org.apache.directory.mavibot.btree.KeyHolder;
+import org.apache.directory.mavibot.btree.MergedWithSiblingResult;
 import org.apache.directory.mavibot.btree.ModifyResult;
 import org.apache.directory.mavibot.btree.NotPresentResult;
 import org.apache.directory.mavibot.btree.Page;
@@ -592,7 +593,7 @@ import org.apache.directory.mavibot.btree.Tuple;
         // an element from the local page, and to deal with the result.
         if ( deleteResult instanceof MergedWithSiblingResult )
         {
-            MergedWithSiblingResult<K, V> mergedResult = ( MergedWithSiblingResult<K, V> ) deleteResult;
+            MergedWithSiblingResult<K, V> mergedResult = (org.apache.directory.mavibot.btree.MergedWithSiblingResult<K, V> ) deleteResult;
 
             // If the parent is null, then this page is the root page.
             if ( parent == null )
