@@ -23,8 +23,11 @@ package org.apache.directory.mavibot.btree.memory;
 import java.io.IOException;
 import java.util.LinkedList;
 
+import org.apache.directory.mavibot.btree.AbstractPage;
 import org.apache.directory.mavibot.btree.BTree;
+import org.apache.directory.mavibot.btree.KeyHolder;
 import org.apache.directory.mavibot.btree.Page;
+import org.apache.directory.mavibot.btree.PageHolder;
 import org.apache.directory.mavibot.btree.ParentPos;
 import org.apache.directory.mavibot.btree.ValueHolder;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
@@ -77,9 +80,9 @@ public class BTreeFactory
      * @param nbElems The number or elements in this leaf
      * @return A Leaf instance
      */
-    public static <K, V> Leaf<K, V> createLeaf( BTree<K, V> btree, long revision, int nbElems )
+    public static <K, V> InMemoryLeaf<K, V> createLeaf( BTree<K, V> btree, long revision, int nbElems )
     {
-        Leaf<K, V> leaf = new Leaf<K, V>( btree, revision, nbElems );
+        InMemoryLeaf<K, V> leaf = new InMemoryLeaf<K, V>( btree, revision, nbElems );
 
         return leaf;
     }
@@ -192,7 +195,8 @@ public class BTreeFactory
      */
     public static <K, V> void setKey( Page<K, V> page, int pos, K key )
     {
-        ( ( AbstractInMemoryPage<K, V> ) page ).setKey( pos, key );
+        KeyHolder<K> keyHolder = new KeyHolder<K>( key );
+        ( ( AbstractPage<K, V> ) page ).setKey( pos, keyHolder );
     }
 
 
@@ -201,7 +205,7 @@ public class BTreeFactory
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    public static <K, V> void setValue( Leaf<K, V> page, int pos, InMemoryValueHolder<V> value )
+    public static <K, V> void setValue( InMemoryLeaf<K, V> page, int pos, InMemoryValueHolder<V> value )
     {
         page.setValue( pos, value );
     }
@@ -212,9 +216,9 @@ public class BTreeFactory
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    public static <K, V> void setValue( Node<K, V> page, int pos, Page<K, V> value )
+    public static <K, V> void setValue( BTree<K, V> btree, Node<K, V> page, int pos, Page<K, V> value )
     {
-        page.children[pos] = value;
+        page.setPageHolder( pos, new PageHolder<K, V>( btree, value ) );
     }
 
 
@@ -232,9 +236,9 @@ public class BTreeFactory
         ParentPos<K, V> last = new ParentPos<K, V>( btree.getRootPage(), btree.getRootPage().getNbElems() );
         stack.push( last );
 
-        if ( btree.getRootPage() instanceof Leaf )
+        if ( btree.getRootPage() instanceof InMemoryLeaf )
         {
-            Leaf<K, V> leaf = ( Leaf<K, V> ) ( btree.getRootPage() );
+            InMemoryLeaf<K, V> leaf = ( InMemoryLeaf<K, V> ) ( btree.getRootPage() );
             ValueHolder<V> valueHolder = leaf.values[last.pos];
             last.valueCursor = valueHolder.getCursor();
         }
@@ -244,14 +248,14 @@ public class BTreeFactory
 
             while ( true )
             {
-                Page<K, V> p = node.children[node.getNbElems()];
+                Page<K, V> p = node.getPage( node.getNbElems() );
 
                 last = new ParentPos<K, V>( p, p.getNbElems() );
                 stack.push( last );
 
-                if ( p instanceof Leaf )
+                if ( p instanceof InMemoryLeaf )
                 {
-                    Leaf<K, V> leaf = ( Leaf<K, V> ) ( last.page );
+                    InMemoryLeaf<K, V> leaf = ( InMemoryLeaf<K, V> ) ( last.page );
                     ValueHolder<V> valueHolder = leaf.values[last.pos];
                     last.valueCursor = valueHolder.getCursor();
                     break;

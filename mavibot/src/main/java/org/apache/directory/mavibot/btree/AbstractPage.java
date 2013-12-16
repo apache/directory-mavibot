@@ -20,6 +20,9 @@
 package org.apache.directory.mavibot.btree;
 
 
+import java.io.IOException;
+import java.lang.reflect.Array;
+
 import org.apache.directory.mavibot.btree.KeyHolder;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
@@ -41,6 +44,9 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
 
     /** Keys of children nodes */
     protected KeyHolder<K>[] keys;
+
+    /** Children pages associated with keys. */
+    protected PageHolder<K, V>[] children;
 
     /** The number of current values in the Page */
     protected int nbElems;
@@ -66,6 +72,19 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
     protected AbstractPage( BTree<K, V> btree )
     {
         this.btree = btree;
+    }
+
+    /**
+     * Internal constructor used to create Page instance used when a page is being copied or overflow
+     */
+    @SuppressWarnings("unchecked")
+    // Cannot create an array of generic objects
+    protected AbstractPage( BTree<K, V> btree, long revision, int nbElems )
+    {
+        this.btree = btree;
+        this.revision = revision;
+        this.nbElems = nbElems;
+        this.keys = ( KeyHolder[] ) Array.newInstance( KeyHolder.class, nbElems );
     }
 
     /**
@@ -99,6 +118,76 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
     }
 
     
+    /**
+     * {@inheritDoc}
+     */
+    public Page<K, V> getPage( int pos )
+    {
+        if ( ( pos >= 0 ) && ( pos < children.length ) )
+        {
+            return children[pos].getValue();
+        }
+        else
+        {
+            return null;
+        }
+    }
+
+    
+    /**
+     * {@inheritDoc}
+     */
+    public void setPageHolder( int pos, PageHolder<K, V> pageHolder )
+    {
+        if ( ( pos >= 0 ) && ( pos < children.length ) )
+        {
+            children[pos] = pageHolder;
+        }
+    }
+
+
+    /**
+     * Selects the sibling (the previous or next page with the same parent) which has
+     * the more element assuming it's above N/2
+     * 
+     * @param parent The parent of the current page
+     * @param The position of the current page reference in its parent
+     * @return The position of the sibling, or -1 if we have'nt found any sibling
+     * @throws IOException If we have an error while trying to access the page
+     */
+    protected int selectSibling( Page<K, V> parent, int parentPos ) throws IOException
+    {
+        if ( parentPos == 0 )
+        {
+            // The current page is referenced on the left of its parent's page :
+            // we will not have a previous page with the same parent
+            return 1;
+        }
+
+        if ( parentPos == parent.getNbElems() )
+        {
+            // The current page is referenced on the right of its parent's page :
+            // we will not have a next page with the same parent
+            return parentPos - 1;
+        }
+
+        Page<K, V> prevPage = ((AbstractPage<K, V>)parent).getPage( parentPos - 1 );
+        Page<K, V> nextPage = ((AbstractPage<K, V>)parent).getPage( parentPos + 1 );
+
+        int prevPageSize = prevPage.getNbElems();
+        int nextPageSize = nextPage.getNbElems();
+
+        if ( prevPageSize >= nextPageSize )
+        {
+            return parentPos - 1;
+        }
+        else
+        {
+            return parentPos + 1;
+        }
+    }
+
+
     /**
      * {@inheritDoc}
      */
@@ -159,6 +248,18 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
     public KeyHolder<K>[] getKeys()
     {
         return keys;
+    }
+
+
+    /**
+     * Sets the key at a give position
+     * 
+     * @param pos The position in the keys array
+     * @param key the key to inject
+     */
+    public void setKey( int pos, KeyHolder<K> key )
+    {
+        keys[pos] = key;
     }
 
 
@@ -307,6 +408,15 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
                 return max;
             }
         }
+    }
+
+
+    /**
+     * @return the btree
+     */
+    public BTree<K, V> getBtree()
+    {
+        return btree;
     }
 
 

@@ -154,7 +154,7 @@ public class InMemoryBTree<K, V> extends AbstractBTree<K, V> implements Closeabl
 
         // Create the first root page, with revision 0L. It will be empty
         // and increment the revision at the same time
-        rootPage = new Leaf<K, V>( this );
+        rootPage = new InMemoryLeaf<K, V>( this );
 
         // Now, initialize the BTree
         init();
@@ -265,7 +265,7 @@ public class InMemoryBTree<K, V> extends AbstractBTree<K, V> implements Closeabl
 
         // Create the first root page, with revision 0L. It will be empty
         // and increment the revision at the same time
-        rootPage = new Leaf<K, V>( this );
+        rootPage = new InMemoryLeaf<K, V>( this );
 
         // Now, call the init() method
         init();

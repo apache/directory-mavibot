@@ -76,7 +76,7 @@ public class PersistedValueHolder<V> extends AbstractValueHolder<V>
 
         // We create the array of values if they fit in an array. If they are stored in a 
         // BTree, we do nothing atm.
-        if ( nbValues <= PersistedBTree.valueThresholdUp )
+        if ( nbValues <= valueThresholdUp )
         {
             // The values are contained into an array
             valueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), nbValues );

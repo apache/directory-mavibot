@@ -29,7 +29,6 @@ import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.ParentPos;
 import org.apache.directory.mavibot.btree.Transaction;
 import org.apache.directory.mavibot.btree.Tuple;
-import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.ValueHolder;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
@@ -130,7 +129,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
 
             try
             {
-                ValueHolder<V> valueHolder = ( ( Leaf<K, V> ) parentPos.page ).getValue( parentPos.pos );
+                ValueHolder<V> valueHolder = ( ( PersistedLeaf<K, V> ) parentPos.page ).getValue( parentPos.pos );
                 
                 parentPos.valueCursor = valueHolder.getCursor();
                 
@@ -142,7 +141,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
             }
         }
         
-        Leaf<K, V> leaf = ( Leaf<K, V> ) ( parentPos.page );
+        PersistedLeaf<K, V> leaf = ( PersistedLeaf<K, V> ) ( parentPos.page );
         tuple.setKey( leaf.getKey( parentPos.pos ) );
         tuple.setValue( value );
 
@@ -184,7 +183,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
             {
                 // We can pick the next element at this level
                 parentPos.pos++;
-                child = ((Node<K, V>)parentPos.page).children[parentPos.pos].getValue( btree );
+                child = ((Node<K, V>)parentPos.page).children[parentPos.pos].getValue();
                 
                 // and go down the tree through the nodes
                 while ( currentDepth < depth - 1 )
@@ -193,14 +192,14 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
                     parentPos = stack[currentDepth];
                     parentPos.pos = 0;
                     parentPos.page = child;
-                    child = ((Node<K, V>)child).children[0].getValue( btree );
+                    child = ((Node<K, V>)child).children[0].getValue();
                 }
 
                 // and the leaf
                 parentPos = stack[depth];
                 parentPos.page = child;
                 parentPos.pos = 0;
-                parentPos.valueCursor = ((Leaf<K, V>)child).values[0].getCursor();
+                parentPos.valueCursor = ((PersistedLeaf<K, V>)child).values[0].getCursor();
 
                 return parentPos;
             }
@@ -243,13 +242,13 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
             else
             {
                 // We can pick the next element at this level
-                child = ((Node<K, V>)parentPos.page).children[parentPos.pos + 1].getValue( btree );
+                child = ((Node<K, V>)parentPos.page).children[parentPos.pos + 1].getValue();
                 
                 // and go down the tree through the nodes
                 while ( currentDepth < depth - 1 )
                 {
                     currentDepth++;
-                    child = ((Node<K, V>)child).children[0].getValue( btree );
+                    child = ((Node<K, V>)child).children[0].getValue();
                 }
 
                 return true;
@@ -293,13 +292,13 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
             else
             {
                 // We can pick the previous element at this level
-                child = ((Node<K, V>)parentPos.page).children[parentPos.pos - 1].getValue( btree );
+                child = ((Node<K, V>)parentPos.page).children[parentPos.pos - 1].getValue();
                 
                 // and go down the tree through the nodes
                 while ( currentDepth < depth - 1 )
                 {
                     currentDepth++;
-                    child = ((Node<K, V>)child).children[child.getNbElems()].getValue( btree );
+                    child = ((Node<K, V>)child).children[child.getNbElems()].getValue();
                 }
 
                 return true;
@@ -344,7 +343,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
             {
                 // We can pick the next element at this level
                 parentPos.pos--;
-                child = ((Node<K, V>)parentPos.page).children[parentPos.pos].getValue( btree );
+                child = ((Node<K, V>)parentPos.page).children[parentPos.pos].getValue();
                 
                 // and go down the tree through the nodes
                 while ( currentDepth < depth - 1 )
@@ -353,14 +352,14 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
                     parentPos = stack[currentDepth];
                     parentPos.pos = child.getNbElems();
                     parentPos.page = child;
-                    child = ((Node<K, V>)parentPos.page).children[parentPos.page.getNbElems()].getValue( btree );
+                    child = ((Node<K, V>)parentPos.page).children[parentPos.page.getNbElems()].getValue();
                 }
 
                 // and the leaf
                 parentPos = stack[depth];
                 parentPos.pos = child.getNbElems() - 1;
                 parentPos.page = child;
-                ValueHolder<V> valueHolder = ((Leaf<K, V>)parentPos.page).values[parentPos.pos];
+                ValueHolder<V> valueHolder = ((PersistedLeaf<K, V>)parentPos.page).values[parentPos.pos];
                 parentPos.valueCursor = valueHolder.getCursor();
                 parentPos.valueCursor.afterLast();
 
@@ -436,7 +435,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
                 
                 try
                 {
-                    ValueHolder<V> valueHolder = ( ( Leaf<K, V> ) parentPos.page ).getValue( parentPos.pos );
+                    ValueHolder<V> valueHolder = ( ( PersistedLeaf<K, V> ) parentPos.page ).getValue( parentPos.pos );
                     
                     parentPos.valueCursor = valueHolder.getCursor();
                     parentPos.valueCursor.afterLast();
@@ -451,7 +450,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
         }
 
 
-        Leaf<K, V> leaf = ( Leaf<K, V> ) ( parentPos.page );
+        PersistedLeaf<K, V> leaf = ( PersistedLeaf<K, V> ) ( parentPos.page );
         tuple.setKey( leaf.getKey( parentPos.pos ) );
         tuple.setValue( value );
 
@@ -649,7 +648,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
             if ( ( newParentPos == null ) || ( newParentPos.page == null ) )
             {
                 // This is the end : no more value
-                Leaf<K, V> leaf = ( Leaf<K, V> ) ( parentPos.page );
+                PersistedLeaf<K, V> leaf = ( PersistedLeaf<K, V> ) ( parentPos.page );
                 ValueHolder<V> valueHolder = leaf.values[parentPos.pos];
                 parentPos.pos = AFTER_LAST;
                 parentPos.valueCursor = valueHolder.getCursor();
@@ -669,7 +668,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
         }
 
         // The key
-        Leaf<K, V> leaf = ( Leaf<K, V> ) ( parentPos.page );
+        PersistedLeaf<K, V> leaf = ( PersistedLeaf<K, V> ) ( parentPos.page );
         tuple.setKey( leaf.getKey( parentPos.pos ) );
         
         // The value
@@ -760,7 +759,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
         }
         
         // Update the Tuple 
-        Leaf<K, V> leaf = ( Leaf<K, V> ) ( parentPos.page );
+        PersistedLeaf<K, V> leaf = ( PersistedLeaf<K, V> ) ( parentPos.page );
 
         // The key
         tuple.setKey( leaf.getKey( parentPos.pos ) );
@@ -798,7 +797,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
                 parentPos.page = child;
             }
 
-            child = ((Node<K, V>)parentPos.page).children[0].getValue( btree );
+            child = ((Node<K, V>)parentPos.page).children[0].getValue();
         }
 
         // and leaf
@@ -812,7 +811,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
         
         if ( parentPos.valueCursor != null )
         {
-            parentPos.valueCursor = ((Leaf<K, V>)parentPos.page).values[0].getCursor();
+            parentPos.valueCursor = ((PersistedLeaf<K, V>)parentPos.page).values[0].getCursor();
             parentPos.valueCursor.beforeFirst();
         }
     }
@@ -846,7 +845,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
                 parentPos.pos = parentPos.page.getNbElems();
             }
 
-            child = ((Node<K, V>)parentPos.page).children[parentPos.pos].getValue( btree );
+            child = ((Node<K, V>)parentPos.page).children[parentPos.pos].getValue();
         }
         
         // and leaf
@@ -862,7 +861,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
             parentPos.pos = child.getNbElems() - 1;
         }
 
-        parentPos.valueCursor = ((Leaf<K, V>)parentPos.page).values[parentPos.pos].getCursor();
+        parentPos.valueCursor = ((PersistedLeaf<K, V>)parentPos.page).values[parentPos.pos].getCursor();
         parentPos.valueCursor.afterLast();
         parentPos.pos = AFTER_LAST;
     }

@@ -60,56 +60,6 @@ public abstract class AbstractTupleCursor<K, V> implements TupleCursor<K, V>
     
     /**
      * {@inheritDoc}
-     *
-    public void afterLast() throws IOException
-    {
-        // First check that we have elements in the BTree
-        if ( ( stack == null ) || ( stack.length == 0 ) )
-        {
-            return;
-        }
-
-        Page<K, V> child = null;
-
-        for ( int i = 0; i < depth; i++ )
-        {
-            ParentPos<K, V> parentPos = stack[i];
-            
-            if ( child != null )
-            {
-                parentPos.page = child;
-                parentPos.pos = child.getNbElems();
-            }
-            else
-            {
-                // We have N+1 children if the page is a Node, so we don't decrement the nbElems field
-                parentPos.pos = parentPos.page.getNbElems();
-            }
-
-            child = ((Node<K, V>)parentPos.page).children[parentPos.pos];
-        }
-        
-        // and leaf
-        ParentPos<K, V> parentPos = stack[depth];
-
-        if ( child == null )
-        {
-            parentPos.pos = parentPos.page.getNbElems() - 1;
-        }
-        else
-        {
-            parentPos.page = child;
-            parentPos.pos = child.getNbElems() - 1;
-        }
-
-        parentPos.valueCursor = ((Leaf<K, V>)parentPos.page).values[parentPos.pos].getCursor();
-        parentPos.valueCursor.afterLast();
-        parentPos.pos = AFTER_LAST;
-    }
-
-
-    /**
-     * {@inheritDoc}
      */
     public void close()
     {

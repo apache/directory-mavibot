@@ -31,8 +31,10 @@ import org.apache.directory.mavibot.btree.BorrowedFromLeftResult;
 import org.apache.directory.mavibot.btree.BorrowedFromRightResult;
 import org.apache.directory.mavibot.btree.DeleteResult;
 import org.apache.directory.mavibot.btree.InsertResult;
+import org.apache.directory.mavibot.btree.KeyHolder;
 import org.apache.directory.mavibot.btree.NotPresentResult;
 import org.apache.directory.mavibot.btree.Page;
+import org.apache.directory.mavibot.btree.PageHolder;
 import org.apache.directory.mavibot.btree.RemoveResult;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
@@ -75,11 +77,11 @@ public class LeafTest
      * A helper method to insert elements in a Leaf
      * @throws IOException 
      */
-    private Leaf<Long, String> insert( Leaf<Long, String> leaf, long key, String value ) throws IOException
+    private InMemoryLeaf<Long, String> insert( InMemoryLeaf<Long, String> leaf, long key, String value ) throws IOException
     {
         InsertResult<Long, String> result = leaf.insert( 1L, key, value );
 
-        return ( Leaf<Long, String> ) ( (org.apache.directory.mavibot.btree.ModifyResult<Long, String> ) result ).getModifiedPage();
+        return ( InMemoryLeaf<Long, String> ) ( (org.apache.directory.mavibot.btree.ModifyResult<Long, String> ) result ).getModifiedPage();
     }
 
 
@@ -90,7 +92,7 @@ public class LeafTest
     @Test
     public void testDeleteFromEmptyLeaf() throws IOException
     {
-        Leaf<Long, String> leaf = new Leaf<Long, String>( btree );
+        InMemoryLeaf<Long, String> leaf = new InMemoryLeaf<Long, String>( btree );
 
         DeleteResult<Long, String> result = leaf.delete( 1L, 1L, null, null, -1 );
 
@@ -105,7 +107,7 @@ public class LeafTest
     @Test
     public void testDeleteNotPresentElementFromRootLeaf() throws IOException
     {
-        Leaf<Long, String> leaf = new Leaf<Long, String>( btree );
+        InMemoryLeaf<Long, String> leaf = new InMemoryLeaf<Long, String>( btree );
         leaf = insert( leaf, 1L, "v1" );
         leaf = insert( leaf, 2L, "v2" );
         leaf = insert( leaf, 3L, "v3" );
@@ -124,7 +126,7 @@ public class LeafTest
     @Test
     public void testDeletePresentElementFromRootLeaf() throws IOException
     {
-        Leaf<Long, String> leaf = new Leaf<Long, String>( btree );
+        InMemoryLeaf<Long, String> leaf = new InMemoryLeaf<Long, String>( btree );
         leaf = insert( leaf, 1L, "v1" );
         leaf = insert( leaf, 2L, "v2" );
         leaf = insert( leaf, 3L, "v3" );
@@ -171,7 +173,7 @@ public class LeafTest
     @Test
     public void testDeleteFirstElementFromRootLeaf() throws IOException
     {
-        Leaf<Long, String> leaf = new Leaf<Long, String>( btree );
+        InMemoryLeaf<Long, String> leaf = new InMemoryLeaf<Long, String>( btree );
         leaf = insert( leaf, 1L, "v1" );
         leaf = insert( leaf, 2L, "v2" );
         leaf = insert( leaf, 3L, "v3" );
@@ -226,9 +228,9 @@ public class LeafTest
     public void testDeleteBorrowingFromLeftSibling() throws IOException
     {
         Node<Long, String> parent = new Node<Long, String>( btree, 1L, 2 );
-        Leaf<Long, String> left = new Leaf<Long, String>( btree );
-        Leaf<Long, String> target = new Leaf<Long, String>( btree );
-        Leaf<Long, String> right = new Leaf<Long, String>( btree );
+        InMemoryLeaf<Long, String> left = new InMemoryLeaf<Long, String>( btree );
+        InMemoryLeaf<Long, String> target = new InMemoryLeaf<Long, String>( btree );
+        InMemoryLeaf<Long, String> right = new InMemoryLeaf<Long, String>( btree );
 
         // Fill the left page
         left = insert( left, 1L, "v1" );
@@ -249,13 +251,13 @@ public class LeafTest
         right = insert( right, 12L, "v12" );
         right = insert( right, 13L, "v13" );
 
-        parent.children[0] = left;
-        parent.children[1] = target;
-        parent.children[2] = right;
+        parent.setPageHolder( 0, new PageHolder<Long, String>( btree, left ) );
+        parent.setPageHolder( 1, new PageHolder<Long, String>( btree, target ) );
+        parent.setPageHolder( 2, new PageHolder<Long, String>( btree, right ) );
 
         // Update the parent
-        parent.setKey( 0, 6L );
-        parent.setKey( 1, 10L );
+        parent.setKey( 0, new KeyHolder<Long>( 6L ) );
+        parent.setKey( 1, new KeyHolder<Long>( 10L ) );
 
         // Now, delete the element from the target page
         DeleteResult<Long, String> result = target.delete( 2L, 7L, null, parent, 1 );
@@ -268,7 +270,7 @@ public class LeafTest
         assertEquals( Long.valueOf( 7L ), removedKey.getKey() );
 
         // Check the modified leaf
-        Leaf<Long, String> newLeaf = ( Leaf<Long, String> ) borrowed.getModifiedPage();
+        InMemoryLeaf<Long, String> newLeaf = ( InMemoryLeaf<Long, String> ) borrowed.getModifiedPage();
 
         assertEquals( 4, newLeaf.getNbElems() );
         assertEquals( Long.valueOf( 5L ), newLeaf.getKey( 0 ) );
@@ -277,7 +279,7 @@ public class LeafTest
         assertEquals( Long.valueOf( 9L ), newLeaf.getKey( 3 ) );
 
         // Check the sibling
-        Leaf<Long, String> leftSibling = ( Leaf<Long, String> ) borrowed.getModifiedSibling();
+        InMemoryLeaf<Long, String> leftSibling = ( InMemoryLeaf<Long, String> ) borrowed.getModifiedSibling();
 
         assertEquals( 4, leftSibling.getNbElems() );
         assertEquals( Long.valueOf( 1L ), leftSibling.getKey( 0 ) );
@@ -296,9 +298,9 @@ public class LeafTest
     public void testDeleteBorrowingFromRightSibling() throws IOException
     {
         Node<Long, String> parent = new Node<Long, String>( btree, 1L, 2 );
-        Leaf<Long, String> left = new Leaf<Long, String>( btree );
-        Leaf<Long, String> target = new Leaf<Long, String>( btree );
-        Leaf<Long, String> right = new Leaf<Long, String>( btree );
+        InMemoryLeaf<Long, String> left = new InMemoryLeaf<Long, String>( btree );
+        InMemoryLeaf<Long, String> target = new InMemoryLeaf<Long, String>( btree );
+        InMemoryLeaf<Long, String> right = new InMemoryLeaf<Long, String>( btree );
 
         // Fill the left page
         left = insert( left, 1L, "v1" );
@@ -319,13 +321,13 @@ public class LeafTest
         right = insert( right, 13L, "v13" );
         right = insert( right, 14L, "v14" );
 
-        parent.children[0] = left;
-        parent.children[1] = target;
-        parent.children[2] = right;
+        parent.setPageHolder( 0, new PageHolder<Long, String>( btree, left ) );
+        parent.setPageHolder( 1, new PageHolder<Long, String>( btree, target ) );
+        parent.setPageHolder( 2, new PageHolder<Long, String>( btree, right ) );
 
         // Update the parent
-        parent.setKey( 0, 6L );
-        parent.setKey( 1, 10L );
+        parent.setKey( 0, new KeyHolder<Long>( 6L ) );
+        parent.setKey( 1, new KeyHolder<Long>( 10L ) );
 
         // Now, delete the element from the target page
         DeleteResult<Long, String> result = target.delete( 2L, 7L, null, parent, 1 );
@@ -339,7 +341,7 @@ public class LeafTest
         assertEquals( Long.valueOf( 7L ), removedKey.getKey() );
 
         // Check the modified leaf
-        Leaf<Long, String> newLeaf = ( Leaf<Long, String> ) borrowed.getModifiedPage();
+        InMemoryLeaf<Long, String> newLeaf = ( InMemoryLeaf<Long, String> ) borrowed.getModifiedPage();
 
         assertEquals( 4, newLeaf.getNbElems() );
         assertEquals( Long.valueOf( 6L ), newLeaf.getKey( 0 ) );
@@ -348,7 +350,7 @@ public class LeafTest
         assertEquals( Long.valueOf( 10L ), newLeaf.getKey( 3 ) );
 
         // Check the sibling
-        Leaf<Long, String> rightSibling = ( Leaf<Long, String> ) borrowed.getModifiedSibling();
+        InMemoryLeaf<Long, String> rightSibling = ( InMemoryLeaf<Long, String> ) borrowed.getModifiedSibling();
 
         assertEquals( 4, rightSibling.getNbElems() );
         assertEquals( Long.valueOf( 11L ), rightSibling.getKey( 0 ) );
@@ -367,9 +369,9 @@ public class LeafTest
     public void testDeleteMergeWithSibling() throws IOException
     {
         Node<Long, String> parent = new Node<Long, String>( btree, 1L, 2 );
-        Leaf<Long, String> left = new Leaf<Long, String>( btree );
-        Leaf<Long, String> target = new Leaf<Long, String>( btree );
-        Leaf<Long, String> right = new Leaf<Long, String>( btree );
+        InMemoryLeaf<Long, String> left = new InMemoryLeaf<Long, String>( btree );
+        InMemoryLeaf<Long, String> target = new InMemoryLeaf<Long, String>( btree );
+        InMemoryLeaf<Long, String> right = new InMemoryLeaf<Long, String>( btree );
 
         // Fill the left page
         left = insert( left, 1L, "v1" );
@@ -389,13 +391,13 @@ public class LeafTest
         right = insert( right, 11L, "v11" );
         right = insert( right, 12L, "v12" );
 
-        parent.children[0] = left;
-        parent.children[1] = target;
-        parent.children[2] = right;
+        parent.setPageHolder( 0, new PageHolder<Long, String>( btree, left ) );
+        parent.setPageHolder( 1, new PageHolder<Long, String>( btree, target ) );
+        parent.setPageHolder( 2, new PageHolder<Long, String>( btree, right ) );
 
         // Update the parent
-        parent.setKey( 0, 5L );
-        parent.setKey( 1, 9L );
+        parent.setKey( 0, new KeyHolder<Long>( 5L ) );
+        parent.setKey( 1, new KeyHolder<Long>( 9L ) );
 
         // Now, delete the element from the target page
         DeleteResult<Long, String> result = target.delete( 2L, 7L, null, parent, 1 );
@@ -408,7 +410,7 @@ public class LeafTest
         assertEquals( Long.valueOf( 7L ), removedKey.getKey() );
 
         // Check the modified leaf
-        Leaf<Long, String> newLeaf = ( Leaf<Long, String> ) merged.getModifiedPage();
+        InMemoryLeaf<Long, String> newLeaf = ( InMemoryLeaf<Long, String> ) merged.getModifiedPage();
 
         assertEquals( 7, newLeaf.getNbElems() );
         assertEquals( Long.valueOf( 1L ), newLeaf.getKey( 0 ) );
@@ -428,13 +430,13 @@ public class LeafTest
     @Test
     public void testFindPos() throws Exception
     {
-        Leaf<Long, String> leaf = new Leaf<Long, String>( btree );
+        InMemoryLeaf<Long, String> leaf = new InMemoryLeaf<Long, String>( btree );
 
         // Inject the values
         for ( long i = 0; i < 8; i++ )
         {
             long value = i + i + 1;
-            leaf = ( Leaf<Long, String> ) ( (org.apache.directory.mavibot.btree.ModifyResult<Long, String> ) leaf.insert( 0L, value, "V" + value ) )
+            leaf = ( InMemoryLeaf<Long, String> ) ( (org.apache.directory.mavibot.btree.ModifyResult<Long, String> ) leaf.insert( 0L, value, "V" + value ) )
                 .getModifiedPage();
         }
 

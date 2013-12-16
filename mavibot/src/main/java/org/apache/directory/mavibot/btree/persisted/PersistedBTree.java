@@ -31,6 +31,7 @@ import net.sf.ehcache.Cache;
 import net.sf.ehcache.config.CacheConfiguration;
 
 import org.apache.directory.mavibot.btree.AbstractBTree;
+import org.apache.directory.mavibot.btree.AbstractPage;
 import org.apache.directory.mavibot.btree.BTreeHeader;
 import org.apache.directory.mavibot.btree.DeleteResult;
 import org.apache.directory.mavibot.btree.InsertResult;
@@ -125,7 +126,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
         // Create the first root page, with revision 0L. It will be empty
         // and increment the revision at the same time
-        rootPage = new Leaf<K, V>( this );
+        rootPage = new PersistedLeaf<K, V>( this );
         
         if ( isSubBtree )
         {
@@ -237,7 +238,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
         // Create the first root page, with revision 0L. It will be empty
         // and increment the revision at the same time
-        rootPage = new Leaf<K, V>( this );
+        rootPage = new PersistedLeaf<K, V>( this );
 
         // Now, call the init() method
         init();
@@ -440,16 +441,16 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
                 // Write the modified page on disk
                 // Note that we don't use the holder, the new root page will
                 // remain in memory.
-                PageHolder<K, V> holder = recordManager.writePage( this, modifiedPage,
+                PersistedPageHolder<K, V> holder = recordManager.writePage( this, modifiedPage,
                     revision );
 
                 // Store the offset on disk in the page in memory
-                ( ( AbstractPersistedPage<K, V> ) modifiedPage ).setOffset( ( ( PageHolder<K, V> ) holder )
+                ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( PersistedPageHolder<K, V> ) holder )
                     .getOffset() );
 
                 // Store the last offset on disk in the page in memory
-                ( ( AbstractPersistedPage<K, V> ) modifiedPage )
-                    .setLastOffset( ( ( PageHolder<K, V> ) holder )
+                ( ( AbstractPage<K, V> ) modifiedPage )
+                    .setLastOffset( ( ( PersistedPageHolder<K, V> ) holder )
                         .getLastOffset() );
 
                 // This is a new root
@@ -464,7 +465,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
                 // We have to update the rootPage on disk
                 // Update the BTree header now
-                recordManager.updateBtreeHeader( this, ( ( AbstractPersistedPage<K, V> ) rootPage ).getOffset() );
+                recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
             }
 
             recordManager.addFreePages( this, result.getCopiedPages() );
@@ -524,7 +525,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
             // Write the modified page on disk
             // Note that we don't use the holder, the new root page will
             // remain in memory.
-            PageHolder<K, V> holder = recordManager.writePage( this, modifiedPage,
+            PersistedPageHolder<K, V> holder = recordManager.writePage( this, modifiedPage,
                 revision );
             
             // The root has just been modified, we haven't split it
@@ -546,10 +547,10 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
             // If the BTree is managed, we have to write the two pages that were created
             // and to keep a track of the two offsets for the upper node
-            PageHolder<K, V> holderLeft = recordManager.writePage( this,
+            PersistedPageHolder<K, V> holderLeft = recordManager.writePage( this,
                 leftPage, revision );
 
-            PageHolder<K, V> holderRight = recordManager.writePage( this,
+            PersistedPageHolder<K, V> holderRight = recordManager.writePage( this,
                 rightPage, revision );
 
             // Create the new rootPage
@@ -557,7 +558,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
             // If the BTree is managed, we now have to write the page on disk
             // and to add this page to the list of modified pages
-            PageHolder<K, V> holder = recordManager
+            PersistedPageHolder<K, V> holder = recordManager
                 .writePage( this, newRootPage, revision );
 
             rootPage = newRootPage;
@@ -575,7 +576,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
         recordManager.updateRecordManagerHeader();
 
         // Update the BTree header now
-        recordManager.updateBtreeHeader( this, ( ( AbstractPersistedPage<K, V> ) rootPage ).getOffset() );
+        recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
 
         // Moved the free pages into the list of free pages
         recordManager.addFreePages( this, result.getCopiedPages() );

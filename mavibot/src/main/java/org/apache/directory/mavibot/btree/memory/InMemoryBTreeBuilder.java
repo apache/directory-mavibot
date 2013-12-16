@@ -36,6 +36,7 @@ import org.apache.directory.mavibot.btree.AbstractPage;
 import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.KeyHolder;
 import org.apache.directory.mavibot.btree.Page;
+import org.apache.directory.mavibot.btree.PageHolder;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.ValueHolder;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
@@ -77,7 +78,7 @@ public class InMemoryBTreeBuilder<K, V>
 
         int totalTupleCount = 0;
 
-        Leaf<K, V> leaf1 = createLeaf( btree, 0, numKeysInNode );
+        InMemoryLeaf<K, V> leaf1 = createLeaf( btree, 0, numKeysInNode );
         lstLeaves.add( leaf1 );
 
         int leafIndex = 0;
@@ -107,7 +108,7 @@ public class InMemoryBTreeBuilder<K, V>
         }
 
         // remove null keys and values from the last leaf and resize
-        Leaf<K, V> lastLeaf = ( Leaf<K, V> ) lstLeaves.get( lstLeaves.size() - 1 );
+        InMemoryLeaf<K, V> lastLeaf = ( InMemoryLeaf<K, V> ) lstLeaves.get( lstLeaves.size() - 1 );
         for ( int i = 0; i < lastLeaf.getNbElems(); i++ )
         {
             if ( lastLeaf.getKeys()[i] == null )
@@ -161,7 +162,7 @@ public class InMemoryBTreeBuilder<K, V>
                 setKey( node, i - 1, p.getLeftMostKey() );
             }
 
-            node.children[i] = p;
+            node.setPageHolder( i, new PageHolder<K, V>( btree, p ) );
 
             i++;
             totalNodes++;

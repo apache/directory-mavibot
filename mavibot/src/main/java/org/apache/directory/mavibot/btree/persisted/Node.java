@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.List;
 
+import org.apache.directory.mavibot.btree.AbstractPage;
 import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.BorrowedFromSiblingResult;
 import org.apache.directory.mavibot.btree.BorrowedFromLeftResult;
@@ -54,10 +55,10 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier */class Node<K, V> extends AbstractPersistedPage<K, V>
+/* No qualifier */class Node<K, V> extends AbstractPage<K, V>
 {
     /** Children pages associated with keys. */
-    protected PageHolder<K, V>[] children;
+    protected PersistedPageHolder<K, V>[] children;
 
 
     /**
@@ -75,7 +76,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         super( btree, revision, nbElems );
 
         // Create the children array
-        children = ( PageHolder<K, V>[] ) Array.newInstance( PageHolder.class, nbElems + 1 );
+        children = ( PersistedPageHolder<K, V>[] ) Array.newInstance( PersistedPageHolder.class, nbElems + 1 );
     }
 
 
@@ -96,11 +97,11 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         super( btree, revision, 1 );
 
         // Create the children array, and store the left and right children
-        children = ( PageHolder<K, V>[] ) Array.newInstance( PageHolder.class,
+        children = ( PersistedPageHolder<K, V>[] ) Array.newInstance( PersistedPageHolder.class,
             btree.getPageSize() + 1 );
 
-        children[0] = new PageHolder<K, V>( btree, leftPage );
-        children[1] = new PageHolder<K, V>( btree, rightPage );
+        children[0] = new PersistedPageHolder<K, V>( btree, leftPage );
+        children[1] = new PersistedPageHolder<K, V>( btree, rightPage );
 
         // Create the keys array and store the pivot into it
         // We get the type of array to create from the btree
@@ -123,13 +124,13 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @param rightPage The right page
      */
     @SuppressWarnings("unchecked")
-    /* No qualifier */Node( BTree<K, V> btree, long revision, K key, PageHolder<K, V> leftPage,
-        PageHolder<K, V> rightPage )
+    /* No qualifier */Node( BTree<K, V> btree, long revision, K key, PersistedPageHolder<K, V> leftPage,
+        PersistedPageHolder<K, V> rightPage )
     {
         super( btree, revision, 1 );
 
         // Create the children array, and store the left and right children
-        children = ( PageHolder<K, V>[] ) Array.newInstance( PageHolder.class,
+        children = ( PersistedPageHolder<K, V>[] ) Array.newInstance( PersistedPageHolder.class,
             btree.getPageSize() + 1 );
 
         children[0] = leftPage;
@@ -158,7 +159,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
 
         // Get the child page into which we will insert the <K, V> tuple
-        Page<K, V> child = children[pos].getValue( btree );
+        Page<K, V> child = children[pos].getValue();
 
         // and insert the <K, V> into this child
         InsertResult<K, V> result = child.insert( revision, key, value );
@@ -292,7 +293,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         // Create the new sibling, with one less element at the beginning
         Node<K, V> newSibling = new Node<K, V>( btree, revision, sibling.getNbElems() - 1 );
 
-        K siblingKey = sibling.children[0].getValue( btree ).getLeftMostKey();
+        K siblingKey = sibling.children[0].getValue().getLeftMostKey();
 
         // Copy the keys and children of the old sibling in the new sibling
         System.arraycopy( sibling.keys, 1, newSibling.keys, 0, newSibling.getNbElems() );
@@ -376,7 +377,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         Node<K, V> sibling, int pos ) throws IOException
     {
         // The sibling is on the left, borrow the rightmost element
-        Page<K, V> siblingChild = sibling.children[sibling.nbElems].getValue( btree );
+        Page<K, V> siblingChild = sibling.children[sibling.nbElems].getValue();
 
         // Create the new sibling, with one less element at the end
         Node<K, V> newSibling = new Node<K, V>( btree, revision, sibling.getNbElems() - 1 );
@@ -407,7 +408,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         else
         {
             // Set the first key
-            newNode.keys[0] = new PersistedKeyHolder<K>( btree.getKeySerializer(), children[0].getValue( btree )
+            newNode.keys[0] = new PersistedKeyHolder<K>( btree.getKeySerializer(), children[0].getValue()
                 .getLeftMostKey() ); //2
 
             if ( index > 2 )
@@ -492,7 +493,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             {
                 // Copy the left part of the node keys up to the deletion point
                 // Insert the new key
-                newNode.keys[half] = new PersistedKeyHolder<K>( btree.getKeySerializer(), children[0].getValue( btree )
+                newNode.keys[half] = new PersistedKeyHolder<K>( btree.getKeySerializer(), children[0].getValue()
                     .getLeftMostKey() ); // 3
 
                 if ( index > 2 )
@@ -601,12 +602,12 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         if ( found )
         {
             index = -( pos + 1 );
-            child = children[-pos].getValue( btree );
+            child = children[-pos].getValue();
             deleteResult = child.delete( revision, key, value, this, -pos );
         }
         else
         {
-            child = children[pos].getValue( btree );
+            child = children[pos].getValue();
             deleteResult = child.delete( revision, key, value, this, pos );
         }
 
@@ -670,7 +671,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 // a sibling, or we will have to merge two pages
                 int siblingPos = selectSibling( ( Node<K, V> ) parent, parentPos );
 
-                Node<K, V> sibling = ( Node<K, V> ) ( ( ( Node<K, V> ) parent ).children[siblingPos].getValue( btree ) );
+                Node<K, V> sibling = ( Node<K, V> ) ( ( ( Node<K, V> ) parent ).children[siblingPos].getValue() );
 
                 if ( sibling.getNbElems() > halfSize )
                 {
@@ -871,11 +872,11 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         {
             // Here, if we have found the key in the node, then we must go down into
             // the right child, not the left one
-            return children[-pos].getValue( btree ).get( key );
+            return children[-pos].getValue().get( key );
         }
         else
         {
-            return children[pos].getValue( btree ).get( key );
+            return children[pos].getValue().get( key );
         }
     }
 
@@ -892,11 +893,11 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         {
             // Here, if we have found the key in the node, then we must go down into
             // the right child, not the left one
-            return children[-pos].getValue( btree ).getValues( key );
+            return children[-pos].getValue().getValues( key );
         }
         else
         {
-            return children[pos].getValue( btree ).getValues( key );
+            return children[pos].getValue().getValues( key );
         }
     }
 
@@ -913,11 +914,11 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         {
             // Here, if we have found the key in the node, then we must go down into
             // the right child, not the left one
-            return children[-pos].getValue( btree ).hasKey( key );
+            return children[-pos].getValue().hasKey( key );
         }
         else
         {
-            Page<K, V> page = children[pos].getValue( btree );
+            Page<K, V> page = children[pos].getValue();
 
             if ( page == null )
             {
@@ -941,11 +942,11 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         {
             // Here, if we have found the key in the node, then we must go down into
             // the right child, not the left one
-            return children[-pos].getValue( btree ).contains( key, value );
+            return children[-pos].getValue().contains( key, value );
         }
         else
         {
-            return children[pos].getValue( btree ).contains( key, value );
+            return children[pos].getValue().contains( key, value );
         }
     }
 
@@ -956,7 +957,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    public void setValue( int pos, PageHolder<K, V> value )
+    public void setValue( int pos, PersistedPageHolder<K, V> value )
     {
         children[pos] = value;
     }
@@ -969,7 +970,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     {
         if ( pos < nbElems + 1 )
         {
-            return children[pos].getValue( btree );
+            return children[pos].getValue();
         }
         else
         {
@@ -994,7 +995,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         // We first stack the current page
         stack[depth++] = new ParentPos<K, V>( this, pos );
         
-        Page<K, V> page = children[pos].getValue( btree );
+        Page<K, V> page = children[pos].getValue();
 
         return page.browse( key, transaction, stack, depth );
     }
@@ -1008,7 +1009,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     {
         stack[depth++] = new ParentPos<K, V>( this, 0 );
         
-        Page<K, V> page = children[0].getValue( btree );
+        Page<K, V> page = children[0].getValue();
 
         return page.browse( transaction, stack, depth );
     }
@@ -1053,9 +1054,9 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @return A holder contaning a reference to the child page
      * @throws IOException If we have an error while trying to access the page
      */
-    private PageHolder<K, V> createHolder( Page<K, V> page ) throws IOException
+    private PersistedPageHolder<K, V> createHolder( Page<K, V> page ) throws IOException
     {
-        PageHolder<K, V> holder = ((PersistedBTree<K, V>)btree).getRecordManager().writePage( btree,
+        PersistedPageHolder<K, V> holder = ((PersistedBTree<K, V>)btree).getRecordManager().writePage( btree,
             page,
             revision );
 
@@ -1257,20 +1258,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      */
     public K getLeftMostKey()
     {
-        try
-        {
-            return children[0].getValue( btree ).getLeftMostKey();
-        }
-        catch ( EndOfFileExceededException eofe )
-        {
-            eofe.printStackTrace();
-            return null;
-        }
-        catch ( IOException ioe )
-        {
-            ioe.printStackTrace();
-            return null;
-        }
+        return children[0].getValue().getLeftMostKey();
     }
 
 
@@ -1281,25 +1269,12 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     {
         int index = ( nbElems + 1 ) - 1;
 
-        try
+        if ( children[index] != null )
         {
-            if ( children[index] != null )
-            {
-                return children[index].getValue( btree ).getRightMostKey();
-            }
-    
-            return children[nbElems - 1].getValue( btree ).getRightMostKey();
+            return children[index].getValue().getRightMostKey();
         }
-        catch ( EndOfFileExceededException eofe )
-        {
-            eofe.printStackTrace();
-            return null;
-        }
-        catch ( IOException ioe )
-        {
-            ioe.printStackTrace();
-            return null;
-        }
+
+        return children[nbElems - 1].getValue().getRightMostKey();
     }
 
 
@@ -1308,7 +1283,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      */
     public Tuple<K, V> findLeftMost() throws EndOfFileExceededException, IOException
     {
-        return children[0].getValue( btree ).findLeftMost();
+        return children[0].getValue().findLeftMost();
     }
 
 
@@ -1317,7 +1292,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      */
     public Tuple<K, V> findRightMost() throws EndOfFileExceededException, IOException
     {
-        return children[nbElems].getValue( btree ).findRightMost();
+        return children[nbElems].getValue().findRightMost();
     }
 
 
@@ -1332,38 +1307,31 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         sb.append( super.toString() );
         sb.append( "] -> {" );
 
-        try
+        if ( nbElems > 0 )
         {
-            if ( nbElems > 0 )
+            // Start with the first child
+            if ( children[0] == null )
             {
-                // Start with the first child
-                if ( children[0] == null )
+                sb.append( "null" );
+            }
+            else
+            {
+                sb.append( 'r' ).append( children[0].getValue().getRevision() );
+            }
+
+            for ( int i = 0; i < nbElems; i++ )
+            {
+                sb.append( "|<" ).append( keys[i] ).append( ">|" );
+
+                if ( children[i + 1] == null )
                 {
                     sb.append( "null" );
                 }
                 else
                 {
-                    sb.append( 'r' ).append( children[0].getValue( btree ).getRevision() );
-                }
-
-                for ( int i = 0; i < nbElems; i++ )
-                {
-                    sb.append( "|<" ).append( keys[i] ).append( ">|" );
-
-                    if ( children[i + 1] == null )
-                    {
-                        sb.append( "null" );
-                    }
-                    else
-                    {
-                        sb.append( 'r' ).append( children[i + 1].getValue( btree ).getRevision() );
-                    }
+                    sb.append( 'r' ).append( children[i + 1].getValue().getRevision() );
                 }
             }
-        }
-        catch ( IOException ioe )
-        {
-            // Do nothing
         }
 
         sb.append( "}" );
@@ -1381,22 +1349,15 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         if ( nbElems > 0 )
         {
-            try
-            {
-                // Start with the first child
-                sb.append( children[0].getValue( btree ).dumpPage( tabs + "    " ) );
+            // Start with the first child
+            sb.append( children[0].getValue().dumpPage( tabs + "    " ) );
 
-                for ( int i = 0; i < nbElems; i++ )
-                {
-                    sb.append( tabs );
-                    sb.append( "<" );
-                    sb.append( keys[i] ).append( ">\n" );
-                    sb.append( children[i + 1].getValue( btree ).dumpPage( tabs + "    " ) );
-                }
-            }
-            catch ( IOException ioe )
+            for ( int i = 0; i < nbElems; i++ )
             {
-                // Do nothing
+                sb.append( tabs );
+                sb.append( "<" );
+                sb.append( keys[i] ).append( ">\n" );
+                sb.append( children[i + 1].getValue().dumpPage( tabs + "    " ) );
             }
         }
 

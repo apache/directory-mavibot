@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.directory.mavibot.btree.AbstractPage;
 import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.KeyHolder;
 import org.apache.directory.mavibot.btree.Page;
@@ -389,6 +390,7 @@ public class RecordManager
             {
                 // Create the BTree
                 BTree<Object, Object> btree = BTreeFactory.createBTree();
+                ((PersistedBTree<Object, Object>)btree).setRecordManager( this );
                 ((PersistedBTree<Object, Object>)btree).setBtreeOffset( nextBtreeOffset );
                 lastAddedBTreeOffset = nextBtreeOffset;
 
@@ -537,6 +539,8 @@ public class RecordManager
 
         // Now, init the BTree
         btree.init();
+        
+        ((PersistedBTree<K, V>)btree).setRecordManager( this );
 
         // Now, load the rootPage, which can be a Leaf or a Node, depending 
         // on the number of elements in the tree : if it's above the pageSize,
@@ -570,8 +574,8 @@ public class RecordManager
 
         Page<K, V> page = readPage( btree, rootPageIos );
 
-        ( ( AbstractPersistedPage<K, V> ) page ).setOffset( rootPageIos[0].getOffset() );
-        ( ( AbstractPersistedPage<K, V> ) page ).setLastOffset( rootPageIos[rootPageIos.length - 1].getOffset() );
+        ( ( AbstractPage<K, V> ) page ).setOffset( rootPageIos[0].getOffset() );
+        ( ( AbstractPage<K, V> ) page ).setLastOffset( rootPageIos[rootPageIos.length - 1].getOffset() );
 
         return page;
     }
@@ -619,11 +623,11 @@ public class RecordManager
     /**
      * Deserialize a Leaf from some PageIOs
      */
-    private <K, V> Leaf<K, V> readLeafKeysAndValues( BTree<K, V> btree, int nbElems, long revision, ByteBuffer byteBuffer,
+    private <K, V> PersistedLeaf<K, V> readLeafKeysAndValues( BTree<K, V> btree, int nbElems, long revision, ByteBuffer byteBuffer,
         PageIO[] pageIos )
     {
         // Its a leaf, create it
-        Leaf<K, V> leaf = BTreeFactory.createLeaf( btree, revision, nbElems );
+        PersistedLeaf<K, V> leaf = BTreeFactory.createLeaf( btree, revision, nbElems );
 
         // Store the page offset on disk
         leaf.setOffset( pageIos[0].getOffset() );
@@ -666,7 +670,7 @@ public class RecordManager
             keyLengths[i] = byteBuffer.getInt();
             byte[] data = new byte[keyLengths[i]];
             byteBuffer.get( data );
-            BTreeFactory.setKey( leaf, i, data );
+            BTreeFactory.setKey( btree, leaf, i, data );
         }
 
         return leaf;
@@ -688,7 +692,7 @@ public class RecordManager
             long offset = OFFSET_SERIALIZER.deserialize( byteBuffer );
             long lastOffset = OFFSET_SERIALIZER.deserialize( byteBuffer );
 
-            PageHolder<K, V> valueHolder = new PageHolder<K, V>( btree, null, offset, lastOffset );
+            PersistedPageHolder<K, V> valueHolder = new PersistedPageHolder<K, V>( btree, null, offset, lastOffset );
             node.setValue( i, valueHolder );
 
             // Read the key length
@@ -702,14 +706,14 @@ public class RecordManager
             // Set the new position now
             byteBuffer.position( currentPosition + keyLength );
             
-            BTreeFactory.setKey( node, i, key );
+            BTreeFactory.setKey( btree, node, i, key );
         }
 
         // and read the last value, as it's a node
         long offset = OFFSET_SERIALIZER.deserialize( byteBuffer );
         long lastOffset = OFFSET_SERIALIZER.deserialize( byteBuffer );
 
-        PageHolder<K, V> valueHolder = new PageHolder<K, V>( btree, null, offset, lastOffset );
+        PersistedPageHolder<K, V> valueHolder = new PersistedPageHolder<K, V>( btree, null, offset, lastOffset );
         node.setValue( nbElems, valueHolder );
 
         return node;
@@ -1073,7 +1077,7 @@ public class RecordManager
         // Now, we can inject the BTree rootPage offset into the BTree header
         position = store( position, rootPageIo.getOffset(), pageIos );
         ((PersistedBTree<K, V>)btree).setRootPageOffset( rootPageIo.getOffset() );
-        ( ( Leaf<K, V> ) rootPage ).setOffset( rootPageIo.getOffset() );
+        ( ( PersistedLeaf<K, V> ) rootPage ).setOffset( rootPageIo.getOffset() );
 
         // The next BTree Header offset (-1L, as it's a new BTree)
         position = store( position, NO_PAGE, pageIos );
@@ -1202,8 +1206,8 @@ public class RecordManager
                 }
                 else
                 {
-                    dataSize += serializeLeafValue( ( Leaf<K, V> ) page, pos, serializedData );
-                    dataSize += serializeLeafKey( ( Leaf<K, V> ) page, pos, serializedData );
+                    dataSize += serializeLeafValue( ( PersistedLeaf<K, V> ) page, pos, serializedData );
+                    dataSize += serializeLeafKey( ( PersistedLeaf<K, V> ) page, pos, serializedData );
                 }
             }
 
@@ -1281,7 +1285,7 @@ public class RecordManager
     /**
      * Serialize a Leaf's key
      */
-    private <K, V> int serializeLeafKey( Leaf<K, V> leaf, int pos, List<byte[]> serializedData )
+    private <K, V> int serializeLeafKey( PersistedLeaf<K, V> leaf, int pos, List<byte[]> serializedData )
     {
         int dataSize = 0;
         KeyHolder<K> keyHolder = leaf.getKeyHolder( pos );
@@ -1310,7 +1314,7 @@ public class RecordManager
     /**
      * Serialize a Leaf's Value. We store 
      */
-    private <K, V> int serializeLeafValue( Leaf<K, V> leaf, int pos, List<byte[]> serializedData )
+    private <K, V> int serializeLeafValue( PersistedLeaf<K, V> leaf, int pos, List<byte[]> serializedData )
         throws IOException
     {
         // The value can be an Array or a sub-btree, but we don't care
@@ -1916,7 +1920,7 @@ public class RecordManager
      * @return The offset of the new page
      * @throws IOException 
      */
-    /* No qualifier*/<K, V> PageHolder<K, V> writePage( BTree<K, V> btree, Page<K, V> newPage,
+    /* No qualifier*/<K, V> PersistedPageHolder<K, V> writePage( BTree<K, V> btree, Page<K, V> newPage,
         long newRevision )
         throws IOException
     {
@@ -1931,7 +1935,7 @@ public class RecordManager
         // Build the resulting reference
         long offset = pageIos[0].getOffset();
         long lastOffset = pageIos[pageIos.length - 1].getOffset();
-        PageHolder<K, V> valueHolder = new PageHolder<K, V>( btree, newPage, offset,
+        PersistedPageHolder<K, V> valueHolder = new PersistedPageHolder<K, V>( btree, newPage, offset,
             lastOffset );
 
         if ( LOG_CHECK.isDebugEnabled() )

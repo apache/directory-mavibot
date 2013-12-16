@@ -23,7 +23,9 @@ package org.apache.directory.mavibot.btree.persisted;
 import java.io.IOException;
 import java.util.LinkedList;
 
+import org.apache.directory.mavibot.btree.AbstractPage;
 import org.apache.directory.mavibot.btree.BTree;
+import org.apache.directory.mavibot.btree.KeyHolder;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.ParentPos;
 import org.apache.directory.mavibot.btree.ValueHolder;
@@ -90,9 +92,9 @@ public class BTreeFactory
      * @param nbElems The number or elements in this leaf
      * @return A Leaf instance
      */
-    public static <K, V> Leaf<K, V> createLeaf( BTree<K, V> btree, long revision, int nbElems )
+    public static <K, V> PersistedLeaf<K, V> createLeaf( BTree<K, V> btree, long revision, int nbElems )
     {
-        Leaf<K, V> leaf = new Leaf<K, V>( btree, revision, nbElems );
+        PersistedLeaf<K, V> leaf = new PersistedLeaf<K, V>( btree, revision, nbElems );
 
         return leaf;
     }
@@ -232,9 +234,10 @@ public class BTreeFactory
      * @param pos The position in the keys array
      * @param key the key to inject
      */
-    public static <K, V> void setKey( Page<K, V> page, int pos, K key )
+    public static <K, V> void setKey( BTree<K, V> btree, Page<K, V> page, int pos, K key )
     {
-        ( ( AbstractPersistedPage<K, V> ) page ).setKey( pos, key );
+        KeyHolder<K> keyHolder = new PersistedKeyHolder<K>( btree.getKeySerializer(), key );
+        ( ( AbstractPage<K, V> ) page ).setKey( pos, keyHolder );
     }
 
 
@@ -244,9 +247,10 @@ public class BTreeFactory
      * @param pos the position of this key in the page
      * @param buffer the byte[] containing the serialized key
      */
-    public static <K, V> void setKey( Page<K, V> page, int pos, byte[] buffer )
+    public static <K, V> void setKey( BTree<K, V> btree, Page<K, V> page, int pos, byte[] buffer )
     {
-        ( ( AbstractPersistedPage<K, V> ) page ).setKey( pos, buffer );
+        KeyHolder<K> keyHolder = new PersistedKeyHolder<K>( btree.getKeySerializer(), buffer );
+        ( ( AbstractPage<K, V> ) page ).setKey( pos, keyHolder );
     }
 
 
@@ -255,7 +259,7 @@ public class BTreeFactory
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    public static <K, V> void setValue( Leaf<K, V> page, int pos, PersistedValueHolder<V> value )
+    public static <K, V> void setValue( PersistedLeaf<K, V> page, int pos, PersistedValueHolder<V> value )
     {
         page.setValue( pos, value );
     }
@@ -266,7 +270,7 @@ public class BTreeFactory
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    public static <K, V> void setValue( Node<K, V> page, int pos, PageHolder<K, V> value )
+    public static <K, V> void setValue( Node<K, V> page, int pos, PersistedPageHolder<K, V> value )
     {
         page.setValue( pos, value );
     }
@@ -286,9 +290,9 @@ public class BTreeFactory
         ParentPos<K, V> last = new ParentPos<K, V>( btree.getRootPage(), btree.getRootPage().getNbElems() );
         stack.push( last );
 
-        if ( btree.getRootPage() instanceof Leaf )
+        if ( btree.getRootPage() instanceof PersistedLeaf )
         {
-            Leaf<K, V> leaf = ( Leaf<K, V> ) ( btree.getRootPage() );
+            PersistedLeaf<K, V> leaf = ( PersistedLeaf<K, V> ) ( btree.getRootPage() );
             ValueHolder<V> valueHolder = leaf.values[last.pos];
             last.valueCursor = valueHolder.getCursor();
         }
@@ -298,14 +302,14 @@ public class BTreeFactory
 
             while ( true )
             {
-                Page<K, V> p = node.children[node.getNbElems()].getValue( btree );
+                Page<K, V> p = node.children[node.getNbElems()].getValue();
 
                 last = new ParentPos<K, V>( p, p.getNbElems() );
                 stack.push( last );
 
-                if ( p instanceof Leaf )
+                if ( p instanceof PersistedLeaf )
                 {
-                    Leaf<K, V> leaf = ( Leaf<K, V> ) ( last.page );
+                    PersistedLeaf<K, V> leaf = ( PersistedLeaf<K, V> ) ( last.page );
                     ValueHolder<V> valueHolder = leaf.values[last.pos];
                     last.valueCursor = valueHolder.getCursor();
                     break;
@@ -331,9 +335,9 @@ public class BTreeFactory
         ParentPos<K, V> first = new ParentPos<K, V>( btree.getRootPage(), 0 );
         stack.push( first );
 
-        if ( btree.getRootPage() instanceof Leaf )
+        if ( btree.getRootPage() instanceof PersistedLeaf )
         {
-            Leaf<K, V> leaf = ( Leaf<K, V> ) ( btree.getRootPage() );
+            PersistedLeaf<K, V> leaf = ( PersistedLeaf<K, V> ) ( btree.getRootPage() );
             ValueHolder<V> valueHolder = leaf.values[first.pos];
             first.valueCursor = valueHolder.getCursor();
         }
@@ -343,14 +347,14 @@ public class BTreeFactory
 
             while ( true )
             {
-                Page<K, V> page = node.children[0].getValue( btree );
+                Page<K, V> page = node.children[0].getValue();
 
                 first = new ParentPos<K, V>( page, 0 );
                 stack.push( first );
 
-                if ( page instanceof Leaf )
+                if ( page instanceof PersistedLeaf )
                 {
-                    Leaf<K, V> leaf = ( Leaf<K, V> ) ( page );
+                    PersistedLeaf<K, V> leaf = ( PersistedLeaf<K, V> ) ( page );
                     ValueHolder<V> valueHolder = leaf.values[first.pos];
                     first.valueCursor = valueHolder.getCursor();
                     break;

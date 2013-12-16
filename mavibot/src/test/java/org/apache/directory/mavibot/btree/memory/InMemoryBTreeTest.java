@@ -38,6 +38,7 @@ import java.util.Set;
 import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.KeyHolder;
 import org.apache.directory.mavibot.btree.Page;
+import org.apache.directory.mavibot.btree.PageHolder;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
@@ -1044,7 +1045,7 @@ public class InMemoryBTreeTest
     private Page<Integer, String> createLeaf( BTree<Integer, String> btree, long revision,
         Tuple<Integer, String>... tuples )
     {
-        Leaf<Integer, String> leaf = new Leaf<Integer, String>( btree );
+        InMemoryLeaf<Integer, String> leaf = new InMemoryLeaf<Integer, String>( btree );
         int pos = 0;
         leaf.setRevision( revision );
         leaf.setNbElems( tuples.length );
@@ -1054,7 +1055,7 @@ public class InMemoryBTreeTest
 
         for ( Tuple<Integer, String> tuple : tuples )
         {
-            leaf.setKey( pos, tuple.getKey() );
+            leaf.setKey( pos, new KeyHolder<Integer>( tuple.getKey() ) );
             leaf.values[pos] = new InMemoryValueHolder<String>( btree, tuple.getValue() );
             pos++;
         }
@@ -1070,10 +1071,10 @@ public class InMemoryBTreeTest
 
         if ( pos > 0 )
         {
-            node.setKey( pos - 1, leftmost.getKey() );
+            node.setKey( pos - 1, new KeyHolder<Integer>( leftmost.getKey() ) );
         }
 
-        node.children[pos] = page;
+        node.setPageHolder( pos, new PageHolder<Integer, String>( btree, page ) );
     }
 
 

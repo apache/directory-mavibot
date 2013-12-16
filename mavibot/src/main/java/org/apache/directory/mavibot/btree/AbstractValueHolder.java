@@ -48,6 +48,9 @@ public abstract class AbstractValueHolder<V> implements ValueHolder<V>
     protected int valueThresholdUp = 1;
     protected int valueThresholdLow = 1;
 
+    protected int nbArrayElems;
+    
+
     /**
      * {@inheritDoc}
      */
@@ -272,7 +275,7 @@ public abstract class AbstractValueHolder<V> implements ValueHolder<V>
     private void addInArray( V value )
     {
         // We have to check that we have reached the threshold or not
-        if ( valueArray.length >= valueThresholdUp )
+        if ( size() >= valueThresholdUp )
         {
             // Ok, transform the array into a btree
             createSubTree();
@@ -287,6 +290,7 @@ public abstract class AbstractValueHolder<V> implements ValueHolder<V>
                 }
 
                 // We can delete the array now
+                nbArrayElems = 0;
                 valueArray = null;
 
                 // And inject the new value
@@ -300,27 +304,37 @@ public abstract class AbstractValueHolder<V> implements ValueHolder<V>
         }
         else
         {
-            // First check that the value is not already present in the ValueHolder
-            int pos = findPos( value );
-
-            if ( pos >= 0 )
+            // Create the array if it's null
+            if ( valueArray == null )
             {
-                // The value exists : nothing to do
-                return;
+                valueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), 1 );
+                nbArrayElems = 1;
+                valueArray[0] = value;
             }
-
-            // Ok, we just have to insert the new element at the right position
-            // We transform the position to a positive value 
-            pos = -( pos + 1 );
-            // First, copy the array
-            V[] newValueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), valueArray.length + 1 );
-
-            System.arraycopy( valueArray, 0, newValueArray, 0, pos );
-            newValueArray[pos] = value;
-            System.arraycopy( valueArray, pos, newValueArray, pos + 1, valueArray.length - pos );
-
-            // And switch the arrays
-            valueArray = newValueArray;
+            else
+            {
+                // check that the value is not already present in the ValueHolder
+                int pos = findPos( value );
+    
+                if ( pos >= 0 )
+                {
+                    // The value exists : nothing to do
+                    return;
+                }
+    
+                // Ok, we just have to insert the new element at the right position
+                // We transform the position to a positive value 
+                pos = -( pos + 1 );
+                // First, copy the array
+                V[] newValueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), valueArray.length + 1 );
+    
+                System.arraycopy( valueArray, 0, newValueArray, 0, pos );
+                newValueArray[pos] = value;
+                System.arraycopy( valueArray, pos, newValueArray, pos + 1, valueArray.length - pos );
+    
+                // And switch the arrays
+                valueArray = newValueArray;
+            }
         }
     }
     
@@ -347,7 +361,7 @@ public abstract class AbstractValueHolder<V> implements ValueHolder<V>
      */
     public void add( V value )
     {
-        if ( valueArray != null )
+        if ( valueBtree == null )
         {
             addInArray( value );
         }

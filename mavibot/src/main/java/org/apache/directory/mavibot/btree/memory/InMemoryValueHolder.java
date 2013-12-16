@@ -29,6 +29,7 @@ import org.apache.directory.mavibot.btree.AbstractValueHolder;
 import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
+import org.apache.directory.mavibot.btree.persisted.PersistedBTree;
 
 
 /**
@@ -51,12 +52,17 @@ public class InMemoryValueHolder<V> extends AbstractValueHolder<V>
     InMemoryValueHolder( BTree<?, V> parentBtree, int nbValues )
     {
         valueSerializer = parentBtree.getValueSerializer();
+
+        if ( nbValues <= 1 )
+        {
+            valueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), nbValues );
+        }
     }
 
 
     /**
      * Creates a new instance of a ValueHolder, containing Values. This constructor is called
-     * whe we need to create a new ValueHolder with deserialized values.
+     * when we need to create a new ValueHolder with deserialized values.
      * 
      * @param parentBtree The parent BTree
      * @param values The Values stored in the ValueHolder
@@ -69,10 +75,12 @@ public class InMemoryValueHolder<V> extends AbstractValueHolder<V>
         {
             int nbValues = values.length;
 
-            if ( nbValues < 2 )
+            if ( nbValues == 1 )
             {
                 // Store the value
-                valueArray = values;
+                valueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), nbValues );
+                valueArray[0] = values[0];
+                nbArrayElems = nbValues;
             }
             else
             {
@@ -107,7 +115,7 @@ public class InMemoryValueHolder<V> extends AbstractValueHolder<V>
         }
         else
         {
-            return 1;
+            return nbArrayElems;
         }
     }
 
@@ -191,6 +199,7 @@ public class InMemoryValueHolder<V> extends AbstractValueHolder<V>
             {
                 valueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), 1 );
                 valueArray[0] = valueBtree.browse().next().getKey();
+                nbArrayElems = 1;
                 valueBtree.close();
                 valueBtree = null;
             }
@@ -226,7 +235,7 @@ public class InMemoryValueHolder<V> extends AbstractValueHolder<V>
         else
         {
             V returnedValue = valueArray[0];
-            valueArray[0] = null;
+            nbArrayElems = 0;
           
             return returnedValue;
         }
@@ -278,7 +287,12 @@ public class InMemoryValueHolder<V> extends AbstractValueHolder<V>
         else
         {
             sb.append( ", {" );
-            sb.append( valueArray[0] );
+            
+            if ( size() != 0 )
+            {
+                sb.append( valueArray[0] );
+            }
+            
             sb.append( "}" );
         }
         

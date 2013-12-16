@@ -22,10 +22,13 @@ package org.apache.directory.mavibot.btree.persisted;
 
 import java.io.IOException;
 
+import net.sf.ehcache.Cache;
 import net.sf.ehcache.Element;
 
+import org.apache.directory.mavibot.btree.AbstractPage;
 import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Page;
+import org.apache.directory.mavibot.btree.PageHolder;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
 
@@ -40,10 +43,13 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class PageHolder<K, V>
+public class PersistedPageHolder<K, V> extends PageHolder<K, V>
 {
-    /** The BTree */
-    private BTree<K, V> btree;
+    /** The RecordManager */
+    private RecordManager recordManager;
+    
+    /** The cache */
+    private  Cache cache;
 
     /** The offset of the first {@link PageIO} storing the page on disk */
     private long offset;
@@ -57,19 +63,21 @@ public class PageHolder<K, V>
      * 
      * @param page The element to store into a SoftReference
      */
-    public PageHolder( BTree<K, V> btree, Page<K, V> page )
+    public PersistedPageHolder( BTree<K, V> btree, Page<K, V> page )
     {
-        this.btree = btree;
-        this.offset = page.getOffset();
-        this.lastOffset = page.getLastOffset();
+        super( btree, page );
+        cache = ((PersistedBTree<K, V>)btree).getCache();
+        recordManager = ((PersistedBTree<K, V>)btree).getRecordManager();
+        offset = page.getOffset();
+        lastOffset = page.getLastOffset();
 
         if ( page instanceof Page<?, ?> )
         {
-            ( ( AbstractPersistedPage<K, V> ) page ).setOffset( offset );
-            ( ( AbstractPersistedPage<K, V> ) page ).setLastOffset( lastOffset );
+            ( ( AbstractPage<K, V> ) page ).setOffset( offset );
+            ( ( AbstractPage<K, V> ) page ).setLastOffset( lastOffset );
         }
 
-        ((PersistedBTree<K, V>)btree).getCache().put( new Element( offset, page ) );
+        cache.put( new Element( offset, page ) );
     }
 
 
@@ -78,19 +86,21 @@ public class PageHolder<K, V>
      * 
      * @param page The element to store into a SoftReference
      */
-    public PageHolder( BTree<K, V> btree, Page<K, V> page, long offset, long lastOffset )
+    public PersistedPageHolder( BTree<K, V> btree, Page<K, V> page, long offset, long lastOffset )
     {
-        this.btree = btree;
+        super( btree, page );
+        cache = ((PersistedBTree<K, V>)btree).getCache();
+        recordManager = ((PersistedBTree<K, V>)btree).getRecordManager();
         this.offset = offset;
         this.lastOffset = lastOffset;
 
         if ( page instanceof Page<?, ?> )
         {
-            ( ( AbstractPersistedPage<K, V> ) page ).setOffset( offset );
-            ( ( AbstractPersistedPage<K, V> ) page ).setLastOffset( lastOffset );
+            ( ( AbstractPage<K, V> ) page ).setOffset( offset );
+            ( ( AbstractPage<K, V> ) page ).setLastOffset( lastOffset );
         }
 
-        ((PersistedBTree<K, V>)btree).getCache().put( new Element( offset, page ) );
+        cache.put( new Element( offset, page ) );
     }
 
 
@@ -99,17 +109,17 @@ public class PageHolder<K, V>
      * @throws IOException 
      * @throws EndOfFileExceededException 
      */
-    public Page<K, V> getValue( BTree<K, V> btree ) throws EndOfFileExceededException, IOException
+    public Page<K, V> getValue()
     {
-        Element element = ((PersistedBTree<K, V>)btree).getCache().get( offset );
+        Element element = cache.get( offset );
 
         if ( element == null )
         {
             // We haven't found the element in the cache, reload it
             // We have to fetch the element from disk, using the offset now
-            Page<K, V> page = fetchElement( btree );
+            Page<K, V> page = fetchElement();
 
-            ((PersistedBTree<K, V>)btree).getCache().put( new Element( offset, page ) );
+            cache.put( new Element( offset, page ) );
 
             return page;
         }
@@ -119,15 +129,15 @@ public class PageHolder<K, V>
         if ( page == null )
         {
             // We have to fetch the element from disk, using the offset now
-            page = fetchElement( btree );
+            page = fetchElement();
 
             if ( page instanceof Page<?, ?> )
             {
-                ( ( AbstractPersistedPage<K, V> ) page ).setOffset( offset );
-                ( ( AbstractPersistedPage<K, V> ) page ).setLastOffset( lastOffset );
+                ( ( AbstractPage<K, V> ) page ).setOffset( offset );
+                ( ( AbstractPage<K, V> ) page ).setLastOffset( lastOffset );
             }
 
-            ((PersistedBTree<K, V>)btree).getCache().put( new Element( offset, page ) );
+            cache.put( new Element( offset, page ) );
         }
 
         return page;
@@ -137,14 +147,23 @@ public class PageHolder<K, V>
     /**
      * Retrieve the value from the disk, using the BTree and offset
      * @return The deserialized element (
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
      */
-    private Page<K, V> fetchElement( BTree<K, V> btree ) throws EndOfFileExceededException, IOException
+    private Page<K, V> fetchElement()
     {
-        Page<K, V> element = ((PersistedBTree<K, V>)btree).getRecordManager().deserialize( btree, offset );
-
-        return element;
+        try
+        {
+            Page<K, V> element = recordManager.deserialize( btree, offset );
+    
+            return element;
+        }
+        catch ( EndOfFileExceededException eofee )
+        {
+            throw new RuntimeException( eofee.getMessage() );
+        }
+        catch ( IOException ioe )
+        {
+            throw new RuntimeException( ioe.getMessage() );
+        }
     }
 
 
@@ -173,24 +192,17 @@ public class PageHolder<K, V>
     {
         StringBuilder sb = new StringBuilder();
 
-        try
-        {
-            Page<K, V> page = getValue( btree );
+        Page<K, V> page = getValue();
 
-            if ( page != null )
-            {
-                sb.append( btree.getName() ).append( "[" ).append( offset ).append( ", " ).append( lastOffset )
-                    .append( "]:" ).append( page );
-            }
-            else
-            {
-                sb.append( btree.getName() ).append( "[" ).append( offset ).append( ", " ).append( lastOffset )
-                    .append( "]" );
-            }
-        }
-        catch ( IOException ioe )
+        if ( page != null )
         {
-            // Nothing we can do...
+            sb.append( btree.getName() ).append( "[" ).append( offset ).append( ", " ).append( lastOffset )
+                .append( "]:" ).append( page );
+        }
+        else
+        {
+            sb.append( btree.getName() ).append( "[" ).append( offset ).append( ", " ).append( lastOffset )
+                .append( "]" );
         }
 
         return sb.toString();
