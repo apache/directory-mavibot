@@ -273,6 +273,16 @@ public abstract class AbstractPage<K, V> implements Page<K, V>
 
 
     /**
+     * {@inheritDoc}
+     */
+    public ValueHolder<V> getValue( int pos )
+    {
+        // Node don't have values. Leaf.getValue() will return the value
+        return null;
+    }
+
+
+    /**
      * @return the revision
      */
     public long getRevision()

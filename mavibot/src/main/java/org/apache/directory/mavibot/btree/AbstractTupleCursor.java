@@ -19,6 +19,9 @@
  */
 package org.apache.directory.mavibot.btree;
 
+import java.io.IOException;
+
+
 /**
  * A Cursor is used to fetch elements in a BTree and is returned by the
  * @see BTree#browse method. The cursor <strng>must</strong> be closed
@@ -58,6 +61,99 @@ public abstract class AbstractTupleCursor<K, V> implements TupleCursor<K, V>
     }
     
     
+    /**
+     * {@inheritDoc}
+     */
+    public void afterLast() throws IOException
+    {
+        // First check that we have elements in the BTree
+        if ( ( stack == null ) || ( stack.length == 0 ) )
+        {
+            return;
+        }
+
+        Page<K, V> child = null;
+
+        for ( int i = 0; i < depth; i++ )
+        {
+            ParentPos<K, V> parentPos = stack[i];
+            
+            if ( child != null )
+            {
+                parentPos.page = child;
+                parentPos.pos = child.getNbElems();
+            }
+            else
+            {
+                // We have N+1 children if the page is a Node, so we don't decrement the nbElems field
+                parentPos.pos = parentPos.page.getNbElems();
+            }
+
+            child = ((AbstractPage<K, V>)parentPos.page).getPage( parentPos.pos );
+        }
+        
+        // and leaf
+        ParentPos<K, V> parentPos = stack[depth];
+
+        if ( child == null )
+        {
+            parentPos.pos = parentPos.page.getNbElems() - 1;
+        }
+        else
+        {
+            parentPos.page = child;
+            parentPos.pos = child.getNbElems() - 1;
+        }
+
+        parentPos.valueCursor = ((AbstractPage<K, V>)parentPos.page).getValue( parentPos.pos ).getCursor();
+        parentPos.valueCursor.afterLast();
+        parentPos.pos = AFTER_LAST;
+    }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    public void beforeFirst() throws IOException
+    {
+        // First check that we have elements in the BTree
+        if ( ( stack == null ) || ( stack.length == 0 ) )
+        {
+            return;
+        }
+
+        Page<K, V> child = null;
+
+        for ( int i = 0; i < depth; i++ )
+        {
+            ParentPos<K, V> parentPos = stack[i];
+            parentPos.pos = 0;
+
+            if ( child != null )
+            {
+                parentPos.page = child;
+            }
+
+            child = ((AbstractPage<K, V>)parentPos.page).getPage( 0 );
+        }
+
+        // and leaf
+        ParentPos<K, V> parentPos = stack[depth];
+        parentPos.pos = BEFORE_FIRST;
+
+        if ( child != null )
+        {
+            parentPos.page = child;
+        }
+        
+        if ( parentPos.valueCursor != null )
+        {
+            parentPos.valueCursor = ((AbstractPage<K, V>)parentPos.page).getValue( 0 ).getCursor();
+            parentPos.valueCursor.beforeFirst();
+        }
+    }
+
+
     /**
      * {@inheritDoc}
      */

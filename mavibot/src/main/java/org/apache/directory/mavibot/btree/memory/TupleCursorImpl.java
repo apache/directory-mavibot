@@ -23,6 +23,7 @@ package org.apache.directory.mavibot.btree.memory;
 import java.io.IOException;
 import java.util.NoSuchElementException;
 
+import org.apache.directory.mavibot.btree.AbstractPage;
 import org.apache.directory.mavibot.btree.AbstractTupleCursor;
 import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.Page;
@@ -55,99 +56,6 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
     TupleCursorImpl( Transaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
     {
         super( transaction, stack, depth );
-    }
-    
-    
-    /**
-     * {@inheritDoc}
-     */
-    public void afterLast() throws IOException
-    {
-        // First check that we have elements in the BTree
-        if ( ( stack == null ) || ( stack.length == 0 ) )
-        {
-            return;
-        }
-
-        Page<K, V> child = null;
-
-        for ( int i = 0; i < depth; i++ )
-        {
-            ParentPos<K, V> parentPos = stack[i];
-            
-            if ( child != null )
-            {
-                parentPos.page = child;
-                parentPos.pos = child.getNbElems();
-            }
-            else
-            {
-                // We have N+1 children if the page is a Node, so we don't decrement the nbElems field
-                parentPos.pos = parentPos.page.getNbElems();
-            }
-
-            child = ((Node<K, V>)parentPos.page).getPage( parentPos.pos );
-        }
-        
-        // and leaf
-        ParentPos<K, V> parentPos = stack[depth];
-
-        if ( child == null )
-        {
-            parentPos.pos = parentPos.page.getNbElems() - 1;
-        }
-        else
-        {
-            parentPos.page = child;
-            parentPos.pos = child.getNbElems() - 1;
-        }
-
-        parentPos.valueCursor = ((InMemoryLeaf<K, V>)parentPos.page).values[parentPos.pos].getCursor();
-        parentPos.valueCursor.afterLast();
-        parentPos.pos = AFTER_LAST;
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    public void beforeFirst() throws IOException
-    {
-        // First check that we have elements in the BTree
-        if ( ( stack == null ) || ( stack.length == 0 ) )
-        {
-            return;
-        }
-
-        Page<K, V> child = null;
-
-        for ( int i = 0; i < depth; i++ )
-        {
-            ParentPos<K, V> parentPos = stack[i];
-            parentPos.pos = 0;
-
-            if ( child != null )
-            {
-                parentPos.page = child;
-            }
-
-            child = ((Node<K, V>)parentPos.page).getPage( 0 );
-        }
-
-        // and leaf
-        ParentPos<K, V> parentPos = stack[depth];
-        parentPos.pos = BEFORE_FIRST;
-
-        if ( child != null )
-        {
-            parentPos.page = child;
-        }
-        
-        if ( parentPos.valueCursor != null )
-        {
-            parentPos.valueCursor = ((InMemoryLeaf<K, V>)parentPos.page).values[0].getCursor();
-            parentPos.valueCursor.beforeFirst();
-        }
     }
     
     
@@ -185,7 +93,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
             {
                 // We can pick the next element at this level
                 parentPos.pos++;
-                child = ((Node<K, V>)parentPos.page).getPage( parentPos.pos );
+                child = ((AbstractPage<K, V>)parentPos.page).getPage( parentPos.pos );
                 
                 // and go down the tree through the nodes
                 while ( currentDepth < depth - 1 )
@@ -194,7 +102,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
                     parentPos = stack[currentDepth];
                     parentPos.pos = 0;
                     parentPos.page = child;
-                    child = ((Node<K, V>)child).getPage( 0 );
+                    child = ((AbstractPage<K, V>)child).getPage( 0 );
                 }
 
                 // and the leaf
@@ -245,7 +153,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
             {
                 // We can pick the next element at this level
                 parentPos.pos--;
-                child = ((Node<K, V>)parentPos.page).getPage( parentPos.pos );
+                child = ((AbstractPage<K, V>)parentPos.page).getPage( parentPos.pos );
                 
                 // and go down the tree through the nodes
                 while ( currentDepth < depth - 1 )
@@ -254,7 +162,7 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
                     parentPos = stack[currentDepth];
                     parentPos.pos = child.getNbElems();
                     parentPos.page = child;
-                    child = ((Node<K, V>)parentPos.page).getPage( parentPos.page.getNbElems() );
+                    child = ((AbstractPage<K, V>)parentPos.page).getPage( parentPos.page.getNbElems() );
                 }
 
                 // and the leaf
@@ -402,13 +310,13 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
             else
             {
                 // We can pick the next element at this level
-                child = ((Node<K, V>)parentPos.page).getPage( parentPos.pos + 1 );
+                child = ((AbstractPage<K, V>)parentPos.page).getPage( parentPos.pos + 1 );
                 
                 // and go down the tree through the nodes
                 while ( currentDepth < depth - 1 )
                 {
                     currentDepth++;
-                    child = ((Node<K, V>)child).getPage( 0 );
+                    child = ((AbstractPage<K, V>)child).getPage( 0 );
                 }
 
                 return true;
@@ -548,13 +456,13 @@ public class TupleCursorImpl<K, V> extends AbstractTupleCursor<K, V>
             else
             {
                 // We can pick the previous element at this level
-                child = ((Node<K, V>)parentPos.page).getPage( parentPos.pos - 1 );
+                child = ((AbstractPage<K, V>)parentPos.page).getPage( parentPos.pos - 1 );
                 
                 // and go down the tree through the nodes
                 while ( currentDepth < depth - 1 )
                 {
                     currentDepth++;
-                    child = ((Node<K, V>)child).getPage( child.getNbElems() );
+                    child = ((AbstractPage<K, V>)child).getPage( child.getNbElems() );
                 }
 
                 return true;
