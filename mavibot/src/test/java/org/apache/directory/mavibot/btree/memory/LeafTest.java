@@ -227,7 +227,7 @@ public class LeafTest
     @Test
     public void testDeleteBorrowingFromLeftSibling() throws IOException
     {
-        Node<Long, String> parent = new Node<Long, String>( btree, 1L, 2 );
+        InMemoryNode<Long, String> parent = new InMemoryNode<Long, String>( btree, 1L, 2 );
         InMemoryLeaf<Long, String> left = new InMemoryLeaf<Long, String>( btree );
         InMemoryLeaf<Long, String> target = new InMemoryLeaf<Long, String>( btree );
         InMemoryLeaf<Long, String> right = new InMemoryLeaf<Long, String>( btree );
@@ -297,7 +297,7 @@ public class LeafTest
     @Test
     public void testDeleteBorrowingFromRightSibling() throws IOException
     {
-        Node<Long, String> parent = new Node<Long, String>( btree, 1L, 2 );
+        InMemoryNode<Long, String> parent = new InMemoryNode<Long, String>( btree, 1L, 2 );
         InMemoryLeaf<Long, String> left = new InMemoryLeaf<Long, String>( btree );
         InMemoryLeaf<Long, String> target = new InMemoryLeaf<Long, String>( btree );
         InMemoryLeaf<Long, String> right = new InMemoryLeaf<Long, String>( btree );
@@ -368,7 +368,7 @@ public class LeafTest
     @Test
     public void testDeleteMergeWithSibling() throws IOException
     {
-        Node<Long, String> parent = new Node<Long, String>( btree, 1L, 2 );
+        InMemoryNode<Long, String> parent = new InMemoryNode<Long, String>( btree, 1L, 2 );
         InMemoryLeaf<Long, String> left = new InMemoryLeaf<Long, String>( btree );
         InMemoryLeaf<Long, String> target = new InMemoryLeaf<Long, String>( btree );
         InMemoryLeaf<Long, String> right = new InMemoryLeaf<Long, String>( btree );

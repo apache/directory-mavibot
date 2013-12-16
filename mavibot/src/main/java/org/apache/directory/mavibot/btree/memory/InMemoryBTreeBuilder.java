@@ -150,7 +150,7 @@ public class InMemoryBTreeBuilder<K, V>
 
         int numChildren = numKeysInNode + 1;
 
-        Node<K, V> node = createNode( btree, 0, numKeysInNode );
+        InMemoryNode<K, V> node = createNode( btree, 0, numKeysInNode );
         lstNodes.add( node );
         int i = 0;
         int totalNodes = 0;

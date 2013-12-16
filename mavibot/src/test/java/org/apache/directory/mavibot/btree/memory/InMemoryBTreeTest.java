@@ -1064,7 +1064,7 @@ public class InMemoryBTreeTest
     }
 
 
-    private void addPage( BTree<Integer, String> btree, Node<Integer, String> node, Page<Integer, String> page, int pos )
+    private void addPage( BTree<Integer, String> btree, InMemoryNode<Integer, String> node, Page<Integer, String> page, int pos )
         throws EndOfFileExceededException, IOException
     {
         Tuple<Integer, String> leftmost = page.findLeftMost();
@@ -1139,13 +1139,13 @@ public class InMemoryBTreeTest
         BTree<Integer, String> btree = new InMemoryBTree<Integer, String>( "test", new IntSerializer(), new StringSerializer(),
             pageSize );
 
-        Node<Integer, String> root = new Node<Integer, String>( btree, 1L, pageSize );
+        InMemoryNode<Integer, String> root = new InMemoryNode<Integer, String>( btree, 1L, pageSize );
 
         // Create the tree with 3 levels, all the leaves containing only N/2 elements
         int counter = 1;
         for ( int i = 0; i < pageSize + 1; i++ )
         {
-            Node<Integer, String> node = new Node<Integer, String>( btree, 1L, pageSize );
+            InMemoryNode<Integer, String> node = new InMemoryNode<Integer, String>( btree, 1L, pageSize );
 
             for ( int j = 0; j < pageSize + 1; j++ )
             {

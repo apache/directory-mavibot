@@ -76,9 +76,9 @@ public class BTreeFactory
      * @param nbElems The number or elements in this node
      * @return A Node instance
      */
-    public static <K, V> Node<K, V> createNode( BTree<K, V> btree, long revision, int nbElems )
+    public static <K, V> PersistedNode<K, V> createNode( BTree<K, V> btree, long revision, int nbElems )
     {
-        Node<K, V> node = new Node<K, V>( btree, revision, nbElems );
+        PersistedNode<K, V> node = new PersistedNode<K, V>( btree, revision, nbElems );
 
         return node;
     }
@@ -270,7 +270,7 @@ public class BTreeFactory
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    public static <K, V> void setValue( Node<K, V> page, int pos, PersistedPageHolder<K, V> value )
+    public static <K, V> void setValue( PersistedNode<K, V> page, int pos, PersistedPageHolder<K, V> value )
     {
         page.setValue( pos, value );
     }
@@ -298,7 +298,7 @@ public class BTreeFactory
         }
         else
         {
-            Node<K, V> node = ( Node<K, V> ) btree.getRootPage();
+            PersistedNode<K, V> node = ( PersistedNode<K, V> ) btree.getRootPage();
 
             while ( true )
             {
@@ -343,7 +343,7 @@ public class BTreeFactory
         }
         else
         {
-            Node<K, V> node = ( Node<K, V> ) btree.getRootPage();
+            PersistedNode<K, V> node = ( PersistedNode<K, V> ) btree.getRootPage();
 
             while ( true )
             {

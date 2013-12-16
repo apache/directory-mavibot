@@ -499,7 +499,7 @@ public class InMemoryBTree<K, V> extends AbstractBTree<K, V> implements Closeabl
             Page<K, V> newRootPage = null;
 
             // Create the new rootPage
-            newRootPage = new Node<K, V>( this, revision, pivot, leftPage, rightPage );
+            newRootPage = new InMemoryNode<K, V>( this, revision, pivot, leftPage, rightPage );
 
             rootPage = newRootPage;
         }

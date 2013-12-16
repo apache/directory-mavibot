@@ -680,10 +680,10 @@ public class RecordManager
     /**
      * Deserialize a Node from some PageIos
      */
-    private <K, V> Node<K, V> readNodeKeysAndValues( BTree<K, V> btree, int nbElems, long revision, ByteBuffer byteBuffer,
+    private <K, V> PersistedNode<K, V> readNodeKeysAndValues( BTree<K, V> btree, int nbElems, long revision, ByteBuffer byteBuffer,
         PageIO[] pageIos ) throws IOException
     {
-        Node<K, V> node = BTreeFactory.createNode( btree, revision, nbElems );
+        PersistedNode<K, V> node = BTreeFactory.createNode( btree, revision, nbElems );
 
         // Read each value and key
         for ( int i = 0; i < nbElems; i++ )
@@ -1166,7 +1166,7 @@ public class RecordManager
             int dataSize = 0;
             int serializedSize = 0;
 
-            if ( page instanceof Node )
+            if ( page instanceof PersistedNode )
             {
                 // A Node has one more value to store
                 nbBuffers++;
@@ -1184,7 +1184,7 @@ public class RecordManager
             // Make it a negative value if it's a Node
             int pageNbElems = nbElems;
 
-            if ( page instanceof Node )
+            if ( page instanceof PersistedNode )
             {
                 pageNbElems = -nbElems;
             }
@@ -1199,10 +1199,10 @@ public class RecordManager
             for ( int pos = 0; pos < nbElems; pos++ )
             {
                 // Start with the value
-                if ( page instanceof Node )
+                if ( page instanceof PersistedNode )
                 {
-                    dataSize += serializeNodeValue( ( Node<K, V> ) page, pos, serializedData );
-                    dataSize += serializeNodeKey( ( Node<K, V> ) page, pos, serializedData );
+                    dataSize += serializeNodeValue( ( PersistedNode<K, V> ) page, pos, serializedData );
+                    dataSize += serializeNodeKey( ( PersistedNode<K, V> ) page, pos, serializedData );
                 }
                 else
                 {
@@ -1212,9 +1212,9 @@ public class RecordManager
             }
 
             // Nodes have one more value to serialize
-            if ( page instanceof Node )
+            if ( page instanceof PersistedNode )
             {
-                dataSize += serializeNodeValue( ( Node<K, V> ) page, nbElems, serializedData );
+                dataSize += serializeNodeValue( ( PersistedNode<K, V> ) page, nbElems, serializedData );
             }
 
             // Store the data size
@@ -1243,7 +1243,7 @@ public class RecordManager
     /**
      * Serialize a Node's key
      */
-    private <K, V> int serializeNodeKey( Node<K, V> node, int pos, List<byte[]> serializedData )
+    private <K, V> int serializeNodeKey( PersistedNode<K, V> node, int pos, List<byte[]> serializedData )
     {
         KeyHolder<K> holder = node.getKeyHolder( pos );
         byte[] buffer = ((PersistedKeyHolder<K>)holder).getRaw();
@@ -1262,7 +1262,7 @@ public class RecordManager
     /**
      * Serialize a Node's Value. We store the two offsets of the child page.
      */
-    private <K, V> int serializeNodeValue( Node<K, V> node, int pos, List<byte[]> serializedData )
+    private <K, V> int serializeNodeValue( PersistedNode<K, V> node, int pos, List<byte[]> serializedData )
         throws IOException
     {
         // For a node, we just store the children's offsets

@@ -222,8 +222,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 // if it has more than N/2 elements, or to merge the two pages.
                 // Check in both next and previous page, if they have the same parent
                 // and select the biggest page with the same parent to borrow an element.
-                int siblingPos = selectSibling( ( Node<K, V> ) parent, parentPos );
-                PersistedLeaf<K, V> sibling = ( PersistedLeaf<K, V> ) ( ( ( Node<K, V> ) parent ).getPage( siblingPos ) );
+                int siblingPos = selectSibling( ( PersistedNode<K, V> ) parent, parentPos );
+                PersistedLeaf<K, V> sibling = ( PersistedLeaf<K, V> ) ( ( ( PersistedNode<K, V> ) parent ).getPage( siblingPos ) );
 
                 if ( sibling.getNbElems() == halfSize )
                 {

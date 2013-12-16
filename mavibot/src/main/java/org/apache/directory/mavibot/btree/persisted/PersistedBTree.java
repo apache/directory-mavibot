@@ -554,7 +554,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
                 rightPage, revision );
 
             // Create the new rootPage
-            newRootPage = new Node<K, V>( this, revision, pivot, holderLeft, holderRight );
+            newRootPage = new PersistedNode<K, V>( this, revision, pivot, holderLeft, holderRight );
 
             // If the BTree is managed, we now have to write the page on disk
             // and to add this page to the list of modified pages

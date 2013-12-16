@@ -64,9 +64,9 @@ public class BTreeFactory
      * @param nbElems The number or elements in this node
      * @return A Node instance
      */
-    public static <K, V> Node<K, V> createNode( BTree<K, V> btree, long revision, int nbElems )
+    public static <K, V> InMemoryNode<K, V> createNode( BTree<K, V> btree, long revision, int nbElems )
     {
-        Node<K, V> node = new Node<K, V>( btree, revision, nbElems );
+        InMemoryNode<K, V> node = new InMemoryNode<K, V>( btree, revision, nbElems );
 
         return node;
     }
@@ -216,7 +216,7 @@ public class BTreeFactory
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    public static <K, V> void setValue( BTree<K, V> btree, Node<K, V> page, int pos, Page<K, V> value )
+    public static <K, V> void setValue( BTree<K, V> btree, InMemoryNode<K, V> page, int pos, Page<K, V> value )
     {
         page.setPageHolder( pos, new PageHolder<K, V>( btree, value ) );
     }
@@ -244,7 +244,7 @@ public class BTreeFactory
         }
         else
         {
-            Node<K, V> node = ( Node<K, V> ) btree.getRootPage();
+            InMemoryNode<K, V> node = ( InMemoryNode<K, V> ) btree.getRootPage();
 
             while ( true )
             {
