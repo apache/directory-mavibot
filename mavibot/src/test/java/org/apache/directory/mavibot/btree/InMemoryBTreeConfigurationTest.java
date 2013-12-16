@@ -17,7 +17,7 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.memory;
+package org.apache.directory.mavibot.btree;
 
 
 import static org.junit.Assert.assertNotNull;
@@ -26,6 +26,7 @@ import java.io.File;
 import java.io.IOException;
 
 import org.apache.directory.mavibot.btree.BTree;
+import org.apache.directory.mavibot.btree.InMemoryBTree;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
@@ -39,7 +40,7 @@ import org.junit.rules.TemporaryFolder;
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class BTreeConfigurationTest
+public class InMemoryBTreeConfigurationTest
 {
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
@@ -119,7 +120,7 @@ public class BTreeConfigurationTest
     @Test
     public void testConfigurationBasic() throws IOException, KeyNotFoundException
     {
-        BTreeConfiguration<Integer, String> config = new BTreeConfiguration<Integer, String>();
+        InMemoryBTreeConfiguration<Integer, String> config = new InMemoryBTreeConfiguration<Integer, String>();
         config.setName( "basic" );
         config.setPageSize( 32 );
         config.setSerializers( new IntSerializer(), new StringSerializer() );
@@ -181,7 +182,7 @@ public class BTreeConfigurationTest
 
         try
         {
-            BTreeConfiguration<Integer, String> config = new BTreeConfiguration<Integer, String>();
+            InMemoryBTreeConfiguration<Integer, String> config = new InMemoryBTreeConfiguration<Integer, String>();
             config.setPageSize( 32 );
             config.setSerializers( new IntSerializer(), new StringSerializer() );
 

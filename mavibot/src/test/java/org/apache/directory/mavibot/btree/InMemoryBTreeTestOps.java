@@ -1,4 +1,4 @@
-package org.apache.directory.mavibot.btree.memory;
+package org.apache.directory.mavibot.btree;
 
 
 /*
@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.Random;
 
 import org.apache.directory.mavibot.btree.BTree;
+import org.apache.directory.mavibot.btree.InMemoryBTree;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
 import org.junit.AfterClass;

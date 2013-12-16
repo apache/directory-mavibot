@@ -17,7 +17,7 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.persisted;
+package org.apache.directory.mavibot.btree;
 
 
 import java.io.IOException;
@@ -25,13 +25,8 @@ import java.lang.reflect.Array;
 import java.util.Comparator;
 import java.util.UUID;
 
-import org.apache.directory.mavibot.btree.AbstractValueHolder;
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.Tuple;
-import org.apache.directory.mavibot.btree.TupleCursor;
-import org.apache.directory.mavibot.btree.ValueCursor;
-import org.apache.directory.mavibot.btree.ValueHolder;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
+import org.apache.directory.mavibot.btree.persisted.BTreeConfiguration;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
@@ -254,7 +249,7 @@ public class PersistedValueHolder<V> extends AbstractValueHolder<V>
             configuration.setParentBTree( parentBtree );
             configuration.setSubBtree( true );
             
-            valueBtree = BTreeFactory.createBTree( configuration );
+            valueBtree = PersistedBTreeFactory.createBTree( configuration );
 
             try
             {
@@ -599,7 +594,7 @@ public class PersistedValueHolder<V> extends AbstractValueHolder<V>
      */
     public ValueHolder<V> clone() throws CloneNotSupportedException
     {
-        PersistedValueHolder<V> copy = ( PersistedValueHolder<V> ) super.clone();
+        PersistedValueHolder<V> copy = (PersistedValueHolder<V> ) super.clone();
 
         // copy the valueArray if it's not null
         // We don't clone the BTree, as we will create new revisions when 

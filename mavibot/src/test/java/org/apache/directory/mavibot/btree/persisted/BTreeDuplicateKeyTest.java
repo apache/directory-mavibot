@@ -33,10 +33,10 @@ import java.util.NoSuchElementException;
 import java.util.UUID;
 
 import org.apache.directory.mavibot.btree.BTree;
+import org.apache.directory.mavibot.btree.PersistedBTree;
+import org.apache.directory.mavibot.btree.RecordManager;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
-import org.apache.directory.mavibot.btree.persisted.PersistedBTree;
-import org.apache.directory.mavibot.btree.persisted.RecordManager;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;

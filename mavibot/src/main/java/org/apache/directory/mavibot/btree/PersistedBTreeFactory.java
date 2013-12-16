@@ -17,18 +17,13 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.persisted;
+package org.apache.directory.mavibot.btree;
 
 
 import java.io.IOException;
 import java.util.LinkedList;
 
-import org.apache.directory.mavibot.btree.AbstractPage;
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.KeyHolder;
-import org.apache.directory.mavibot.btree.Page;
-import org.apache.directory.mavibot.btree.ParentPos;
-import org.apache.directory.mavibot.btree.ValueHolder;
+import org.apache.directory.mavibot.btree.persisted.BTreeConfiguration;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 
@@ -40,7 +35,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
  *  
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class BTreeFactory
+public class PersistedBTreeFactory
 {
     /**
      * Create a new BTree.
@@ -292,13 +287,13 @@ public class BTreeFactory
 
         if ( btree.getRootPage() instanceof PersistedLeaf )
         {
-            PersistedLeaf<K, V> leaf = ( PersistedLeaf<K, V> ) ( btree.getRootPage() );
+            PersistedLeaf<K, V> leaf = (PersistedLeaf<K, V> ) ( btree.getRootPage() );
             ValueHolder<V> valueHolder = leaf.values[last.pos];
             last.valueCursor = valueHolder.getCursor();
         }
         else
         {
-            PersistedNode<K, V> node = ( PersistedNode<K, V> ) btree.getRootPage();
+            PersistedNode<K, V> node = (PersistedNode<K, V> ) btree.getRootPage();
 
             while ( true )
             {
@@ -309,7 +304,7 @@ public class BTreeFactory
 
                 if ( p instanceof PersistedLeaf )
                 {
-                    PersistedLeaf<K, V> leaf = ( PersistedLeaf<K, V> ) ( last.page );
+                    PersistedLeaf<K, V> leaf = (PersistedLeaf<K, V> ) ( last.page );
                     ValueHolder<V> valueHolder = leaf.values[last.pos];
                     last.valueCursor = valueHolder.getCursor();
                     break;
@@ -337,13 +332,13 @@ public class BTreeFactory
 
         if ( btree.getRootPage() instanceof PersistedLeaf )
         {
-            PersistedLeaf<K, V> leaf = ( PersistedLeaf<K, V> ) ( btree.getRootPage() );
+            PersistedLeaf<K, V> leaf = (PersistedLeaf<K, V> ) ( btree.getRootPage() );
             ValueHolder<V> valueHolder = leaf.values[first.pos];
             first.valueCursor = valueHolder.getCursor();
         }
         else
         {
-            PersistedNode<K, V> node = ( PersistedNode<K, V> ) btree.getRootPage();
+            PersistedNode<K, V> node = (PersistedNode<K, V> ) btree.getRootPage();
 
             while ( true )
             {
@@ -354,7 +349,7 @@ public class BTreeFactory
 
                 if ( page instanceof PersistedLeaf )
                 {
-                    PersistedLeaf<K, V> leaf = ( PersistedLeaf<K, V> ) ( page );
+                    PersistedLeaf<K, V> leaf = (PersistedLeaf<K, V> ) ( page );
                     ValueHolder<V> valueHolder = leaf.values[first.pos];
                     first.valueCursor = valueHolder.getCursor();
                     break;

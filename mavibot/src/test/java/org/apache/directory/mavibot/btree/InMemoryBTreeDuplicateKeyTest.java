@@ -17,7 +17,7 @@
  *   under the License.
  *
  */
-package org.apache.directory.mavibot.btree.memory;
+package org.apache.directory.mavibot.btree;
 
 
 import static org.junit.Assert.assertEquals;
@@ -32,6 +32,7 @@ import java.util.NoSuchElementException;
 import java.util.UUID;
 
 import org.apache.directory.mavibot.btree.BTree;
+import org.apache.directory.mavibot.btree.InMemoryBTree;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
@@ -44,7 +45,7 @@ import org.junit.Test;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class BTreeDuplicateKeyTest
+public class InMemoryBTreeDuplicateKeyTest
 {
     @Test
     public void testInsertNullValue() throws IOException
@@ -112,7 +113,7 @@ public class BTreeDuplicateKeyTest
     {
         IntSerializer serializer = new IntSerializer();
 
-        BTreeConfiguration<Integer, Integer> config = new BTreeConfiguration<Integer, Integer>();
+        InMemoryBTreeConfiguration<Integer, Integer> config = new InMemoryBTreeConfiguration<Integer, Integer>();
         config.setAllowDuplicates( true );
         config.setName( "master" );
         config.setSerializers( serializer, serializer );
@@ -168,7 +169,7 @@ public class BTreeDuplicateKeyTest
     {
         IntSerializer serializer = new IntSerializer();
 
-        BTreeConfiguration<Integer, Integer> config = new BTreeConfiguration<Integer, Integer>();
+        InMemoryBTreeConfiguration<Integer, Integer> config = new InMemoryBTreeConfiguration<Integer, Integer>();
         config.setAllowDuplicates( true );
         config.setName( "master" );
         config.setSerializers( serializer, serializer );
@@ -203,7 +204,7 @@ public class BTreeDuplicateKeyTest
     {
         IntSerializer serializer = new IntSerializer();
 
-        BTreeConfiguration<Integer, Integer> config = new BTreeConfiguration<Integer, Integer>();
+        InMemoryBTreeConfiguration<Integer, Integer> config = new InMemoryBTreeConfiguration<Integer, Integer>();
         config.setAllowDuplicates( true );
         config.setName( "master" );
         config.setSerializers( serializer, serializer );
@@ -238,7 +239,7 @@ public class BTreeDuplicateKeyTest
     {
         StringSerializer serializer = new StringSerializer();
 
-        BTreeConfiguration<String, String> config = new BTreeConfiguration<String, String>();
+        InMemoryBTreeConfiguration<String, String> config = new InMemoryBTreeConfiguration<String, String>();
         config.setAllowDuplicates( true );
         config.setName( "master" );
         config.setSerializers( serializer, serializer );
@@ -299,7 +300,7 @@ public class BTreeDuplicateKeyTest
     {
         StringSerializer serializer = new StringSerializer();
 
-        BTreeConfiguration<String, String> config = new BTreeConfiguration<String, String>();
+        InMemoryBTreeConfiguration<String, String> config = new InMemoryBTreeConfiguration<String, String>();
         config.setAllowDuplicates( true );
         config.setName( "master" );
         config.setSerializers( serializer, serializer );
@@ -387,7 +388,7 @@ public class BTreeDuplicateKeyTest
     {
         StringSerializer serializer = new StringSerializer();
 
-        BTreeConfiguration<String, String> config = new BTreeConfiguration<String, String>();
+        InMemoryBTreeConfiguration<String, String> config = new InMemoryBTreeConfiguration<String, String>();
         config.setAllowDuplicates( true );
         config.setName( "master" );
         config.setSerializers( serializer, serializer );
@@ -427,7 +428,7 @@ public class BTreeDuplicateKeyTest
     {
         StringSerializer serializer = new StringSerializer();
 
-        BTreeConfiguration<String, String> config = new BTreeConfiguration<String, String>();
+        InMemoryBTreeConfiguration<String, String> config = new InMemoryBTreeConfiguration<String, String>();
         config.setAllowDuplicates( true );
         config.setName( "master" );
         config.setSerializers( serializer, serializer );
@@ -533,7 +534,7 @@ public class BTreeDuplicateKeyTest
     {
         IntSerializer serializer = new IntSerializer();
 
-        BTreeConfiguration<Integer, Integer> config = new BTreeConfiguration<Integer, Integer>();
+        InMemoryBTreeConfiguration<Integer, Integer> config = new InMemoryBTreeConfiguration<Integer, Integer>();
         config.setAllowDuplicates( true );
         config.setName( "master" );
         config.setPageSize( 4 );
@@ -607,7 +608,7 @@ public class BTreeDuplicateKeyTest
     {
         IntSerializer serializer = new IntSerializer();
 
-        BTreeConfiguration<Integer, Integer> config = new BTreeConfiguration<Integer, Integer>();
+        InMemoryBTreeConfiguration<Integer, Integer> config = new InMemoryBTreeConfiguration<Integer, Integer>();
         config.setAllowDuplicates( true );
         config.setName( "master" );
         config.setPageSize( 4 );
@@ -653,7 +654,7 @@ public class BTreeDuplicateKeyTest
     {
         IntSerializer serializer = new IntSerializer();
 
-        BTreeConfiguration<Integer, Integer> config = new BTreeConfiguration<Integer, Integer>();
+        InMemoryBTreeConfiguration<Integer, Integer> config = new InMemoryBTreeConfiguration<Integer, Integer>();
         config.setAllowDuplicates( true );
         config.setName( "master" );
         config.setPageSize( 8 );
@@ -692,7 +693,7 @@ public class BTreeDuplicateKeyTest
     {
         IntSerializer serializer = new IntSerializer();
 
-        BTreeConfiguration<Integer, Integer> config = new BTreeConfiguration<Integer, Integer>();
+        InMemoryBTreeConfiguration<Integer, Integer> config = new InMemoryBTreeConfiguration<Integer, Integer>();
         config.setAllowDuplicates( true );
         config.setName( "master" );
         config.setPageSize( 8 );

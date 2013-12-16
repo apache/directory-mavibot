@@ -17,7 +17,7 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.persisted;
+package org.apache.directory.mavibot.btree;
 
 
 import java.io.IOException;
@@ -25,10 +25,6 @@ import java.io.IOException;
 import net.sf.ehcache.Cache;
 import net.sf.ehcache.Element;
 
-import org.apache.directory.mavibot.btree.AbstractPage;
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.Page;
-import org.apache.directory.mavibot.btree.PageHolder;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
 

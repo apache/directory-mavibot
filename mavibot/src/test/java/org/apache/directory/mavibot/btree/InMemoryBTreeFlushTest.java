@@ -17,7 +17,7 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.memory;
+package org.apache.directory.mavibot.btree;
 
 
 import static org.junit.Assert.assertEquals;
@@ -30,6 +30,7 @@ import java.util.Random;
 import java.util.Set;
 
 import org.apache.directory.mavibot.btree.BTree;
+import org.apache.directory.mavibot.btree.InMemoryBTree;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
@@ -46,7 +47,7 @@ import org.junit.rules.TemporaryFolder;
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class BTreeFlushTest
+public class InMemoryBTreeFlushTest
 {
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();

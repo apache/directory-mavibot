@@ -28,10 +28,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.directory.mavibot.btree.BTree;
+import org.apache.directory.mavibot.btree.PersistedBTreeBuilder;
+import org.apache.directory.mavibot.btree.RecordManager;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
-import org.apache.directory.mavibot.btree.persisted.PersistedBTreeBuilder;
-import org.apache.directory.mavibot.btree.persisted.RecordManager;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.junit.Test;
 

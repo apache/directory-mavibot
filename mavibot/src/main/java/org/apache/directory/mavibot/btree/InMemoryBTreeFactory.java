@@ -17,19 +17,12 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.memory;
+package org.apache.directory.mavibot.btree;
 
 
 import java.io.IOException;
 import java.util.LinkedList;
 
-import org.apache.directory.mavibot.btree.AbstractPage;
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.KeyHolder;
-import org.apache.directory.mavibot.btree.Page;
-import org.apache.directory.mavibot.btree.PageHolder;
-import org.apache.directory.mavibot.btree.ParentPos;
-import org.apache.directory.mavibot.btree.ValueHolder;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 
@@ -41,7 +34,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
  *  
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class BTreeFactory
+public class InMemoryBTreeFactory
 {
     /**
      * Create a new BTree.
@@ -238,13 +231,13 @@ public class BTreeFactory
 
         if ( btree.getRootPage() instanceof InMemoryLeaf )
         {
-            InMemoryLeaf<K, V> leaf = ( InMemoryLeaf<K, V> ) ( btree.getRootPage() );
+            InMemoryLeaf<K, V> leaf = (InMemoryLeaf<K, V> ) ( btree.getRootPage() );
             ValueHolder<V> valueHolder = leaf.values[last.pos];
             last.valueCursor = valueHolder.getCursor();
         }
         else
         {
-            InMemoryNode<K, V> node = ( InMemoryNode<K, V> ) btree.getRootPage();
+            InMemoryNode<K, V> node = (InMemoryNode<K, V> ) btree.getRootPage();
 
             while ( true )
             {
@@ -255,7 +248,7 @@ public class BTreeFactory
 
                 if ( p instanceof InMemoryLeaf )
                 {
-                    InMemoryLeaf<K, V> leaf = ( InMemoryLeaf<K, V> ) ( last.page );
+                    InMemoryLeaf<K, V> leaf = (InMemoryLeaf<K, V> ) ( last.page );
                     ValueHolder<V> valueHolder = leaf.values[last.pos];
                     last.valueCursor = valueHolder.getCursor();
                     break;

@@ -17,7 +17,7 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.memory;
+package org.apache.directory.mavibot.btree;
 
 
 import java.io.IOException;
@@ -25,9 +25,6 @@ import java.lang.reflect.Array;
 import java.util.Comparator;
 import java.util.UUID;
 
-import org.apache.directory.mavibot.btree.AbstractValueHolder;
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
 
@@ -126,7 +123,7 @@ public class InMemoryValueHolder<V> extends AbstractValueHolder<V>
     {
         try
         {
-            BTreeConfiguration<V, V> configuration = new BTreeConfiguration<V, V>();
+            InMemoryBTreeConfiguration<V, V> configuration = new InMemoryBTreeConfiguration<V, V>();
             configuration.setAllowDuplicates( false );
             configuration.setName( UUID.randomUUID().toString() );
             configuration.setKeySerializer( valueSerializer );

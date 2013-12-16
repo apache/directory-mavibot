@@ -21,6 +21,7 @@ package org.apache.directory.mavibot.btree.persisted;
 
 
 import org.apache.directory.mavibot.btree.BTree;
+import org.apache.directory.mavibot.btree.PersistedBTree;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 

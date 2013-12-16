@@ -17,12 +17,11 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.persisted;
+package org.apache.directory.mavibot.btree;
 
 
 import java.io.IOException;
 
-import org.apache.directory.mavibot.btree.KeyHolder;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 

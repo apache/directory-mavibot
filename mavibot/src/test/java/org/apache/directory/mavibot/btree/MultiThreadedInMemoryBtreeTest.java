@@ -17,7 +17,7 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.memory;
+package org.apache.directory.mavibot.btree;
 
 
 import static org.junit.Assert.assertEquals;
@@ -28,6 +28,7 @@ import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 
 import org.apache.directory.mavibot.btree.BTree;
+import org.apache.directory.mavibot.btree.InMemoryBTree;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
@@ -43,7 +44,7 @@ import org.junit.Test;
  *  
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class MultiThreadedBtreeTest
+public class MultiThreadedInMemoryBtreeTest
 {
     /** The btree we use */
     private static BTree<Long, String> btree;

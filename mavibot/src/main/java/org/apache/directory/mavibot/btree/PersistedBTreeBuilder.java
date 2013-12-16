@@ -18,27 +18,21 @@
  *
  */
 
-package org.apache.directory.mavibot.btree.memory;
+package org.apache.directory.mavibot.btree;
 
 
-import static org.apache.directory.mavibot.btree.memory.BTreeFactory.createLeaf;
-import static org.apache.directory.mavibot.btree.memory.BTreeFactory.createNode;
-import static org.apache.directory.mavibot.btree.memory.BTreeFactory.setKey;
-import static org.apache.directory.mavibot.btree.memory.BTreeFactory.setValue;
+import static org.apache.directory.mavibot.btree.PersistedBTreeFactory.createLeaf;
+import static org.apache.directory.mavibot.btree.PersistedBTreeFactory.createNode;
+import static org.apache.directory.mavibot.btree.PersistedBTreeFactory.setKey;
+import static org.apache.directory.mavibot.btree.PersistedBTreeFactory.setValue;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-import org.apache.directory.mavibot.btree.AbstractPage;
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.KeyHolder;
-import org.apache.directory.mavibot.btree.Page;
-import org.apache.directory.mavibot.btree.PageHolder;
-import org.apache.directory.mavibot.btree.Tuple;
-import org.apache.directory.mavibot.btree.ValueHolder;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 
@@ -47,7 +41,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class InMemoryBTreeBuilder<K, V>
+public class PersistedBTreeBuilder<K, V>
 {
     private String name;
 
@@ -57,10 +51,12 @@ public class InMemoryBTreeBuilder<K, V>
 
     private ElementSerializer<V> valueSerializer;
 
+    private RecordManager rm;
 
-    public InMemoryBTreeBuilder( String name, int numKeysInNode, ElementSerializer<K> keySerializer,
+    public PersistedBTreeBuilder( RecordManager rm, String name, int numKeysInNode, ElementSerializer<K> keySerializer,
         ElementSerializer<V> valueSerializer )
     {
+        this.rm = rm;
         this.name = name;
         this.numKeysInNode = numKeysInNode;
         this.keySerializer = keySerializer;
@@ -69,26 +65,29 @@ public class InMemoryBTreeBuilder<K, V>
 
 
     @SuppressWarnings("unchecked")
-    public BTree<K, V> build( Iterator<Tuple<K, V>> sortedTupleItr ) throws IOException
+    public BTree<K, V> build( Iterator<Tuple<K, V>> sortedTupleItr ) throws Exception
     {
-        BTree<K, V> btree = new InMemoryBTree<K, V>( name, keySerializer, valueSerializer );
+        BTree<K, V> btree = new PersistedBTree<K, V>( name, keySerializer, valueSerializer );
         btree.init();
 
+        rm.manage( btree );
+        
         List<Page<K, V>> lstLeaves = new ArrayList<Page<K, V>>();
 
         int totalTupleCount = 0;
 
-        InMemoryLeaf<K, V> leaf1 = createLeaf( btree, 0, numKeysInNode );
+        PersistedLeaf<K, V> leaf1 = createLeaf( btree, 0, numKeysInNode );
         lstLeaves.add( leaf1 );
 
         int leafIndex = 0;
+
         while ( sortedTupleItr.hasNext() )
         {
             Tuple<K, V> tuple = sortedTupleItr.next();
+            
+            setKey( btree, leaf1, leafIndex, tuple.getKey() );
 
-            setKey( leaf1, leafIndex, tuple.getKey() );
-
-            InMemoryValueHolder<V> eh = new InMemoryValueHolder<V>( btree, tuple.getValue() );
+            PersistedValueHolder<V> eh = new PersistedValueHolder<V>( btree, tuple.getValue() );
 
             setValue( leaf1, leafIndex, eh );
 
@@ -97,9 +96,14 @@ public class InMemoryBTreeBuilder<K, V>
             if ( ( totalTupleCount % numKeysInNode ) == 0 )
             {
                 leafIndex = 0;
+                
+                PersistedPageHolder<K, V> pageHolder = (PersistedPageHolder<K, V> ) rm.writePage( btree, leaf1, 1 );
+                
                 leaf1 = createLeaf( btree, 0, numKeysInNode );
                 lstLeaves.add( leaf1 );
             }
+            
+            //TODO build the whole tree in chunks rather than processing *all* leaves at first
         }
 
         if ( lstLeaves.isEmpty() )
@@ -108,32 +112,41 @@ public class InMemoryBTreeBuilder<K, V>
         }
 
         // remove null keys and values from the last leaf and resize
-        InMemoryLeaf<K, V> lastLeaf = ( InMemoryLeaf<K, V> ) lstLeaves.get( lstLeaves.size() - 1 );
+        PersistedLeaf<K, V> lastLeaf = (PersistedLeaf<K, V> ) lstLeaves.get( lstLeaves.size() - 1 );
         for ( int i = 0; i < lastLeaf.getNbElems(); i++ )
         {
-            if ( lastLeaf.getKeys()[i] == null )
+            if ( lastLeaf.getKey( i ) == null )
             {
                 int n = i;
                 lastLeaf.setNbElems( n );
                 KeyHolder<K>[] keys = lastLeaf.getKeys();
 
-                lastLeaf.setKeys( ( KeyHolder[] ) Array.newInstance( KeyHolder.class, n ) );
+                lastLeaf.setKeys( ( KeyHolder[] ) Array.newInstance( PersistedKeyHolder.class, n ) );
                 System.arraycopy( keys, 0, lastLeaf.getKeys(), 0, n );
 
                 ValueHolder<V>[] values = lastLeaf.values;
-                lastLeaf.values = ( InMemoryValueHolder<V>[] ) Array.newInstance( InMemoryValueHolder.class, n );
+                lastLeaf.values = (PersistedValueHolder<V>[] ) Array.newInstance( PersistedValueHolder.class, n );
                 System.arraycopy( values, 0, lastLeaf.values, 0, n );
+
+                PersistedPageHolder<K, V> pageHolder = (PersistedPageHolder<K, V> ) rm.writePage( btree, lastLeaf, 1 );
 
                 break;
             }
         }
 
+        // make sure either one of the root pages is reclaimed, cause when we call rm.manage()
+        // there is already a root page created
         Page<K, V> rootPage = attachNodes( lstLeaves, btree );
 
-        System.out.println("built rootpage : " + rootPage);
+        //System.out.println("built rootpage : " + rootPage);
+        ((PersistedBTree<K, V>)btree).setNbElems( totalTupleCount );
+        
+        rm.updateBtreeHeader( btree, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
+        
+        rm.addFreePages( btree, Arrays.asList( btree.getRootPage() ) );
         
         btree.setRootPage( rootPage );
-
+        
         return btree;
     }
 
@@ -150,19 +163,19 @@ public class InMemoryBTreeBuilder<K, V>
 
         int numChildren = numKeysInNode + 1;
 
-        InMemoryNode<K, V> node = createNode( btree, 0, numKeysInNode );
+        PersistedNode<K, V> node = createNode( btree, 0, numKeysInNode );
         lstNodes.add( node );
         int i = 0;
         int totalNodes = 0;
 
-        for ( Page<K, V> p : children )
+        for ( Page<K, V> page : children )
         {
             if ( i != 0 )
             {
-                setKey( node, i - 1, p.getLeftMostKey() );
+                setKey( btree, node, i - 1, page.getLeftMostKey() );
             }
 
-            node.setPageHolder( i, new PageHolder<K, V>( btree, p ) );
+            node.setPageHolder( i, new PersistedPageHolder<K, V>( btree, page ) );
 
             i++;
             totalNodes++;
@@ -170,6 +183,9 @@ public class InMemoryBTreeBuilder<K, V>
             if ( ( totalNodes % numChildren ) == 0 )
             {
                 i = 0;
+                
+                PersistedPageHolder<K, V> pageHolder = (PersistedPageHolder<K, V> ) rm.writePage( btree, node, 1 );
+
                 node = createNode( btree, 0, numKeysInNode );
                 lstNodes.add( node );
             }
@@ -188,6 +204,8 @@ public class InMemoryBTreeBuilder<K, V>
 
                 lastNode.setKeys( ( KeyHolder[] ) Array.newInstance( KeyHolder.class, n ) );
                 System.arraycopy( keys, 0, lastNode.getKeys(), 0, n );
+
+                PersistedPageHolder<K, V> pageHolder = (PersistedPageHolder<K, V> ) rm.writePage( btree, lastNode, 1 );
 
                 break;
             }

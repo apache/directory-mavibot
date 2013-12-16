@@ -17,7 +17,7 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.memory;
+package org.apache.directory.mavibot.btree;
 
 
 import static org.junit.Assert.assertEquals;
@@ -30,6 +30,7 @@ import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.BorrowedFromLeftResult;
 import org.apache.directory.mavibot.btree.BorrowedFromRightResult;
 import org.apache.directory.mavibot.btree.DeleteResult;
+import org.apache.directory.mavibot.btree.InMemoryBTree;
 import org.apache.directory.mavibot.btree.InsertResult;
 import org.apache.directory.mavibot.btree.KeyHolder;
 import org.apache.directory.mavibot.btree.MergedWithSiblingResult;
@@ -51,7 +52,7 @@ import org.junit.Test;
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class LeafTest
+public class InMemoryLeafTest
 {
     private BTree<Long, String> btree = null;
 
@@ -82,7 +83,7 @@ public class LeafTest
     {
         InsertResult<Long, String> result = leaf.insert( 1L, key, value );
 
-        return ( InMemoryLeaf<Long, String> ) ( (org.apache.directory.mavibot.btree.ModifyResult<Long, String> ) result ).getModifiedPage();
+        return (InMemoryLeaf<Long, String> ) ( (ModifyResult<Long, String> ) result ).getModifiedPage();
     }
 
 
@@ -137,8 +138,8 @@ public class LeafTest
 
         assertTrue( result instanceof RemoveResult );
 
-        Tuple<Long, String> removedElement = ( (org.apache.directory.mavibot.btree.RemoveResult<Long, String> ) result ).getRemovedElement();
-        Page<Long, String> newLeaf = ( (org.apache.directory.mavibot.btree.RemoveResult<Long, String> ) result ).getModifiedPage();
+        Tuple<Long, String> removedElement = ( (RemoveResult<Long, String> ) result ).getRemovedElement();
+        Page<Long, String> newLeaf = ( (RemoveResult<Long, String> ) result ).getModifiedPage();
 
         assertEquals( Long.valueOf( 3L ), removedElement.getKey() );
         assertEquals( "v3", removedElement.getValue() );
@@ -184,7 +185,7 @@ public class LeafTest
 
         assertTrue( result instanceof RemoveResult );
 
-        RemoveResult<Long, String> removeResult = (org.apache.directory.mavibot.btree.RemoveResult<Long, String> ) result;
+        RemoveResult<Long, String> removeResult = (RemoveResult<Long, String> ) result;
 
         Tuple<Long, String> removedElement = removeResult.getRemovedElement();
         Page<Long, String> newLeaf = removeResult.getModifiedPage();
@@ -265,13 +266,13 @@ public class LeafTest
 
         assertTrue( result instanceof BorrowedFromLeftResult );
 
-        BorrowedFromLeftResult<Long, String> borrowed = (org.apache.directory.mavibot.btree.BorrowedFromLeftResult<Long, String> ) result;
+        BorrowedFromLeftResult<Long, String> borrowed = (BorrowedFromLeftResult<Long, String> ) result;
         Tuple<Long, String> removedKey = borrowed.getRemovedElement();
 
         assertEquals( Long.valueOf( 7L ), removedKey.getKey() );
 
         // Check the modified leaf
-        InMemoryLeaf<Long, String> newLeaf = ( InMemoryLeaf<Long, String> ) borrowed.getModifiedPage();
+        InMemoryLeaf<Long, String> newLeaf = (InMemoryLeaf<Long, String> ) borrowed.getModifiedPage();
 
         assertEquals( 4, newLeaf.getNbElems() );
         assertEquals( Long.valueOf( 5L ), newLeaf.getKey( 0 ) );
@@ -280,7 +281,7 @@ public class LeafTest
         assertEquals( Long.valueOf( 9L ), newLeaf.getKey( 3 ) );
 
         // Check the sibling
-        InMemoryLeaf<Long, String> leftSibling = ( InMemoryLeaf<Long, String> ) borrowed.getModifiedSibling();
+        InMemoryLeaf<Long, String> leftSibling = (InMemoryLeaf<Long, String> ) borrowed.getModifiedSibling();
 
         assertEquals( 4, leftSibling.getNbElems() );
         assertEquals( Long.valueOf( 1L ), leftSibling.getKey( 0 ) );
@@ -335,14 +336,14 @@ public class LeafTest
 
         assertTrue( result instanceof BorrowedFromRightResult );
 
-        BorrowedFromRightResult<Long, String> borrowed = (org.apache.directory.mavibot.btree.BorrowedFromRightResult<Long, String> ) result;
+        BorrowedFromRightResult<Long, String> borrowed = (BorrowedFromRightResult<Long, String> ) result;
         assertEquals( Long.valueOf( 11L ), borrowed.getModifiedSibling().getKey( 0 ) );
         Tuple<Long, String> removedKey = borrowed.getRemovedElement();
 
         assertEquals( Long.valueOf( 7L ), removedKey.getKey() );
 
         // Check the modified leaf
-        InMemoryLeaf<Long, String> newLeaf = ( InMemoryLeaf<Long, String> ) borrowed.getModifiedPage();
+        InMemoryLeaf<Long, String> newLeaf = (InMemoryLeaf<Long, String> ) borrowed.getModifiedPage();
 
         assertEquals( 4, newLeaf.getNbElems() );
         assertEquals( Long.valueOf( 6L ), newLeaf.getKey( 0 ) );
@@ -351,7 +352,7 @@ public class LeafTest
         assertEquals( Long.valueOf( 10L ), newLeaf.getKey( 3 ) );
 
         // Check the sibling
-        InMemoryLeaf<Long, String> rightSibling = ( InMemoryLeaf<Long, String> ) borrowed.getModifiedSibling();
+        InMemoryLeaf<Long, String> rightSibling = (InMemoryLeaf<Long, String> ) borrowed.getModifiedSibling();
 
         assertEquals( 4, rightSibling.getNbElems() );
         assertEquals( Long.valueOf( 11L ), rightSibling.getKey( 0 ) );
@@ -405,13 +406,13 @@ public class LeafTest
 
         assertTrue( result instanceof MergedWithSiblingResult );
 
-        MergedWithSiblingResult<Long, String> merged = (org.apache.directory.mavibot.btree.MergedWithSiblingResult<Long, String> ) result;
+        MergedWithSiblingResult<Long, String> merged = (MergedWithSiblingResult<Long, String> ) result;
         Tuple<Long, String> removedKey = merged.getRemovedElement();
 
         assertEquals( Long.valueOf( 7L ), removedKey.getKey() );
 
         // Check the modified leaf
-        InMemoryLeaf<Long, String> newLeaf = ( InMemoryLeaf<Long, String> ) merged.getModifiedPage();
+        InMemoryLeaf<Long, String> newLeaf = (InMemoryLeaf<Long, String> ) merged.getModifiedPage();
 
         assertEquals( 7, newLeaf.getNbElems() );
         assertEquals( Long.valueOf( 1L ), newLeaf.getKey( 0 ) );
@@ -437,7 +438,7 @@ public class LeafTest
         for ( long i = 0; i < 8; i++ )
         {
             long value = i + i + 1;
-            leaf = ( InMemoryLeaf<Long, String> ) ( (org.apache.directory.mavibot.btree.ModifyResult<Long, String> ) leaf.insert( 0L, value, "V" + value ) )
+            leaf = (InMemoryLeaf<Long, String> ) ( (ModifyResult<Long, String> ) leaf.insert( 0L, value, "V" + value ) )
                 .getModifiedPage();
         }
 

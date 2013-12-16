@@ -17,7 +17,7 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.persisted;
+package org.apache.directory.mavibot.btree;
 
 
 import static org.junit.Assert.assertEquals;
@@ -29,8 +29,8 @@ import java.lang.reflect.Method;
 import java.util.UUID;
 
 import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.persisted.PageIO;
-import org.apache.directory.mavibot.btree.persisted.RecordManager;
+import org.apache.directory.mavibot.btree.PageIO;
+import org.apache.directory.mavibot.btree.RecordManager;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
 import org.junit.After;
@@ -87,25 +87,25 @@ public class RecordManagerPrivateMethodTest
         Method getFreePageIOsMethod = RecordManager.class.getDeclaredMethod( "getFreePageIOs", int.class );
         getFreePageIOsMethod.setAccessible( true );
 
-        PageIO[] pages = ( PageIO[] ) getFreePageIOsMethod.invoke( recordManager, 0 );
+        PageIO[] pages = (org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, 0 );
 
         assertEquals( 0, pages.length );
 
         for ( int i = 1; i < 20; i++ )
         {
-            pages = ( PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
+            pages = (org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
             assertEquals( 1, pages.length );
         }
 
         for ( int i = 21; i < 44; i++ )
         {
-            pages = ( PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
+            pages = (org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
             assertEquals( 2, pages.length );
         }
 
         for ( int i = 45; i < 68; i++ )
         {
-            pages = ( PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
+            pages = (org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
             assertEquals( 3, pages.length );
         }
 

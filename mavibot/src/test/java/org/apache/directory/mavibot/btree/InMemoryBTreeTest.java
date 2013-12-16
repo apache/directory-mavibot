@@ -17,7 +17,7 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.memory;
+package org.apache.directory.mavibot.btree;
 
 
 import static org.junit.Assert.assertEquals;
@@ -36,6 +36,8 @@ import java.util.Random;
 import java.util.Set;
 
 import org.apache.directory.mavibot.btree.BTree;
+import org.apache.directory.mavibot.btree.InMemoryBTree;
+import org.apache.directory.mavibot.btree.InMemoryValueHolder;
 import org.apache.directory.mavibot.btree.KeyHolder;
 import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.PageHolder;
@@ -1050,7 +1052,7 @@ public class InMemoryBTreeTest
         leaf.setRevision( revision );
         leaf.setNbElems( tuples.length );
         leaf.setKeys( new KeyHolder[leaf.getNbElems()] );
-        leaf.values = ( InMemoryValueHolder<String>[] ) Array
+        leaf.values = (InMemoryValueHolder<String>[] ) Array
             .newInstance( InMemoryValueHolder.class, leaf.getNbElems() );
 
         for ( Tuple<Integer, String> tuple : tuples )
@@ -1912,7 +1914,7 @@ public class InMemoryBTreeTest
     {
         IntSerializer serializer = new IntSerializer();
 
-        BTreeConfiguration<Integer, Integer> config = new BTreeConfiguration<Integer, Integer>();
+        InMemoryBTreeConfiguration<Integer, Integer> config = new InMemoryBTreeConfiguration<Integer, Integer>();
         config.setName( "master" );
         config.setPageSize( 4 );
         config.setSerializers( serializer, serializer );

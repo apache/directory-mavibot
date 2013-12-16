@@ -17,7 +17,7 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.memory;
+package org.apache.directory.mavibot.btree;
 
 
 import java.io.Closeable;
@@ -34,22 +34,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import net.sf.ehcache.Cache;
 import net.sf.ehcache.config.CacheConfiguration;
 
-import org.apache.directory.mavibot.btree.AbstractBTree;
-import org.apache.directory.mavibot.btree.Addition;
-import org.apache.directory.mavibot.btree.BTreeHeader;
-import org.apache.directory.mavibot.btree.DeleteResult;
-import org.apache.directory.mavibot.btree.Deletion;
-import org.apache.directory.mavibot.btree.InsertResult;
-import org.apache.directory.mavibot.btree.Modification;
-import org.apache.directory.mavibot.btree.ModifyResult;
-import org.apache.directory.mavibot.btree.NotPresentResult;
-import org.apache.directory.mavibot.btree.Page;
-import org.apache.directory.mavibot.btree.RemoveResult;
-import org.apache.directory.mavibot.btree.SplitResult;
-import org.apache.directory.mavibot.btree.Transaction;
-import org.apache.directory.mavibot.btree.Tuple;
-import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
+import org.apache.directory.mavibot.btree.memory.BTreeTypeEnum;
 import org.apache.directory.mavibot.btree.serializer.BufferHandler;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
@@ -65,7 +51,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class InMemoryBTree<K, V> extends AbstractBTree<K, V> implements Closeable
+ class InMemoryBTree<K, V> extends AbstractBTree<K, V> implements Closeable
 {
     /** The LoggerFactory used by this class */
     protected static final Logger LOG = LoggerFactory.getLogger( InMemoryBTree.class );
@@ -114,7 +100,7 @@ public class InMemoryBTree<K, V> extends AbstractBTree<K, V> implements Closeabl
      * 
      * @param comparator The comparator to use
      */
-    public InMemoryBTree( BTreeConfiguration<K, V> configuration ) throws IOException
+    public InMemoryBTree( InMemoryBTreeConfiguration<K, V> configuration ) throws IOException
     {
         super();
         String name = configuration.getName();
@@ -414,7 +400,7 @@ public class InMemoryBTree<K, V> extends AbstractBTree<K, V> implements Closeabl
             if ( result instanceof RemoveResult )
             {
                 // The element was found, and removed
-                RemoveResult<K, V> removeResult = (org.apache.directory.mavibot.btree.RemoveResult<K, V> ) result;
+                RemoveResult<K, V> removeResult = (RemoveResult<K, V> ) result;
 
                 Page<K, V> modifiedPage = removeResult.getModifiedPage();
 
@@ -477,7 +463,7 @@ public class InMemoryBTree<K, V> extends AbstractBTree<K, V> implements Closeabl
 
         if ( result instanceof ModifyResult )
         {
-            ModifyResult<K, V> modifyResult = ( (org.apache.directory.mavibot.btree.ModifyResult<K, V> ) result );
+            ModifyResult<K, V> modifyResult = ( (ModifyResult<K, V> ) result );
 
             Page<K, V> modifiedPage = modifyResult.getModifiedPage();
 
@@ -491,7 +477,7 @@ public class InMemoryBTree<K, V> extends AbstractBTree<K, V> implements Closeabl
         {
             // We have split the old root, create a new one containing
             // only the pivotal we got back
-            SplitResult<K, V> splitResult = ( (org.apache.directory.mavibot.btree.SplitResult<K, V> ) result );
+            SplitResult<K, V> splitResult = ( (SplitResult<K, V> ) result );
 
             K pivot = splitResult.getPivot();
             Page<K, V> leftPage = splitResult.getLeftPage();

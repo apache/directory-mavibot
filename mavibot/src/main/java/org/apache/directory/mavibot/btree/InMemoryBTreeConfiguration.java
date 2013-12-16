@@ -17,9 +17,10 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.memory;
+package org.apache.directory.mavibot.btree;
 
 
+import org.apache.directory.mavibot.btree.memory.BTreeTypeEnum;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 
@@ -32,7 +33,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class BTreeConfiguration<K, V>
+public class InMemoryBTreeConfiguration<K, V>
 {
     /** Number of entries in each Page. */
     private int pageSize = InMemoryBTree.DEFAULT_PAGE_SIZE;

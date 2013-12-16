@@ -17,7 +17,7 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.persisted;
+package org.apache.directory.mavibot.btree;
 
 
 import java.io.Closeable;
@@ -30,19 +30,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import net.sf.ehcache.Cache;
 import net.sf.ehcache.config.CacheConfiguration;
 
-import org.apache.directory.mavibot.btree.AbstractBTree;
-import org.apache.directory.mavibot.btree.AbstractPage;
-import org.apache.directory.mavibot.btree.BTreeHeader;
-import org.apache.directory.mavibot.btree.DeleteResult;
-import org.apache.directory.mavibot.btree.InsertResult;
-import org.apache.directory.mavibot.btree.ModifyResult;
-import org.apache.directory.mavibot.btree.NotPresentResult;
-import org.apache.directory.mavibot.btree.Page;
-import org.apache.directory.mavibot.btree.RemoveResult;
-import org.apache.directory.mavibot.btree.SplitResult;
-import org.apache.directory.mavibot.btree.Transaction;
-import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
+import org.apache.directory.mavibot.btree.persisted.BTreeConfiguration;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -445,12 +434,12 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
                     revision );
 
                 // Store the offset on disk in the page in memory
-                ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( PersistedPageHolder<K, V> ) holder )
+                ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( (PersistedPageHolder<K, V> ) holder )
                     .getOffset() );
 
                 // Store the last offset on disk in the page in memory
                 ( ( AbstractPage<K, V> ) modifiedPage )
-                    .setLastOffset( ( ( PersistedPageHolder<K, V> ) holder )
+                    .setLastOffset( ( (PersistedPageHolder<K, V> ) holder )
                         .getLastOffset() );
 
                 // This is a new root

@@ -17,7 +17,7 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.persisted;
+package org.apache.directory.mavibot.btree;
 
 
 import static org.junit.Assert.assertEquals;
@@ -26,8 +26,8 @@ import java.io.File;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 
-import org.apache.directory.mavibot.btree.persisted.PageIO;
-import org.apache.directory.mavibot.btree.persisted.RecordManager;
+import org.apache.directory.mavibot.btree.PageIO;
+import org.apache.directory.mavibot.btree.RecordManager;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -38,7 +38,7 @@ import org.junit.rules.TemporaryFolder;
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class StoreTest
+public class PersistedStoreTest
 {
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
