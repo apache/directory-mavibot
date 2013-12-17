@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.PersistedBTree;
 import org.apache.directory.mavibot.btree.RecordManager;
@@ -40,6 +41,7 @@ import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -78,6 +80,20 @@ public class PersistedBTreeDuplicateKeyTest
         catch ( Exception e )
         {
             throw new RuntimeException( e );
+        }
+    }
+    
+    
+    @After
+    public void cleanup() throws IOException
+    {
+        dataDir = new File( System.getProperty( "java.io.tmpdir" ) + "/recordman" );
+        
+        btree.close();
+
+        if ( dataDir.exists() )
+        {
+            FileUtils.deleteDirectory( dataDir );
         }
     }
 

@@ -91,6 +91,8 @@ public class RecordManagerFreePageTest
         {
             FileUtils.deleteDirectory( dataDir );
         }
+        
+        recordManager1.close();
     }
 
 

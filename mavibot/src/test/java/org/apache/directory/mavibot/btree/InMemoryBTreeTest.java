@@ -923,6 +923,8 @@ public class InMemoryBTreeTest
 
         assertFalse( btree.hasKey( 0 ) );
         assertFalse( btree.hasKey( 21 ) );
+        
+        btree.close();
     }
 
 
@@ -1041,6 +1043,7 @@ public class InMemoryBTreeTest
 
         TupleCursor<Integer, String> cursor = btree.browseFrom( 11 );
         assertFalse( cursor.hasNext() );
+        
         btree.close();
     }
 
@@ -1737,6 +1740,8 @@ public class InMemoryBTreeTest
 
         assertNotNull( deleted );
         assertNull( deleted.getValue() );
+        
+        btree.close();
     }
 
 
@@ -1944,6 +1949,7 @@ public class InMemoryBTreeTest
         tuple = cursor.next();
         assertEquals( Integer.valueOf( 4 ), tuple.getKey() );
         assertEquals( Integer.valueOf( 4 ), tuple.getValue() );
+        
         cursor.close();
         btree.close();
     }

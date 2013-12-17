@@ -29,12 +29,14 @@ import java.io.IOException;
 import java.util.Set;
 import java.util.UUID;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.RecordManager;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -73,6 +75,18 @@ public class RecordManagerWithDuplicatesTest
         catch ( Exception e )
         {
             throw new RuntimeException( e );
+        }
+    }
+    
+    
+    @After
+    public void cleanup() throws IOException
+    {
+        btree.close();
+
+        if ( dataDir.exists() )
+        {
+            FileUtils.deleteDirectory( dataDir );
         }
     }
 
