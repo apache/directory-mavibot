@@ -66,7 +66,6 @@ public class InMemoryBTreeDuplicateKeyTest
         assertEquals( null, t.getValue() );
 
         cursor.close();
-        
         btree.close();
     }
 
@@ -195,6 +194,7 @@ public class InMemoryBTreeDuplicateKeyTest
         assertFalse( btree.contains( null, 0 ) );
         assertFalse( btree.contains( 0, null ) );
         assertFalse( btree.contains( null, null ) );
+        
         btree.close();
     }
 
@@ -230,6 +230,7 @@ public class InMemoryBTreeDuplicateKeyTest
 
         t = btree.delete( 1, 2 );
         assertNull( t );
+        
         btree.close();
     }
 
@@ -246,6 +247,7 @@ public class InMemoryBTreeDuplicateKeyTest
         BTree<String, String> btree = new InMemoryBTree<String, String>( config );
 
         int i = 7;
+        
         for ( char ch = 'a'; ch <= 'z'; ch++ )
         {
             for ( int k = 0; k < i; k++ )
@@ -290,6 +292,7 @@ public class InMemoryBTreeDuplicateKeyTest
         }
 
         assertEquals( ( 'a' - 1 ), ch );
+        
         cursor.close();
         btree.close();
     }
@@ -379,6 +382,7 @@ public class InMemoryBTreeDuplicateKeyTest
         }
         
         assertEquals( 25, i );
+        
         btree.close();
     }
 
@@ -418,8 +422,14 @@ public class InMemoryBTreeDuplicateKeyTest
         assertFalse( cursor.hasNext() );
         
         // make sure it throws NoSuchElementException
-        cursor.next();
-        btree.close();
+        try
+        {
+            cursor.next();
+        }
+        finally
+        {
+            btree.close();
+        }
     }
 
 
@@ -517,9 +527,16 @@ public class InMemoryBTreeDuplicateKeyTest
         cursor = btree.browse();
         cursor.beforeFirst();
         assertFalse( cursor.hasPrev() );
+        
         // make sure it throws NoSuchElementException
-        cursor.prev();
-        btree.close();
+        try
+        {
+            cursor.prev();
+        }
+        finally
+        {
+            btree.close();
+        }
     }
 
 
@@ -598,6 +615,7 @@ public class InMemoryBTreeDuplicateKeyTest
         
         assertEquals( Integer.valueOf( 0 ), tuple.getKey() );
         assertEquals( Integer.valueOf( 0 ), tuple.getValue() );
+        
         cursor.close();
         btree.close();
     }
@@ -638,8 +656,8 @@ public class InMemoryBTreeDuplicateKeyTest
         tuple = cursor.next();
         assertEquals( Integer.valueOf( 4 ), tuple.getKey() );
         assertEquals( Integer.valueOf( 4 ), tuple.getValue() );
+        
         cursor.close();
-
         btree.close();
     }
 
