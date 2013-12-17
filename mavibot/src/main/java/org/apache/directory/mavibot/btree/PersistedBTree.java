@@ -28,6 +28,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.ReentrantLock;
 
 import net.sf.ehcache.Cache;
+import net.sf.ehcache.Status;
 import net.sf.ehcache.config.CacheConfiguration;
 
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
@@ -305,7 +306,11 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
         // readTransactions.clear();
         
         // Clean the cache
-        cache.removeAll();
+        if ( cache.getStatus() == Status.STATUS_ALIVE )
+        {
+            cache.removeAll();
+        }
+        
         cache.dispose();
 
         rootPage = null;
