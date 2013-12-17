@@ -126,7 +126,7 @@ public class InMemoryBTreeBuilder<K, V>
 
         System.out.println("built rootpage : " + rootPage);
         
-        btree.setRootPage( rootPage );
+        ((AbstractBTree<K, V>)btree).setRootPage( rootPage );
 
         return btree;
     }

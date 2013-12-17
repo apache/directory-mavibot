@@ -47,7 +47,7 @@ import java.util.List;
      * @param modifiedPage The modified page
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
      */
-    public AbstractDeleteResult( Page<K, V> modifiedPage, Tuple<K, V> removedElement )
+    /*no qualifier*/ AbstractDeleteResult( Page<K, V> modifiedPage, Tuple<K, V> removedElement )
     {
         super();
         this.modifiedPage = modifiedPage;
@@ -62,7 +62,7 @@ import java.util.List;
      * @param modifiedPage The modified page
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
      */
-    public AbstractDeleteResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage,
+    /*no qualifier*/ AbstractDeleteResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage,
         Tuple<K, V> removedElement )
     {
         super( copiedPages );
@@ -92,7 +92,7 @@ import java.util.List;
     /**
      * @param modifiedPage the modifiedPage to set
      */
-    public void setModifiedPage( Page<K, V> modifiedPage )
+    /*no qualifier*/ void setModifiedPage( Page<K, V> modifiedPage )
     {
         this.modifiedPage = modifiedPage;
     }

@@ -37,7 +37,7 @@ package org.apache.directory.mavibot.btree;
      * 
      * @param key The key to store
      */
-    public KeyHolder( K key )
+    /* no qualifier */KeyHolder( K key )
     {
         this.key = key;
     }
@@ -46,7 +46,7 @@ package org.apache.directory.mavibot.btree;
     /**
      * {@inheritDoc}
      */
-    public void setKey( K key )
+    /* no qualifier */void setKey( K key )
     {
         this.key = key;
     }
@@ -55,7 +55,7 @@ package org.apache.directory.mavibot.btree;
     /**
      * {@inheritDoc}
      */
-    public K getKey()
+    /* no qualifier */K getKey()
     {
         return key;
     }

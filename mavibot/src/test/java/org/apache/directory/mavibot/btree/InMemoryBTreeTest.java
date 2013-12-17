@@ -36,6 +36,7 @@ import java.util.Random;
 import java.util.Set;
 
 import org.apache.directory.mavibot.btree.BTree;
+import org.apache.directory.mavibot.btree.AbstractBTree;
 import org.apache.directory.mavibot.btree.InMemoryBTree;
 import org.apache.directory.mavibot.btree.InMemoryValueHolder;
 import org.apache.directory.mavibot.btree.KeyHolder;
@@ -1172,7 +1173,7 @@ public class InMemoryBTreeTest
             addPage( btree, root, node, i );
         }
 
-        btree.setRootPage( root );
+        ((AbstractBTree<Integer, String>)btree).setRootPage( root );
 
         return btree;
     }

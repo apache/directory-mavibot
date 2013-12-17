@@ -87,9 +87,9 @@ public class InMemoryBTreeFactory
      * 
      * @param root the new root page.
      */
-    public static <K, V> void setRoot( BTree<K, V> btree, Page<K, V> root )
+    /* no qualifier*/ static <K, V> void setRoot( BTree<K, V> btree, Page<K, V> root )
     {
-        btree.setRootPage( root );
+        ((AbstractBTree<K, V>)btree).setRootPage( root );
     }
 
 
@@ -108,18 +108,18 @@ public class InMemoryBTreeFactory
     /**
      * @param nbElems the nbElems to set
      */
-    public static <K, V> void setNbElems( BTree<K, V> btree, long nbElems )
+    /* no qualifier */static <K, V> void setNbElems( BTree<K, V> btree, long nbElems )
     {
-        btree.setNbElems( nbElems );
+        ((AbstractBTree<K, V>)btree).setNbElems( nbElems );
     }
 
 
     /**
      * @param revision the revision to set
      */
-    public static <K, V> void setRevision( BTree<K, V> btree, long revision )
+    /* no qualifier*/static <K, V> void setRevision( BTree<K, V> btree, long revision )
     {
-        btree.setRevision( revision );
+        ((AbstractBTree<K, V>)btree).setRevision( revision );
     }
 
 

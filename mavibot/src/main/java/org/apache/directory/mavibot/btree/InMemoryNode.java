@@ -783,7 +783,7 @@ import java.util.List;
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    public void setValue( int pos, Page<K, V> value )
+    /* no qualifier */void setValue( int pos, Page<K, V> value )
     {
         children[pos] = new PageHolder<K, V>( btree, value );
     }

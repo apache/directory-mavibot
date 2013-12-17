@@ -1266,12 +1266,12 @@ public class RecordManager
         Page<K, V> child = node.getReference( pos );
 
         // The first offset
-        byte[] buffer = LongSerializer.serialize( child.getOffset() );
+        byte[] buffer = LongSerializer.serialize( ((AbstractPage<K, V>)child).getOffset() );
         serializedData.add( buffer );
         int dataSize = buffer.length;
 
         // The last offset
-        buffer = LongSerializer.serialize( child.getLastOffset() );
+        buffer = LongSerializer.serialize( ((AbstractPage<K, V>)child).getLastOffset() );
         serializedData.add( buffer );
         dataSize += buffer.length;
 
@@ -2316,7 +2316,7 @@ public class RecordManager
 
         RevisionName revisionName = new RevisionName( rootPage.getRevision(), btree.getName() );
 
-        revisionBTree.insert( revisionName, rootPage.getOffset(), 0 );
+        ((AbstractBTree<RevisionName, Long>)revisionBTree).insert( revisionName, ((AbstractPage<K, V>)rootPage).getOffset(), 0 );
 
         if ( LOG_CHECK.isDebugEnabled() )
         {
@@ -2401,7 +2401,7 @@ public class RecordManager
             for ( Page<K, V> page : pages )
             {
                 // Retrieve all the PageIO associated with this logical page
-                long firstOffset = page.getOffset();
+                long firstOffset = ((AbstractPage<K, V>)page).getOffset();
 
                 // skip the page with offset 0, this is the first in-memory root page that
                 // was copied during first insert in a BTree.
@@ -2411,7 +2411,7 @@ public class RecordManager
                     continue;
                 }
 
-                long lastOffset = page.getLastOffset();
+                long lastOffset = ((AbstractPage<K, V>)page).getLastOffset();
 
                 // Update the pointers
                 if ( firstFreePage == NO_PAGE )
@@ -2424,11 +2424,11 @@ public class RecordManager
                 {
                     // We add the Page's PageIOs before the 
                     // existing free pages.
-                    long offset = page.getLastOffset();
+                    long offset = ((AbstractPage<K, V>)page).getLastOffset();
 
                     if ( offset == NO_PAGE )
                     {
-                        offset = page.getOffset();
+                        offset = ((AbstractPage<K, V>)page).getOffset();
                     }
 
                     // Fetch the pageIO
@@ -2485,9 +2485,9 @@ public class RecordManager
                 offsetArray = new long[1];
             }
 
-            offsetArray[offsetArray.length - 1] = freePage.getOffset();
+            offsetArray[offsetArray.length - 1] = ((AbstractPage<K, V>)freePage).getOffset();
 
-            copiedPageBTree.insert( revision, offsetArray, 0 );
+            ((AbstractBTree<RevisionName, long[]>)copiedPageBTree).insert( revision, offsetArray, 0 );
         }
         catch ( Exception e )
         {

@@ -25,7 +25,7 @@ package org.apache.directory.mavibot.btree;
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  * @param <V> The value type
  */
-public interface ValueHolder<V> extends Cloneable
+/* no qualifier */interface ValueHolder<V> extends Cloneable
 {
     /**
      * Tells if a value is contained in this ValueHolder

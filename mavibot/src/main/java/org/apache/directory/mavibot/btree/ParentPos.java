@@ -33,16 +33,16 @@ package org.apache.directory.mavibot.btree;
 /* No qualifier*/class ParentPos<K, V>
 {
     /** The page we are browsing */
-    public Page<K, V> page;
+    /* no qualifier */Page<K, V> page;
 
     /** The current position in the page */
-    public int pos;
+    /* no qualifier */int pos;
 
     /** The current position of the duplicate container in the page */
-    public int dupPos;
+    /* no qualifier */int dupPos;
 
     /** The current position of the duplicate container in the page */
-    public ValueCursor<V> valueCursor;
+    /* no qualifier */ValueCursor<V> valueCursor;
 
 
     /**
@@ -50,7 +50,7 @@ package org.apache.directory.mavibot.btree;
      * @param page The current Page
      * @param pos The current position in the page
      */
-    public ParentPos( Page<K, V> page, int pos )
+    /* no qualifier */ParentPos( Page<K, V> page, int pos )
     {
         this.page = page;
         this.pos = pos;

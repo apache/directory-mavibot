@@ -597,7 +597,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
-    public ValueHolder<V> getValue( int pos )
+    /* no qualifier */ValueHolder<V> getValue( int pos )
     {
         if ( pos < nbElems )
         {
@@ -615,7 +615,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    public void setValue( int pos, ValueHolder<V> value )
+    /* no qualifier */void setValue( int pos, ValueHolder<V> value )
     {
         values[pos] = value;
     }

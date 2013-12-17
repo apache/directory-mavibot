@@ -145,7 +145,7 @@ public class PersistedBTreeBuilder<K, V>
         
         rm.addFreePages( btree, Arrays.asList( btree.getRootPage() ) );
         
-        btree.setRootPage( rootPage );
+        ((AbstractBTree<K, V>)btree).setRootPage( rootPage );
         
         return btree;
     }

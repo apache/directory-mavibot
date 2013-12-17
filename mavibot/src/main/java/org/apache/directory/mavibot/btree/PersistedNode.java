@@ -842,7 +842,7 @@ import java.util.List;
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    public void setValue( int pos, PersistedPageHolder<K, V> value )
+    /* no qualifier */void setValue( int pos, PersistedPageHolder<K, V> value )
     {
         children[pos] = value;
     }

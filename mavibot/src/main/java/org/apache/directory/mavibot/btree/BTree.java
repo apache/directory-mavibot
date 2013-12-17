@@ -82,14 +82,6 @@ public interface BTree<K, V>
 
 
     /**
-     * Generates a new revision number. It's only used by the Page instances.
-     * 
-     * @return a new incremental revision number
-     */
-    long generateRevision();
-
-
-    /**
      * Insert an entry in the BTree.
      * <p>
      * We will replace the value if the provided key already exists in the
@@ -115,7 +107,7 @@ public interface BTree<K, V>
      * @return Existing value, if any.
      * @throws IOException TODO
      */
-    InsertResult<K, V> insert( K key, V value, long revision ) throws IOException;
+    //InsertResult<K, V> insert( K key, V value, long revision ) throws IOException;
 
 
     /**
@@ -171,15 +163,6 @@ public interface BTree<K, V>
      * @return The current rootPage
      */
     Page<K, V> getRootPage();
-
-
-    /**
-     * Set the new root page for this tree. Used for debug purpose only. The revision
-     * will always be 0;
-     * 
-     * @param root the new root page.
-     */
-    void setRootPage( Page<K, V> root );
 
 
     /**
@@ -382,21 +365,9 @@ public interface BTree<K, V>
 
 
     /** 
-     * @param The current BTree revision
-     */
-    void setRevision( long revision);
-
-
-    /** 
      * @return The current number of elements in the BTree
      */
     long getNbElems();
-
-
-    /** 
-     * @return The current number of elements in the BTree
-     */
-    void setNbElems( long nbElems);
 
 
     /**

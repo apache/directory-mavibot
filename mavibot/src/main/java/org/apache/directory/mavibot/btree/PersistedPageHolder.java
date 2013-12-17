@@ -64,8 +64,8 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
         super( btree, page );
         cache = ((PersistedBTree<K, V>)btree).getCache();
         recordManager = ((PersistedBTree<K, V>)btree).getRecordManager();
-        offset = page.getOffset();
-        lastOffset = page.getLastOffset();
+        offset = ((AbstractPage<K, V>)page).getOffset();
+        lastOffset = ((AbstractPage<K, V>)page).getLastOffset();
 
         if ( page instanceof Page<?, ?> )
         {

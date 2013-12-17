@@ -36,12 +36,12 @@ import java.util.List;
     /**
      * @return the copiedPage
      */
-    /* No qualifier */List<P> getCopiedPages();
+    List<P> getCopiedPages();
 
 
     /**
      * Add a new copied page
      * @param copiedPage the added page
      */
-    /* No qualifier */void addCopiedPage( P copiedPage );
+    void addCopiedPage( P copiedPage );
 }

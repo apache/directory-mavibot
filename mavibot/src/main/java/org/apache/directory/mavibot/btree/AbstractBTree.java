@@ -235,13 +235,13 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      * @param key The key for the entry we try to remove
      * @return A Tuple<K, V> containing the removed entry, or null if it's not found.
      */
-    protected Tuple<K, V> delete( K key, long revision ) throws IOException
+    /*no qualifier*/ Tuple<K, V> delete( K key, long revision ) throws IOException
     {
         return delete( key, null, revision );
     }
 
 
-    abstract protected Tuple<K, V> delete( K key, V value, long revision ) throws IOException;
+    /*no qualifier*/abstract Tuple<K, V> delete( K key, V value, long revision ) throws IOException;
     
     
     /**
@@ -314,7 +314,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     /**
      * {@inheritDoc}
      */
-    public void setRootPage( Page<K, V> root )
+    /* no qualifier */void setRootPage( Page<K, V> root )
     {
         rootPage = root;
     }
@@ -428,16 +428,18 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     /**
      * {@inheritDoc}
      */
-    public void setRevision( long revision )
+    /* no qualifier */void setRevision( long revision )
     {
         btreeHeader.setRevision( revision );
     }
 
 
     /**
-     * {@inheritDoc}
+     * Generates a new revision number. It's only used by the Page instances.
+     * 
+     * @return a new incremental revision number
      */
-    public long generateRevision()
+    /* no qualifier */long generateRevision()
     {
         return btreeHeader.incrementRevision();
     }
@@ -473,7 +475,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     /**
      * {@inheritDoc}
      */
-    public void setNbElems( long nbElems )
+    /* no qualifier */void setNbElems( long nbElems )
     {
         btreeHeader.setNbElems( nbElems );
     }
@@ -588,7 +590,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      * Create a thread that is responsible of cleaning the transactions when
      * they hit the timeout
      */
-    protected void createTransactionManager()
+    /*no qualifier*/ void createTransactionManager()
     {
         Runnable readTransactionTask = new Runnable()
         {

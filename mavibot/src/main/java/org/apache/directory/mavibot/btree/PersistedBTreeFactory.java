@@ -100,9 +100,9 @@ public class PersistedBTreeFactory
      * 
      * @param root the new root page.
      */
-    public static <K, V> void setRootPage( BTree<K, V> btree, Page<K, V> root )
+    /* no qualifier*/ static <K, V> void setRootPage( BTree<K, V> btree, Page<K, V> root )
     {
-        btree.setRootPage( root );
+        ((AbstractBTree<K, V>)btree).setRootPage( root );
     }
 
 
@@ -139,7 +139,7 @@ public class PersistedBTreeFactory
     /**
      * @param rootPageOffset the rootPageOffset to set
      */
-    public static <K, V> void setRootPageOffset( BTree<K, V> btree, long rootPageOffset )
+    /* no qualifier*/static <K, V> void setRootPageOffset( BTree<K, V> btree, long rootPageOffset )
     {
         ((PersistedBTree<K, V>)btree).setRootPageOffset( rootPageOffset );
     }

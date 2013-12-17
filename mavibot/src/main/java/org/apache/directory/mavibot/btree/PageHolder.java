@@ -41,7 +41,7 @@ package org.apache.directory.mavibot.btree;
      * @param btree The associated BTree
      * @param page The element to store into a SoftReference
      **/
-    public PageHolder( BTree<K, V> btree, Page<K, V> page )
+    /* no qualifier */PageHolder( BTree<K, V> btree, Page<K, V> page )
     {
         this.btree = btree;
         this.page = page;
@@ -51,7 +51,7 @@ package org.apache.directory.mavibot.btree;
     /**
      * @return the stored page
      */
-    public Page<K, V> getValue()
+    /* no qualifier */Page<K, V> getValue()
     {
         return page;
     }

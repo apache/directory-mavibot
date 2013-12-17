@@ -105,7 +105,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * @param name the name to set
      */
-    public void setName( String name )
+    /* no qualifier */void setName( String name )
     {
         this.name = name;
     }
@@ -123,7 +123,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * @param versions the versions to set
      */
-    public void setVersions( long[] versions )
+    /* no qualifier */void setVersions( long[] versions )
     {
         this.versions = versions;
     }
@@ -141,7 +141,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * @param btreeOffset the btreeOffset to set
      */
-    public void setBTreeOffset( long btreeOffset )
+    /* no qualifier */void setBTreeOffset( long btreeOffset )
     {
         this.btreeOffset = btreeOffset;
     }
@@ -159,7 +159,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * @param rootPageOffset the rootPageOffset to set
      */
-    public void setRootPageOffset( long rootPageOffset )
+    /* no qualifier */void setRootPageOffset( long rootPageOffset )
     {
         this.rootPageOffset = rootPageOffset;
     }
@@ -177,7 +177,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * @param revision the revision to set
      */
-    public void setRevision( long revision )
+    /* no qualifier */void setRevision( long revision )
     {
         this.revision.set( revision );
     }
@@ -188,7 +188,7 @@ import java.util.concurrent.atomic.AtomicLong;
      * 
      * @return the new revision
      */
-    public long incrementRevision()
+    /* no qualifier */long incrementRevision()
     {
         return revision.incrementAndGet();
     }
@@ -206,7 +206,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * Increment the number of elements
      */
-    public void incrementNbElems()
+    /* no qualifier */void incrementNbElems()
     {
         nbElems.incrementAndGet();
     }
@@ -224,7 +224,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * @param nbElems the nbElems to set
      */
-    public void setNbElems( long nbElems )
+    /* no qualifier */void setNbElems( long nbElems )
     {
         this.nbElems.set( nbElems );
     }
@@ -242,7 +242,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * @param nextBtreeOffset the nextBtreeOffset to set
      */
-    public void setNextBTreeOffset( long nextBTreeOffset )
+    /* no qualifier */void setNextBTreeOffset( long nextBTreeOffset )
     {
         this.nextBTreeOffset = nextBTreeOffset;
     }
@@ -260,7 +260,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * @param pageSize the pageSize to set
      */
-    public void setPageSize( int pageSize )
+    /* no qualifier */void setPageSize( int pageSize )
     {
         this.pageSize = pageSize;
     }
@@ -278,7 +278,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * @param keySerializerFQCN the keySerializerFQCN to set
      */
-    public void setKeySerializerFQCN( String keySerializerFQCN )
+    /* no qualifier */void setKeySerializerFQCN( String keySerializerFQCN )
     {
         this.keySerializerFQCN = keySerializerFQCN;
     }
@@ -296,7 +296,7 @@ import java.util.concurrent.atomic.AtomicLong;
     /**
      * @param valueSerializerFQCN the valueSerializerFQCN to set
      */
-    public void setValueSerializerFQCN( String valueSerializerFQCN )
+    /* no qualifier */void setValueSerializerFQCN( String valueSerializerFQCN )
     {
         this.valueSerializerFQCN = valueSerializerFQCN;
     }
@@ -308,7 +308,7 @@ import java.util.concurrent.atomic.AtomicLong;
     }
 
 
-    public void setAllowDuplicates( boolean allowDuplicates )
+    /* no qualifier */void setAllowDuplicates( boolean allowDuplicates )
     {
         this.allowDuplicates = ( allowDuplicates ? 1 : 0 );
     }

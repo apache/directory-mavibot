@@ -37,7 +37,7 @@ package org.apache.directory.mavibot.btree;
      * @param key The key being added
      * @param value The value being added
      */
-    public PoisonPill()
+    /* no qualifier */PoisonPill()
     {
         super( null, null );
     }

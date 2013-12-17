@@ -46,7 +46,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      * @param keySerializer The KeySerializer instance
      * @param key The key to store
      */
-    PersistedKeyHolder( ElementSerializer<K> keySerializer, K key )
+    /* no qualifier */PersistedKeyHolder( ElementSerializer<K> keySerializer, K key )
     {
         super( key );
         this.keySerializer = keySerializer;
@@ -59,7 +59,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      * @param keySerializer The KeySerializer instance
      * @param raw the bytes representing the serialized key
      */
-    PersistedKeyHolder( ElementSerializer<K> keySerializer, byte[] raw )
+    /* no qualifier */PersistedKeyHolder( ElementSerializer<K> keySerializer, byte[] raw )
     {
         super( null );
         this.keySerializer = keySerializer;
@@ -70,7 +70,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     /**
      * @return the key
      */
-    public K getKey()
+    /* no qualifier */K getKey()
     {
         if ( key == null )
         {
@@ -91,7 +91,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     /**
      * @param key the Key to store in into the KeyHolder
      */
-    public void setKey( K key )
+    /* no qualifier */void setKey( K key )
     {
         this.key = key;
         raw = keySerializer.serialize( key );

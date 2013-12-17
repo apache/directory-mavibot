@@ -73,7 +73,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
     /** 
      * A default constructor for a PageIO
      */
-    public PageIO()
+    /* no qualifier */PageIO()
     {
         nextPage = -2L;
         size = -1;
@@ -84,7 +84,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
     /** 
      * A constructor for a PageIO when we know the offset of this page on disk
      */
-    public PageIO( long offset )
+    /* no qualifier */PageIO( long offset )
     {
         nextPage = -2L;
         size = -1;
@@ -95,7 +95,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
     /**
      * @return the data
      */
-    public ByteBuffer getData()
+    /* no qualifier */ByteBuffer getData()
     {
         return data;
     }
@@ -104,7 +104,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
     /**
      * @param data the data to set
      */
-    public void setData( ByteBuffer data )
+    /* no qualifier */void setData( ByteBuffer data )
     {
         this.data = data;
         nextPage = data.getLong( 0 );
@@ -115,7 +115,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
      * Get the NextPage value from the PageIO. If it's -1, there is no next page<br/>
      * @return the nextPage
      */
-    public long getNextPage()
+    /* no qualifier */long getNextPage()
     {
         return nextPage;
     }
@@ -124,7 +124,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
     /**
      * @param nextPage the nextPage to set
      */
-    public void setNextPage( long nextPage )
+    /* no qualifier */void setNextPage( long nextPage )
     {
         this.nextPage = nextPage;
 
@@ -135,7 +135,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
     /**
      * @return the size
      */
-    public long getSize()
+    /* no qualifier */long getSize()
     {
         return size;
     }
@@ -144,7 +144,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
     /**
      * @param size the size to set
      */
-    public void setSize( int size )
+    /* no qualifier */void setSize( int size )
     {
         data.putInt( 8, size );
 
@@ -155,7 +155,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
     /**
      * @param size the size to set
      */
-    public void setSize()
+    /* no qualifier */void setSize()
     {
         size = data.getInt( 8 );
     }
@@ -164,7 +164,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
     /**
      * @return the offset
      */
-    public long getOffset()
+    /* no qualifier */long getOffset()
     {
         return offset;
     }
@@ -173,7 +173,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
     /**
      * @param offset the offset to set
      */
-    public void setOffset( long offset )
+    /* no qualifier */void setOffset( long offset )
     {
         this.offset = offset;
     }

@@ -88,6 +88,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         this.keys = ( KeyHolder[] ) Array.newInstance( KeyHolder.class, nbElems );
     }
 
+
     /**
      * {@inheritDoc}
      */
@@ -97,7 +98,11 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     }
 
 
-    public void setNbElems( int nbElems )
+    /**
+     * Sets the number of element in this page
+     * @param nbElems The number of elements
+     */
+    /* no qualifier */void setNbElems( int nbElems )
     {
         this.nbElems = nbElems;
     }
@@ -150,7 +155,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
-    public Page<K, V> getReference( int pos ) throws IOException
+    /* no qualifier */Page<K, V> getReference( int pos ) throws IOException
     {
         if ( pos < nbElems + 1 )
         {
@@ -229,7 +234,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
-    public Page<K, V> getPage( int pos )
+    /* no qualifier */Page<K, V> getPage( int pos )
     {
         if ( ( pos >= 0 ) && ( pos < children.length ) )
         {
@@ -245,7 +250,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
-    public void setPageHolder( int pos, PageHolder<K, V> pageHolder )
+    /* no qualifier */void setPageHolder( int pos, PageHolder<K, V> pageHolder )
     {
         if ( ( pos >= 0 ) && ( pos < children.length ) )
         {
@@ -350,9 +355,9 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
 
     /**
-     * {@inheritDoc}
+     * @return the offset of the first {@link PageIO} which stores the Page on disk.
      */
-    public long getOffset()
+    /* no qualifier */long getOffset()
     {
         return offset;
     }
@@ -361,16 +366,16 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * @param offset the offset to set
      */
-    public void setOffset( long offset )
+    /* no qualifier */void setOffset( long offset )
     {
         this.offset = offset;
     }
 
 
     /**
-     * {@inheritDoc}
+     * @return the offset of the last {@link PageIO} which stores the Page on disk.
      */
-    public long getLastOffset()
+    /* no qualifier */long getLastOffset()
     {
         return lastOffset;
     }
@@ -379,16 +384,16 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
-    public void setLastOffset( long lastOffset )
+    /* no qualifier */void setLastOffset( long lastOffset )
     {
         this.lastOffset = lastOffset;
     }
 
 
     /**
-     * @return the leys
+     * @return the keys
      */
-    public KeyHolder<K>[] getKeys()
+    /* no qualifier */KeyHolder<K>[] getKeys()
     {
         return keys;
     }
@@ -400,7 +405,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @param pos The position in the keys array
      * @param key the key to inject
      */
-    public void setKey( int pos, KeyHolder<K> key )
+    /* no qualifier */void setKey( int pos, KeyHolder<K> key )
     {
         keys[pos] = key;
     }
@@ -409,7 +414,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * @param revision the keys to set
      */
-    public void setKeys( KeyHolder<K>[] keys )
+    /* no qualifier */void setKeys( KeyHolder<K>[] keys )
     {
         this.keys = keys;
     }
@@ -418,7 +423,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
-    public ValueHolder<V> getValue( int pos )
+    /* no qualifier */ValueHolder<V> getValue( int pos )
     {
         // Node don't have values. Leaf.getValue() will return the value
         return null;
@@ -437,7 +442,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * @param revision the revision to set
      */
-    public void setRevision( long revision )
+    /* no qualifier */void setRevision( long revision )
     {
         this.revision = revision;
     }

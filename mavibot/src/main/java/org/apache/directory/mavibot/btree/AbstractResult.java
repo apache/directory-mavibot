@@ -96,7 +96,7 @@ import java.util.List;
                 sb.append( ", " );
             }
 
-            sb.append( copiedPage.getOffset() );
+            sb.append( ((AbstractPage<K, V>)copiedPage).getOffset() );
         }
 
         sb.append( ">" );

@@ -256,16 +256,4 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @throws IOException If we have an error while trying to access the page
      */
     boolean hasKey( K key ) throws IOException;
-
-
-    /**
-     * @return the offset of the first {@link PageIO} which stores the Page on disk.
-     */
-    long getOffset();
-
-
-    /**
-     * @return the offset of the last {@link PageIO} which stores the Page on disk.
-     */
-    long getLastOffset();
 }
