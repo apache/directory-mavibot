@@ -303,6 +303,10 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
         // Stop the readTransaction thread
         // readTransactionsThread.interrupt();
         // readTransactions.clear();
+        
+        // Clean the cache
+        cache.removeAll();
+        cache.dispose();
 
         rootPage = null;
     }
