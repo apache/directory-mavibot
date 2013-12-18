@@ -23,10 +23,10 @@ package org.apache.directory.mavibot.btree;
 /**
  * A data structure that stores a revision associated to a BTree name. We use
  * it to allow the access to old revisions.
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class RevisionName
+/* no qualifier*/ class RevisionName
 {
     /** The revision number on the BTree */
     private long revision;
@@ -40,7 +40,7 @@ public class RevisionName
      * @param revision The revision
      * @param name The BTree name
      */
-    public RevisionName( long revision, String name )
+    /* no qualifier*/ RevisionName( long revision, String name )
     {
         this.revision = revision;
         this.name = name;
@@ -50,7 +50,7 @@ public class RevisionName
     /**
      * @return the revision
      */
-    public long getRevision()
+    /* no qualifier*/ long getRevision()
     {
         return revision;
     }
@@ -59,7 +59,7 @@ public class RevisionName
     /**
      * @param revision the revision to set
      */
-    public void setRevision( long revision )
+    /* no qualifier*/ void setRevision( long revision )
     {
         this.revision = revision;
     }
@@ -68,7 +68,7 @@ public class RevisionName
     /**
      * @return the btree name
      */
-    public String getName()
+    /* no qualifier*/ String getName()
     {
         return name;
     }
@@ -77,7 +77,7 @@ public class RevisionName
     /**
      * @param name the btree name to set
      */
-    public void setName( String name )
+    /* no qualifier*/ void setName( String name )
     {
         this.name = name;
     }

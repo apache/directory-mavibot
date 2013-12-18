@@ -25,10 +25,10 @@ import java.util.Comparator;
 
 /**
  * A comparator for the RevisionName class
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class RevisionNameComparator implements Comparator<RevisionName>
+/* no qualifier*/ class RevisionNameComparator implements Comparator<RevisionName>
 {
     /**
      * {@inheritDoc}

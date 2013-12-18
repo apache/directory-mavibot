@@ -17,7 +17,7 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.comparator;
+package org.apache.directory.mavibot.btree;
 
 
 import static org.junit.Assert.assertEquals;
