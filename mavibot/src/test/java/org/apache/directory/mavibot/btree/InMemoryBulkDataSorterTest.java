@@ -143,7 +143,7 @@ public class InMemoryBulkDataSorterTest
         Iterator<Tuple<Integer, Integer>> itr = bds.getMergeSortedTuples();
 
         Integer prev = null;
-        
+
         while ( itr.hasNext() )
         {
             Tuple<Integer, Integer> t = itr.next();

@@ -112,13 +112,13 @@ import java.util.List;
         if ( result instanceof ModifyResult )
         {
             // The child has been modified.
-            return replaceChild( revision, (ModifyResult<K, V> ) result, pos );
+            return replaceChild( revision, ( ModifyResult<K, V> ) result, pos );
         }
         else
         {
             // The child has been split. We have to insert the new pivot in the
             // current page, and to reference the two new pages
-            SplitResult<K, V> splitResult = (SplitResult<K, V> ) result;
+            SplitResult<K, V> splitResult = ( SplitResult<K, V> ) result;
             K pivot = splitResult.getPivot();
             Page<K, V> leftPage = splitResult.getLeftPage();
             Page<K, V> rightPage = splitResult.getRightPage();
@@ -556,7 +556,7 @@ import java.util.List;
         // If we just modified the child, return a modified page
         if ( deleteResult instanceof RemoveResult )
         {
-            RemoveResult<K, V> removeResult = handleRemoveResult( (RemoveResult<K, V> ) deleteResult, index, pos,
+            RemoveResult<K, V> removeResult = handleRemoveResult( ( RemoveResult<K, V> ) deleteResult, index, pos,
                 found );
 
             return removeResult;
@@ -566,7 +566,7 @@ import java.util.List;
         // the current page
         if ( deleteResult instanceof BorrowedFromSiblingResult )
         {
-            RemoveResult<K, V> removeResult = handleBorrowedResult( (BorrowedFromSiblingResult<K, V> ) deleteResult,
+            RemoveResult<K, V> removeResult = handleBorrowedResult( ( BorrowedFromSiblingResult<K, V> ) deleteResult,
                 pos );
 
             return removeResult;
@@ -576,7 +576,7 @@ import java.util.List;
         // an element from the local page, and to deal with the result.
         if ( deleteResult instanceof MergedWithSiblingResult )
         {
-            MergedWithSiblingResult<K, V> mergedResult = (MergedWithSiblingResult<K, V> ) deleteResult;
+            MergedWithSiblingResult<K, V> mergedResult = ( MergedWithSiblingResult<K, V> ) deleteResult;
 
             // If the parent is null, then this page is the root page.
             if ( parent == null )
@@ -604,9 +604,10 @@ import java.util.List;
                 // We will remove one element from a page that will have less than N/2 elements,
                 // which will lead to some reorganization : either we can borrow an element from
                 // a sibling, or we will have to merge two pages
-                int siblingPos = selectSibling( (InMemoryNode<K, V> ) parent, parentPos );
+                int siblingPos = selectSibling( ( InMemoryNode<K, V> ) parent, parentPos );
 
-                InMemoryNode<K, V> sibling = (InMemoryNode<K, V> ) ( ( (InMemoryNode<K, V> ) parent ).children[siblingPos].getValue() );
+                InMemoryNode<K, V> sibling = ( InMemoryNode<K, V> ) ( ( ( InMemoryNode<K, V> ) parent ).children[siblingPos]
+                    .getValue() );
 
                 if ( sibling.getNbElems() > halfSize )
                 {
@@ -809,7 +810,7 @@ import java.util.List;
         // to point on the modified child
         Page<K, V> modifiedPage = result.getModifiedPage();
 
-        ( (InMemoryNode<K, V> ) newPage ).children[pos] = new PageHolder<K, V>( btree, modifiedPage );
+        ( ( InMemoryNode<K, V> ) newPage ).children[pos] = new PageHolder<K, V>( btree, modifiedPage );
 
         // We can return the result, where we update the modifiedPage,
         // to avoid the creation of a new object
@@ -921,7 +922,8 @@ import java.util.List;
             System.arraycopy( children, middle, newRightPage.children, 0, middle + 1 );
 
             // Create the result
-            InsertResult<K, V> result = new SplitResult<K, V>( copiedPages, getKey( middle - 1 ), newLeftPage, newRightPage );
+            InsertResult<K, V> result = new SplitResult<K, V>( copiedPages, getKey( middle - 1 ), newLeftPage,
+                newRightPage );
             result.addCopiedPage( this );
 
             return result;
@@ -1017,8 +1019,8 @@ import java.util.List;
 
         return children[nbElems - 1].getValue().getRightMostKey();
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
@@ -1026,8 +1028,8 @@ import java.util.List;
     {
         return false;
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */

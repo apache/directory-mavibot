@@ -28,7 +28,7 @@ import java.util.Comparator;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* no qualifier*/ class RevisionNameComparator implements Comparator<RevisionName>
+/* no qualifier*/class RevisionNameComparator implements Comparator<RevisionName>
 {
     /**
      * {@inheritDoc}

@@ -86,8 +86,8 @@ public class RecordManagerTest
             throw new RuntimeException( e );
         }
     }
-    
-    
+
+
     @After
     public void cleanup() throws IOException
     {
@@ -255,7 +255,7 @@ public class RecordManagerTest
 
         // Now, add some elements in the BTree
         long t0 = System.currentTimeMillis();
-        
+
         for ( Long i = 0L; i < nbElems; i++ )
         {
             String value = "V" + i;
@@ -845,18 +845,19 @@ public class RecordManagerTest
         int pageSize = 16;
         int numKeys = 1;
         String name = "duplicateTree";
-        String[] testValues = new String[]{ "00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "0A", "0B", "0C", "0D", "0E", "0F", "10" };
+        String[] testValues = new String[]
+            { "00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "0A", "0B", "0C", "0D", "0E", "0F", "10" };
 
         BTree<Long, String> dupsTree = BTreeFactory.createPersistedBTree( name, new LongSerializer(),
             new StringSerializer(), pageSize, true );
 
         recordManager1.manage( dupsTree );
-        
+
         for ( long i = 0; i < numKeys; i++ )
         {
             for ( int k = 0; k < pageSize + 1; k++ )
             {
-                dupsTree.insert( i, testValues[ k ] );
+                dupsTree.insert( i, testValues[k] );
             }
         }
 
@@ -871,7 +872,7 @@ public class RecordManagerTest
 
             for ( int k = 0; k < pageSize + 1; k++ )
             {
-                assertTrue( values.next().equals( testValues[ k ] ) );
+                assertTrue( values.next().equals( testValues[k] ) );
             }
         }
     }

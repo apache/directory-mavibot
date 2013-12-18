@@ -205,7 +205,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 // Check in both next and previous page, if they have the same parent
                 // and select the biggest page with the same parent to borrow an element.
                 int siblingPos = selectSibling( parent, parentPos );
-                PersistedLeaf<K, V> sibling = (PersistedLeaf<K, V> ) ( ( (PersistedNode<K, V> ) parent ).getPage( siblingPos ) );
+                PersistedLeaf<K, V> sibling = ( PersistedLeaf<K, V> ) ( ( ( PersistedNode<K, V> ) parent )
+                    .getPage( siblingPos ) );
 
                 if ( sibling.getNbElems() == halfSize )
                 {
@@ -286,7 +287,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @return The new created leaf containing the sibling and the old page.
      * @throws IOException If we have an error while trying to access the page
      */
-    private DeleteResult<K, V> mergeWithSibling( Tuple<K, V> removedElement, long revision, PersistedLeaf<K, V> sibling,
+    private DeleteResult<K, V> mergeWithSibling( Tuple<K, V> removedElement, long revision,
+        PersistedLeaf<K, V> sibling,
         boolean isLeft, int pos )
         throws EndOfFileExceededException, IOException
     {
@@ -346,7 +348,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @return The resulting pages
      * @throws IOException If we have an error while trying to access the page
      */
-    private DeleteResult<K, V> borrowFromLeft( Tuple<K, V> removedElement, long revision, PersistedLeaf<K, V> sibling, int pos )
+    private DeleteResult<K, V> borrowFromLeft( Tuple<K, V> removedElement, long revision, PersistedLeaf<K, V> sibling,
+        int pos )
         throws IOException
     {
         // The sibling is on the left, borrow the rightmost element
@@ -354,7 +357,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         ValueHolder<V> siblingValue = sibling.values[sibling.getNbElems() - 1];
 
         // Create the new sibling, with one less element at the end
-        PersistedLeaf<K, V> newSibling = (PersistedLeaf<K, V> ) sibling.copy( revision, sibling.getNbElems() - 1 );
+        PersistedLeaf<K, V> newSibling = ( PersistedLeaf<K, V> ) sibling.copy( revision, sibling.getNbElems() - 1 );
 
         // Create the new page and add the new element at the beginning
         // First copy the current page, with the same size
@@ -393,7 +396,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @return The resulting pages
      * @throws IOException If we have an error while trying to access the page
      */
-    private DeleteResult<K, V> borrowFromRight( Tuple<K, V> removedElement, long revision, PersistedLeaf<K, V> sibling, int pos )
+    private DeleteResult<K, V> borrowFromRight( Tuple<K, V> removedElement, long revision, PersistedLeaf<K, V> sibling,
+        int pos )
         throws IOException
     {
         // The sibling is on the left, borrow the rightmost element
@@ -441,7 +445,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @param pos The position into the page of the element to remove
      * @throws IOException If we have an error while trying to access the page
      */
-    private void copyAfterRemovingElement( boolean keyRemoved, V removedValue, PersistedLeaf<K, V> newLeaf, int pos ) throws IOException
+    private void copyAfterRemovingElement( boolean keyRemoved, V removedValue, PersistedLeaf<K, V> newLeaf, int pos )
+        throws IOException
     {
         if ( keyRemoved )
         {
@@ -795,7 +800,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         if ( this.revision != revision )
         {
             // The page hasn't been modified yet, we need to copy it first
-            newLeaf = (PersistedLeaf<K, V> ) copy( revision, nbElems );
+            newLeaf = ( PersistedLeaf<K, V> ) copy( revision, nbElems );
         }
 
         // Get the previous value from the leaf (it's a copy)

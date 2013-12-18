@@ -36,7 +36,9 @@ public interface TupleReaderWriter<K, V>
 {
     Tuple<K, V> readUnsortedTuple( DataInputStream in );
 
+
     Tuple<K, V> readSortedTuple( DataInputStream in );
-    
+
+
     void storeSortedTuple( Tuple<K, V> t, DataOutputStream out ) throws IOException;
 }

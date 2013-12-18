@@ -65,16 +65,17 @@ public class PersistedBTreeConfiguration<K, V>
 
     /** Flag to enable duplicate key support */
     private boolean allowDuplicates;
-    
+
     /** A flag set when the BTree is a sub btree */
     private boolean isSubBtree = false;
 
     /** The cache size, if it's <= 0, we don't have cache */
     private int cacheSize;
-    
+
     /** The inherited BTree if we create a sub BTree */
     private BTree<?, V> parentBTree;
-    
+
+
     /**
      * @return the pageSize
      */

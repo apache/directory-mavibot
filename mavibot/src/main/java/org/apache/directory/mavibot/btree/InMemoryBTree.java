@@ -80,7 +80,7 @@ import org.slf4j.LoggerFactory;
     /**
      * Creates a new BTree, with no initialization.
      */
-    /* no qualifier */ InMemoryBTree()
+    /* no qualifier */InMemoryBTree()
     {
         super();
         btreeHeader = new BTreeHeader();
@@ -94,7 +94,7 @@ import org.slf4j.LoggerFactory;
      *
      * @param configuration The configuration to use
      */
-    /* no qualifier */ InMemoryBTree( InMemoryBTreeConfiguration<K, V> configuration )
+    /* no qualifier */InMemoryBTree( InMemoryBTreeConfiguration<K, V> configuration )
     {
         super();
         String name = configuration.getName();
@@ -268,7 +268,7 @@ import org.slf4j.LoggerFactory;
             if ( result instanceof RemoveResult )
             {
                 // The element was found, and removed
-                RemoveResult<K, V> removeResult = (RemoveResult<K, V> ) result;
+                RemoveResult<K, V> removeResult = ( RemoveResult<K, V> ) result;
 
                 Page<K, V> modifiedPage = removeResult.getModifiedPage();
 
@@ -313,7 +313,7 @@ import org.slf4j.LoggerFactory;
      * @param revision The revision to use
      * @return an instance of the InsertResult.
      */
-    /* no qualifier */ InsertResult<K, V> insert( K key, V value, long revision ) throws IOException
+    /* no qualifier */InsertResult<K, V> insert( K key, V value, long revision ) throws IOException
     {
         if ( key == null )
         {
@@ -331,7 +331,7 @@ import org.slf4j.LoggerFactory;
 
         if ( result instanceof ModifyResult )
         {
-            ModifyResult<K, V> modifyResult = ( (ModifyResult<K, V> ) result );
+            ModifyResult<K, V> modifyResult = ( ( ModifyResult<K, V> ) result );
 
             Page<K, V> modifiedPage = modifyResult.getModifiedPage();
 
@@ -345,7 +345,7 @@ import org.slf4j.LoggerFactory;
         {
             // We have split the old root, create a new one containing
             // only the pivotal we got back
-            SplitResult<K, V> splitResult = ( (SplitResult<K, V> ) result );
+            SplitResult<K, V> splitResult = ( ( SplitResult<K, V> ) result );
 
             K pivot = splitResult.getPivot();
             Page<K, V> leftPage = splitResult.getLeftPage();

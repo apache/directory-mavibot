@@ -243,7 +243,7 @@ public final class Strings
             chars[pos++] = ( char ) UTF8[bytes.get()];
         }
         while ( bytes.position() < bytes.limit() );
-        
+
         // restore the buffer
         bytes.position( currentPos );
 

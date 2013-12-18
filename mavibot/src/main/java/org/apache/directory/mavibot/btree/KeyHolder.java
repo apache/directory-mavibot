@@ -19,6 +19,7 @@
  */
 package org.apache.directory.mavibot.btree;
 
+
 /**
  * The data structure holding a key and the way to access it
  * 
@@ -41,8 +42,8 @@ package org.apache.directory.mavibot.btree;
     {
         this.key = key;
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
@@ -51,7 +52,7 @@ package org.apache.directory.mavibot.btree;
         this.key = key;
     }
 
-    
+
     /**
      * {@inheritDoc}
      */

@@ -65,6 +65,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     protected KeyNotFoundException KEY_NOT_FOUND_EXCEPTION = new KeyNotFoundException(
         "Cannot find an entry associated with this key" );
 
+
     /**
      * Creates a default empty AbstractPage
      * 
@@ -74,6 +75,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     {
         this.btree = btree;
     }
+
 
     /**
      * Internal constructor used to create Page instance used when a page is being copied or overflow
@@ -107,7 +109,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         this.nbElems = nbElems;
     }
 
-    
+
     /**
      * {@inheritDoc}
      */
@@ -122,8 +124,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             return null;
         }
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
@@ -166,7 +168,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             return null;
         }
     }
-    
+
 
     /**
      * {@inheritDoc}
@@ -183,7 +185,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         // We first stack the current page
         stack[depth++] = new ParentPos<K, V>( this, pos );
-        
+
         Page<K, V> page = children[pos].getValue();
 
         return page.browse( key, transaction, stack, depth );
@@ -230,7 +232,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
     }
 
-    
+
     /**
      * {@inheritDoc}
      */
@@ -246,7 +248,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
     }
 
-    
+
     /**
      * {@inheritDoc}
      */
@@ -279,7 +281,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
     }
 
-    
+
     /**
      * {@inheritDoc}
      */
@@ -287,9 +289,9 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         throws IOException
     {
         stack[depth++] = new ParentPos<K, V>( this, 0 );
-        
+
         Page<K, V> page = children[0].getValue();
-    
+
         return page.browse( transaction, stack, depth );
     }
 
@@ -319,8 +321,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             return parentPos - 1;
         }
 
-        Page<K, V> prevPage = ((AbstractPage<K, V>)parent).getPage( parentPos - 1 );
-        Page<K, V> nextPage = ((AbstractPage<K, V>)parent).getPage( parentPos + 1 );
+        Page<K, V> prevPage = ( ( AbstractPage<K, V> ) parent ).getPage( parentPos - 1 );
+        Page<K, V> nextPage = ( ( AbstractPage<K, V> ) parent ).getPage( parentPos + 1 );
 
         int prevPageSize = prevPage.getNbElems();
         int nextPageSize = nextPage.getNbElems();
@@ -446,8 +448,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     {
         this.revision = revision;
     }
-    
-    
+
+
     /**
      * Compares two keys
      * 
@@ -620,7 +622,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         return sb.toString();
     }
 
-    
+
     /**
      * @see Object#toString()
      */

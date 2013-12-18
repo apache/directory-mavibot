@@ -72,7 +72,8 @@ public class PersistedBTreeDuplicateKeyTest
         try
         {
             // Create a new BTree
-            btree = recordManager1.addBTree( "test", new LongSerializer(), new StringSerializer(), BTree.ALLOW_DUPLICATES );
+            btree = recordManager1.addBTree( "test", new LongSerializer(), new StringSerializer(),
+                BTree.ALLOW_DUPLICATES );
         }
         catch ( Exception e )
         {
@@ -634,7 +635,7 @@ public class PersistedBTreeDuplicateKeyTest
         int i = 32;
         for ( int k = 0; k < i; k++ )
         {
-            btree.insert( (long)k, Long.toString( k ) );
+            btree.insert( ( long ) k, Long.toString( k ) );
         }
 
         // 15 is the last element of the first leaf
@@ -699,7 +700,7 @@ public class PersistedBTreeDuplicateKeyTest
 
         for ( int k = 0; k < i; k++ )
         {
-            btree.insert( (long)k, String.valueOf( k ) );
+            btree.insert( ( long ) k, String.valueOf( k ) );
         }
 
         // 15 is the last element of the first leaf
@@ -736,7 +737,7 @@ public class PersistedBTreeDuplicateKeyTest
 
         for ( int k = 0; k < i; k++ )
         {
-            btree.insert( (long)k, Long.toString( k ) );
+            btree.insert( ( long ) k, Long.toString( k ) );
         }
 
         // 4 is the last element in the tree
@@ -767,7 +768,7 @@ public class PersistedBTreeDuplicateKeyTest
 
         for ( int k = 0; k < i; k++ )
         {
-            btree.insert( (long)k, Long.toString( k ) );
+            btree.insert( ( long ) k, Long.toString( k ) );
         }
 
         // 4 is the last element in the tree
@@ -788,7 +789,7 @@ public class PersistedBTreeDuplicateKeyTest
     /**
      * Test that a BTree which forbid duplicate values does not accept them
      */
-    @Test(expected=DuplicateValueNotAllowedException.class)
+    @Test(expected = DuplicateValueNotAllowedException.class)
     public void testBTreeForbidDups() throws IOException, BTreeAlreadyManagedException
     {
         BTree<Long, String> singleValueBtree = recordManager1.addBTree( "test2", new LongSerializer(),
@@ -796,7 +797,7 @@ public class PersistedBTreeDuplicateKeyTest
 
         for ( long i = 0; i < 64; i++ )
         {
-            singleValueBtree.insert( i, Long.toString( i  ) );
+            singleValueBtree.insert( i, Long.toString( i ) );
         }
 
         try

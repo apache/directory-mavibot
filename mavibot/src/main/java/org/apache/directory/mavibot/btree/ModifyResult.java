@@ -78,7 +78,7 @@ import java.util.List;
         return modifiedPage;
     }
 
-    
+
     /**
      * Set the modified page
      * @param modifiedPage The new modified page

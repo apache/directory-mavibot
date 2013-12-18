@@ -116,7 +116,7 @@ public class PersistedReadTest
 
         // Read it back
         readValue = ( Integer ) readIntMethod.invoke( recordManager, pageIos, 20 );
-        
+
         recordManager.close();
     }
 
@@ -228,7 +228,7 @@ public class PersistedReadTest
 
         // Read it back
         readValue = ( Long ) readLongMethod.invoke( recordManager, pageIos, 20 );
-        
+
         recordManager.close();
     }
 
@@ -348,13 +348,13 @@ public class PersistedReadTest
         // The byte length
         assertNotNull( readBytes );
         assertEquals( 80, readBytes.limit() );
-        
+
         // The data
         for ( int i = 0; i < 80; i++ )
         {
             assertEquals( i + 1, readBytes.get() );
         }
-        
+
         recordManager.close();
     }
 }

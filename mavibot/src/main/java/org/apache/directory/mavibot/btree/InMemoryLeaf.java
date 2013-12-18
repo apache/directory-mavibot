@@ -65,7 +65,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     {
         super( btree, revision, nbElems );
 
-        this.values = (InMemoryValueHolder<V>[] ) Array.newInstance( InMemoryValueHolder.class, nbElems );
+        this.values = ( InMemoryValueHolder<V>[] ) Array.newInstance( InMemoryValueHolder.class, nbElems );
     }
 
 
@@ -215,7 +215,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 // Check in both next and previous page, if they have the same parent
                 // and select the biggest page with the same parent to borrow an element.
                 int siblingPos = selectSibling( parent, parentPos );
-                InMemoryLeaf<K, V> sibling = (InMemoryLeaf<K, V> ) ( ( (InMemoryNode<K, V> ) parent ).getPage( siblingPos ) );
+                InMemoryLeaf<K, V> sibling = ( InMemoryLeaf<K, V> ) ( ( ( InMemoryNode<K, V> ) parent )
+                    .getPage( siblingPos ) );
 
                 if ( sibling.getNbElems() == halfSize )
                 {
@@ -343,7 +344,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @return The resulting pages
      * @throws IOException If we have an error while trying to access the page
      */
-    private DeleteResult<K, V> borrowFromLeft( Tuple<K, V> removedElement, long revision, InMemoryLeaf<K, V> sibling, int pos )
+    private DeleteResult<K, V> borrowFromLeft( Tuple<K, V> removedElement, long revision, InMemoryLeaf<K, V> sibling,
+        int pos )
         throws IOException
     {
         // The sibling is on the left, borrow the rightmost element
@@ -351,7 +353,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         ValueHolder<V> siblingValue = sibling.values[sibling.getNbElems() - 1];
 
         // Create the new sibling, with one less element at the end
-        InMemoryLeaf<K, V> newSibling = (InMemoryLeaf<K, V> ) sibling.copy( revision, sibling.getNbElems() - 1 );
+        InMemoryLeaf<K, V> newSibling = ( InMemoryLeaf<K, V> ) sibling.copy( revision, sibling.getNbElems() - 1 );
 
         // Create the new page and add the new element at the beginning
         // First copy the current page, with the same size
@@ -390,7 +392,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @return The resulting pages
      * @throws IOException If we have an error while trying to access the page
      */
-    private DeleteResult<K, V> borrowFromRight( Tuple<K, V> removedElement, long revision, InMemoryLeaf<K, V> sibling, int pos )
+    private DeleteResult<K, V> borrowFromRight( Tuple<K, V> removedElement, long revision, InMemoryLeaf<K, V> sibling,
+        int pos )
         throws IOException
     {
         // The sibling is on the left, borrow the rightmost element
@@ -475,7 +478,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         if ( pos < 0 )
         {
-            InMemoryValueHolder<V> valueHolder = (InMemoryValueHolder<V> ) values[-( pos + 1 )];
+            InMemoryValueHolder<V> valueHolder = ( InMemoryValueHolder<V> ) values[-( pos + 1 )];
 
             V value = valueHolder.getCursor().next();
 
@@ -503,7 +506,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         if ( pos < 0 )
         {
-            InMemoryValueHolder<V> valueHolder = (InMemoryValueHolder<V> ) values[-( pos + 1 )];
+            InMemoryValueHolder<V> valueHolder = ( InMemoryValueHolder<V> ) values[-( pos + 1 )];
 
             return valueHolder.getCursor();
         }
@@ -726,7 +729,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         if ( this.revision != revision )
         {
             // The page hasn't been modified yet, we need to copy it first
-            newLeaf = (InMemoryLeaf<K, V> ) copy( revision, nbElems );
+            newLeaf = ( InMemoryLeaf<K, V> ) copy( revision, nbElems );
         }
 
         // Get the previous value from the leaf (it's a copy)
@@ -989,7 +992,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                     sb.append( ", " );
                 }
 
-                sb.append( "<" ).append( getKey( i) ).append( "," ).append( values[i] ).append( ">" );
+                sb.append( "<" ).append( getKey( i ) ).append( "," ).append( values[i] ).append( ">" );
             }
         }
 

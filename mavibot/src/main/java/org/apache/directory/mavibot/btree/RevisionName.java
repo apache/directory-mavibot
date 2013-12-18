@@ -26,7 +26,7 @@ package org.apache.directory.mavibot.btree;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* no qualifier*/ class RevisionName
+/* no qualifier*/class RevisionName
 {
     /** The revision number on the BTree */
     private long revision;
@@ -40,7 +40,7 @@ package org.apache.directory.mavibot.btree;
      * @param revision The revision
      * @param name The BTree name
      */
-    /* no qualifier*/ RevisionName( long revision, String name )
+    /* no qualifier*/RevisionName( long revision, String name )
     {
         this.revision = revision;
         this.name = name;
@@ -50,7 +50,7 @@ package org.apache.directory.mavibot.btree;
     /**
      * @return the revision
      */
-    /* no qualifier*/ long getRevision()
+    /* no qualifier*/long getRevision()
     {
         return revision;
     }
@@ -59,7 +59,7 @@ package org.apache.directory.mavibot.btree;
     /**
      * @param revision the revision to set
      */
-    /* no qualifier*/ void setRevision( long revision )
+    /* no qualifier*/void setRevision( long revision )
     {
         this.revision = revision;
     }
@@ -68,7 +68,7 @@ package org.apache.directory.mavibot.btree;
     /**
      * @return the btree name
      */
-    /* no qualifier*/ String getName()
+    /* no qualifier*/String getName()
     {
         return name;
     }
@@ -77,7 +77,7 @@ package org.apache.directory.mavibot.btree;
     /**
      * @param name the btree name to set
      */
-    /* no qualifier*/ void setName( String name )
+    /* no qualifier*/void setName( String name )
     {
         this.name = name;
     }

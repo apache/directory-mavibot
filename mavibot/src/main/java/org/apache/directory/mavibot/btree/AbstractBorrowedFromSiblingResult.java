@@ -57,7 +57,7 @@ import java.util.List;
      * @param modifiedSibling The modified sibling
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
      */
-    /* No qualifier*/ AbstractBorrowedFromSiblingResult( Page<K, V> modifiedPage, Page<K, V> modifiedSibling,
+    /* No qualifier*/AbstractBorrowedFromSiblingResult( Page<K, V> modifiedPage, Page<K, V> modifiedSibling,
         Tuple<K, V> removedElement, SiblingPosition position )
     {
         super( modifiedPage, removedElement );
@@ -74,7 +74,7 @@ import java.util.List;
      * @param modifiedSibling The modified sibling
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
      */
-    /* No qualifier*/ AbstractBorrowedFromSiblingResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage,
+    /* No qualifier*/AbstractBorrowedFromSiblingResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage,
         Page<K, V> modifiedSibling,
         Tuple<K, V> removedElement, SiblingPosition position )
     {

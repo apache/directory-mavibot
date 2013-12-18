@@ -20,8 +20,6 @@
 package org.apache.directory.mavibot.btree;
 
 
-
-
 /**
  * The result of an delete operation, when the key to delete is not present in the tree.
  * 

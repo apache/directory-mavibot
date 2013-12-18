@@ -1,9 +1,11 @@
 package org.apache.directory.mavibot.btree;
 
+
 import java.io.IOException;
 
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.BTree;
+
 
 /**
  * A class that encapsulate the values into an sub-btree
@@ -12,7 +14,7 @@ import org.apache.directory.mavibot.btree.BTree;
 {
     /** Store the current position in the array or in the BTree */
     private TupleCursor<V, V> cursor;
-    
+
     /** The Value sub-btree */
     private BTree<V, V> valueBtree;
 
@@ -23,7 +25,7 @@ import org.apache.directory.mavibot.btree.BTree;
     public ValueBTreeCursor( BTree<V, V> valueBtree )
     {
         this.valueBtree = valueBtree;
-        
+
         // Start at -1 to be positioned before the first element
         try
         {

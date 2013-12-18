@@ -65,7 +65,7 @@ public class InMemoryBTreeBuilder<K, V>
 
         int totalTupleCount = 0;
 
-        InMemoryLeaf<K, V> leaf1 = (InMemoryLeaf<K, V>)BTreeFactory.createLeaf( btree, 0, numKeysInNode );
+        InMemoryLeaf<K, V> leaf1 = ( InMemoryLeaf<K, V> ) BTreeFactory.createLeaf( btree, 0, numKeysInNode );
         lstLeaves.add( leaf1 );
 
         int leafIndex = 0;
@@ -86,7 +86,7 @@ public class InMemoryBTreeBuilder<K, V>
             if ( ( totalTupleCount % numKeysInNode ) == 0 )
             {
                 leafIndex = 0;
-                leaf1 = (InMemoryLeaf<K, V>)BTreeFactory.createLeaf( btree, 0, numKeysInNode );
+                leaf1 = ( InMemoryLeaf<K, V> ) BTreeFactory.createLeaf( btree, 0, numKeysInNode );
                 lstLeaves.add( leaf1 );
             }
         }
@@ -97,7 +97,7 @@ public class InMemoryBTreeBuilder<K, V>
         }
 
         // remove null keys and values from the last leaf and resize
-        InMemoryLeaf<K, V> lastLeaf = (InMemoryLeaf<K, V> ) lstLeaves.get( lstLeaves.size() - 1 );
+        InMemoryLeaf<K, V> lastLeaf = ( InMemoryLeaf<K, V> ) lstLeaves.get( lstLeaves.size() - 1 );
 
         for ( int i = 0; i < lastLeaf.getNbElems(); i++ )
         {
@@ -111,7 +111,7 @@ public class InMemoryBTreeBuilder<K, V>
                 System.arraycopy( keys, 0, lastLeaf.getKeys(), 0, n );
 
                 ValueHolder<V>[] values = lastLeaf.values;
-                lastLeaf.values = (InMemoryValueHolder<V>[] ) Array.newInstance( InMemoryValueHolder.class, n );
+                lastLeaf.values = ( InMemoryValueHolder<V>[] ) Array.newInstance( InMemoryValueHolder.class, n );
                 System.arraycopy( values, 0, lastLeaf.values, 0, n );
 
                 break;
@@ -120,9 +120,9 @@ public class InMemoryBTreeBuilder<K, V>
 
         Page<K, V> rootPage = attachNodes( lstLeaves, btree );
 
-        System.out.println("built rootpage : " + rootPage);
+        System.out.println( "built rootpage : " + rootPage );
 
-        ((AbstractBTree<K, V>)btree).setRootPage( rootPage );
+        ( ( AbstractBTree<K, V> ) btree ).setRootPage( rootPage );
 
         return btree;
     }
@@ -140,7 +140,7 @@ public class InMemoryBTreeBuilder<K, V>
 
         int numChildren = numKeysInNode + 1;
 
-        InMemoryNode<K, V> node = (InMemoryNode<K, V>)BTreeFactory.createNode( btree, 0, numKeysInNode );
+        InMemoryNode<K, V> node = ( InMemoryNode<K, V> ) BTreeFactory.createNode( btree, 0, numKeysInNode );
         lstNodes.add( node );
         int i = 0;
         int totalNodes = 0;
@@ -160,7 +160,7 @@ public class InMemoryBTreeBuilder<K, V>
             if ( ( totalNodes % numChildren ) == 0 )
             {
                 i = 0;
-                node = (InMemoryNode<K, V>)BTreeFactory.createNode( btree, 0, numKeysInNode );
+                node = ( InMemoryNode<K, V> ) BTreeFactory.createNode( btree, 0, numKeysInNode );
                 lstNodes.add( node );
             }
         }

@@ -19,6 +19,7 @@
  */
 package org.apache.directory.mavibot.btree;
 
+
 /**
  * A holder to store the Values
  * 
@@ -51,8 +52,8 @@ package org.apache.directory.mavibot.btree;
      * @return true if we store the values in a sub btree
      */
     boolean isSubBtree();
-    
-    
+
+
     /**
      * Add a new value in the ValueHolder
      * 
@@ -60,7 +61,7 @@ package org.apache.directory.mavibot.btree;
      */
     void add( V newValue );
 
-    
+
     /**
      * Remove a value from the ValueHolder
      * 
@@ -68,7 +69,7 @@ package org.apache.directory.mavibot.btree;
      */
     V remove( V removedValue );
 
-    
+
     /**
      * Create a clone of this instance
      * 

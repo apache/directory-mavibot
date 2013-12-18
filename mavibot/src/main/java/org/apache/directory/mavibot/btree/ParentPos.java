@@ -20,7 +20,6 @@
 package org.apache.directory.mavibot.btree;
 
 
-
 /**
  * This class is used to store the parent page and the position in it during
  * a browse operation. We have as many ParentPos instance than the depth of the tree.

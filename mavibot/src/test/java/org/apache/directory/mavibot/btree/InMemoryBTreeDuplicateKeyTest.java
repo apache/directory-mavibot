@@ -741,7 +741,7 @@ public class InMemoryBTreeDuplicateKeyTest
     /**
      * Test that a BTree which forbid duplicate values does not accept them
      */
-    @Test(expected=DuplicateValueNotAllowedException.class)
+    @Test(expected = DuplicateValueNotAllowedException.class)
     public void testBTreeForbidDups() throws IOException, BTreeAlreadyManagedException
     {
         BTree<Long, String> singleValueBtree = BTreeFactory.createInMemoryBTree( "test2", new LongSerializer(),
@@ -749,7 +749,7 @@ public class InMemoryBTreeDuplicateKeyTest
 
         for ( long i = 0; i < 64; i++ )
         {
-            singleValueBtree.insert( i, Long.toString( i  ) );
+            singleValueBtree.insert( i, Long.toString( i ) );
         }
 
         try

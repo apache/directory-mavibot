@@ -77,8 +77,8 @@ public class RecordManagerWithDuplicatesTest
             throw new RuntimeException( e );
         }
     }
-    
-    
+
+
     @After
     public void cleanup() throws IOException
     {

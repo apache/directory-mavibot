@@ -110,6 +110,7 @@ public class InMemoryBTreeTestOps
         // Start the writer
         createTree();
         long t1 = System.currentTimeMillis();
-        System.out.println( "Time to create a tree with 500 000 elements in memory:" + ( ( t1 - t0 ) ) + " milliseconds" );
+        System.out.println( "Time to create a tree with 500 000 elements in memory:" + ( ( t1 - t0 ) )
+            + " milliseconds" );
     }
 }

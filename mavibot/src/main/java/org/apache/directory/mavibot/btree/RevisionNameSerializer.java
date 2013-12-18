@@ -39,12 +39,12 @@ import org.apache.directory.mavibot.btree.util.Strings;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* no qualifier*/ class RevisionNameSerializer extends AbstractElementSerializer<RevisionName>
+/* no qualifier*/class RevisionNameSerializer extends AbstractElementSerializer<RevisionName>
 {
     /**
      * Create a new instance of a RevisionNameSerializer
      */
-    /* no qualifier*/ RevisionNameSerializer()
+    /* no qualifier*/RevisionNameSerializer()
     {
         super( new RevisionNameComparator() );
     }
@@ -56,7 +56,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
      * @param in The byte array containing the RevisionName
      * @return A RevisionName instance
      */
-    /* no qualifier*/ static RevisionName deserialize( byte[] in )
+    /* no qualifier*/static RevisionName deserialize( byte[] in )
     {
         return deserialize( in, 0 );
     }
@@ -69,7 +69,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
      * @param start the position in the byte[] we will deserialize the RevisionName from
      * @return A RevisionName instance
      */
-    /* no qualifier*/ static RevisionName deserialize( byte[] in, int start )
+    /* no qualifier*/static RevisionName deserialize( byte[] in, int start )
     {
         // The buffer must be 8 bytes plus 4 bytes long (the revision is a long, and the name is a String
         if ( ( in == null ) || ( in.length < 12 + start ) )
@@ -166,7 +166,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
      * @param value the value to serialize
      * @return The byte[] containing the serialized RevisionName
      */
-    /* no qualifier*/ static byte[] serialize( byte[] buffer, int start, RevisionName revisionName )
+    /* no qualifier*/static byte[] serialize( byte[] buffer, int start, RevisionName revisionName )
     {
         if ( revisionName.getName() != null )
         {

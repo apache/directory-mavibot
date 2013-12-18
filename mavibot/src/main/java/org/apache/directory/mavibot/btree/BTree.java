@@ -19,11 +19,13 @@
  */
 package org.apache.directory.mavibot.btree;
 
+
 import java.io.IOException;
 import java.util.Comparator;
 
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
+
 
 /**
  * A BTree interface, to be implemented by the PersistedBTree or the InMemoryBTree
@@ -43,10 +45,10 @@ public interface BTree<K, V>
 
     /** Define a default delay for a read transaction. This is 10 seconds */
     static final long DEFAULT_READ_TIMEOUT = 10 * 1000L;
-    
+
     /** The BTree allows duplicate values */
     static final boolean ALLOW_DUPLICATES = true;
-    
+
     /** The BTree forbids duplicate values */
     static final boolean FORBID_DUPLICATES = false;
 

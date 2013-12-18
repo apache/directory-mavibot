@@ -46,7 +46,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
     private RecordManager recordManager;
 
     /** The cache */
-    private  Cache cache;
+    private Cache cache;
 
     /** The offset of the first {@link PageIO} storing the page on disk */
     private long offset;
@@ -63,10 +63,10 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
     public PersistedPageHolder( BTree<K, V> btree, Page<K, V> page )
     {
         super( btree, page );
-        cache = ((PersistedBTree<K, V>)btree).getCache();
-        recordManager = ((PersistedBTree<K, V>)btree).getRecordManager();
-        offset = ((AbstractPage<K, V>)page).getOffset();
-        lastOffset = ((AbstractPage<K, V>)page).getLastOffset();
+        cache = ( ( PersistedBTree<K, V> ) btree ).getCache();
+        recordManager = ( ( PersistedBTree<K, V> ) btree ).getRecordManager();
+        offset = ( ( AbstractPage<K, V> ) page ).getOffset();
+        lastOffset = ( ( AbstractPage<K, V> ) page ).getLastOffset();
 
         ( ( AbstractPage<K, V> ) page ).setOffset( offset );
         ( ( AbstractPage<K, V> ) page ).setLastOffset( lastOffset );
@@ -83,8 +83,8 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
     public PersistedPageHolder( BTree<K, V> btree, Page<K, V> page, long offset, long lastOffset )
     {
         super( btree, page );
-        cache = ((PersistedBTree<K, V>)btree).getCache();
-        recordManager = ((PersistedBTree<K, V>)btree).getRecordManager();
+        cache = ( ( PersistedBTree<K, V> ) btree ).getCache();
+        recordManager = ( ( PersistedBTree<K, V> ) btree ).getRecordManager();
         this.offset = offset;
         this.lastOffset = lastOffset;
 
@@ -118,7 +118,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
             return page;
         }
 
-        Page<K, V> page = (Page<K, V> ) element.getObjectValue();
+        Page<K, V> page = ( Page<K, V> ) element.getObjectValue();
 
         if ( page == null )
         {

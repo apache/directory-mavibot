@@ -20,8 +20,6 @@
 package org.apache.directory.mavibot.btree;
 
 
-
-
 /**
  * The result of an delete operation.
  * 

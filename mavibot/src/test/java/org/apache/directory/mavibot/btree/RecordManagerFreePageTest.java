@@ -78,20 +78,20 @@ public class RecordManagerFreePageTest
             throw new RuntimeException( e );
         }
     }
-    
-    
+
+
     @After
     public void cleanup() throws IOException
     {
         dataDir = new File( System.getProperty( "java.io.tmpdir" ) + "/recordman" );
-        
+
         btree.close();
 
         if ( dataDir.exists() )
         {
             FileUtils.deleteDirectory( dataDir );
         }
-        
+
         recordManager1.close();
     }
 
@@ -189,7 +189,7 @@ public class RecordManagerFreePageTest
         TupleCursor<Long, String> cursor = btree.browse();
 
         long i = 0;
-        
+
         while ( cursor.hasNext() )
         {
             Tuple<Long, String> t = cursor.next();

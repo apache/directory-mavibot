@@ -19,6 +19,7 @@
  */
 package org.apache.directory.mavibot.btree;
 
+
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.Comparator;
@@ -36,19 +37,19 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 {
     /** The BTree storing multiple value, if we have more than one value */
     protected BTree<V, V> valueBtree;
-    
+
     /** The array storing from 1 to N values */
     protected V[] valueArray;
-    
+
     /** The Value serializer */
     protected ElementSerializer<V> valueSerializer;
-    
+
     /** The configuration for the array <-> BTree switch. Default to 1 */
     protected int valueThresholdUp = 1;
     protected int valueThresholdLow = 1;
 
     protected int nbArrayElems;
-    
+
 
     /**
      * {@inheritDoc}
@@ -212,7 +213,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         }
     }
 
-    
+
     /**
      * Check if the array of values contains a given value
      */
@@ -245,7 +246,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         }
     }
 
-    
+
     /**
      * {@inheritDoc}
      */
@@ -260,8 +261,8 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             return arrayContains( checkedValue );
         }
     }
-    
-    
+
+
     /**
      * Create a new Sub-BTree to store the values.
      */
@@ -314,30 +315,30 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             {
                 // check that the value is not already present in the ValueHolder
                 int pos = findPos( value );
-    
+
                 if ( pos >= 0 )
                 {
                     // The value exists : nothing to do
                     return;
                 }
-    
+
                 // Ok, we just have to insert the new element at the right position
                 // We transform the position to a positive value 
                 pos = -( pos + 1 );
                 // First, copy the array
                 V[] newValueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), valueArray.length + 1 );
-    
+
                 System.arraycopy( valueArray, 0, newValueArray, 0, pos );
                 newValueArray[pos] = value;
                 System.arraycopy( valueArray, pos, newValueArray, pos + 1, valueArray.length - pos );
-    
+
                 // And switch the arrays
                 valueArray = newValueArray;
             }
         }
     }
-    
-    
+
+
     /**
      * Add the value in the subBTree
      */
@@ -354,7 +355,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         }
     }
 
-    
+
     /**
      * {@inheritDoc}
      */

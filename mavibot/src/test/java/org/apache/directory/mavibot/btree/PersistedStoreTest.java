@@ -43,6 +43,7 @@ public class PersistedStoreTest
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
+
     /**
      * Test the store( int ) method
      */
@@ -128,7 +129,7 @@ public class PersistedStoreTest
         assertEquals( 0x34, pageIos[1].getData().get( pos++ ) );
         assertEquals( 0x56, pageIos[1].getData().get( pos++ ) );
         assertEquals( 0x78, pageIos[1].getData().get( pos++ ) );
-        
+
         recordManager.close();
     }
 
@@ -306,7 +307,7 @@ public class PersistedStoreTest
         assertEquals( ( byte ) 0xAB, pageIos[1].getData().get( pos++ ) );
         assertEquals( ( byte ) 0xCD, pageIos[1].getData().get( pos++ ) );
         assertEquals( ( byte ) 0xEF, pageIos[1].getData().get( pos++ ) );
-        
+
         recordManager.close();
     }
 
@@ -444,7 +445,7 @@ public class PersistedStoreTest
 
         // The data in the second page
         pos = 8;
-        
+
         for ( int i = 14; i < 38; i++ )
         {
             assertEquals( ( byte ) ( i + 1 ), pageIos[1].getData().get( pos++ ) );
@@ -452,7 +453,7 @@ public class PersistedStoreTest
 
         // The data in the third page
         pos = 8;
-        
+
         for ( int i = 38; i < 62; i++ )
         {
             assertEquals( ( byte ) ( i + 1 ), pageIos[2].getData().get( pos++ ) );
@@ -460,12 +461,12 @@ public class PersistedStoreTest
 
         // The data in the forth page
         pos = 8;
-        
+
         for ( int i = 62; i < 80; i++ )
         {
             assertEquals( ( byte ) ( i + 1 ), pageIos[3].getData().get( pos++ ) );
         }
-        
+
         recordManager.close();
     }
 }

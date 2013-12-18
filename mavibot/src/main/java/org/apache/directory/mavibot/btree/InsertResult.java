@@ -20,8 +20,6 @@
 package org.apache.directory.mavibot.btree;
 
 
-
-
 /**
  * The result of an insert operation. This is just a container that stores either
  * the new pivot that has been extracted after a page split, or a modified page if

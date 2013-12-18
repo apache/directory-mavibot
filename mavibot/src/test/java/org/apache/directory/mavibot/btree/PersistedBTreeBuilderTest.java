@@ -48,7 +48,7 @@ public class PersistedBTreeBuilderTest
     public void testManagedBTreeBuilding() throws Exception
     {
         List<Tuple<Integer, Integer>> sortedTuple = new ArrayList<Tuple<Integer, Integer>>();
-        
+
         for ( int i = 1; i < 8; i++ )
         {
             Tuple<Integer, Integer> t = new Tuple<Integer, Integer>( i, i );
@@ -57,20 +57,21 @@ public class PersistedBTreeBuilderTest
 
         File file = File.createTempFile( "managedbtreebuilder", ".data" );
         file.deleteOnExit();
-        
+
         RecordManager rm = new RecordManager( file.getAbsolutePath() );
-        
+
         IntSerializer ser = new IntSerializer();
-        PersistedBTreeBuilder<Integer, Integer> bb = new PersistedBTreeBuilder<Integer, Integer>( rm, "master", 4, ser, ser );
+        PersistedBTreeBuilder<Integer, Integer> bb = new PersistedBTreeBuilder<Integer, Integer>( rm, "master", 4, ser,
+            ser );
 
         // contains 1, 2, 3, 4, 5, 6, 7
         BTree<Integer, Integer> btree = bb.build( sortedTuple.iterator() );
 
         rm.close();
-        
+
         rm = new RecordManager( file.getAbsolutePath() );
         btree = rm.getManagedTree( "master" );
-        
+
         assertEquals( 1, btree.getRootPage().getNbElems() );
 
         assertEquals( 7, btree.getRootPage().findRightMost().getKey().intValue() );

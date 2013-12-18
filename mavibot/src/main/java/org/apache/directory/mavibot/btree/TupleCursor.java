@@ -19,6 +19,7 @@
  */
 package org.apache.directory.mavibot.btree;
 
+
 import java.io.IOException;
 import java.util.NoSuchElementException;
 
@@ -40,13 +41,13 @@ public class TupleCursor<K, V>
 {
     /** A marker to tell that we are before the first element */
     private static final int BEFORE_FIRST = -1;
-    
+
     /** A marker to tell that we are after the last element */
     private static final int AFTER_LAST = -2;
-    
+
     /** The stack of pages from the root down to the leaf */
     protected ParentPos<K, V>[] stack;
-    
+
     /** The stack's depth */
     protected int depth = 0;
 
@@ -55,6 +56,7 @@ public class TupleCursor<K, V>
 
     /** The Tuple used to return the results */
     protected Tuple<K, V> tuple = new Tuple<K, V>();
+
 
     /**
      * Creates a new instance of Cursor, starting on a page at a given position.
@@ -68,8 +70,8 @@ public class TupleCursor<K, V>
         this.stack = stack;
         this.depth = depth;
     }
-    
-    
+
+
     /**
      * Change the position in the current cursor to set it after the last key
      */
@@ -86,7 +88,7 @@ public class TupleCursor<K, V>
         for ( int i = 0; i < depth; i++ )
         {
             ParentPos<K, V> parentPos = stack[i];
-            
+
             if ( child != null )
             {
                 parentPos.page = child;
@@ -98,9 +100,9 @@ public class TupleCursor<K, V>
                 parentPos.pos = parentPos.page.getNbElems();
             }
 
-            child = ((AbstractPage<K, V>)parentPos.page).getPage( parentPos.pos );
+            child = ( ( AbstractPage<K, V> ) parentPos.page ).getPage( parentPos.pos );
         }
-        
+
         // and leaf
         ParentPos<K, V> parentPos = stack[depth];
 
@@ -114,12 +116,12 @@ public class TupleCursor<K, V>
             parentPos.pos = child.getNbElems() - 1;
         }
 
-        parentPos.valueCursor = ((AbstractPage<K, V>)parentPos.page).getValue( parentPos.pos ).getCursor();
+        parentPos.valueCursor = ( ( AbstractPage<K, V> ) parentPos.page ).getValue( parentPos.pos ).getCursor();
         parentPos.valueCursor.afterLast();
         parentPos.pos = AFTER_LAST;
     }
-    
-    
+
+
     /**
      * Change the position in the current cursor before the first key
      */
@@ -143,7 +145,7 @@ public class TupleCursor<K, V>
                 parentPos.page = child;
             }
 
-            child = ((AbstractPage<K, V>)parentPos.page).getPage( 0 );
+            child = ( ( AbstractPage<K, V> ) parentPos.page ).getPage( 0 );
         }
 
         // and leaf
@@ -154,10 +156,10 @@ public class TupleCursor<K, V>
         {
             parentPos.page = child;
         }
-        
+
         if ( parentPos.valueCursor != null )
         {
-            parentPos.valueCursor = ((AbstractPage<K, V>)parentPos.page).getValue( 0 ).getCursor();
+            parentPos.valueCursor = ( ( AbstractPage<K, V> ) parentPos.page ).getValue( 0 ).getCursor();
             parentPos.valueCursor.beforeFirst();
         }
     }
@@ -177,7 +179,7 @@ public class TupleCursor<K, V>
         {
             return false;
         }
-        
+
         // Take the leaf and check if we have no mare values
         ParentPos<K, V> parentPos = stack[depth];
 
@@ -191,7 +193,7 @@ public class TupleCursor<K, V>
         {
             return false;
         }
-        
+
         if ( parentPos.pos < parentPos.page.getNbElems() - 1 )
         {
             // Not the last position, we have a next value
@@ -204,15 +206,15 @@ public class TupleCursor<K, V>
             {
                 return true;
             }
-            
+
             // Ok, here, we have reached the last value in the leaf. We have to go up and 
             // see if we have some remaining values
             int currentDepth = depth - 1;
-            
+
             while ( currentDepth >= 0 )
             {
                 parentPos = stack[currentDepth];
-                
+
                 if ( parentPos.pos < parentPos.page.getNbElems() )
                 {
                     // The parent has some remaining values on the right, get out
@@ -220,10 +222,10 @@ public class TupleCursor<K, V>
                 }
                 else
                 {
-                    currentDepth --;
+                    currentDepth--;
                 }
             }
-            
+
             // We are done, there are no more value left
             return false;
         }
@@ -269,7 +271,7 @@ public class TupleCursor<K, V>
         }
 
         V value = null;
-        
+
         if ( parentPos.valueCursor.hasNext() )
         {
             // Deal with the BeforeFirst case
@@ -277,7 +279,7 @@ public class TupleCursor<K, V>
             {
                 parentPos.pos++;
             }
-            
+
             value = parentPos.valueCursor.next();
         }
         else
@@ -300,9 +302,9 @@ public class TupleCursor<K, V>
             try
             {
                 ValueHolder<V> valueHolder = ( ( AbstractPage<K, V> ) parentPos.page ).getValue( parentPos.pos );
-                
+
                 parentPos.valueCursor = valueHolder.getCursor();
-                
+
                 value = parentPos.valueCursor.next();
             }
             catch ( IllegalArgumentException e )
@@ -310,7 +312,7 @@ public class TupleCursor<K, V>
                 e.printStackTrace();
             }
         }
-        
+
         AbstractPage<K, V> leaf = ( AbstractPage<K, V> ) ( parentPos.page );
         tuple.setKey( leaf.getKey( parentPos.pos ) );
         tuple.setValue( value );
@@ -370,7 +372,7 @@ public class TupleCursor<K, V>
                 parentPos.pos = AFTER_LAST;
                 parentPos.valueCursor = valueHolder.getCursor();
                 parentPos.valueCursor.afterLast();
-                
+
                 return null;
             }
             else
@@ -387,7 +389,7 @@ public class TupleCursor<K, V>
         // The key
         AbstractPage<K, V> leaf = ( AbstractPage<K, V> ) ( parentPos.page );
         tuple.setKey( leaf.getKey( parentPos.pos ) );
-        
+
         // The value
         ValueHolder<V> valueHolder = leaf.getValue( parentPos.pos );
         parentPos.valueCursor = valueHolder.getCursor();
@@ -421,7 +423,7 @@ public class TupleCursor<K, V>
             // This is the end : no more key
             return false;
         }
-        
+
         if ( parentPos.pos == ( parentPos.page.getNbElems() - 1 ) )
         {
             // End of the leaf. We have to go back into the stack up to the
@@ -471,7 +473,7 @@ public class TupleCursor<K, V>
             {
                 return false;
             }
-            
+
             // Check if we have some more value
             if ( parentPos.valueCursor.hasPrev() )
             {
@@ -481,11 +483,11 @@ public class TupleCursor<K, V>
             // Ok, here, we have reached the first value in the leaf. We have to go up and 
             // see if we have some remaining values
             int currentDepth = depth - 1;
-            
+
             while ( currentDepth >= 0 )
             {
                 parentPos = stack[currentDepth];
-                
+
                 if ( parentPos.pos > 0 )
                 {
                     // The parent has some remaining values on the right, get out
@@ -493,10 +495,10 @@ public class TupleCursor<K, V>
                 }
                 else
                 {
-                    currentDepth --;
+                    currentDepth--;
                 }
             }
-            
+
             return false;
         }
     }
@@ -539,9 +541,9 @@ public class TupleCursor<K, V>
                 throw new NoSuchElementException( "No more tuples present" );
             }
         }
-        
+
         V value = null;
-        
+
         if ( parentPos.valueCursor.hasPrev() )
         {
             // Deal with the AfterLast case
@@ -549,7 +551,7 @@ public class TupleCursor<K, V>
             {
                 parentPos.pos = parentPos.page.getNbElems() - 1;
             }
-            
+
             value = parentPos.valueCursor.prev();
         }
         else
@@ -567,14 +569,14 @@ public class TupleCursor<K, V>
             else
             {
                 parentPos.pos--;
-                
+
                 try
                 {
                     ValueHolder<V> valueHolder = ( ( AbstractPage<K, V> ) parentPos.page ).getValue( parentPos.pos );
-                    
+
                     parentPos.valueCursor = valueHolder.getCursor();
                     parentPos.valueCursor.afterLast();
-                    
+
                     value = parentPos.valueCursor.prev();
                 }
                 catch ( IllegalArgumentException e )
@@ -583,7 +585,6 @@ public class TupleCursor<K, V>
                 }
             }
         }
-
 
         AbstractPage<K, V> leaf = ( AbstractPage<K, V> ) ( parentPos.page );
         tuple.setKey( leaf.getKey( parentPos.pos ) );
@@ -651,7 +652,7 @@ public class TupleCursor<K, V>
                 parentPos.pos--;
             }
         }
-        
+
         // Update the Tuple 
         AbstractPage<K, V> leaf = ( AbstractPage<K, V> ) ( parentPos.page );
 
@@ -663,7 +664,7 @@ public class TupleCursor<K, V>
         parentPos.valueCursor = valueHolder.getCursor();
         V value = parentPos.valueCursor.next();
         tuple.setValue( value );
-        
+
         return tuple;
     }
 
@@ -691,7 +692,7 @@ public class TupleCursor<K, V>
             // This is the end : no more key
             return false;
         }
-        
+
         if ( parentPos.pos == 0 )
         {
             // Beginning of the leaf. We have to go back into the stack up to the
@@ -738,13 +739,13 @@ public class TupleCursor<K, V>
             else
             {
                 // We can pick the next element at this level
-                child = ((AbstractPage<K, V>)parentPos.page).getPage( parentPos.pos + 1 );
-                
+                child = ( ( AbstractPage<K, V> ) parentPos.page ).getPage( parentPos.pos + 1 );
+
                 // and go down the tree through the nodes
                 while ( currentDepth < depth - 1 )
                 {
                     currentDepth++;
-                    child = ((AbstractPage<K, V>)child).getPage( 0 );
+                    child = ( ( AbstractPage<K, V> ) child ).getPage( 0 );
                 }
 
                 return true;
@@ -753,8 +754,8 @@ public class TupleCursor<K, V>
 
         return false;
     }
-    
-    
+
+
     /**
      * Find the leaf containing the following elements.
      * 
@@ -789,8 +790,8 @@ public class TupleCursor<K, V>
             {
                 // We can pick the next element at this level
                 parentPos.pos++;
-                child = ((AbstractPage<K, V>)parentPos.page).getPage( parentPos.pos );
-                
+                child = ( ( AbstractPage<K, V> ) parentPos.page ).getPage( parentPos.pos );
+
                 // and go down the tree through the nodes
                 while ( currentDepth < depth - 1 )
                 {
@@ -798,14 +799,14 @@ public class TupleCursor<K, V>
                     parentPos = stack[currentDepth];
                     parentPos.pos = 0;
                     parentPos.page = child;
-                    child = ((AbstractPage<K, V>)child).getPage( 0 );
+                    child = ( ( AbstractPage<K, V> ) child ).getPage( 0 );
                 }
 
                 // and the leaf
                 parentPos = stack[depth];
                 parentPos.page = child;
                 parentPos.pos = 0;
-                parentPos.valueCursor = ((AbstractPage<K, V>)child).getValue( 0 ).getCursor();
+                parentPos.valueCursor = ( ( AbstractPage<K, V> ) child ).getValue( 0 ).getCursor();
 
                 return parentPos;
             }
@@ -813,8 +814,8 @@ public class TupleCursor<K, V>
 
         return null;
     }
-    
-    
+
+
     /**
      * Find the leaf containing the previous elements.
      * 
@@ -849,8 +850,8 @@ public class TupleCursor<K, V>
             {
                 // We can pick the next element at this level
                 parentPos.pos--;
-                child = ((AbstractPage<K, V>)parentPos.page).getPage( parentPos.pos );
-                
+                child = ( ( AbstractPage<K, V> ) parentPos.page ).getPage( parentPos.pos );
+
                 // and go down the tree through the nodes
                 while ( currentDepth < depth - 1 )
                 {
@@ -858,25 +859,25 @@ public class TupleCursor<K, V>
                     parentPos = stack[currentDepth];
                     parentPos.pos = child.getNbElems();
                     parentPos.page = child;
-                    child = ((AbstractPage<K, V>)parentPos.page).getPage( parentPos.page.getNbElems() );
+                    child = ( ( AbstractPage<K, V> ) parentPos.page ).getPage( parentPos.page.getNbElems() );
                 }
 
                 // and the leaf
                 parentPos = stack[depth];
                 parentPos.pos = child.getNbElems() - 1;
                 parentPos.page = child;
-                ValueHolder<V> valueHolder = ((AbstractPage<K, V>)parentPos.page).getValue( parentPos.pos );
+                ValueHolder<V> valueHolder = ( ( AbstractPage<K, V> ) parentPos.page ).getValue( parentPos.pos );
                 parentPos.valueCursor = valueHolder.getCursor();
                 parentPos.valueCursor.afterLast();
 
                 return parentPos;
             }
         }
-        
+
         return null;
     }
 
-    
+
     /**
      * Tells if there is a prev ParentPos
      * 
@@ -910,13 +911,13 @@ public class TupleCursor<K, V>
             else
             {
                 // We can pick the previous element at this level
-                child = ((AbstractPage<K, V>)parentPos.page).getPage( parentPos.pos - 1 );
-                
+                child = ( ( AbstractPage<K, V> ) parentPos.page ).getPage( parentPos.pos - 1 );
+
                 // and go down the tree through the nodes
                 while ( currentDepth < depth - 1 )
                 {
                     currentDepth++;
-                    child = ((AbstractPage<K, V>)child).getPage( child.getNbElems() );
+                    child = ( ( AbstractPage<K, V> ) child ).getPage( child.getNbElems() );
                 }
 
                 return true;
@@ -955,19 +956,19 @@ public class TupleCursor<K, V>
     {
         return transaction.getRevision();
     }
-    
-    
+
+
     public String toString()
     {
         StringBuilder sb = new StringBuilder();
-        
+
         sb.append( "TupleCursor, depth = " ).append( depth ).append( "\n" );
-        
+
         for ( int i = 0; i <= depth; i++ )
         {
             sb.append( "    " ).append( stack[i] ).append( "\n" );
         }
-        
+
         return sb.toString();
     }
 }

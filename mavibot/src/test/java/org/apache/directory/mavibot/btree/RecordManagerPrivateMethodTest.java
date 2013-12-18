@@ -87,25 +87,25 @@ public class RecordManagerPrivateMethodTest
         Method getFreePageIOsMethod = RecordManager.class.getDeclaredMethod( "getFreePageIOs", int.class );
         getFreePageIOsMethod.setAccessible( true );
 
-        PageIO[] pages = (org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, 0 );
+        PageIO[] pages = ( org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, 0 );
 
         assertEquals( 0, pages.length );
 
         for ( int i = 1; i < 20; i++ )
         {
-            pages = (org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
+            pages = ( org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
             assertEquals( 1, pages.length );
         }
 
         for ( int i = 21; i < 44; i++ )
         {
-            pages = (org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
+            pages = ( org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
             assertEquals( 2, pages.length );
         }
 
         for ( int i = 45; i < 68; i++ )
         {
-            pages = (org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
+            pages = ( org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
             assertEquals( 3, pages.length );
         }
 

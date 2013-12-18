@@ -132,7 +132,8 @@ public class InMemoryBTreeFlushTest
         long delta = l1;
         int nbElems = 100000;
 
-        BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( "test", new LongSerializer(), new StringSerializer() );
+        BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( "test", new LongSerializer(),
+            new StringSerializer() );
         btree.setPageSize( 32 );
 
         for ( int i = 0; i < nbElems; i++ )
@@ -179,7 +180,7 @@ public class InMemoryBTreeFlushTest
 
         long t0 = System.currentTimeMillis();
 
-        ((InMemoryBTree<Long, String>)btree).flush( tempFile );
+        ( ( InMemoryBTree<Long, String> ) btree ).flush( tempFile );
 
         long t1 = System.currentTimeMillis();
 
@@ -227,8 +228,8 @@ public class InMemoryBTreeFlushTest
             new StringSerializer() );
         btree.setPageSize( 8 );
 
-        File journal = ((InMemoryBTree<Integer, String>)btree).getJournal();
-        File data = ((InMemoryBTree<Integer, String>)btree).getFile();
+        File journal = ( ( InMemoryBTree<Integer, String> ) btree ).getJournal();
+        File data = ( ( InMemoryBTree<Integer, String> ) btree ).getFile();
 
         try
         {

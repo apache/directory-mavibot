@@ -19,6 +19,7 @@
  */
 package org.apache.directory.mavibot.btree;
 
+
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -26,6 +27,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
+
 
 /**
  * A BTree abstract class containing the methods shared by the PersistedBTree or the InMemoryBTree
@@ -67,9 +69,10 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
     /** The thread responsible for the cleanup of timed out reads */
     protected Thread readTransactionsThread;
-    
+
     /** The BTree type : either in-memory, disk backed or persisted */
     private BTreeTypeEnum type;
+
 
     /**
      * Starts a Read Only transaction. If the transaction is not closed, it will be 
@@ -97,9 +100,9 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
         // Fetch the root page for this revision
         ParentPos<K, V>[] stack = new ParentPos[32];
-        
+
         TupleCursor<K, V> cursor = rootPage.browse( transaction, stack, 0 );
-        
+
         // Set the position before the first element
         cursor.beforeFirst();
 
@@ -116,7 +119,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
         // Fetch the root page for this revision
         Page<K, V> revisionRootPage = getRootPage( revision );
-        
+
         ParentPos<K, V>[] stack = new ParentPos[32];
 
         // And get the cursor
@@ -124,8 +127,8 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
         return cursor;
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
@@ -230,15 +233,15 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      * @param key The key for the entry we try to remove
      * @return A Tuple<K, V> containing the removed entry, or null if it's not found.
      */
-    /*no qualifier*/ Tuple<K, V> delete( K key, long revision ) throws IOException
+    /*no qualifier*/Tuple<K, V> delete( K key, long revision ) throws IOException
     {
         return delete( key, null, revision );
     }
 
 
     /*no qualifier*/abstract Tuple<K, V> delete( K key, V value, long revision ) throws IOException;
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
@@ -269,7 +272,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         return existingValue;
     }
 
-    
+
     /**
      * {@inheritDoc}
      */
@@ -336,8 +339,8 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
         return rootPage.hasKey( key );
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
@@ -354,7 +357,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         return revisionRootPage.hasKey( key );
     }
 
-    
+
     /**
      * {@inheritDoc}
      */
@@ -545,7 +548,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         this.writeBufferSize = writeBufferSize;
     }
 
-    
+
     /**
      * {@inheritDoc}
      */
@@ -603,7 +606,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      * Create a thread that is responsible of cleaning the transactions when
      * they hit the timeout
      */
-    /*no qualifier*/ void createTransactionManager()
+    /*no qualifier*/void createTransactionManager()
     {
         Runnable readTransactionTask = new Runnable()
         {

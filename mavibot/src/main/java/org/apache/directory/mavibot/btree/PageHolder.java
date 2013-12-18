@@ -19,6 +19,7 @@
  */
 package org.apache.directory.mavibot.btree;
 
+
 /**
  * A Page holder. It stores the page and provide a way to access it.
  * 
@@ -31,9 +32,10 @@ package org.apache.directory.mavibot.btree;
 {
     /** The BTree */
     protected BTree<K, V> btree;
-    
+
     /** The stored page */
     private Page<K, V> page;
+
 
     /**
      * Create a new holder storing an offset and a SoftReference containing the element.
@@ -47,7 +49,7 @@ package org.apache.directory.mavibot.btree;
         this.page = page;
     }
 
-    
+
     /**
      * @return the stored page
      */

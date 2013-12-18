@@ -19,10 +19,12 @@
  */
 package org.apache.directory.mavibot.btree;
 
+
 import java.io.IOException;
 import java.util.LinkedList;
 
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
+
 
 /**
  * This class construct a BTree from a serialized version of a BTree. We need it
@@ -40,7 +42,7 @@ public class BTreeFactory<K, V>
     //--------------------------------------------------------------------------------------------
     // Create persisted btrees
     //--------------------------------------------------------------------------------------------
-    
+
     /**
      * Creates a new persisted BTree, with no initialization. 
      */
@@ -51,7 +53,7 @@ public class BTreeFactory<K, V>
         return btree;
     }
 
-    
+
     /**
      * Creates a new persisted BTree using the BTreeConfiguration to initialize the 
      * BTree
@@ -64,8 +66,8 @@ public class BTreeFactory<K, V>
 
         return btree;
     }
-    
-    
+
+
     /**
      * Creates a new persisted BTree using the parameters to initialize the 
      * BTree
@@ -80,7 +82,7 @@ public class BTreeFactory<K, V>
         ElementSerializer<V> valueSerializer )
     {
         PersistedBTreeConfiguration<K, V> configuration = new PersistedBTreeConfiguration<K, V>();
-        
+
         configuration.setName( name );
         configuration.setKeySerializer( keySerializer );
         configuration.setValueSerializer( valueSerializer );
@@ -94,7 +96,7 @@ public class BTreeFactory<K, V>
         return btree;
     }
 
-    
+
     /**
      * Creates a new persisted BTree using the parameters to initialize the 
      * BTree
@@ -109,7 +111,7 @@ public class BTreeFactory<K, V>
         ElementSerializer<V> valueSerializer, boolean allowDuplicates )
     {
         PersistedBTreeConfiguration<K, V> configuration = new PersistedBTreeConfiguration<K, V>();
-        
+
         configuration.setName( name );
         configuration.setKeySerializer( keySerializer );
         configuration.setValueSerializer( valueSerializer );
@@ -122,8 +124,8 @@ public class BTreeFactory<K, V>
 
         return btree;
     }
-    
-    
+
+
     /**
      * Creates a new persisted BTree using the parameters to initialize the 
      * BTree
@@ -139,7 +141,7 @@ public class BTreeFactory<K, V>
         ElementSerializer<V> valueSerializer, boolean allowDuplicates, int cacheSize )
     {
         PersistedBTreeConfiguration<K, V> configuration = new PersistedBTreeConfiguration<K, V>();
-        
+
         configuration.setName( name );
         configuration.setKeySerializer( keySerializer );
         configuration.setValueSerializer( valueSerializer );
@@ -152,8 +154,8 @@ public class BTreeFactory<K, V>
 
         return btree;
     }
-    
-    
+
+
     /**
      * Creates a new persisted BTree using the parameters to initialize the 
      * BTree
@@ -168,7 +170,7 @@ public class BTreeFactory<K, V>
         ElementSerializer<V> valueSerializer, int pageSize )
     {
         PersistedBTreeConfiguration<K, V> configuration = new PersistedBTreeConfiguration<K, V>();
-        
+
         configuration.setName( name );
         configuration.setKeySerializer( keySerializer );
         configuration.setValueSerializer( valueSerializer );
@@ -182,7 +184,7 @@ public class BTreeFactory<K, V>
         return btree;
     }
 
-    
+
     /**
      * Creates a new persisted BTree using the parameters to initialize the 
      * BTree
@@ -198,7 +200,7 @@ public class BTreeFactory<K, V>
         ElementSerializer<V> valueSerializer, int pageSize, boolean allowDuplicates )
     {
         PersistedBTreeConfiguration<K, V> configuration = new PersistedBTreeConfiguration<K, V>();
-        
+
         configuration.setName( name );
         configuration.setKeySerializer( keySerializer );
         configuration.setValueSerializer( valueSerializer );
@@ -211,8 +213,8 @@ public class BTreeFactory<K, V>
 
         return btree;
     }
-    
-    
+
+
     /**
      * Creates a new persisted BTree using the parameters to initialize the 
      * BTree
@@ -229,7 +231,7 @@ public class BTreeFactory<K, V>
         ElementSerializer<V> valueSerializer, int pageSize, boolean allowDuplicates, int cacheSize )
     {
         PersistedBTreeConfiguration<K, V> configuration = new PersistedBTreeConfiguration<K, V>();
-        
+
         configuration.setName( name );
         configuration.setKeySerializer( keySerializer );
         configuration.setValueSerializer( valueSerializer );
@@ -270,8 +272,8 @@ public class BTreeFactory<K, V>
 
         return btree;
     }
-    
-    
+
+
     /**
      * Creates a new in-memory BTree using the parameters to initialize the 
      * BTree
@@ -284,7 +286,7 @@ public class BTreeFactory<K, V>
         ElementSerializer<V> valueSerializer )
     {
         InMemoryBTreeConfiguration<K, V> configuration = new InMemoryBTreeConfiguration<K, V>();
-        
+
         configuration.setName( name );
         configuration.setKeySerializer( keySerializer );
         configuration.setValueSerializer( valueSerializer );
@@ -297,7 +299,7 @@ public class BTreeFactory<K, V>
         return btree;
     }
 
-    
+
     /**
      * Creates a new in-memory BTree using the parameters to initialize the 
      * BTree
@@ -312,7 +314,7 @@ public class BTreeFactory<K, V>
         ElementSerializer<V> valueSerializer, boolean allowDuplicates )
     {
         InMemoryBTreeConfiguration<K, V> configuration = new InMemoryBTreeConfiguration<K, V>();
-        
+
         configuration.setName( name );
         configuration.setKeySerializer( keySerializer );
         configuration.setValueSerializer( valueSerializer );
@@ -325,7 +327,7 @@ public class BTreeFactory<K, V>
         return btree;
     }
 
-    
+
     /**
      * Creates a new in-memory BTree using the parameters to initialize the 
      * BTree
@@ -340,7 +342,7 @@ public class BTreeFactory<K, V>
         ElementSerializer<V> valueSerializer, int pageSize )
     {
         InMemoryBTreeConfiguration<K, V> configuration = new InMemoryBTreeConfiguration<K, V>();
-        
+
         configuration.setName( name );
         configuration.setKeySerializer( keySerializer );
         configuration.setValueSerializer( valueSerializer );
@@ -353,7 +355,7 @@ public class BTreeFactory<K, V>
         return btree;
     }
 
-    
+
     /**
      * Creates a new in-memory BTree using the parameters to initialize the 
      * BTree
@@ -364,11 +366,12 @@ public class BTreeFactory<K, V>
      * @param valueSerializer Value serializer
      * @throws IOException
      */
-    public static <K, V> BTree<K, V> createInMemoryBTree( String name, String filePath, ElementSerializer<K> keySerializer,
+    public static <K, V> BTree<K, V> createInMemoryBTree( String name, String filePath,
+        ElementSerializer<K> keySerializer,
         ElementSerializer<V> valueSerializer )
     {
         InMemoryBTreeConfiguration<K, V> configuration = new InMemoryBTreeConfiguration<K, V>();
-        
+
         configuration.setName( name );
         configuration.setFilePath( filePath );
         configuration.setKeySerializer( keySerializer );
@@ -382,7 +385,7 @@ public class BTreeFactory<K, V>
         return btree;
     }
 
-    
+
     /**
      * Creates a new in-memory BTree using the parameters to initialize the 
      * BTree
@@ -394,11 +397,12 @@ public class BTreeFactory<K, V>
      * @param pageSize Size of the page
      * @throws IOException
      */
-    public static <K, V> BTree<K, V> createInMemoryBTree( String name, String filePath, ElementSerializer<K> keySerializer,
+    public static <K, V> BTree<K, V> createInMemoryBTree( String name, String filePath,
+        ElementSerializer<K> keySerializer,
         ElementSerializer<V> valueSerializer, int pageSize )
     {
         InMemoryBTreeConfiguration<K, V> configuration = new InMemoryBTreeConfiguration<K, V>();
-        
+
         configuration.setName( name );
         configuration.setFilePath( filePath );
         configuration.setKeySerializer( keySerializer );
@@ -411,8 +415,8 @@ public class BTreeFactory<K, V>
 
         return btree;
     }
-    
-    
+
+
     /**
      * Creates a new in-memory BTree using the parameters to initialize the 
      * BTree
@@ -425,11 +429,12 @@ public class BTreeFactory<K, V>
      * @param allowDuplicates Tells if the BTree allows multiple value for a given key
      * @throws IOException
      */
-    public static <K, V> BTree<K, V> createInMemoryBTree( String name, String filePath, ElementSerializer<K> keySerializer,
+    public static <K, V> BTree<K, V> createInMemoryBTree( String name, String filePath,
+        ElementSerializer<K> keySerializer,
         ElementSerializer<V> valueSerializer, int pageSize, boolean allowDuplicates )
     {
         InMemoryBTreeConfiguration<K, V> configuration = new InMemoryBTreeConfiguration<K, V>();
-        
+
         configuration.setName( name );
         configuration.setFilePath( filePath );
         configuration.setKeySerializer( keySerializer );
@@ -456,7 +461,7 @@ public class BTreeFactory<K, V>
      * 
      * @return A Leaf instance
      */
-    /* no qualifier*/ static <K, V> Page<K, V> createLeaf( BTree<K, V> btree, long revision, int nbElems )
+    /* no qualifier*/static <K, V> Page<K, V> createLeaf( BTree<K, V> btree, long revision, int nbElems )
     {
         if ( btree.getType() == BTreeTypeEnum.PERSISTED )
         {
@@ -467,8 +472,8 @@ public class BTreeFactory<K, V>
             return new InMemoryLeaf<K, V>( btree, revision, nbElems );
         }
     }
-    
-    
+
+
     /**
      * Create a new Node for the given BTree.
      * 
@@ -477,7 +482,7 @@ public class BTreeFactory<K, V>
      * @param nbElems The number or elements in this node
      * @return A Node instance
      */
-    /* no qualifier*/ static <K, V> Page<K, V> createNode( BTree<K, V> btree, long revision, int nbElems )
+    /* no qualifier*/static <K, V> Page<K, V> createNode( BTree<K, V> btree, long revision, int nbElems )
     {
         if ( btree.getType() == BTreeTypeEnum.PERSISTED )
         {
@@ -501,10 +506,10 @@ public class BTreeFactory<K, V>
      * @param pos The position in the keys array
      * @param key The key to inject
      */
-    /* no qualifier*/ static <K, V> void setKey( BTree<K, V> btree, Page<K, V> page, int pos, K key )
+    /* no qualifier*/static <K, V> void setKey( BTree<K, V> btree, Page<K, V> page, int pos, K key )
     {
         KeyHolder<K> keyHolder;
-        
+
         if ( btree.getType() == BTreeTypeEnum.PERSISTED )
         {
             keyHolder = new PersistedKeyHolder<K>( btree.getKeySerializer(), key );
@@ -523,15 +528,15 @@ public class BTreeFactory<K, V>
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    /* no qualifier*/ static <K, V> void setValue( BTree<K, V> btree, Page<K, V> page, int pos, ValueHolder<V> value )
+    /* no qualifier*/static <K, V> void setValue( BTree<K, V> btree, Page<K, V> page, int pos, ValueHolder<V> value )
     {
         if ( btree.getType() == BTreeTypeEnum.PERSISTED )
         {
-            ((PersistedLeaf<K, V>)page).setValue( pos, value );
+            ( ( PersistedLeaf<K, V> ) page ).setValue( pos, value );
         }
         else
         {
-            ((InMemoryLeaf<K, V>)page).setValue( pos, value );
+            ( ( InMemoryLeaf<K, V> ) page ).setValue( pos, value );
         }
     }
 
@@ -544,18 +549,18 @@ public class BTreeFactory<K, V>
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    /* no qualifier*/ static <K, V> void setPage( BTree<K, V> btree, Page<K, V> page, int pos, Page<K, V> child )
+    /* no qualifier*/static <K, V> void setPage( BTree<K, V> btree, Page<K, V> page, int pos, Page<K, V> child )
     {
         if ( btree.getType() == BTreeTypeEnum.PERSISTED )
         {
-            ((PersistedNode<K, V>)page).setValue( pos, new PersistedPageHolder<K, V>( btree, child ) );
+            ( ( PersistedNode<K, V> ) page ).setValue( pos, new PersistedPageHolder<K, V>( btree, child ) );
         }
         else
         {
-            ((InMemoryNode<K, V>)page).setPageHolder( pos, new PageHolder<K, V>( btree, child ) );
+            ( ( InMemoryNode<K, V> ) page ).setPageHolder( pos, new PageHolder<K, V>( btree, child ) );
         }
     }
-    
+
 
     //--------------------------------------------------------------------------------------------
     // Update BTree
@@ -569,7 +574,7 @@ public class BTreeFactory<K, V>
      * @throws InstantiationException 
      * @throws IllegalAccessException
      */
-    /* no qualifier*/ static <K, V> void setKeySerializer( BTree<K, V> btree, String keySerializerFqcn )
+    /* no qualifier*/static <K, V> void setKeySerializer( BTree<K, V> btree, String keySerializerFqcn )
         throws ClassNotFoundException, IllegalAccessException, InstantiationException
     {
         Class<?> keySerializer = Class.forName( keySerializerFqcn );
@@ -588,7 +593,7 @@ public class BTreeFactory<K, V>
      * @throws InstantiationException 
      * @throws IllegalAccessException
      */
-    /* no qualifier*/ static <K, V> void setValueSerializer( BTree<K, V> btree, String valueSerializerFqcn )
+    /* no qualifier*/static <K, V> void setValueSerializer( BTree<K, V> btree, String valueSerializerFqcn )
         throws ClassNotFoundException, IllegalAccessException, InstantiationException
     {
         Class<?> valueSerializer = Class.forName( valueSerializerFqcn );
@@ -597,7 +602,7 @@ public class BTreeFactory<K, V>
         btree.setValueSerializer( instance );
     }
 
-    
+
     /**
      * Set the new root page for this tree. Used for debug purpose only. The revision
      * will always be 0;
@@ -605,9 +610,9 @@ public class BTreeFactory<K, V>
      * @param btree The BTree to update
      * @param root the new root page.
      */
-    /* no qualifier*/ static <K, V> void setRootPage( BTree<K, V> btree, Page<K, V> root )
+    /* no qualifier*/static <K, V> void setRootPage( BTree<K, V> btree, Page<K, V> root )
     {
-        ((AbstractBTree<K, V>)btree).setRootPage( root );
+        ( ( AbstractBTree<K, V> ) btree ).setRootPage( root );
     }
 
 
@@ -617,12 +622,12 @@ public class BTreeFactory<K, V>
      * @param btree The Btree we want to root page from
      * @return The root page
      */
-    /* no qualifier */ static <K, V> Page<K, V> getRootPage( BTree<K, V> btree )
+    /* no qualifier */static <K, V> Page<K, V> getRootPage( BTree<K, V> btree )
     {
         return btree.getRootPage();
     }
-    
-    
+
+
     /**
      * update the BTree number of elements
      * 
@@ -631,7 +636,7 @@ public class BTreeFactory<K, V>
      */
     /* no qualifier */static <K, V> void setNbElems( BTree<K, V> btree, long nbElems )
     {
-        ((AbstractBTree<K, V>)btree).setNbElems( nbElems );
+        ( ( AbstractBTree<K, V> ) btree ).setNbElems( nbElems );
     }
 
 
@@ -643,7 +648,7 @@ public class BTreeFactory<K, V>
      */
     /* no qualifier*/static <K, V> void setRevision( BTree<K, V> btree, long revision )
     {
-        ((AbstractBTree<K, V>)btree).setRevision( revision );
+        ( ( AbstractBTree<K, V> ) btree ).setRevision( revision );
     }
 
 
@@ -653,7 +658,7 @@ public class BTreeFactory<K, V>
      * @param btree The BTree to update
      * @param name the name to set
      */
-    /* no qualifier */ static <K, V> void setName( BTree<K, V> btree, String name )
+    /* no qualifier */static <K, V> void setName( BTree<K, V> btree, String name )
     {
         btree.setName( name );
     }
@@ -665,7 +670,7 @@ public class BTreeFactory<K, V>
      * @param btree The BTree to update
      * @param pageSize The requested page size
      */
-    /* no qualifier */ static <K, V> void setPageSize( BTree<K, V> btree, int pageSize )
+    /* no qualifier */static <K, V> void setPageSize( BTree<K, V> btree, int pageSize )
     {
         btree.setPageSize( pageSize );
     }
@@ -680,7 +685,7 @@ public class BTreeFactory<K, V>
      * @param btree the btree
      * @return a LinkedList of all the nodes and the final leaf
      */
-    /* no qualifier*/ static <K, V> LinkedList<ParentPos<K, V>> getPathToRightMostLeaf( BTree<K, V> btree )
+    /* no qualifier*/static <K, V> LinkedList<ParentPos<K, V>> getPathToRightMostLeaf( BTree<K, V> btree )
     {
         LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
 
@@ -690,7 +695,7 @@ public class BTreeFactory<K, V>
         if ( btree.getRootPage().isLeaf() )
         {
             Page<K, V> leaf = btree.getRootPage();
-            ValueHolder<V> valueHolder = ((AbstractPage<K, V>)leaf).getValue( last.pos );
+            ValueHolder<V> valueHolder = ( ( AbstractPage<K, V> ) leaf ).getValue( last.pos );
             last.valueCursor = valueHolder.getCursor();
         }
         else
@@ -699,7 +704,7 @@ public class BTreeFactory<K, V>
 
             while ( true )
             {
-                Page<K, V> p = ((AbstractPage<K, V>)node).getPage( node.getNbElems() );
+                Page<K, V> p = ( ( AbstractPage<K, V> ) node ).getPage( node.getNbElems() );
 
                 last = new ParentPos<K, V>( p, p.getNbElems() );
                 stack.push( last );
@@ -707,7 +712,7 @@ public class BTreeFactory<K, V>
                 if ( p.isLeaf() )
                 {
                     Page<K, V> leaf = last.page;
-                    ValueHolder<V> valueHolder = ((AbstractPage<K, V>)leaf).getValue( last.pos );
+                    ValueHolder<V> valueHolder = ( ( AbstractPage<K, V> ) leaf ).getValue( last.pos );
                     last.valueCursor = valueHolder.getCursor();
                     break;
                 }
@@ -716,8 +721,8 @@ public class BTreeFactory<K, V>
 
         return stack;
     }
-    
-    
+
+
     //--------------------------------------------------------------------------------------------
     // Persisted BTree methods
     //--------------------------------------------------------------------------------------------
@@ -731,7 +736,7 @@ public class BTreeFactory<K, V>
     {
         if ( btree instanceof PersistedBTree )
         {
-            ((PersistedBTree<K, V>)btree).setRootPageOffset( rootPageOffset );
+            ( ( PersistedBTree<K, V> ) btree ).setRootPageOffset( rootPageOffset );
         }
         else
         {
@@ -739,45 +744,45 @@ public class BTreeFactory<K, V>
         }
     }
 
-    
+
     /**
      * Set the nextBTree offset
      * 
      * @param btree The btree to update
      * @param nextBTreeOffset The nextBTreeOffset to set
      */
-    /* no qualifier*/ static <K, V> void setNextBTreeOffset( BTree<K, V> btree, long nextBTreeOffset )
+    /* no qualifier*/static <K, V> void setNextBTreeOffset( BTree<K, V> btree, long nextBTreeOffset )
     {
         if ( btree instanceof PersistedBTree )
         {
-            ((PersistedBTree<K, V>)btree).setNextBTreeOffset( nextBTreeOffset );
+            ( ( PersistedBTree<K, V> ) btree ).setNextBTreeOffset( nextBTreeOffset );
         }
         else
         {
             throw new IllegalArgumentException( "The BTree must be a PersistedBTree" );
         }
     }
-    
-    
+
+
     /**
      * Set the RecordManager
      * 
      * @param btree The btree to update
      * @param recordManager The injected RecordManager
      */
-    /* no qualifier*/ static <K, V> void setRecordManager( BTree<K, V> btree, RecordManager recordManager )
+    /* no qualifier*/static <K, V> void setRecordManager( BTree<K, V> btree, RecordManager recordManager )
     {
         if ( btree instanceof PersistedBTree )
         {
-            ((PersistedBTree<K, V>)btree).setRecordManager( recordManager );
+            ( ( PersistedBTree<K, V> ) btree ).setRecordManager( recordManager );
         }
         else
         {
             throw new IllegalArgumentException( "The BTree must be a PersistedBTree" );
         }
     }
-    
-    
+
+
     /**
      * Set the key at a give position
      * 
@@ -786,7 +791,7 @@ public class BTreeFactory<K, V>
      * @param pos The position of this key in the page
      * @param buffer The byte[] containing the serialized key
      */
-    /* no qualifier*/ static <K, V> void setKey( BTree<K, V> btree, Page<K, V> page, int pos, byte[] buffer )
+    /* no qualifier*/static <K, V> void setKey( BTree<K, V> btree, Page<K, V> page, int pos, byte[] buffer )
     {
         if ( btree instanceof PersistedBTree )
         {
@@ -798,49 +803,49 @@ public class BTreeFactory<K, V>
             throw new IllegalArgumentException( "The BTree must be a PersistedBTree" );
         }
     }
-    
-    
+
+
     /**
      * Includes the intermediate nodes in the path up to and including the left most leaf of the tree
      * 
      * @param btree The btree to process
      * @return a LinkedList of all the nodes and the final leaf
      */
-    /* no qualifier*/ static <K, V> LinkedList<ParentPos<K, V>> getPathToLeftMostLeaf( BTree<K, V> btree )
+    /* no qualifier*/static <K, V> LinkedList<ParentPos<K, V>> getPathToLeftMostLeaf( BTree<K, V> btree )
     {
         if ( btree instanceof PersistedBTree )
         {
             LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
-    
+
             ParentPos<K, V> first = new ParentPos<K, V>( btree.getRootPage(), 0 );
             stack.push( first );
-    
+
             if ( btree.getRootPage().isLeaf() )
             {
                 Page<K, V> leaf = btree.getRootPage();
-                ValueHolder<V> valueHolder = ((AbstractPage<K, V>)leaf).getValue( first.pos );
+                ValueHolder<V> valueHolder = ( ( AbstractPage<K, V> ) leaf ).getValue( first.pos );
                 first.valueCursor = valueHolder.getCursor();
             }
             else
             {
                 Page<K, V> node = btree.getRootPage();
-    
+
                 while ( true )
                 {
-                    Page<K, V> page = ((AbstractPage<K, V>)node).getPage( 0 );
-    
+                    Page<K, V> page = ( ( AbstractPage<K, V> ) node ).getPage( 0 );
+
                     first = new ParentPos<K, V>( page, 0 );
                     stack.push( first );
-    
+
                     if ( page.isLeaf() )
                     {
-                        ValueHolder<V> valueHolder = ((AbstractPage<K, V>)page).getValue( first.pos );
+                        ValueHolder<V> valueHolder = ( ( AbstractPage<K, V> ) page ).getValue( first.pos );
                         first.valueCursor = valueHolder.getCursor();
                         break;
                     }
                 }
             }
-    
+
             return stack;
         }
         else

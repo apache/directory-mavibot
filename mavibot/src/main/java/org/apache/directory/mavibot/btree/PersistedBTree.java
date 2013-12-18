@@ -78,7 +78,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
     /**
      * Creates a new BTree, with no initialization. 
      */
-    /* no qualifier */ PersistedBTree()
+    /* no qualifier */PersistedBTree()
     {
         btreeHeader = new BTreeHeader();
         setType( BTreeTypeEnum.PERSISTED );
@@ -91,7 +91,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
      * 
      * @param configuration The configuration to use
      */
-    /* no qualifier */ PersistedBTree( PersistedBTreeConfiguration<K, V> configuration )
+    /* no qualifier */PersistedBTree( PersistedBTreeConfiguration<K, V> configuration )
     {
         super();
         String name = configuration.getName();
@@ -126,12 +126,12 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
         // Create the first root page, with revision 0L. It will be empty
         // and increment the revision at the same time
         rootPage = new PersistedLeaf<K, V>( this );
-        
+
         if ( isSubBtree )
         {
             // The subBTree inherit its cache from its parent BTree
-            this.cache = ((PersistedBTree<K, V>)configuration.getParentBTree()).getCache();
-            this.writeLock = ((PersistedBTree<K, V>)configuration.getParentBTree()).getWriteLock();
+            this.cache = ( ( PersistedBTree<K, V> ) configuration.getParentBTree() ).getCache();
+            this.writeLock = ( ( PersistedBTree<K, V> ) configuration.getParentBTree() ).getWriteLock();
             readTransactions = new ConcurrentLinkedQueue<Transaction<K, V>>();
         }
 
@@ -153,9 +153,9 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
             // Create the queue containing the pending read transactions
             readTransactions = new ConcurrentLinkedQueue<Transaction<K, V>>();
-    
+
             writeLock = new ReentrantLock();
-    
+
             // Initialize the caches
             CacheConfiguration cacheConfiguration = new CacheConfiguration();
             cacheConfiguration.setName( "pages" );
@@ -164,7 +164,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
             cacheConfiguration.setCacheLoaderTimeoutMillis( 0 );
             cacheConfiguration.setMaxElementsInMemory( cacheSize );
             cacheConfiguration.setMemoryStoreEvictionPolicy( "LRU" );
-    
+
             cache = new Cache( cacheConfiguration );
             cache.initialise();
         }
@@ -210,13 +210,13 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
         // Stop the readTransaction thread
         // readTransactionsThread.interrupt();
         // readTransactions.clear();
-        
+
         // Clean the cache
         if ( cache.getStatus() == Status.STATUS_ALIVE )
         {
             cache.removeAll();
         }
-        
+
         cache.dispose();
 
         rootPage = null;
@@ -348,12 +348,12 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
                     revision );
 
                 // Store the offset on disk in the page in memory
-                ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( (PersistedPageHolder<K, V> ) holder )
+                ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( PersistedPageHolder<K, V> ) holder )
                     .getOffset() );
 
                 // Store the last offset on disk in the page in memory
                 ( ( AbstractPage<K, V> ) modifiedPage )
-                    .setLastOffset( ( (PersistedPageHolder<K, V> ) holder )
+                    .setLastOffset( ( ( PersistedPageHolder<K, V> ) holder )
                         .getLastOffset() );
 
                 // This is a new root
@@ -403,7 +403,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
      * @param revision The revision to use
      * @return an instance of the InsertResult.
      */
-    /* no qualifier */ InsertResult<K, V> insert( K key, V value, long revision ) throws IOException
+    /* no qualifier */InsertResult<K, V> insert( K key, V value, long revision ) throws IOException
     {
         if ( key == null )
         {
@@ -430,7 +430,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
             // remain in memory.
             PersistedPageHolder<K, V> holder = recordManager.writePage( this, modifiedPage,
                 revision );
-            
+
             // The root has just been modified, we haven't split it
             // Get it and make it the current root page
             rootPage = modifiedPage;

@@ -1,8 +1,10 @@
 package org.apache.directory.mavibot.btree;
 
+
 import java.io.IOException;
 
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
+
 
 /**
  * A class that encapsulate the values into an array
@@ -11,9 +13,10 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 {
     /** Store the current position in the array or in the BTree */
     private int currentPos;
-    
+
     /** The array storing values (1 to N) */
     private V[] valueArray;
+
 
     /**
      * Create an instance
@@ -53,7 +56,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
             if ( currentPos == valueArray.length )
             {
                 currentPos = AFTER_LAST;
-                
+
                 // We have reached the end of the array
                 return null;
             }
@@ -148,4 +151,3 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
         return valueArray.length;
     }
 }
-
