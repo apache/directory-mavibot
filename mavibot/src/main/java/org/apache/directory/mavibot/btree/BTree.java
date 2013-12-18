@@ -99,21 +99,6 @@ public interface BTree<K, V>
 
 
     /**
-     * Insert an entry in the BTree.
-     * <p>
-     * We will replace the value if the provided key already exists in the
-     * btree.
-     *
-     * @param key Inserted key
-     * @param value Inserted value
-     * @param revision the revision
-     * @return Existing value, if any.
-     * @throws IOException TODO
-     */
-    //InsertResult<K, V> insert( K key, V value, long revision ) throws IOException;
-
-
-    /**
      * Delete the entry which key is given as a parameter. If the entry exists, it will
      * be removed from the tree, the old tuple will be returned. Otherwise, null is returned.
      * 
