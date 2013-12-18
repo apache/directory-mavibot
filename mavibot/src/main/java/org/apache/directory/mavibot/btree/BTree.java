@@ -43,9 +43,12 @@ public interface BTree<K, V>
 
     /** Define a default delay for a read transaction. This is 10 seconds */
     static final long DEFAULT_READ_TIMEOUT = 10 * 1000L;
-
-    /** The default number of pages to keep in memory */
-    static final int DEFAULT_CACHE_SIZE = 1000;
+    
+    /** The BTree allows duplicate values */
+    static final boolean ALLOW_DUPLICATES = true;
+    
+    /** The BTree forbids duplicate values */
+    static final boolean FORBID_DUPLICATES = false;
 
 
     /**
@@ -380,4 +383,10 @@ public interface BTree<K, V>
      * @param allowDuplicates True if the BTree will allow duplicate values
      */
     void setAllowDuplicates( boolean allowDuplicates );
+
+
+    /**
+     * @return the type
+     */
+    BTreeTypeEnum getType();
 }

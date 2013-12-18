@@ -30,7 +30,6 @@ import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.BorrowedFromLeftResult;
 import org.apache.directory.mavibot.btree.BorrowedFromRightResult;
 import org.apache.directory.mavibot.btree.DeleteResult;
-import org.apache.directory.mavibot.btree.InMemoryBTree;
 import org.apache.directory.mavibot.btree.InsertResult;
 import org.apache.directory.mavibot.btree.KeyHolder;
 import org.apache.directory.mavibot.btree.MergedWithSiblingResult;
@@ -63,7 +62,7 @@ public class InMemoryLeafTest
     @Before
     public void setup() throws IOException
     {
-        btree = new InMemoryBTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
+        btree = BTreeFactory.createInMemoryBTree( "test", new LongSerializer(), new StringSerializer() );
         btree.setPageSize( 8 );
     }
 

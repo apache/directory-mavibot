@@ -20,12 +20,6 @@
 
 package org.apache.directory.mavibot.btree;
 
-
-import static org.apache.directory.mavibot.btree.PersistedBTreeFactory.createLeaf;
-import static org.apache.directory.mavibot.btree.PersistedBTreeFactory.createNode;
-import static org.apache.directory.mavibot.btree.PersistedBTreeFactory.setKey;
-import static org.apache.directory.mavibot.btree.PersistedBTreeFactory.setValue;
-
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -67,7 +61,7 @@ public class PersistedBTreeBuilder<K, V>
     @SuppressWarnings("unchecked")
     public BTree<K, V> build( Iterator<Tuple<K, V>> sortedTupleItr ) throws Exception
     {
-        BTree<K, V> btree = new PersistedBTree<K, V>( name, keySerializer, valueSerializer );
+        BTree<K, V> btree = BTreeFactory.createPersistedBTree( name, keySerializer, valueSerializer );
         btree.init();
 
         rm.manage( btree );
@@ -76,7 +70,7 @@ public class PersistedBTreeBuilder<K, V>
 
         int totalTupleCount = 0;
 
-        PersistedLeaf<K, V> leaf1 = createLeaf( btree, 0, numKeysInNode );
+        PersistedLeaf<K, V> leaf1 = (PersistedLeaf<K, V>)BTreeFactory.createLeaf( btree, 0, numKeysInNode );
         lstLeaves.add( leaf1 );
 
         int leafIndex = 0;
@@ -85,11 +79,11 @@ public class PersistedBTreeBuilder<K, V>
         {
             Tuple<K, V> tuple = sortedTupleItr.next();
             
-            setKey( btree, leaf1, leafIndex, tuple.getKey() );
+            BTreeFactory.setKey( btree, leaf1, leafIndex, tuple.getKey() );
 
             PersistedValueHolder<V> eh = new PersistedValueHolder<V>( btree, tuple.getValue() );
 
-            setValue( leaf1, leafIndex, eh );
+            BTreeFactory.setValue( btree, leaf1, leafIndex, eh );
 
             leafIndex++;
             totalTupleCount++;
@@ -99,7 +93,7 @@ public class PersistedBTreeBuilder<K, V>
                 
                 PersistedPageHolder<K, V> pageHolder = (PersistedPageHolder<K, V> ) rm.writePage( btree, leaf1, 1 );
                 
-                leaf1 = createLeaf( btree, 0, numKeysInNode );
+                leaf1 = (PersistedLeaf<K, V>)BTreeFactory.createLeaf( btree, 0, numKeysInNode );
                 lstLeaves.add( leaf1 );
             }
             
@@ -163,7 +157,7 @@ public class PersistedBTreeBuilder<K, V>
 
         int numChildren = numKeysInNode + 1;
 
-        PersistedNode<K, V> node = createNode( btree, 0, numKeysInNode );
+        PersistedNode<K, V> node = (PersistedNode<K, V>)BTreeFactory.createNode( btree, 0, numKeysInNode );
         lstNodes.add( node );
         int i = 0;
         int totalNodes = 0;
@@ -172,10 +166,10 @@ public class PersistedBTreeBuilder<K, V>
         {
             if ( i != 0 )
             {
-                setKey( btree, node, i - 1, page.getLeftMostKey() );
+                BTreeFactory.setKey( btree, node, i - 1, page.getLeftMostKey() );
             }
 
-            node.setPageHolder( i, new PersistedPageHolder<K, V>( btree, page ) );
+            BTreeFactory.setPage( btree, node, i, page );
 
             i++;
             totalNodes++;
@@ -186,7 +180,7 @@ public class PersistedBTreeBuilder<K, V>
                 
                 PersistedPageHolder<K, V> pageHolder = (PersistedPageHolder<K, V> ) rm.writePage( btree, node, 1 );
 
-                node = createNode( btree, 0, numKeysInNode );
+                node = (PersistedNode<K, V>)BTreeFactory.createNode( btree, 0, numKeysInNode );
                 lstNodes.add( node );
             }
         }

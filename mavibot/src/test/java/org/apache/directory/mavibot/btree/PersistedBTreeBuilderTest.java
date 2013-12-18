@@ -27,7 +27,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.directory.mavibot.btree.BTree;
 import org.apache.directory.mavibot.btree.PersistedBTreeBuilder;
 import org.apache.directory.mavibot.btree.RecordManager;

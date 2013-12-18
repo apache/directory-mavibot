@@ -52,7 +52,7 @@ public class InMemoryBTreeDuplicateKeyTest
     {
         IntSerializer serializer = new IntSerializer();
 
-        BTree<Integer, Integer> btree = new InMemoryBTree<Integer, Integer>( "master", serializer, serializer );
+        BTree<Integer, Integer> btree = BTreeFactory.createInMemoryBTree( "master", serializer, serializer );
         btree.init();
 
         btree.insert( 1, null );
@@ -75,7 +75,7 @@ public class InMemoryBTreeDuplicateKeyTest
     {
         IntSerializer serializer = new IntSerializer();
 
-        BTree<Integer, Integer> btree = new InMemoryBTree<Integer, Integer>( "master", serializer, serializer );
+        BTree<Integer, Integer> btree = BTreeFactory.createInMemoryBTree( "master", serializer, serializer );
         btree.init();
 
         TupleCursor<Integer, Integer> cursor = btree.browse();

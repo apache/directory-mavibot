@@ -24,8 +24,6 @@ import java.util.Comparator;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.ReentrantLock;
 
-import net.sf.ehcache.Cache;
-
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
@@ -67,14 +65,11 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     /** Flag to enable duplicate key support */
     private boolean allowDuplicates;
 
-    /** The cache associated with this BTree */
-    protected Cache cache;
-
-    /** The cache size, default to 1000 elements */
-    protected int cacheSize = DEFAULT_CACHE_SIZE;
-
     /** The thread responsible for the cleanup of timed out reads */
     protected Thread readTransactionsThread;
+    
+    /** The BTree type : either in-memory, disk backed or persisted */
+    private BTreeTypeEnum type;
 
     /**
      * Starts a Read Only transaction. If the transaction is not closed, it will be 
@@ -566,6 +561,24 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     public void setAllowDuplicates( boolean allowDuplicates )
     {
         btreeHeader.setAllowDuplicates( allowDuplicates );
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public BTreeTypeEnum getType()
+    {
+        return type;
+    }
+
+
+    /**
+     * @param type the type to set
+     */
+    public void setType( BTreeTypeEnum type )
+    {
+        this.type = type;
     }
 
 

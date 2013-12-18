@@ -37,7 +37,7 @@ public enum BTreeTypeEnum
     IN_MEMORY,
 
     /** Persisted BTree */
-    PERSISTENT,
+    PERSISTED,
 
     /** In-memory BTree but saved on disk */
     BACKED_ON_DISK

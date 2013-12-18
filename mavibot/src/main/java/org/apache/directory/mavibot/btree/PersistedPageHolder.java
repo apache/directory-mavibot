@@ -67,11 +67,8 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
         offset = ((AbstractPage<K, V>)page).getOffset();
         lastOffset = ((AbstractPage<K, V>)page).getLastOffset();
 
-        if ( page instanceof Page<?, ?> )
-        {
-            ( ( AbstractPage<K, V> ) page ).setOffset( offset );
-            ( ( AbstractPage<K, V> ) page ).setLastOffset( lastOffset );
-        }
+        ( ( AbstractPage<K, V> ) page ).setOffset( offset );
+        ( ( AbstractPage<K, V> ) page ).setLastOffset( lastOffset );
 
         cache.put( new Element( offset, page ) );
     }
@@ -90,7 +87,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
         this.offset = offset;
         this.lastOffset = lastOffset;
 
-        if ( page instanceof Page<?, ?> )
+        if ( page != null )
         {
             ( ( AbstractPage<K, V> ) page ).setOffset( offset );
             ( ( AbstractPage<K, V> ) page ).setLastOffset( lastOffset );
@@ -127,11 +124,8 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
             // We have to fetch the element from disk, using the offset now
             page = fetchElement();
 
-            if ( page instanceof Page<?, ?> )
-            {
-                ( ( AbstractPage<K, V> ) page ).setOffset( offset );
-                ( ( AbstractPage<K, V> ) page ).setLastOffset( lastOffset );
-            }
+            ( ( AbstractPage<K, V> ) page ).setOffset( offset );
+            ( ( AbstractPage<K, V> ) page ).setLastOffset( lastOffset );
 
             cache.put( new Element( offset, page ) );
         }

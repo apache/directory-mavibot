@@ -256,4 +256,18 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @throws IOException If we have an error while trying to access the page
      */
     boolean hasKey( K key ) throws IOException;
+    
+    
+    /**
+     * Tells if the page is a leaf or not
+     * @return true if the page is a leaf
+     */
+    boolean isLeaf();
+    
+    
+    /**
+     * Tells if the page is a node or not
+     * @return true if the page is a node
+     */
+    boolean isNode();
 }

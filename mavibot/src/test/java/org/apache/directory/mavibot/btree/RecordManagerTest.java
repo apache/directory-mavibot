@@ -36,7 +36,6 @@ import java.util.UUID;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.PersistedBTree;
 import org.apache.directory.mavibot.btree.RecordManager;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
@@ -848,9 +847,8 @@ public class RecordManagerTest
         String name = "duplicateTree";
         String[] testValues = new String[]{ "00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "0A", "0B", "0C", "0D", "0E", "0F", "10" };
 
-        BTree<Long, String> dupsTree = new PersistedBTree<Long, String>( name, null, new LongSerializer(),
-            new StringSerializer(), pageSize,
-            true );
+        BTree<Long, String> dupsTree = BTreeFactory.createPersistedBTree( name, new LongSerializer(),
+            new StringSerializer(), pageSize, true );
 
         recordManager1.manage( dupsTree );
         

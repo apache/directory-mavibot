@@ -1109,6 +1109,24 @@ import java.util.List;
 
         return children[nbElems - 1].getValue().getRightMostKey();
     }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    public boolean isLeaf()
+    {
+        return false;
+    }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    public boolean isNode()
+    {
+        return true;
+    }
 
 
     /**

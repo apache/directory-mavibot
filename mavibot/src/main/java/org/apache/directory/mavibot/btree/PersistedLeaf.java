@@ -1016,6 +1016,24 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             cursor.close();
         }
     }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    public boolean isLeaf()
+    {
+        return true;
+    }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    public boolean isNode()
+    {
+        return false;
+    }
 
 
     /**

@@ -34,7 +34,6 @@ import java.util.UUID;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.PersistedBTree;
 import org.apache.directory.mavibot.btree.RecordManager;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.TupleCursor;
@@ -147,7 +146,7 @@ public class PersistedBTreeDuplicateKeyTest
     {
         IntSerializer serializer = new IntSerializer();
 
-        BTree<Integer, Integer> btree = new PersistedBTree<Integer, Integer>( "master", serializer, serializer );
+        BTree<Integer, Integer> btree = BTreeFactory.createPersistedBTree( "master", serializer, serializer );
         btree.init();
 
         TupleCursor<Integer, Integer> cursor = btree.browse();

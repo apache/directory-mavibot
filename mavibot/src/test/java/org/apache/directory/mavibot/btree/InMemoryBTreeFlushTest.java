@@ -132,7 +132,7 @@ public class InMemoryBTreeFlushTest
         long delta = l1;
         int nbElems = 100000;
 
-        BTree<Long, String> btree = new InMemoryBTree<Long, String>( "test", new LongSerializer(), new StringSerializer() );
+        BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( "test", new LongSerializer(), new StringSerializer() );
         btree.setPageSize( 32 );
 
         for ( int i = 0; i < nbElems; i++ )
@@ -223,7 +223,7 @@ public class InMemoryBTreeFlushTest
         // Create a BTree with pages containing 8 elements
         String path = tempFolder.getRoot().getCanonicalPath();
 
-        BTree<Integer, String> btree = new InMemoryBTree<Integer, String>( "test", path, new IntSerializer(),
+        BTree<Integer, String> btree = BTreeFactory.createInMemoryBTree( "test", path, new IntSerializer(),
             new StringSerializer() );
         btree.setPageSize( 8 );
 
@@ -250,7 +250,7 @@ public class InMemoryBTreeFlushTest
             assertEquals( 0, journal.length() );
 
             // Load the data into a new tree
-            BTree<Integer, String> btreeLoaded = new InMemoryBTree<Integer, String>( "test", path, new IntSerializer(),
+            BTree<Integer, String> btreeLoaded = BTreeFactory.createInMemoryBTree( "test", path, new IntSerializer(),
                 new StringSerializer() );
             btree.setPageSize( 8 );
 
@@ -290,7 +290,7 @@ public class InMemoryBTreeFlushTest
     {
         String data100K = create100KElementsFile();
         File dataFile = new File( data100K );
-        BTree<Long, String> btree = new InMemoryBTree<Long, String>(
+        BTree<Long, String> btree = BTreeFactory.createInMemoryBTree(
             "test",
             dataFile.getParent(),
             new LongSerializer(),

@@ -248,7 +248,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             configuration.setParentBTree( parentBtree );
             configuration.setSubBtree( true );
             
-            valueBtree = PersistedBTreeFactory.createBTree( configuration );
+            valueBtree = BTreeFactory.createPersistedBTree( configuration );
 
             try
             {

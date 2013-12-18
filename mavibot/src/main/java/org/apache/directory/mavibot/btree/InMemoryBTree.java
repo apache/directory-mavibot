@@ -31,12 +31,8 @@ import java.nio.channels.FileChannel;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.ReentrantLock;
 
-import net.sf.ehcache.Cache;
-import net.sf.ehcache.config.CacheConfiguration;
-
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.BufferHandler;
-import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,9 +64,6 @@ import org.slf4j.LoggerFactory;
     /** The associated file. If null, this is an in-memory btree  */
     private File file;
 
-    /** The BTree type : either in-memory, persistent or managed */
-    private BTreeTypeEnum type;
-
     /** A flag used to tell the BTree that the journal is activated */
     private boolean withJournal;
 
@@ -85,11 +78,11 @@ import org.slf4j.LoggerFactory;
     /**
      * Creates a new BTree, with no initialization. 
      */
-    public InMemoryBTree()
+    /* no qualifier */ InMemoryBTree()
     {
         super();
         btreeHeader = new BTreeHeader();
-        type = BTreeTypeEnum.IN_MEMORY;
+        setType( BTreeTypeEnum.IN_MEMORY );
     }
 
 
@@ -97,9 +90,9 @@ import org.slf4j.LoggerFactory;
      * Creates a new in-memory BTree using the BTreeConfiguration to initialize the 
      * BTree
      * 
-     * @param comparator The comparator to use
+     * @param configuration The configuration to use
      */
-    public InMemoryBTree( InMemoryBTreeConfiguration<K, V> configuration ) throws IOException
+    /* no qualifier */ InMemoryBTree( InMemoryBTreeConfiguration<K, V> configuration )
     {
         super();
         String name = configuration.getName();
@@ -129,8 +122,7 @@ import org.slf4j.LoggerFactory;
         readTimeOut = configuration.getReadTimeOut();
         writeBufferSize = configuration.getWriteBufferSize();
         btreeHeader.setAllowDuplicates( configuration.isAllowDuplicates() );
-        type = configuration.getType();
-        cacheSize = configuration.getCacheSize();
+        setType( configuration.getType() );
 
         if ( keySerializer.getComparator() == null )
         {
@@ -142,118 +134,14 @@ import org.slf4j.LoggerFactory;
         rootPage = new InMemoryLeaf<K, V>( this );
 
         // Now, initialize the BTree
-        init();
-    }
-
-
-    /**
-     * Creates a new in-memory BTree with a default page size and key/value serializers.
-     * 
-     * @param comparator The comparator to use
-     */
-    public InMemoryBTree( String name, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer )
-        throws IOException
-    {
-        this( name, keySerializer, valueSerializer, false );
-    }
-
-
-    public InMemoryBTree( String name, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer,
-        boolean allowDuplicates )
-        throws IOException
-    {
-        this( name, null, keySerializer, valueSerializer, DEFAULT_PAGE_SIZE, allowDuplicates, DEFAULT_CACHE_SIZE );
-    }
-
-
-    /**
-     * Creates a new in-memory BTree with a default page size and key/value serializers.
-     * 
-     * @param comparator The comparator to use
-     */
-    public InMemoryBTree( String name, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer, int pageSize )
-        throws IOException
-    {
-        this( name, null, keySerializer, valueSerializer, pageSize );
-    }
-
-
-    /**
-     * Creates a new BTree with a default page size and a comparator, with an associated file.
-     * @param comparator The comparator to use
-     * @param serializer The serializer to use
-     */
-    public InMemoryBTree( String name, String path, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer )
-        throws IOException
-    {
-        this( name, path, keySerializer, valueSerializer, DEFAULT_PAGE_SIZE );
-    }
-
-
-    /**
-     * 
-     * Creates a new instance of BTree with the given name and store it under the given dataDir if provided.
-     *
-     * @param name the name of the BTree
-     * @param dataDir the name of the data directory with absolute path
-     * @param keySerializer key serializer
-     * @param valueSerializer value serializer
-     * @param pageSize size of the page
-     * @throws IOException
-     */
-    public InMemoryBTree( String name, String dataDir, ElementSerializer<K> keySerializer,
-        ElementSerializer<V> valueSerializer,
-        int pageSize )
-        throws IOException
-    {
-        this( name, dataDir, keySerializer, valueSerializer, pageSize, false, DEFAULT_CACHE_SIZE );
-    }
-
-
-    public InMemoryBTree( String name, String dataDir, ElementSerializer<K> keySerializer,
-        ElementSerializer<V> valueSerializer,
-        int pageSize, boolean allowDuplicates )
-        throws IOException
-    {
-        this( name, dataDir, keySerializer, valueSerializer, pageSize, allowDuplicates, DEFAULT_CACHE_SIZE );
-    }
-
-
-    public InMemoryBTree( String name, String dataDir, ElementSerializer<K> keySerializer,
-        ElementSerializer<V> valueSerializer,
-        int pageSize, boolean allowDuplicates, int cacheSize )
-        throws IOException
-    {
-        super();
-        btreeHeader = new BTreeHeader();
-        btreeHeader.setName( name );
-
-        if ( dataDir != null )
+        try
         {
-            envDir = new File( dataDir );
+            init();
         }
-
-        setPageSize( pageSize );
-        writeBufferSize = DEFAULT_WRITE_BUFFER_SIZE;
-
-        this.cacheSize = cacheSize;
-
-        this.keySerializer = keySerializer;
-
-        btreeHeader.setKeySerializerFQCN( keySerializer.getClass().getName() );
-
-        this.valueSerializer = valueSerializer;
-
-        btreeHeader.setValueSerializerFQCN( valueSerializer.getClass().getName() );
-
-        btreeHeader.setAllowDuplicates( allowDuplicates );
-
-        // Create the first root page, with revision 0L. It will be empty
-        // and increment the revision at the same time
-        rootPage = new InMemoryLeaf<K, V>( this );
-
-        // Now, call the init() method
-        init();
+        catch ( IOException ioe )
+        {
+            throw new RuntimeException( ioe.getMessage() );
+        }
     }
 
 
@@ -279,7 +167,7 @@ import org.slf4j.LoggerFactory;
             this.file = new File( envDir, btreeHeader.getName() + DATA_SUFFIX );
 
             this.journal = new File( envDir, file.getName() + JOURNAL_SUFFIX );
-            type = BTreeTypeEnum.BACKED_ON_DISK;
+            setType( BTreeTypeEnum.BACKED_ON_DISK );
         }
 
         // Create the queue containing the pending read transactions
@@ -289,7 +177,7 @@ import org.slf4j.LoggerFactory;
 
         // Check the files and create them if missing
         // Create the queue containing the modifications, if it's not a in-memory btree
-        if ( type == BTreeTypeEnum.BACKED_ON_DISK )
+        if ( getType() == BTreeTypeEnum.BACKED_ON_DISK )
         {
             if ( file.length() > 0 )
             {
@@ -309,35 +197,14 @@ import org.slf4j.LoggerFactory;
                 applyJournal();
             }
         }
-        else if ( type == null )
+        else 
         {
-            type = BTreeTypeEnum.IN_MEMORY;
+            setType( BTreeTypeEnum.IN_MEMORY );
         }
-
-        // Initialize the caches
-        CacheConfiguration cacheConfiguration = new CacheConfiguration();
-        cacheConfiguration.setName( "pages" );
-        cacheConfiguration.setEternal( true );
-        cacheConfiguration.setOverflowToDisk( false );
-        cacheConfiguration.setCacheLoaderTimeoutMillis( 0 );
-        cacheConfiguration.setMaxElementsInMemory( cacheSize );
-        cacheConfiguration.setMemoryStoreEvictionPolicy( "LRU" );
-
-        cache = new Cache( cacheConfiguration );
-        cache.initialise();
 
         // Initialize the txnManager thread
         //FIXME we should NOT create a new transaction manager thread for each BTree
         //createTransactionManager();
-    }
-
-
-    /**
-     * Return the cache we use in this BTree
-     */
-    /* No qualifier */Cache getCache()
-    {
-        return cache;
     }
 
 
@@ -350,7 +217,7 @@ import org.slf4j.LoggerFactory;
         // readTransactionsThread.interrupt();
         // readTransactions.clear();
 
-        if ( type == BTreeTypeEnum.BACKED_ON_DISK )
+        if ( getType() == BTreeTypeEnum.BACKED_ON_DISK )
         {
             // Flush the data
             flush();
@@ -767,7 +634,7 @@ import org.slf4j.LoggerFactory;
      */
     public void flush() throws IOException
     {
-        if ( type == BTreeTypeEnum.BACKED_ON_DISK )
+        if ( getType() == BTreeTypeEnum.BACKED_ON_DISK )
         {
             // Then flush the file
             flush( file );
@@ -799,7 +666,7 @@ import org.slf4j.LoggerFactory;
      */
     public boolean isInMemory()
     {
-        return type == BTreeTypeEnum.IN_MEMORY;
+        return getType() == BTreeTypeEnum.IN_MEMORY;
     }
 
 
@@ -808,7 +675,7 @@ import org.slf4j.LoggerFactory;
      */
     public boolean isPersistent()
     {
-        return type == BTreeTypeEnum.IN_MEMORY;
+        return getType() == BTreeTypeEnum.IN_MEMORY;
     }
 
 
@@ -855,7 +722,7 @@ import org.slf4j.LoggerFactory;
     {
         StringBuilder sb = new StringBuilder();
 
-        switch ( type )
+        switch ( getType() )
         {
             case IN_MEMORY:
                 sb.append( "In-memory " );
@@ -893,7 +760,7 @@ import org.slf4j.LoggerFactory;
 
         sb.append( ", DuplicatesAllowed: " ).append( btreeHeader.isAllowDuplicates() );
 
-        if ( type == BTreeTypeEnum.BACKED_ON_DISK )
+        if ( getType() == BTreeTypeEnum.BACKED_ON_DISK )
         {
             try
             {

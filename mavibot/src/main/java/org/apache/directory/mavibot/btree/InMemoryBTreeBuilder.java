@@ -21,11 +21,6 @@
 package org.apache.directory.mavibot.btree;
 
 
-import static org.apache.directory.mavibot.btree.InMemoryBTreeFactory.createLeaf;
-import static org.apache.directory.mavibot.btree.InMemoryBTreeFactory.createNode;
-import static org.apache.directory.mavibot.btree.InMemoryBTreeFactory.setKey;
-import static org.apache.directory.mavibot.btree.InMemoryBTreeFactory.setValue;
-
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -64,33 +59,35 @@ public class InMemoryBTreeBuilder<K, V>
     @SuppressWarnings("unchecked")
     public BTree<K, V> build( Iterator<Tuple<K, V>> sortedTupleItr ) throws IOException
     {
-        BTree<K, V> btree = new InMemoryBTree<K, V>( name, keySerializer, valueSerializer );
+        BTree<K, V> btree = BTreeFactory.createInMemoryBTree( name, keySerializer, valueSerializer );
         btree.init();
 
         List<Page<K, V>> lstLeaves = new ArrayList<Page<K, V>>();
 
         int totalTupleCount = 0;
 
-        InMemoryLeaf<K, V> leaf1 = createLeaf( btree, 0, numKeysInNode );
+        InMemoryLeaf<K, V> leaf1 = (InMemoryLeaf<K, V>)BTreeFactory.createLeaf( btree, 0, numKeysInNode );
         lstLeaves.add( leaf1 );
 
         int leafIndex = 0;
+        
         while ( sortedTupleItr.hasNext() )
         {
             Tuple<K, V> tuple = sortedTupleItr.next();
 
-            setKey( leaf1, leafIndex, tuple.getKey() );
+            BTreeFactory.setKey( btree, leaf1, leafIndex, tuple.getKey() );
 
             InMemoryValueHolder<V> eh = new InMemoryValueHolder<V>( btree, tuple.getValue() );
 
-            setValue( leaf1, leafIndex, eh );
+            BTreeFactory.setValue( btree, leaf1, leafIndex, eh );
 
             leafIndex++;
             totalTupleCount++;
+            
             if ( ( totalTupleCount % numKeysInNode ) == 0 )
             {
                 leafIndex = 0;
-                leaf1 = createLeaf( btree, 0, numKeysInNode );
+                leaf1 = (InMemoryLeaf<K, V>)BTreeFactory.createLeaf( btree, 0, numKeysInNode );
                 lstLeaves.add( leaf1 );
             }
         }
@@ -144,7 +141,7 @@ public class InMemoryBTreeBuilder<K, V>
 
         int numChildren = numKeysInNode + 1;
 
-        InMemoryNode<K, V> node = createNode( btree, 0, numKeysInNode );
+        InMemoryNode<K, V> node = (InMemoryNode<K, V>)BTreeFactory.createNode( btree, 0, numKeysInNode );
         lstNodes.add( node );
         int i = 0;
         int totalNodes = 0;
@@ -153,7 +150,7 @@ public class InMemoryBTreeBuilder<K, V>
         {
             if ( i != 0 )
             {
-                setKey( node, i - 1, p.getLeftMostKey() );
+                BTreeFactory.setKey( btree, node, i - 1, p.getLeftMostKey() );
             }
 
             node.setPageHolder( i, new PageHolder<K, V>( btree, p ) );
@@ -164,7 +161,7 @@ public class InMemoryBTreeBuilder<K, V>
             if ( ( totalNodes % numChildren ) == 0 )
             {
                 i = 0;
-                node = createNode( btree, 0, numKeysInNode );
+                node = (InMemoryNode<K, V>)BTreeFactory.createNode( btree, 0, numKeysInNode );
                 lstNodes.add( node );
             }
         }

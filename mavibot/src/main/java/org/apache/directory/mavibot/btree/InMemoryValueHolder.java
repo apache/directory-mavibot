@@ -121,20 +121,13 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
      */
     protected void createSubTree()
     {
-        try
-        {
-            InMemoryBTreeConfiguration<V, V> configuration = new InMemoryBTreeConfiguration<V, V>();
-            configuration.setAllowDuplicates( false );
-            configuration.setName( UUID.randomUUID().toString() );
-            configuration.setKeySerializer( valueSerializer );
-            configuration.setValueSerializer( valueSerializer );
+        InMemoryBTreeConfiguration<V, V> configuration = new InMemoryBTreeConfiguration<V, V>();
+        configuration.setAllowDuplicates( false );
+        configuration.setName( UUID.randomUUID().toString() );
+        configuration.setKeySerializer( valueSerializer );
+        configuration.setValueSerializer( valueSerializer );
 
-            valueBtree = new InMemoryBTree<V, V>( configuration );
-        }
-        catch ( IOException e )
-        {
-            throw new RuntimeException( e );
-        }
+        valueBtree = BTreeFactory.createInMemoryBTree( configuration );
     }
 
 

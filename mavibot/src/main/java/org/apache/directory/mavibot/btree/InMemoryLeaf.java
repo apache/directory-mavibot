@@ -568,7 +568,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    /* no qualifier */void setValue( int pos, InMemoryValueHolder<V> value )
+    /* no qualifier */void setValue( int pos, ValueHolder<V> value )
     {
         values[pos] = value;
     }
@@ -895,6 +895,24 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         val = valueCursor.prev();
 
         return new Tuple<K, V>( getKey( nbElems - 1 ), val );
+    }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    public boolean isLeaf()
+    {
+        return true;
+    }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    public boolean isNode()
+    {
+        return false;
     }
 
 

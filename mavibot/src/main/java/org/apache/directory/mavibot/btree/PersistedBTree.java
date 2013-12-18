@@ -32,7 +32,6 @@ import net.sf.ehcache.Status;
 import net.sf.ehcache.config.CacheConfiguration;
 
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
-import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,6 +52,15 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
     /** The RecordManager if the BTree is managed */
     private RecordManager recordManager;
 
+    /** The cache associated with this BTree */
+    protected Cache cache;
+
+    /** The default number of pages to keep in memory */
+    static final int DEFAULT_CACHE_SIZE = 1000;
+
+    /** The cache size, default to 1000 elements */
+    protected int cacheSize = DEFAULT_CACHE_SIZE;
+
     /** A flag indicating if this BTree is a Sub BTree */
     private boolean isSubBtree = false;
 
@@ -70,19 +78,20 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
     /**
      * Creates a new BTree, with no initialization. 
      */
-    public PersistedBTree()
+    /* no qualifier */ PersistedBTree()
     {
         btreeHeader = new BTreeHeader();
+        setType( BTreeTypeEnum.PERSISTED );
     }
 
 
     /**
-     * Creates a new in-memory BTree using the BTreeConfiguration to initialize the 
+     * Creates a new persisted BTree using the BTreeConfiguration to initialize the 
      * BTree
      * 
-     * @param comparator The comparator to use
+     * @param configuration The configuration to use
      */
-    public PersistedBTree( PersistedBTreeConfiguration<K, V> configuration )
+    /* no qualifier */ PersistedBTree( PersistedBTreeConfiguration<K, V> configuration )
     {
         super();
         String name = configuration.getName();
@@ -107,6 +116,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
         writeBufferSize = configuration.getWriteBufferSize();
         btreeHeader.setAllowDuplicates( configuration.isAllowDuplicates() );
         cacheSize = configuration.getCacheSize();
+        setType( BTreeTypeEnum.PERSISTED );
 
         if ( keySerializer.getComparator() == null )
         {
@@ -126,110 +136,6 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
         }
 
         // Now, initialize the BTree
-        init();
-    }
-
-
-    /**
-     * Creates a new in-memory BTree with a default page size and key/value serializers.
-     * 
-     * @param comparator The comparator to use
-     */
-    public PersistedBTree( String name, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer )
-    {
-        this( name, keySerializer, valueSerializer, false );
-    }
-
-
-    public PersistedBTree( String name, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer,
-        boolean allowDuplicates )
-    {
-        this( name, null, keySerializer, valueSerializer, DEFAULT_PAGE_SIZE, allowDuplicates, DEFAULT_CACHE_SIZE );
-    }
-
-
-    public PersistedBTree( String name, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer,
-        boolean allowDuplicates, int cacheSize )
-    {
-        this( name, null, keySerializer, valueSerializer, DEFAULT_PAGE_SIZE, allowDuplicates, cacheSize );
-    }
-
-
-    /**
-     * Creates a new in-memory BTree with a default page size and key/value serializers.
-     * 
-     * @param comparator The comparator to use
-     */
-    public PersistedBTree( String name, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer, int pageSize )
-    {
-        this( name, null, keySerializer, valueSerializer, pageSize );
-    }
-
-
-    /**
-     * Creates a new BTree with a default page size and a comparator, with an associated file.
-     * @param comparator The comparator to use
-     * @param serializer The serializer to use
-     */
-    public PersistedBTree( String name, String path, ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer )
-    {
-        this( name, path, keySerializer, valueSerializer, DEFAULT_PAGE_SIZE );
-    }
-
-
-    /**
-     * 
-     * Creates a new instance of BTree with the given name and store it under the given dataDir if provided.
-     *
-     * @param name the name of the BTree
-     * @param dataDir the name of the data directory with absolute path
-     * @param keySerializer key serializer
-     * @param valueSerializer value serializer
-     * @param pageSize size of the page
-     * @throws IOException
-     */
-    public PersistedBTree( String name, String dataDir, ElementSerializer<K> keySerializer,
-        ElementSerializer<V> valueSerializer, int pageSize )
-    {
-        this( name, dataDir, keySerializer, valueSerializer, pageSize, false, DEFAULT_CACHE_SIZE );
-    }
-
-
-    public PersistedBTree( String name, String dataDir, ElementSerializer<K> keySerializer,
-        ElementSerializer<V> valueSerializer, int pageSize, boolean allowDuplicates )
-    {
-        this( name, dataDir, keySerializer, valueSerializer, pageSize, allowDuplicates, DEFAULT_CACHE_SIZE );
-    }
-
-
-    public PersistedBTree( String name, String dataDir, ElementSerializer<K> keySerializer,
-        ElementSerializer<V> valueSerializer, int pageSize, boolean allowDuplicates, int cacheSize )
-    {
-        super();
-
-        btreeHeader = new BTreeHeader();
-        btreeHeader.setName( name );
-
-        setPageSize( pageSize );
-        writeBufferSize = DEFAULT_WRITE_BUFFER_SIZE;
-
-        this.cacheSize = cacheSize;
-
-        this.keySerializer = keySerializer;
-
-        btreeHeader.setKeySerializerFQCN( keySerializer.getClass().getName() );
-
-        this.valueSerializer = valueSerializer;
-
-        btreeHeader.setValueSerializerFQCN( valueSerializer.getClass().getName() );
-
-        btreeHeader.setAllowDuplicates( allowDuplicates );
-
-        // Create the first root page, with revision 0L. It will be empty
-        // and increment the revision at the same time
-        rootPage = new PersistedLeaf<K, V>( this );
-
-        // Now, call the init() method
         init();
     }
 
