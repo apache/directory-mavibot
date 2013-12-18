@@ -173,7 +173,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
-    public TupleCursor<K, V> browse( K key, Transaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
+    public TupleCursor<K, V> browse( K key, ReadTransaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
         throws IOException
     {
         int pos = findPos( key );
@@ -285,7 +285,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
-    public TupleCursor<K, V> browse( Transaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
+    public TupleCursor<K, V> browse( ReadTransaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
         throws IOException
     {
         stack[depth++] = new ParentPos<K, V>( this, 0 );

@@ -32,7 +32,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
  *
  * @param <K> The Key type
  * @param <V> The Value type
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public interface BTree<K, V>
@@ -55,7 +55,7 @@ public interface BTree<K, V>
 
     /**
      * Initialize the BTree.
-     * 
+     *
      * @throws IOException If we get some exception while initializing the BTree
      */
     void init() throws IOException;
@@ -74,7 +74,7 @@ public interface BTree<K, V>
      * If the provided size is below 2, we will default to DEFAULT_PAGE_SIZE.<br/>
      * If the provided size is not a power of 2, we will select the closest power of 2
      * higher than the given number<br/>
-     * 
+     *
      * @param pageSize The requested page size
      */
     void setPageSize( int pageSize );
@@ -103,7 +103,7 @@ public interface BTree<K, V>
     /**
      * Delete the entry which key is given as a parameter. If the entry exists, it will
      * be removed from the tree, the old tuple will be returned. Otherwise, null is returned.
-     * 
+     *
      * @param key The key for the entry we try to remove
      * @return A Tuple<K, V> containing the removed entry, or null if it's not found.
      */
@@ -112,10 +112,10 @@ public interface BTree<K, V>
 
     /**
      * Delete the value from an entry associated with the given key. If the value
-     * If the value is present, it will be deleted first, later if there are no other 
-     * values associated with this key(which can happen when duplicates are enabled), 
+     * If the value is present, it will be deleted first, later if there are no other
+     * values associated with this key(which can happen when duplicates are enabled),
      * we will remove the key from the tree.
-     * 
+     *
      * @param key The key for the entry we try to remove
      * @param value The value to delete (can be null)
      * @return A Tuple<K, V> containing the removed entry, or null if it's not found.
@@ -127,7 +127,7 @@ public interface BTree<K, V>
      * Find a value in the tree, given its key. If the key is not found,
      * it will throw a KeyNotFoundException. <br/>
      * Note that we can get a null value stored, or many values.
-     * 
+     *
      * @param key The key we are looking at
      * @return The found value, or null if the key is not present in the tree
      * @throws KeyNotFoundException If the key is not found in the BTree
@@ -138,7 +138,7 @@ public interface BTree<K, V>
 
     /**
      * Get the rootPage associated to a given revision.
-     * 
+     *
      * @param revision The revision we are looking for
      * @return The rootPage associated to this revision
      * @throws IOException If we had an issue while accessing the underlying file
@@ -149,7 +149,7 @@ public interface BTree<K, V>
 
     /**
      * Get the current rootPage
-     * 
+     *
      * @return The current rootPage
      */
     Page<K, V> getRootPage();
@@ -165,7 +165,7 @@ public interface BTree<K, V>
      * Find a value in the tree, given its key, at a specific revision. If the key is not found,
      * it will throw a KeyNotFoundException. <br/>
      * Note that we can get a null value stored, or many values.
-     * 
+     *
      * @param revision The revision for which we want to find a key
      * @param key The key we are looking at
      * @return The found value, or null if the key is not present in the tree
@@ -177,7 +177,7 @@ public interface BTree<K, V>
 
     /**
      * Checks if the given key exists.
-     *  
+     *
      * @param key The key we are looking at
      * @return true if the key is present, false otherwise
      * @throws IOException If we have an error while trying to access the page
@@ -187,7 +187,7 @@ public interface BTree<K, V>
 
     /**
      * Checks if the given key exists for a given revision.
-     *  
+     *
      * @param revision The revision for which we want to find a key
      * @param key The key we are looking at
      * @return true if the key is present, false otherwise
@@ -199,7 +199,7 @@ public interface BTree<K, V>
 
     /**
      * Checks if the BTree contains the given key with the given value.
-     * 
+     *
      * @param key The key we are looking for
      * @param value The value associated with the given key
      * @return true if the key and value are associated with each other, false otherwise
@@ -209,7 +209,7 @@ public interface BTree<K, V>
 
     /**
      * Checks if the BTree contains the given key with the given value for a given revision
-     * 
+     *
      * @param revision The revision we would like to browse
      * @param key The key we are looking for
      * @param value The value associated with the given key
@@ -221,7 +221,7 @@ public interface BTree<K, V>
 
     /**
      * Creates a cursor starting at the beginning of the tree
-     * 
+     *
      * @return A cursor on the btree
      * @throws IOException
      */
@@ -230,7 +230,7 @@ public interface BTree<K, V>
 
     /**
      * Creates a cursor starting at the beginning of the tree, for a given revision
-     * 
+     *
      * @param revision The revision we would like to browse
      * @return A cursor on the btree
      * @throws IOException If we had an issue while fetching data from the disk
@@ -241,7 +241,7 @@ public interface BTree<K, V>
 
     /**
      * Creates a cursor starting on the given key
-     * 
+     *
      * @param key The key which is the starting point. If the key is not found,
      * then the cursor will always return null.
      * @return A cursor on the btree
@@ -252,7 +252,7 @@ public interface BTree<K, V>
 
     /**
      * Creates a cursor starting on the given key at the given revision
-     * 
+     *
      * @param The revision we are looking for
      * @param key The key which is the starting point. If the key is not found,
      * then the cursor will always return null.
@@ -348,13 +348,13 @@ public interface BTree<K, V>
     String getValueSerializerFQCN();
 
 
-    /** 
+    /**
      * @return The current BTree revision
      */
     long getRevision();
 
 
-    /** 
+    /**
      * @return The current number of elements in the BTree
      */
     long getNbElems();
@@ -376,4 +376,22 @@ public interface BTree<K, V>
      * @return the type
      */
     BTreeTypeEnum getType();
+
+
+    /**
+     * Starts a transaction
+     */
+    void beginTransaction();
+
+
+    /**
+     * Commits a transaction
+     */
+    void commit();
+
+
+    /**
+     * Rollback a transaction
+     */
+    void rollback();
 }

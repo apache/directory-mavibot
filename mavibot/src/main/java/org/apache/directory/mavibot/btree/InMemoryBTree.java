@@ -173,7 +173,7 @@ import org.slf4j.LoggerFactory;
         }
 
         // Create the queue containing the pending read transactions
-        readTransactions = new ConcurrentLinkedQueue<Transaction<K, V>>();
+        readTransactions = new ConcurrentLinkedQueue<ReadTransaction<K, V>>();
 
         writeLock = new ReentrantLock();
 
@@ -714,6 +714,33 @@ import org.slf4j.LoggerFactory;
 
         // Flush to the disk for real
         journalChannel.force( true );
+    }
+
+
+    /**
+     * Starts a transaction
+     */
+    public void beginTransaction()
+    {
+        // Does nothing...
+    }
+
+
+    /**
+     * Commits a transaction
+     */
+    public void commit()
+    {
+        // Does nothing...
+    }
+
+
+    /**
+     * Rollback a transaction
+     */
+    public void rollback()
+    {
+        // Does nothing...
     }
 
 

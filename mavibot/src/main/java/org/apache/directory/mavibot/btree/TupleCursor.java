@@ -52,7 +52,7 @@ public class TupleCursor<K, V>
     protected int depth = 0;
 
     /** The transaction used for this cursor */
-    protected Transaction<K, V> transaction;
+    protected ReadTransaction<K, V> transaction;
 
     /** The Tuple used to return the results */
     protected Tuple<K, V> tuple = new Tuple<K, V>();
@@ -64,7 +64,7 @@ public class TupleCursor<K, V>
      * @param transaction The transaction this operation is protected by
      * @param stack The stack of parent's from root to this page
      */
-    public TupleCursor( Transaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
+    public TupleCursor( ReadTransaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
     {
         this.transaction = transaction;
         this.stack = stack;

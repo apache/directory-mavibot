@@ -61,7 +61,7 @@ public class RecordManagerTest
 {
     private BTree<Long, String> btree = null;
 
-    private RecordManager recordManager1 = null;
+    private RecordManager recordManager = null;
 
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
@@ -79,7 +79,7 @@ public class RecordManagerTest
         try
         {
             // Create a new BTree
-            btree = recordManager1.addBTree( "test", new LongSerializer(), new StringSerializer(), false );
+            btree = recordManager.addBTree( "test", new LongSerializer(), new StringSerializer(), false );
         }
         catch ( Exception e )
         {
@@ -104,18 +104,18 @@ public class RecordManagerTest
     {
         try
         {
-            if ( recordManager1 != null )
+            if ( recordManager != null )
             {
-                recordManager1.close();
+                recordManager.close();
             }
 
             // Now, try to reload the file back
-            recordManager1 = new RecordManager( dataDir.getAbsolutePath() );
+            recordManager = new RecordManager( dataDir.getAbsolutePath() );
 
             // load the last created btree
             if ( btree != null )
             {
-                btree = recordManager1.getManagedTree( btree.getName() );
+                btree = recordManager.getManagedTree( btree.getName() );
             }
         }
         catch ( Exception e )
@@ -131,14 +131,14 @@ public class RecordManagerTest
     @Test
     public void testRecordManager() throws IOException, BTreeAlreadyManagedException
     {
-        assertEquals( 1, recordManager1.getNbManagedTrees() );
+        assertEquals( 1, recordManager.getNbManagedTrees() );
 
-        Set<String> managedBTrees = recordManager1.getManagedTrees();
+        Set<String> managedBTrees = recordManager.getManagedTrees();
 
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        BTree<Long, String> btree1 = recordManager1.getManagedTree( "test" );
+        BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
         assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
@@ -165,14 +165,14 @@ public class RecordManagerTest
         // Now, try to reload the file back
         openRecordManagerAndBtree();
 
-        assertEquals( 1, recordManager1.getNbManagedTrees() );
+        assertEquals( 1, recordManager.getNbManagedTrees() );
 
-        Set<String> managedBTrees = recordManager1.getManagedTrees();
+        Set<String> managedBTrees = recordManager.getManagedTrees();
 
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        BTree<Long, String> btree1 = recordManager1.getManagedTree( "test" );
+        BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
         assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
@@ -209,14 +209,14 @@ public class RecordManagerTest
         // Now, try to reload the file back
         openRecordManagerAndBtree();
 
-        assertEquals( 1, recordManager1.getNbManagedTrees() );
+        assertEquals( 1, recordManager.getNbManagedTrees() );
 
-        Set<String> managedBTrees = recordManager1.getManagedTrees();
+        Set<String> managedBTrees = recordManager.getManagedTrees();
 
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        BTree<Long, String> btree1 = recordManager1.getManagedTree( "test" );
+        BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
         assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
@@ -245,7 +245,7 @@ public class RecordManagerTest
         KeyNotFoundException
     {
         // Don't keep any revision
-        recordManager1.setKeepRevisions( false );
+        recordManager.setKeepRevisions( false );
 
         String fileName = dataDir.getAbsolutePath() + "/mavibot.db";
         File file = new File( fileName );
@@ -273,7 +273,7 @@ public class RecordManagerTest
             {
                 fileSize = file.length();
                 System.out.println( "----- Size after insertion of " + i + " = " + fileSize );
-                System.out.println( recordManager1 );
+                System.out.println( recordManager );
                 //System.out.println( btree );
             }
         }
@@ -283,22 +283,22 @@ public class RecordManagerTest
         System.out.println( "Size after insertion of 100 000 elements : " + fileSize );
         System.out.println( "Time taken to write 100 000 elements : " + ( t1 - t0 ) );
         System.out.println( "  Nb elem/s : " + ( ( nbElems * 1000 ) / ( t1 - t0 ) ) );
-        System.out.println( "Nb created page " + recordManager1.nbCreatedPages.get() );
-        System.out.println( "Nb allocated page " + recordManager1.nbReusedPages.get() );
-        System.out.println( "Nb page we have freed " + recordManager1.nbFreedPages.get() );
-        System.out.println( recordManager1 );
+        System.out.println( "Nb created page " + recordManager.nbCreatedPages.get() );
+        System.out.println( "Nb allocated page " + recordManager.nbReusedPages.get() );
+        System.out.println( "Nb page we have freed " + recordManager.nbFreedPages.get() );
+        System.out.println( recordManager );
 
         // Now, try to reload the file back
         openRecordManagerAndBtree();
 
-        assertEquals( 1, recordManager1.getNbManagedTrees() );
+        assertEquals( 1, recordManager.getNbManagedTrees() );
 
-        Set<String> managedBTrees = recordManager1.getManagedTrees();
+        Set<String> managedBTrees = recordManager.getManagedTrees();
 
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        BTree<Long, String> btree1 = recordManager1.getManagedTree( "test" );
+        BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
         assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
@@ -404,7 +404,7 @@ public class RecordManagerTest
     public void testRecordManagerBrowseWithKeepRevisions() throws IOException, BTreeAlreadyManagedException,
         KeyNotFoundException
     {
-        recordManager1.setKeepRevisions( true );
+        recordManager.setKeepRevisions( true );
 
         // Now, add some elements in the BTree
         btree.insert( 3L, "V3" );
@@ -429,14 +429,14 @@ public class RecordManagerTest
         // Now, try to reload the file back
         openRecordManagerAndBtree();
 
-        assertEquals( 1, recordManager1.getNbManagedTrees() );
+        assertEquals( 1, recordManager.getNbManagedTrees() );
 
-        Set<String> managedBTrees = recordManager1.getManagedTrees();
+        Set<String> managedBTrees = recordManager.getManagedTrees();
 
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        BTree<Long, String> btree1 = recordManager1.getManagedTree( "test" );
+        BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
         assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
@@ -475,7 +475,7 @@ public class RecordManagerTest
     public void testRecordManagerBrowseFromWithRevision() throws IOException, BTreeAlreadyManagedException,
         KeyNotFoundException
     {
-        recordManager1.setKeepRevisions( true );
+        recordManager.setKeepRevisions( true );
 
         // Now, add some elements in the BTree
         btree.insert( 3L, "V3" );
@@ -500,14 +500,14 @@ public class RecordManagerTest
         // Now, try to reload the file back
         openRecordManagerAndBtree();
 
-        assertEquals( 1, recordManager1.getNbManagedTrees() );
+        assertEquals( 1, recordManager.getNbManagedTrees() );
 
-        Set<String> managedBTrees = recordManager1.getManagedTrees();
+        Set<String> managedBTrees = recordManager.getManagedTrees();
 
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        BTree<Long, String> btree1 = recordManager1.getManagedTree( "test" );
+        BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
         assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
@@ -545,7 +545,7 @@ public class RecordManagerTest
     public void testGetWithRevision() throws IOException, BTreeAlreadyManagedException,
         KeyNotFoundException
     {
-        recordManager1.setKeepRevisions( true );
+        recordManager.setKeepRevisions( true );
 
         // Now, add some elements in the BTree
         btree.insert( 3L, "V3" );
@@ -591,14 +591,14 @@ public class RecordManagerTest
         // Now, try to reload the file back
         openRecordManagerAndBtree();
 
-        assertEquals( 1, recordManager1.getNbManagedTrees() );
+        assertEquals( 1, recordManager.getNbManagedTrees() );
 
-        Set<String> managedBTrees = recordManager1.getManagedTrees();
+        Set<String> managedBTrees = recordManager.getManagedTrees();
 
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        BTree<Long, String> btree1 = recordManager1.getManagedTree( "test" );
+        BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
         assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
@@ -652,7 +652,7 @@ public class RecordManagerTest
     public void testContainWithRevision() throws IOException, BTreeAlreadyManagedException,
         KeyNotFoundException
     {
-        recordManager1.setKeepRevisions( true );
+        recordManager.setKeepRevisions( true );
 
         // Now, add some elements in the BTree
         btree.insert( 3L, "V3" );
@@ -692,14 +692,14 @@ public class RecordManagerTest
         // Now, try to reload the file back
         openRecordManagerAndBtree();
 
-        assertEquals( 1, recordManager1.getNbManagedTrees() );
+        assertEquals( 1, recordManager.getNbManagedTrees() );
 
-        Set<String> managedBTrees = recordManager1.getManagedTrees();
+        Set<String> managedBTrees = recordManager.getManagedTrees();
 
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        BTree<Long, String> btree1 = recordManager1.getManagedTree( "test" );
+        BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
         assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
@@ -747,7 +747,7 @@ public class RecordManagerTest
     public void testHasKeyWithRevision() throws IOException, BTreeAlreadyManagedException,
         KeyNotFoundException
     {
-        recordManager1.setKeepRevisions( true );
+        recordManager.setKeepRevisions( true );
 
         // Now, add some elements in the BTree
         btree.insert( 3L, "V3" );
@@ -787,14 +787,14 @@ public class RecordManagerTest
         // Now, try to reload the file back
         openRecordManagerAndBtree();
 
-        assertEquals( 1, recordManager1.getNbManagedTrees() );
+        assertEquals( 1, recordManager.getNbManagedTrees() );
 
-        Set<String> managedBTrees = recordManager1.getManagedTrees();
+        Set<String> managedBTrees = recordManager.getManagedTrees();
 
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        BTree<Long, String> btree1 = recordManager1.getManagedTree( "test" );
+        BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
         assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
@@ -851,7 +851,7 @@ public class RecordManagerTest
         BTree<Long, String> dupsTree = BTreeFactory.createPersistedBTree( name, new LongSerializer(),
             new StringSerializer(), pageSize, true );
 
-        recordManager1.manage( dupsTree );
+        recordManager.manage( dupsTree );
 
         for ( long i = 0; i < numKeys; i++ )
         {
@@ -864,7 +864,7 @@ public class RecordManagerTest
         // Now, try to reload the file back
         openRecordManagerAndBtree();
 
-        dupsTree = recordManager1.getManagedTree( name );
+        dupsTree = recordManager.getManagedTree( name );
 
         for ( long i = 0; i < numKeys; i++ )
         {

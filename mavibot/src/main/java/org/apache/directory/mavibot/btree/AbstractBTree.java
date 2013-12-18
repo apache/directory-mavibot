@@ -35,7 +35,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
  *
  * @param <K> The Key type
  * @param <V> The Value type
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 /* No qualifier*/abstract class AbstractBTree<K, V> implements BTree<K, V>
@@ -56,7 +56,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     protected ElementSerializer<V> valueSerializer;
 
     /** The list of read transactions being executed */
-    protected ConcurrentLinkedQueue<Transaction<K, V>> readTransactions;
+    protected ConcurrentLinkedQueue<ReadTransaction<K, V>> readTransactions;
 
     /** The size of the buffer used to write data in disk */
     protected int writeBufferSize;
@@ -73,16 +73,19 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     /** The BTree type : either in-memory, disk backed or persisted */
     private BTreeTypeEnum type;
 
+    /** The current transaction */
+    protected WriteTransaction writeTransaction;
+
 
     /**
-     * Starts a Read Only transaction. If the transaction is not closed, it will be 
+     * Starts a Read Only transaction. If the transaction is not closed, it will be
      * automatically closed after the timeout
-     * 
+     *
      * @return The created transaction
      */
-    protected Transaction<K, V> beginReadTransaction()
+    protected ReadTransaction<K, V> beginReadTransaction()
     {
-        Transaction<K, V> readTransaction = new Transaction<K, V>( rootPage, btreeHeader.getRevision() - 1,
+        ReadTransaction<K, V> readTransaction = new ReadTransaction<K, V>( rootPage, btreeHeader.getRevision() - 1,
             System.currentTimeMillis() );
 
         readTransactions.add( readTransaction );
@@ -96,7 +99,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public TupleCursor<K, V> browse() throws IOException
     {
-        Transaction<K, V> transaction = beginReadTransaction();
+        ReadTransaction<K, V> transaction = beginReadTransaction();
 
         // Fetch the root page for this revision
         ParentPos<K, V>[] stack = new ParentPos[32];
@@ -115,7 +118,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public TupleCursor<K, V> browse( long revision ) throws IOException, KeyNotFoundException
     {
-        Transaction<K, V> transaction = beginReadTransaction();
+        ReadTransaction<K, V> transaction = beginReadTransaction();
 
         // Fetch the root page for this revision
         Page<K, V> revisionRootPage = getRootPage( revision );
@@ -134,7 +137,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public TupleCursor<K, V> browseFrom( K key ) throws IOException
     {
-        Transaction<K, V> transaction = beginReadTransaction();
+        ReadTransaction<K, V> transaction = beginReadTransaction();
 
         // Fetch the root page for this revision
         ParentPos<K, V>[] stack = new ParentPos[32];
@@ -150,7 +153,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public TupleCursor<K, V> browseFrom( long revision, K key ) throws IOException, KeyNotFoundException
     {
-        Transaction<K, V> transaction = beginReadTransaction();
+        ReadTransaction<K, V> transaction = beginReadTransaction();
 
         // Fetch the rootPage for this revision
         Page<K, V> revisionRootPage = getRootPage( revision );
@@ -229,7 +232,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     /**
      * Delete the entry which key is given as a parameter. If the entry exists, it will
      * be removed from the tree, the old tuple will be returned. Otherwise, null is returned.
-     * 
+     *
      * @param key The key for the entry we try to remove
      * @return A Tuple<K, V> containing the removed entry, or null if it's not found.
      */
@@ -253,8 +256,10 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
         try
         {
-            // Commented atm, we will have to play around the idea of transactions later
-            writeLock.lock();
+            if ( writeTransaction == null )
+            {
+                writeLock.lock();
+            }
 
             InsertResult<K, V> result = insert( key, value, revision );
 
@@ -266,7 +271,10 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         finally
         {
             // See above
-            writeLock.unlock();
+            if ( writeTransaction == null )
+            {
+                writeLock.unlock();
+            }
         }
 
         return existingValue;
@@ -277,6 +285,15 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      * {@inheritDoc}
      */
     /* no qualifier */abstract InsertResult<K, V> insert( K key, V value, long revision ) throws IOException;
+
+
+    /**
+     * Flush the latest revision to disk. We will replace the current file by the new one, as
+     * we flush in a temporary file.
+     */
+    public void flush() throws IOException
+    {
+    }
 
 
     /**
@@ -414,7 +431,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     }
 
 
-    /** 
+    /**
      * {@inheritDoc}
      */
     public long getRevision()
@@ -434,7 +451,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
     /**
      * Generates a new revision number. It's only used by the Page instances.
-     * 
+     *
      * @return a new incremental revision number
      */
     /* no qualifier */long generateRevision()
@@ -461,7 +478,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     }
 
 
-    /** 
+    /**
      * {@inheritDoc}
      */
     public long getNbElems()
@@ -614,7 +631,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             {
                 try
                 {
-                    Transaction<K, V> transaction = null;
+                    ReadTransaction<K, V> transaction = null;
 
                     while ( !Thread.currentThread().isInterrupted() )
                     {

@@ -74,6 +74,9 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
     /*No qualifier*/static int valueThresholdUp = DEFAULT_VALUE_THRESHOLD_UP;
     /*No qualifier*/static int valueThresholdLow = DEFAULT_VALUE_THRESHOLD_LOW;
 
+    /** A lock to protect the creation of the transaction */
+    protected ReentrantLock createTransaction = new ReentrantLock();
+
 
     /**
      * Creates a new BTree, with no initialization.
@@ -132,7 +135,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
             // The subBTree inherit its cache from its parent BTree
             this.cache = ( ( PersistedBTree<K, V> ) configuration.getParentBTree() ).getCache();
             this.writeLock = ( ( PersistedBTree<K, V> ) configuration.getParentBTree() ).getWriteLock();
-            readTransactions = new ConcurrentLinkedQueue<Transaction<K, V>>();
+            readTransactions = new ConcurrentLinkedQueue<ReadTransaction<K, V>>();
         }
 
         // Now, initialize the BTree
@@ -152,7 +155,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
             // This is not a subBtree, we have to initialize the cache
 
             // Create the queue containing the pending read transactions
-            readTransactions = new ConcurrentLinkedQueue<Transaction<K, V>>();
+            readTransactions = new ConcurrentLinkedQueue<ReadTransaction<K, V>>();
 
             writeLock = new ReentrantLock();
 
@@ -196,7 +199,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
     /**
      * Return the cache we use in this BTree
      */
-    /* No qualifier */ConcurrentLinkedQueue<Transaction<K, V>> getReadTransactions()
+    /* No qualifier */ConcurrentLinkedQueue<ReadTransaction<K, V>> getReadTransactions()
     {
         return readTransactions;
     }
@@ -544,12 +547,59 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
 
     /**
-     * Flush the latest revision to disk. We will replace the current file by the new one, as
-     * we flush in a temporary file.
+     * Starts a transaction
      */
-    public void flush() throws IOException
+    public void beginTransaction()
     {
+        createTransaction.lock();
+
+        if ( writeTransaction == null )
+        {
+            writeTransaction = new WriteTransaction( recordManager );
+        }
+
+        createTransaction.unlock();
+
+        writeTransaction.start();
     }
+
+
+    /**
+     * Commits a transaction
+     */
+    public void commit()
+    {
+        createTransaction.lock();
+
+        if ( writeTransaction == null )
+        {
+            writeTransaction = new WriteTransaction( recordManager );
+        }
+
+        createTransaction.unlock();
+
+        writeTransaction.commit();
+    }
+
+
+    /**
+     * Rollback a transaction
+     */
+    public void rollback()
+    {
+        createTransaction.lock();
+
+        if ( writeTransaction == null )
+        {
+            writeTransaction = new WriteTransaction( recordManager );
+        }
+
+        createTransaction.unlock();
+
+        writeTransaction.rollback();
+    }
+
+
 
 
     /**
