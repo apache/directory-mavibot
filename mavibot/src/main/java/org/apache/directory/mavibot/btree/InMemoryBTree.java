@@ -311,7 +311,7 @@ import org.slf4j.LoggerFactory;
      * @param revision The revision to use
      * @return an instance of the InsertResult.
      */
-    public InsertResult<K, V> insert( K key, V value, long revision ) throws IOException
+    /* no qualifier */ InsertResult<K, V> insert( K key, V value, long revision ) throws IOException
     {
         if ( key == null )
         {

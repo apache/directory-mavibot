@@ -24,7 +24,7 @@ import java.util.Date;
 
 
 /**
- * The Transaction is used to protect the BTree against concurrent modifcation,
+ * The Transaction is used to protect the BTree against concurrent modification,
  * and insure that a read is always done against one single revision. It's also
  * used to gather many modifications under one single revision, if needed.
  * <p/>
@@ -52,7 +52,7 @@ public class Transaction<K, V>
     /** The revision on which we are having a transaction */
     private volatile Page<K, V> root;
 
-    /** A flag used to tell if a transaction is closed ot not */
+    /** A flag used to tell if a transaction is closed or not */
     private volatile boolean closed;
 
 

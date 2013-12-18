@@ -273,7 +273,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     /**
      * {@inheritDoc}
      */
-    abstract public InsertResult<K, V> insert( K key, V value, long revision ) throws IOException;
+    /* no qualifier */abstract InsertResult<K, V> insert( K key, V value, long revision ) throws IOException;
 
 
     /**
