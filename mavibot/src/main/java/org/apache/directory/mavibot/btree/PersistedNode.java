@@ -28,7 +28,7 @@ import java.util.List;
 /**
  * A MVCC Node. It stores the keys and references to its children page. It does not
  * contain any value.
- * 
+ *
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
  *
@@ -40,7 +40,7 @@ import java.util.List;
      * Creates a new Node which will contain only one key, with references to
      * a left and right page. This is a specific constructor used by the btree
      * when the root was full when we added a new value.
-     * 
+     *
      * @param btree the parent BTree
      * @param revision the Node revision
      * @param nbElems The number of elements in this Node
@@ -59,7 +59,7 @@ import java.util.List;
      * Creates a new Node which will contain only one key, with references to
      * a left and right page. This is a specific constructor used by the btree
      * when the root was full when we added a new value.
-     * 
+     *
      * @param btree the parent BTree
      * @param revision the Node revision
      * @param key The new key
@@ -91,7 +91,7 @@ import java.util.List;
      * Creates a new Node which will contain only one key, with references to
      * a left and right page. This is a specific constructor used by the btree
      * when the root was full when we added a new value.
-     * 
+     *
      * @param btree the parent BTree
      * @param revision the Node revision
      * @param key The new key
@@ -99,8 +99,7 @@ import java.util.List;
      * @param rightPage The right page
      */
     @SuppressWarnings("unchecked")
-    PersistedNode( BTree<K, V> btree, long revision, K key, PersistedPageHolder<K, V> leftPage,
-        PersistedPageHolder<K, V> rightPage )
+    PersistedNode( BTree<K, V> btree, long revision, K key, PageHolder<K, V> leftPage, PageHolder<K, V> rightPage )
     {
         super( btree, revision, 1 );
 
@@ -177,7 +176,7 @@ import java.util.List;
     /**
      * Modifies the current node after a remove has been done in one of its children.
      * The node won't be merged with another node.
-     * 
+     *
      * @param removeResult The result of a remove operation
      * @param index the position of the key, not transformed
      * @param pos The position of the key, as a positive value
@@ -220,7 +219,7 @@ import java.util.List;
     /**
      * Handles the removal of an element from the root page, when two of its children
      * have been merged.
-     * 
+     *
      * @param mergedResult The merge result
      * @param pos The position in the current root
      * @param found Tells if the removed key is present in the root page
@@ -255,7 +254,7 @@ import java.util.List;
      * Borrows an element from the right sibling, creating a new sibling with one
      * less element and creating a new page where the element to remove has been
      * deleted and the borrowed element added on the right.
-     * 
+     *
      * @param revision The new revision for all the pages
      * @param sibling The right sibling
      * @param pos The position of the element to remove
@@ -342,7 +341,7 @@ import java.util.List;
      * Borrows an element from the left sibling, creating a new sibling with one
      * less element and creating a new page where the element to remove has been
      * deleted and the borrowed element added on the left.
-     * 
+     *
      * @param revision The new revision for all the pages
      * @param sibling The left sibling
      * @param pos The position of the element to remove
@@ -430,7 +429,7 @@ import java.util.List;
     /**
      * We have to merge the node with its sibling, both have N/2 elements before the element
      * removal.
-     * 
+     *
      * @param revision The revision
      * @param mergedResult The result of the merge
      * @param sibling The Page we will merge the current page with
@@ -649,7 +648,7 @@ import java.util.List;
                 // We will remove one element from a page that will have less than N/2 elements,
                 // which will lead to some reorganization : either we can borrow an element from
                 // a sibling, or we will have to merge two pages
-                int siblingPos = selectSibling( ( PersistedNode<K, V> ) parent, parentPos );
+                int siblingPos = selectSibling( parent, parentPos );
 
                 PersistedNode<K, V> sibling = ( PersistedNode<K, V> ) ( ( ( PersistedNode<K, V> ) parent ).children[siblingPos]
                     .getValue() );
@@ -769,7 +768,7 @@ import java.util.List;
 
     /**
      * Remove the key at a given position.
-     * 
+     *
      * @param mergedResult The page we will remove a key from
      * @param revision The revision of the modified page
      * @param pos The position into the page of the element to remove
@@ -849,7 +848,7 @@ import java.util.List;
 
     /**
      * Set the value at a give position
-     * 
+     *
      * @param pos The position in the values array
      * @param value the value to inject
      */
@@ -863,7 +862,7 @@ import java.util.List;
      * This method is used when we have to replace a child in a page when we have
      * found the key in the tree (the value will be changed, so we have made
      * copies of the existing pages).
-     * 
+     *
      * @param revision The current revision
      * @param result The modified page
      * @param pos The position of the found key
@@ -892,15 +891,15 @@ import java.util.List;
 
 
     /**
-     * Creates a new holder contaning a reference to a Page
-     * 
+     * Creates a new holder containing a reference to a Page
+     *
      * @param page The page we will refer to
-     * @return A holder contaning a reference to the child page
+     * @return A holder containing a reference to the child page
      * @throws IOException If we have an error while trying to access the page
      */
-    private PersistedPageHolder<K, V> createHolder( Page<K, V> page ) throws IOException
+    private PageHolder<K, V> createHolder( Page<K, V> page ) throws IOException
     {
-        PersistedPageHolder<K, V> holder = ( ( PersistedBTree<K, V> ) btree ).getRecordManager().writePage( btree,
+        PageHolder<K, V> holder = ( ( PersistedBTree<K, V> ) btree ).getRecordManager().writePage( btree,
             page,
             revision );
 
@@ -911,7 +910,7 @@ import java.util.List;
     /**
      * Adds a new key into a copy of the current page at a given position. We return the
      * modified page. The new page will have one more key than the current page.
-     * 
+     *
      * @param copiedPages the list of copied pages
      * @param revision The revision of the modified page
      * @param key The key to insert
@@ -966,7 +965,7 @@ import java.util.List;
      * If the newly added element is in the middle, we will use it
      * as a pivot. Otherwise, we will use either the last element in the left page if the element is added
      * on the left, or the first element in the right page if it's added on the right.
-     * 
+     *
      * @param copiedPages the list of copied pages
      * @param revision The new revision for all the created pages
      * @param pivot The key that will be move up after the split
@@ -1079,7 +1078,7 @@ import java.util.List;
 
     /**
      * Copies the current page and all its keys, with a new revision.
-     * 
+     *
      * @param revision The new revision
      * @return The copied page
      */

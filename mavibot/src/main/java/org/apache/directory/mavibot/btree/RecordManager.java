@@ -1914,16 +1914,14 @@ public class RecordManager
      * Stores a new page on disk. We will add the modified page into the tree of copied pages.
      * The new page is serialized and saved on disk.
      *
-     * @param oldPage
-     * @param oldRevision
-     * @param newPage
-     * @param newRevision
-     * @return The offset of the new page
-     * @throws IOException
+     * @param btree The persistedBTree we will create a new PageHolder for
+     * @param newPage The page to write on disk
+     * @param newRevision The page's revision
+     * @return A PageHolder containing the copied page
+     * @throws IOException If the page can't be written on disk
      */
-    /* No qualifier*/<K, V> PersistedPageHolder<K, V> writePage( BTree<K, V> btree, Page<K, V> newPage,
-        long newRevision )
-        throws IOException
+    /* No qualifier*/<K, V> PageHolder<K, V> writePage( BTree<K, V> btree, Page<K, V> newPage,
+        long newRevision ) throws IOException
     {
         // We first need to save the new page on disk
         PageIO[] pageIos = serializePage( btree, newRevision, newPage );
@@ -1936,7 +1934,7 @@ public class RecordManager
         // Build the resulting reference
         long offset = pageIos[0].getOffset();
         long lastOffset = pageIos[pageIos.length - 1].getOffset();
-        PersistedPageHolder<K, V> valueHolder = new PersistedPageHolder<K, V>( btree, newPage, offset,
+        PersistedPageHolder<K, V> pageHolder = new PersistedPageHolder<K, V>( btree, newPage, offset,
             lastOffset );
 
         if ( LOG_CHECK.isDebugEnabled() )
@@ -1944,7 +1942,7 @@ public class RecordManager
             check();
         }
 
-        return valueHolder;
+        return pageHolder;
     }
 
 

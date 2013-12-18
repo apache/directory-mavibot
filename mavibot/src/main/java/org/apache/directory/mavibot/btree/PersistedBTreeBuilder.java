@@ -92,7 +92,7 @@ public class PersistedBTreeBuilder<K, V>
             {
                 leafIndex = 0;
 
-                PersistedPageHolder<K, V> pageHolder = rm.writePage( btree, leaf1, 1 );
+                PageHolder<K, V> pageHolder = rm.writePage( btree, leaf1, 1 );
 
                 leaf1 = ( PersistedLeaf<K, V> ) BTreeFactory.createLeaf( btree, 0, numKeysInNode );
                 lstLeaves.add( leaf1 );
@@ -123,7 +123,7 @@ public class PersistedBTreeBuilder<K, V>
                 lastLeaf.values = ( PersistedValueHolder<V>[] ) Array.newInstance( PersistedValueHolder.class, n );
                 System.arraycopy( values, 0, lastLeaf.values, 0, n );
 
-                PersistedPageHolder<K, V> pageHolder = rm.writePage( btree, lastLeaf, 1 );
+                PageHolder<K, V> pageHolder = rm.writePage( btree, lastLeaf, 1 );
 
                 break;
             }
@@ -179,7 +179,7 @@ public class PersistedBTreeBuilder<K, V>
             {
                 i = 0;
 
-                PersistedPageHolder<K, V> pageHolder = rm.writePage( btree, node, 1 );
+                PageHolder<K, V> pageHolder = rm.writePage( btree, node, 1 );
 
                 node = ( PersistedNode<K, V> ) BTreeFactory.createNode( btree, 0, numKeysInNode );
                 lstNodes.add( node );
@@ -200,7 +200,7 @@ public class PersistedBTreeBuilder<K, V>
                 lastNode.setKeys( ( KeyHolder[] ) Array.newInstance( KeyHolder.class, n ) );
                 System.arraycopy( keys, 0, lastNode.getKeys(), 0, n );
 
-                PersistedPageHolder<K, V> pageHolder = rm.writePage( btree, lastNode, 1 );
+                PageHolder<K, V> pageHolder = rm.writePage( btree, lastNode, 1 );
 
                 break;
             }

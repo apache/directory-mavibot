@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The B+Tree MVCC data structure.
- * 
+ *
  * @param <K> The type for the keys
  * @param <V> The type for the stored values
  *
@@ -76,7 +76,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
 
     /**
-     * Creates a new BTree, with no initialization. 
+     * Creates a new BTree, with no initialization.
      */
     /* no qualifier */PersistedBTree()
     {
@@ -86,9 +86,9 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
 
     /**
-     * Creates a new persisted BTree using the BTreeConfiguration to initialize the 
+     * Creates a new persisted BTree using the BTreeConfiguration to initialize the
      * BTree
-     * 
+     *
      * @param configuration The configuration to use
      */
     /* no qualifier */PersistedBTree( PersistedBTreeConfiguration<K, V> configuration )
@@ -142,7 +142,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
     /**
      * Initialize the BTree.
-     * 
+     *
      * @throws IOException If we get some exception while initializing the BTree
      */
     public void init()
@@ -279,7 +279,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
     /**
      * Gets the RecordManager for a managed BTree
-     * 
+     *
      * @return The recordManager if the BTree is managed
      */
     /* No qualifier */RecordManager getRecordManager()
@@ -290,7 +290,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
     /**
      * Inject a RecordManager for a managed BTree
-     * 
+     *
      * @param recordManager The injected RecordManager
      */
     /* No qualifier */void setRecordManager( RecordManager recordManager )
@@ -300,12 +300,12 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
 
     /**
-     * 
+     *
      * Deletes the given <key,value> pair if both key and value match. If the given value is null
      * and there is no null value associated with the given key then the entry with the given key
      * will be removed.
      *
-     * @param key The key to be removed 
+     * @param key The key to be removed
      * @param value The value to be removed (can be null, and when no null value exists the key will be removed irrespective of the value)
      * @param revision The revision to be associated with this operation
      * @return
@@ -344,8 +344,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
                 // Write the modified page on disk
                 // Note that we don't use the holder, the new root page will
                 // remain in memory.
-                PersistedPageHolder<K, V> holder = recordManager.writePage( this, modifiedPage,
-                    revision );
+                PageHolder<K, V> holder = recordManager.writePage( this, modifiedPage, revision );
 
                 // Store the offset on disk in the page in memory
                 ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( PersistedPageHolder<K, V> ) holder )
@@ -428,8 +427,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
             // Write the modified page on disk
             // Note that we don't use the holder, the new root page will
             // remain in memory.
-            PersistedPageHolder<K, V> holder = recordManager.writePage( this, modifiedPage,
-                revision );
+            PageHolder<K, V> holder = recordManager.writePage( this, modifiedPage, revision );
 
             // The root has just been modified, we haven't split it
             // Get it and make it the current root page
@@ -450,18 +448,16 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
             // If the BTree is managed, we have to write the two pages that were created
             // and to keep a track of the two offsets for the upper node
-            PersistedPageHolder<K, V> holderLeft = recordManager.writePage( this,
-                leftPage, revision );
+            PageHolder<K, V> holderLeft = recordManager.writePage( this, leftPage, revision );
 
-            PersistedPageHolder<K, V> holderRight = recordManager.writePage( this,
-                rightPage, revision );
+            PageHolder<K, V> holderRight = recordManager.writePage( this, rightPage, revision );
 
             // Create the new rootPage
             newRootPage = new PersistedNode<K, V>( this, revision, pivot, holderLeft, holderRight );
 
             // If the BTree is managed, we now have to write the page on disk
             // and to add this page to the list of modified pages
-            PersistedPageHolder<K, V> holder = recordManager
+            PageHolder<K, V> holder = recordManager
                 .writePage( this, newRootPage, revision );
 
             rootPage = newRootPage;
@@ -494,7 +490,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
     /**
      * Write the data in the ByteBuffer, and eventually on disk if needed.
-     * 
+     *
      * @param channel The channel we want to write to
      * @param bb The ByteBuffer we want to feed
      * @param buffer The data to inject
@@ -535,7 +531,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
     /**
      * Get the rootPzge associated to a give revision.
-     * 
+     *
      * @param revision The revision we are looking for
      * @return The rootPage associated to this revision
      * @throws IOException If we had an issue while accessing the underlying file
