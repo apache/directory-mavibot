@@ -25,14 +25,16 @@ import java.lang.reflect.Array;
 import java.util.Comparator;
 import java.util.UUID;
 
+import org.apache.directory.mavibot.btree.exception.BTreeAlreadyCreatedException;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
+import org.apache.directory.mavibot.btree.exception.BTreeCreationException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
 
 /**
  * A holder to store the Values
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  * @param <V> The value type
  */
@@ -43,17 +45,17 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
     /** The serialized value */
     private byte[] raw;
-    
+
     /** A flag set to true when the raw value has been deserialized */
     private boolean isDeserialized = false;
-    
+
     /** A flag to signal that the raw value represent the serialized values in their last state */
     private boolean isRawUpToDate = false;
 
 
     /**
      * Creates a new instance of a ValueHolder, containing the serialized values.
-     * 
+     *
      * @param parentBtree the parent BTree
      * @param raw The raw data containing the values
      * @param nbValues the number of stored values
@@ -68,7 +70,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         valueThresholdUp = PersistedBTree.valueThresholdUp;
         valueThresholdLow = PersistedBTree.valueThresholdLow;
 
-        // We create the array of values if they fit in an array. If they are stored in a 
+        // We create the array of values if they fit in an array. If they are stored in a
         // BTree, we do nothing atm.
         if ( nbValues <= valueThresholdUp )
         {
@@ -81,7 +83,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
     /**
      * Creates a new instance of a ValueHolder, containing Values. This constructor is called
      * whe we need to create a new ValueHolder with deserialized values.
-     * 
+     *
      * @param parentBtree The parent BTree
      * @param values The Values stored in the ValueHolder
      */
@@ -135,7 +137,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             // No value, we create an empty array
             valueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), 0 );
         }
-        
+
         isDeserialized = true;
     }
 
@@ -156,8 +158,8 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * @return the raw representation of the value holder. The serialized value will not be the same
      * if the values are stored in an array or in a btree. <br/>
      * If they are stored in a BTree, the raw value will contain the offset of the btree, otherwise
-     * it will contain a byte[] which will contain each serialized value, prefixed by their length. 
-     * 
+     * it will contain a byte[] which will contain each serialized value, prefixed by their length.
+     *
      */
     /* No qualifier*/ byte[] getRaw()
     {
@@ -179,35 +181,35 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             byte[][] valueBytes = new byte[valueArray.length * 2][];
             int length = 0;
             int pos = 0;
-    
+
             // Process each value now
             for ( V value : valueArray )
             {
                 // Serialize the value
                 byte[] bytes = valueSerializer.serialize( value );
                 length += bytes.length;
-    
+
                 // Serialize the value's length
                 byte[] sizeBytes = IntSerializer.serialize( bytes.length );
                 length += sizeBytes.length;
-    
+
                 // And store the two byte[]
                 valueBytes[pos++] = sizeBytes;
                 valueBytes[pos++] = bytes;
             }
-    
+
             // Last, not least, create a buffer large enough to contain all the created byte[],
             // and copy all those byte[] into this buffer
             raw = new byte[length];
             pos = 0;
-    
+
             for ( byte[] bytes : valueBytes )
             {
                 System.arraycopy( bytes, 0, raw, pos, bytes.length );
                 pos += bytes.length;
             }
         }
-        
+
         // Update the flags
         isRawUpToDate = true;
 
@@ -247,7 +249,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             configuration.setValueSerializer( valueSerializer );
             configuration.setParentBTree( parentBtree );
             configuration.setSubBtree( true );
-            
+
             valueBtree = BTreeFactory.createPersistedBTree( configuration );
 
             try
@@ -258,12 +260,12 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             catch ( BTreeAlreadyManagedException e )
             {
                 // should never happen
-                throw new RuntimeException( e );
+                throw new BTreeAlreadyCreatedException( e );
             }
         }
         catch ( IOException e )
         {
-            throw new RuntimeException( e );
+            throw new BTreeCreationException( e );
         }
     }
 
@@ -279,8 +281,8 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         isDeserialized = true;
         isRawUpToDate = false;
     }
-    
-    
+
+
     /**
      * Check that the values are stored as raw value
      */
@@ -314,13 +316,13 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         checkAndDeserialize();
 
         super.add( value );
-        
+
         // The raw value is not anymore up to date with the content
         isRawUpToDate = false;
         raw = null;
     }
-    
-    
+
+
     /**
      * Remove a value from an array
      */
@@ -346,14 +348,14 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
         // Get the removed element
         V removedValue = valueArray[pos];
-        
+
         // And switch the arrays
         valueArray = newValueArray;
-        
+
         return removedValue;
     }
 
-    
+
     /**
      * Remove the value from a sub btree
      */
@@ -369,21 +371,21 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
                 if ( valueBtree.getNbElems() - 1 < PersistedBTree.valueThresholdLow )
                 {
                     int nbValues = (int)(valueBtree.getNbElems() - 1);
-                        
+
                     // We have to switch to an Array of values
                     valueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), nbValues );
-    
+
                     // Now copy all the value but the one we have removed
                     TupleCursor<V,V> cursor = valueBtree.browse();
                     V returnedValue = null;
                     int pos = 0;
-                    
+
                     while ( cursor.hasNext() )
                     {
                         Tuple<V, V> tuple = cursor.next();
-                        
+
                         V value = tuple.getKey();
-                        
+
                         if ( valueSerializer.getComparator().compare( removedValue, value ) == 0 )
                         {
                             // This is the removed value : skip it
@@ -394,13 +396,13 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
                             valueArray[pos++] = value;
                         }
                     }
-                    
+
                     return returnedValue;
                 }
                 else
                 {
                     Tuple<V, V> removedTuple = valueBtree.delete( removedValue );
-                    
+
                     if ( removedTuple != null )
                     {
                         return removedTuple.getKey();
@@ -431,7 +433,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
     public V remove( V value )
     {
         V removedValue = null;
-        
+
         if ( valueArray != null )
         {
             removedValue = removeFromArray( value );
@@ -444,11 +446,11 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         // The raw value is not anymore up to date wth the content
         isRawUpToDate = false;
         raw = null;
-        
+
         return removedValue;
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
@@ -456,7 +458,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
     {
         // First, deserialize the value if it's still a byte[]
         checkAndDeserialize();
-        
+
         return super.contains( checkedValue );
     }
 
@@ -467,7 +469,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * As we use a 0-based array, the negative position for 0 is -1.
      * -1 means the element can be added in position 0
      * -2 means the element can be added in position 1
-     * ... 
+     * ...
      */
     private int findPos( V value )
     {
@@ -596,14 +598,14 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         PersistedValueHolder<V> copy = (PersistedValueHolder<V> ) super.clone();
 
         // copy the valueArray if it's not null
-        // We don't clone the BTree, as we will create new revisions when 
+        // We don't clone the BTree, as we will create new revisions when
         // modifying it
         if ( valueArray != null )
         {
             copy.valueArray = ( V[] ) Array.newInstance( valueSerializer.getType(), valueArray.length );
             System.arraycopy( valueArray, 0, copy.valueArray, 0, valueArray.length );
         }
-        
+
         // Also clone the raw value if its up to date
         if ( isRawUpToDate )
         {
@@ -651,11 +653,11 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
     {
         // Get the sub-btree offset
         long offset = LongSerializer.deserialize( raw );
-        
+
         // and reload the sub btree
         valueBtree = parentBtree.getRecordManager().loadDupsBTree( offset );
     }
-    
+
 
     /**
      * @return The sub-btree offset

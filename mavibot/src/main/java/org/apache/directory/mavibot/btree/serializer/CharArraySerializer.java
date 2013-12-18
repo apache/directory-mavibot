@@ -24,11 +24,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.apache.directory.mavibot.btree.comparator.CharArrayComparator;
+import org.apache.directory.mavibot.btree.exception.SerializerCreationException;
 
 
 /**
  * A serializer for a char[].
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class CharArraySerializer extends AbstractElementSerializer<char[]>
@@ -100,7 +101,7 @@ public class CharArraySerializer extends AbstractElementSerializer<char[]>
 
     /**
      * A static method used to deserialize a char array from a byte array.
-     * 
+     *
      * @param in The byte array containing the char array
      * @return A char[]
      */
@@ -108,7 +109,7 @@ public class CharArraySerializer extends AbstractElementSerializer<char[]>
     {
         if ( ( in == null ) || ( in.length < 4 ) )
         {
-            throw new RuntimeException( "Cannot extract a byte[] from a buffer with not enough bytes" );
+            throw new SerializerCreationException( "Cannot extract a byte[] from a buffer with not enough bytes" );
         }
 
         int len = IntSerializer.deserialize( in );
@@ -138,7 +139,7 @@ public class CharArraySerializer extends AbstractElementSerializer<char[]>
 
     /**
      * A method used to deserialize a char array from a byte array.
-     * 
+     *
      * @param in The byte array containing the char array
      * @return A char[]
      */
@@ -146,7 +147,7 @@ public class CharArraySerializer extends AbstractElementSerializer<char[]>
     {
         if ( ( in == null ) || ( in.length - start < 4 ) )
         {
-            throw new RuntimeException( "Cannot extract a byte[] from a buffer with not enough bytes" );
+            throw new SerializerCreationException( "Cannot extract a byte[] from a buffer with not enough bytes" );
         }
 
         int len = IntSerializer.deserialize( in, start );
@@ -176,7 +177,7 @@ public class CharArraySerializer extends AbstractElementSerializer<char[]>
 
     /**
      * A method used to deserialize a char array from a byte array.
-     * 
+     *
      * @param in The byte array containing the char array
      * @return A char[]
      */
@@ -184,7 +185,7 @@ public class CharArraySerializer extends AbstractElementSerializer<char[]>
     {
         if ( ( in == null ) || ( in.length < 4 ) )
         {
-            throw new RuntimeException( "Cannot extract a byte[] from a buffer with not enough bytes" );
+            throw new SerializerCreationException( "Cannot extract a byte[] from a buffer with not enough bytes" );
         }
 
         int len = IntSerializer.deserialize( in );

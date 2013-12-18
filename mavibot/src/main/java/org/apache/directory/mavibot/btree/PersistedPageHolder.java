@@ -25,14 +25,15 @@ import java.io.IOException;
 import net.sf.ehcache.Cache;
 import net.sf.ehcache.Element;
 
+import org.apache.directory.mavibot.btree.exception.BTreeOperationException;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
 
 /**
  * A Value holder. As we may not store all the values in memory (except for an in-memory
  * BTree), we will use a SoftReference to keep a reference to a Value, and if it's null,
- * then we will load the Value from the underlying physical support, using the offset. 
- * 
+ * then we will load the Value from the underlying physical support, using the offset.
+ *
  * @param <E> The type for the stored element (either a value or a page)
  * @param <K> The type of the BTree key
  * @param <V> The type of the BTree value
@@ -43,7 +44,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 {
     /** The RecordManager */
     private RecordManager recordManager;
-    
+
     /** The cache */
     private  Cache cache;
 
@@ -56,7 +57,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
     /**
      * Create a new holder storing an offset and a SoftReference containing the element.
-     * 
+     *
      * @param page The element to store into a SoftReference
      */
     public PersistedPageHolder( BTree<K, V> btree, Page<K, V> page )
@@ -76,7 +77,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
     /**
      * Create a new holder storing an offset and a SoftReference containing the element.
-     * 
+     *
      * @param page The element to store into a SoftReference
      */
     public PersistedPageHolder( BTree<K, V> btree, Page<K, V> page, long offset, long lastOffset )
@@ -99,8 +100,8 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
     /**
      * {@inheritDoc}
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
+     * @throws IOException
+     * @throws EndOfFileExceededException
      */
     public Page<K, V> getValue()
     {
@@ -143,16 +144,16 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
         try
         {
             Page<K, V> element = recordManager.deserialize( btree, offset );
-    
+
             return element;
         }
         catch ( EndOfFileExceededException eofee )
         {
-            throw new RuntimeException( eofee.getMessage() );
+            throw new BTreeOperationException( eofee.getMessage() );
         }
         catch ( IOException ioe )
         {
-            throw new RuntimeException( ioe.getMessage() );
+            throw new BTreeOperationException( ioe.getMessage() );
         }
     }
 

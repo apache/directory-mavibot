@@ -62,10 +62,9 @@ public class PersistedBTreeBuilder<K, V>
     public BTree<K, V> build( Iterator<Tuple<K, V>> sortedTupleItr ) throws Exception
     {
         BTree<K, V> btree = BTreeFactory.createPersistedBTree( name, keySerializer, valueSerializer );
-        btree.init();
 
         rm.manage( btree );
-        
+
         List<Page<K, V>> lstLeaves = new ArrayList<Page<K, V>>();
 
         int totalTupleCount = 0;
@@ -78,7 +77,7 @@ public class PersistedBTreeBuilder<K, V>
         while ( sortedTupleItr.hasNext() )
         {
             Tuple<K, V> tuple = sortedTupleItr.next();
-            
+
             BTreeFactory.setKey( btree, leaf1, leafIndex, tuple.getKey() );
 
             PersistedValueHolder<V> eh = new PersistedValueHolder<V>( btree, tuple.getValue() );
@@ -90,13 +89,13 @@ public class PersistedBTreeBuilder<K, V>
             if ( ( totalTupleCount % numKeysInNode ) == 0 )
             {
                 leafIndex = 0;
-                
-                PersistedPageHolder<K, V> pageHolder = (PersistedPageHolder<K, V> ) rm.writePage( btree, leaf1, 1 );
-                
+
+                PersistedPageHolder<K, V> pageHolder = rm.writePage( btree, leaf1, 1 );
+
                 leaf1 = (PersistedLeaf<K, V>)BTreeFactory.createLeaf( btree, 0, numKeysInNode );
                 lstLeaves.add( leaf1 );
             }
-            
+
             //TODO build the whole tree in chunks rather than processing *all* leaves at first
         }
 
@@ -122,7 +121,7 @@ public class PersistedBTreeBuilder<K, V>
                 lastLeaf.values = (PersistedValueHolder<V>[] ) Array.newInstance( PersistedValueHolder.class, n );
                 System.arraycopy( values, 0, lastLeaf.values, 0, n );
 
-                PersistedPageHolder<K, V> pageHolder = (PersistedPageHolder<K, V> ) rm.writePage( btree, lastLeaf, 1 );
+                PersistedPageHolder<K, V> pageHolder = rm.writePage( btree, lastLeaf, 1 );
 
                 break;
             }
@@ -134,13 +133,13 @@ public class PersistedBTreeBuilder<K, V>
 
         //System.out.println("built rootpage : " + rootPage);
         ((PersistedBTree<K, V>)btree).setNbElems( totalTupleCount );
-        
+
         rm.updateBtreeHeader( btree, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
-        
+
         rm.addFreePages( btree, Arrays.asList( btree.getRootPage() ) );
-        
+
         ((AbstractBTree<K, V>)btree).setRootPage( rootPage );
-        
+
         return btree;
     }
 
@@ -177,8 +176,8 @@ public class PersistedBTreeBuilder<K, V>
             if ( ( totalNodes % numChildren ) == 0 )
             {
                 i = 0;
-                
-                PersistedPageHolder<K, V> pageHolder = (PersistedPageHolder<K, V> ) rm.writePage( btree, node, 1 );
+
+                PersistedPageHolder<K, V> pageHolder = rm.writePage( btree, node, 1 );
 
                 node = (PersistedNode<K, V>)BTreeFactory.createNode( btree, 0, numKeysInNode );
                 lstNodes.add( node );
@@ -199,7 +198,7 @@ public class PersistedBTreeBuilder<K, V>
                 lastNode.setKeys( ( KeyHolder[] ) Array.newInstance( KeyHolder.class, n ) );
                 System.arraycopy( keys, 0, lastNode.getKeys(), 0, n );
 
-                PersistedPageHolder<K, V> pageHolder = (PersistedPageHolder<K, V> ) rm.writePage( btree, lastNode, 1 );
+                PersistedPageHolder<K, V> pageHolder = rm.writePage( btree, lastNode, 1 );
 
                 break;
             }

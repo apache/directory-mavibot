@@ -23,6 +23,7 @@ package org.apache.directory.mavibot.btree;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.apache.directory.mavibot.btree.exception.SerializerCreationException;
 import org.apache.directory.mavibot.btree.serializer.AbstractElementSerializer;
 import org.apache.directory.mavibot.btree.serializer.BufferHandler;
 import org.apache.directory.mavibot.btree.serializer.ByteArraySerializer;
@@ -33,9 +34,9 @@ import org.apache.directory.mavibot.btree.util.Strings;
 
 
 /**
- * A serializer for the RevisionName object. The RevisionName will be serialized 
+ * A serializer for the RevisionName object. The RevisionName will be serialized
  * as a long (the revision), followed by the String.
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class RevisionNameSerializer extends AbstractElementSerializer<RevisionName>
@@ -51,7 +52,7 @@ public class RevisionNameSerializer extends AbstractElementSerializer<RevisionNa
 
     /**
      * A static method used to deserialize a RevisionName from a byte array.
-     * 
+     *
      * @param in The byte array containing the RevisionName
      * @return A RevisionName instance
      */
@@ -63,7 +64,7 @@ public class RevisionNameSerializer extends AbstractElementSerializer<RevisionNa
 
     /**
      * A static method used to deserialize a RevisionName from a byte array.
-     * 
+     *
      * @param in The byte array containing the RevisionName
      * @param start the position in the byte[] we will deserialize the RevisionName from
      * @return A RevisionName instance
@@ -73,7 +74,7 @@ public class RevisionNameSerializer extends AbstractElementSerializer<RevisionNa
         // The buffer must be 8 bytes plus 4 bytes long (the revision is a long, and the name is a String
         if ( ( in == null ) || ( in.length < 12 + start ) )
         {
-            throw new RuntimeException( "Cannot extract a RevisionName from a buffer with not enough bytes" );
+            throw new SerializerCreationException( "Cannot extract a RevisionName from a buffer with not enough bytes" );
         }
 
         long revision = LongSerializer.deserialize( in, start );
@@ -87,7 +88,7 @@ public class RevisionNameSerializer extends AbstractElementSerializer<RevisionNa
 
     /**
      * A static method used to deserialize a RevisionName from a byte array.
-     * 
+     *
      * @param in The byte array containing the RevisionName
      * @return A RevisionName instance
      */
@@ -99,7 +100,7 @@ public class RevisionNameSerializer extends AbstractElementSerializer<RevisionNa
 
     /**
      * A static method used to deserialize a RevisionName from a byte array.
-     * 
+     *
      * @param in The byte array containing the RevisionName
      * @param start the position in the byte[] we will deserialize the RevisionName from
      * @return A RevisionName instance
@@ -109,7 +110,7 @@ public class RevisionNameSerializer extends AbstractElementSerializer<RevisionNa
         // The buffer must be 8 bytes plus 4 bytes long (the revision is a long, and the name is a String
         if ( ( in == null ) || ( in.length < 12 + start ) )
         {
-            throw new RuntimeException( "Cannot extract a RevisionName from a buffer with not enough bytes" );
+            throw new SerializerCreationException( "Cannot extract a RevisionName from a buffer with not enough bytes" );
         }
 
         long revision = LongSerializer.deserialize( in, start );
@@ -129,7 +130,7 @@ public class RevisionNameSerializer extends AbstractElementSerializer<RevisionNa
     {
         if ( revisionName == null )
         {
-            throw new RuntimeException( "The revisionName instance should not be null " );
+            throw new SerializerCreationException( "The revisionName instance should not be null " );
         }
 
         byte[] result = null;
@@ -159,7 +160,7 @@ public class RevisionNameSerializer extends AbstractElementSerializer<RevisionNa
 
     /**
      * Serialize a RevisionName
-     * 
+     *
      * @param buffer the Buffer that will contain the serialized value
      * @param start the position in the buffer we will store the serialized RevisionName
      * @param value the value to serialize

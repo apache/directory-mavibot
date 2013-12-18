@@ -24,11 +24,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.apache.directory.mavibot.btree.comparator.ShortComparator;
+import org.apache.directory.mavibot.btree.exception.SerializerCreationException;
 
 
 /**
  * The Short serializer.
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class ShortSerializer extends AbstractElementSerializer<Short>
@@ -55,7 +56,7 @@ public class ShortSerializer extends AbstractElementSerializer<Short>
 
     /**
      * Serialize a short
-     * 
+     *
      * @param value the value to serialize
      * @return The byte[] containing the serialized short
      */
@@ -69,7 +70,7 @@ public class ShortSerializer extends AbstractElementSerializer<Short>
 
     /**
      * Serialize a short
-     * 
+     *
      * @param buffer the Buffer that will contain the serialized value
      * @param start the position in the buffer we will store the serialized short
      * @param value the value to serialize
@@ -105,7 +106,7 @@ public class ShortSerializer extends AbstractElementSerializer<Short>
     {
         if ( ( in == null ) || ( in.length < 2 + start ) )
         {
-            throw new RuntimeException( "Cannot extract a Short from a buffer with not enough bytes" );
+            throw new SerializerCreationException( "Cannot extract a Short from a buffer with not enough bytes" );
         }
 
         return ( short ) ( ( in[start] << 8 ) + ( in[start + 1] & 0xFF ) );
@@ -133,7 +134,7 @@ public class ShortSerializer extends AbstractElementSerializer<Short>
     {
         if ( ( in == null ) || ( in.length < 2 + start ) )
         {
-            throw new RuntimeException( "Cannot extract a Short from a buffer with not enough bytes" );
+            throw new SerializerCreationException( "Cannot extract a Short from a buffer with not enough bytes" );
         }
 
         return ( short ) ( ( in[start] << 8 ) + ( in[start + 1] & 0xFF ) );

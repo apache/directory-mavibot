@@ -31,11 +31,10 @@ import java.io.IOException;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.InMemoryBTree;
-import org.apache.directory.mavibot.btree.Tuple;
-import org.apache.directory.mavibot.btree.TupleCursor;
+import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
+import org.apache.directory.mavibot.btree.exception.DuplicateValueNotAllowedException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
+import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
 import org.junit.Test;
 
@@ -53,7 +52,6 @@ public class InMemoryBTreeDuplicateKeyTest
         IntSerializer serializer = new IntSerializer();
 
         BTree<Integer, Integer> btree = BTreeFactory.createInMemoryBTree( "master", serializer, serializer );
-        btree.init();
 
         btree.insert( 1, null );
 
@@ -76,7 +74,6 @@ public class InMemoryBTreeDuplicateKeyTest
         IntSerializer serializer = new IntSerializer();
 
         BTree<Integer, Integer> btree = BTreeFactory.createInMemoryBTree( "master", serializer, serializer );
-        btree.init();
 
         TupleCursor<Integer, Integer> cursor = btree.browse();
         assertFalse( cursor.hasNext() );
@@ -194,7 +191,7 @@ public class InMemoryBTreeDuplicateKeyTest
         assertFalse( btree.contains( null, 0 ) );
         assertFalse( btree.contains( 0, null ) );
         assertFalse( btree.contains( null, null ) );
-        
+
         btree.close();
     }
 
@@ -230,7 +227,7 @@ public class InMemoryBTreeDuplicateKeyTest
 
         t = btree.delete( 1, 2 );
         assertNull( t );
-        
+
         btree.close();
     }
 
@@ -247,7 +244,7 @@ public class InMemoryBTreeDuplicateKeyTest
         BTree<String, String> btree = new InMemoryBTree<String, String>( config );
 
         int i = 7;
-        
+
         for ( char ch = 'a'; ch <= 'z'; ch++ )
         {
             for ( int k = 0; k < i; k++ )
@@ -292,7 +289,7 @@ public class InMemoryBTreeDuplicateKeyTest
         }
 
         assertEquals( ( 'a' - 1 ), ch );
-        
+
         cursor.close();
         btree.close();
     }
@@ -348,7 +345,7 @@ public class InMemoryBTreeDuplicateKeyTest
             assertNotNull( tuple );
             i++;
         }
-        
+
         assertEquals( 26, i );
 
         cursor.close();
@@ -357,13 +354,13 @@ public class InMemoryBTreeDuplicateKeyTest
         cursor = btree.browse();
 
         i = 0;
-        
+
         while ( cursor.hasNext() )
         {
             assertNotNull( cursor.next() );
             i++;
         }
-        
+
         assertEquals( 27, i );
 
         // now move the cursor first
@@ -372,7 +369,7 @@ public class InMemoryBTreeDuplicateKeyTest
         assertEquals( "a", cursor.nextKey().getKey() );
 
         i = 0;
-        
+
         while ( cursor.hasNext() )
         {
             tuple = cursor.nextKey();
@@ -380,9 +377,9 @@ public class InMemoryBTreeDuplicateKeyTest
             assertNotNull( key );
             i++;
         }
-        
+
         assertEquals( 25, i );
-        
+
         btree.close();
     }
 
@@ -420,7 +417,7 @@ public class InMemoryBTreeDuplicateKeyTest
 
         cursor.afterLast();
         assertFalse( cursor.hasNext() );
-        
+
         // make sure it throws NoSuchElementException
         try
         {
@@ -445,7 +442,7 @@ public class InMemoryBTreeDuplicateKeyTest
         BTree<String, String> btree = new InMemoryBTree<String, String>( config );
 
         int i = 7;
-        
+
         // Insert keys from a to z with 7 values for each key
         for ( char ch = 'a'; ch <= 'z'; ch++ )
         {
@@ -459,7 +456,7 @@ public class InMemoryBTreeDuplicateKeyTest
 
         assertTrue( cursor.hasNext() );
         assertFalse( cursor.hasPrev() );
-        
+
         for ( int k = 0; k < 2; k++ )
         {
             assertEquals( "a", cursor.next().getKey() );
@@ -527,7 +524,7 @@ public class InMemoryBTreeDuplicateKeyTest
         cursor = btree.browse();
         cursor.beforeFirst();
         assertFalse( cursor.hasPrev() );
-        
+
         // make sure it throws NoSuchElementException
         try
         {
@@ -612,10 +609,10 @@ public class InMemoryBTreeDuplicateKeyTest
         assertFalse( cursor.hasPrev() );
 
         tuple = cursor.next();
-        
+
         assertEquals( Integer.valueOf( 0 ), tuple.getKey() );
         assertEquals( Integer.valueOf( 0 ), tuple.getValue() );
-        
+
         cursor.close();
         btree.close();
     }
@@ -656,7 +653,7 @@ public class InMemoryBTreeDuplicateKeyTest
         tuple = cursor.next();
         assertEquals( Integer.valueOf( 4 ), tuple.getKey() );
         assertEquals( Integer.valueOf( 4 ), tuple.getValue() );
-        
+
         cursor.close();
         btree.close();
     }
@@ -719,7 +716,7 @@ public class InMemoryBTreeDuplicateKeyTest
         BTree<Integer, Integer> btree = new InMemoryBTree<Integer, Integer>( config );
 
         int i = 5;
-        
+
         for ( int k = 0; k < i; k++ )
         {
             btree.insert( k, k );
@@ -729,7 +726,7 @@ public class InMemoryBTreeDuplicateKeyTest
         TupleCursor<Integer, Integer> cursor = btree.browseFrom( 0 );
 
         int currentKey = 0;
-        
+
         while ( cursor.hasNext() )
         {
             assertEquals( Integer.valueOf( currentKey ), cursor.next().getKey() );
@@ -738,5 +735,31 @@ public class InMemoryBTreeDuplicateKeyTest
 
         cursor.close();
         btree.close();
+    }
+
+
+    /**
+     * Test that a BTree which forbid duplicate values does not accept them
+     */
+    @Test(expected=DuplicateValueNotAllowedException.class)
+    public void testBTreeForbidDups() throws IOException, BTreeAlreadyManagedException
+    {
+        BTree<Long, String> singleValueBtree = BTreeFactory.createInMemoryBTree( "test2", new LongSerializer(),
+            new StringSerializer(), BTree.FORBID_DUPLICATES );
+
+        for ( long i = 0; i < 64; i++ )
+        {
+            singleValueBtree.insert( i, Long.toString( i  ) );
+        }
+
+        try
+        {
+            singleValueBtree.insert( 18L, "Duplicate" );
+            fail();
+        }
+        finally
+        {
+            singleValueBtree.close();
+        }
     }
 }

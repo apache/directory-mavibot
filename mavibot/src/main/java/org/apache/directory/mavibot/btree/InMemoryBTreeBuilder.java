@@ -60,7 +60,6 @@ public class InMemoryBTreeBuilder<K, V>
     public BTree<K, V> build( Iterator<Tuple<K, V>> sortedTupleItr ) throws IOException
     {
         BTree<K, V> btree = BTreeFactory.createInMemoryBTree( name, keySerializer, valueSerializer );
-        btree.init();
 
         List<Page<K, V>> lstLeaves = new ArrayList<Page<K, V>>();
 
@@ -70,7 +69,7 @@ public class InMemoryBTreeBuilder<K, V>
         lstLeaves.add( leaf1 );
 
         int leafIndex = 0;
-        
+
         while ( sortedTupleItr.hasNext() )
         {
             Tuple<K, V> tuple = sortedTupleItr.next();
@@ -83,7 +82,7 @@ public class InMemoryBTreeBuilder<K, V>
 
             leafIndex++;
             totalTupleCount++;
-            
+
             if ( ( totalTupleCount % numKeysInNode ) == 0 )
             {
                 leafIndex = 0;
@@ -99,7 +98,7 @@ public class InMemoryBTreeBuilder<K, V>
 
         // remove null keys and values from the last leaf and resize
         InMemoryLeaf<K, V> lastLeaf = (InMemoryLeaf<K, V> ) lstLeaves.get( lstLeaves.size() - 1 );
-        
+
         for ( int i = 0; i < lastLeaf.getNbElems(); i++ )
         {
             if ( lastLeaf.getKeys()[i] == null )
@@ -122,7 +121,7 @@ public class InMemoryBTreeBuilder<K, V>
         Page<K, V> rootPage = attachNodes( lstLeaves, btree );
 
         System.out.println("built rootpage : " + rootPage);
-        
+
         ((AbstractBTree<K, V>)btree).setRootPage( rootPage );
 
         return btree;

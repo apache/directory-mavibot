@@ -35,15 +35,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.AbstractBTree;
-import org.apache.directory.mavibot.btree.InMemoryBTree;
-import org.apache.directory.mavibot.btree.InMemoryValueHolder;
-import org.apache.directory.mavibot.btree.KeyHolder;
-import org.apache.directory.mavibot.btree.Page;
-import org.apache.directory.mavibot.btree.PageHolder;
-import org.apache.directory.mavibot.btree.Tuple;
-import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
@@ -55,7 +46,7 @@ import org.junit.Test;
 
 /**
  * A unit test class for in-memory BTree
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class InMemoryBTreeTest
@@ -211,7 +202,7 @@ public class InMemoryBTreeTest
             if ( !checkTree( expected, btree ) )
             {
                 boolean isFirst = true;
-                
+
                 for ( Long key : added )
                 {
                     if ( isFirst )
@@ -222,7 +213,7 @@ public class InMemoryBTreeTest
                     {
                         System.out.print( ", " );
                     }
-                    
+
                     System.out.print( key );
                 }
             }
@@ -256,8 +247,8 @@ public class InMemoryBTreeTest
     /**
      * Test the deletion of elements in a BTree. We will try 1000 times to delete 1000
      * random elements in [0..1024], and check every tree to see if all the removed elements
-     * are absent. This pretty much validate the the deletion operation is valid, assuming 
-     * that due to the randomization of the deleted values, we will statically meet all the 
+     * are absent. This pretty much validate the the deletion operation is valid, assuming
+     * that due to the randomization of the deleted values, we will statically meet all the
      * use cases.
      * @throws Exception
      */
@@ -572,7 +563,7 @@ public class InMemoryBTreeTest
     public void testPageRemove() throws Exception
     {
         Long[] keys = new Long[]{  101L, 113L, 20L, 72L, 215L, 239L, 108L, 21L };
-        
+
         BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( new LongComparator(), 8 );
         System.out.println( btree );
 
@@ -580,21 +571,21 @@ public class InMemoryBTreeTest
         {
             btree.insert( key, "V" + key );
         }
-        
+
         System.out.println( btree );
-        
+
         // Remove from the left
         btree.remove( 20L );
         System.out.println( btree );
-        
+
         // Remove from the right
         btree.remove( 239L );
         System.out.println( btree );
-        
+
         // Remove from the middle
         btree.remove( 72L );
         System.out.println( btree );
-        
+
         // Remove all the remaining elements
         btree.remove( 101L );
         System.out.println( btree );
@@ -606,7 +597,7 @@ public class InMemoryBTreeTest
         System.out.println( btree );
         btree.remove( 21L );
         System.out.println( btree );
-        
+
         btree.close();
     }
     */
@@ -645,7 +636,7 @@ public class InMemoryBTreeTest
         while ( cursor.hasNext() )
         {
             Tuple<Integer, String> tuple = cursor.next();
-            
+
             assertNotNull( tuple );
             Integer val = sortedValues[pos];
             Integer res = tuple.getKey();
@@ -682,7 +673,7 @@ public class InMemoryBTreeTest
         while ( cursor.hasNext() )
         {
             Tuple<Integer, String> tuple = cursor.next();
-            
+
             assertNotNull( tuple );
             Integer val = sortedValues[pos];
             Integer res = tuple.getKey();
@@ -923,7 +914,7 @@ public class InMemoryBTreeTest
 
         assertFalse( btree.hasKey( 0 ) );
         assertFalse( btree.hasKey( 21 ) );
-        
+
         btree.close();
     }
 
@@ -1019,7 +1010,7 @@ public class InMemoryBTreeTest
 
 
     /**
-     * Test the browse method with a non existing key 
+     * Test the browse method with a non existing key
      * @throws Exception
      */
     @Test
@@ -1043,7 +1034,7 @@ public class InMemoryBTreeTest
 
         TupleCursor<Integer, String> cursor = btree.browseFrom( 11 );
         assertFalse( cursor.hasNext() );
-        
+
         btree.close();
     }
 
@@ -1183,7 +1174,7 @@ public class InMemoryBTreeTest
 
 
     /**
-     * Remove an element from the tree, checking that the removal was successful 
+     * Remove an element from the tree, checking that the removal was successful
      * @param btree The btree on which we remove an element
      * @param element The removed element
      * @param expected The expected set of elements
@@ -1204,7 +1195,7 @@ public class InMemoryBTreeTest
     /**
      * Check that the tree contains all the elements in the expected set, and that
      * all the elements in the tree are also present in the set
-     * 
+     *
      * @param btree The tree to check
      * @param expected The set with the expected elements
      */
@@ -1244,7 +1235,7 @@ public class InMemoryBTreeTest
 
     /**
      * Remove a set of values from a btree
-     * 
+     *
      * @param btree The modified btree
      * @param expected The set of expected values to update
      * @param values The values to remove
@@ -1402,7 +1393,7 @@ public class InMemoryBTreeTest
     /**
      * Test deletions in a tree with more than one level. We are specifically testing
      * the deletions that will make a node borrowing some element from a sibling.
-     * 
+     *
      * 1: remove the leftmost element
      */
     @Test
@@ -1423,7 +1414,7 @@ public class InMemoryBTreeTest
     /**
      * Test deletions in a tree with more than one level. We are specifically testing
      * the deletions that will make a node borrowing some element from a sibling.
-     * 
+     *
      * 2: remove an element on the leftmost page but not the first one
      */
     @Test
@@ -1444,7 +1435,7 @@ public class InMemoryBTreeTest
     /**
      * Test deletions in a tree with more than one level. We are specifically testing
      * the deletions that will make a node borrowing some element from a sibling.
-     * 
+     *
      * 3: remove an element on the rightmost page on the leftmost node on the upper level
      */
     @Test
@@ -1465,7 +1456,7 @@ public class InMemoryBTreeTest
     /**
      * Test deletions in a tree with more than one level. We are specifically testing
      * the deletions that will make a node borrowing some element from a sibling.
-     * 
+     *
      * 4: remove the first element in a page in the middle of the first node
      */
     @Test
@@ -1486,7 +1477,7 @@ public class InMemoryBTreeTest
     /**
      * Test deletions in a tree with more than one level. We are specifically testing
      * the deletions that will make a node borrowing some element from a sibling.
-     * 
+     *
      * 5: remove the second element in a page in the middle of the first node
      */
     @Test
@@ -1507,7 +1498,7 @@ public class InMemoryBTreeTest
     /**
      * Test deletions in a tree with more than one level. We are specifically testing
      * the deletions that will make a node borrowing some element from a sibling.
-     * 
+     *
      * 1: remove the rightmost element
      */
     @Test
@@ -1528,7 +1519,7 @@ public class InMemoryBTreeTest
     /**
      * Test deletions in a tree with more than one level. We are specifically testing
      * the deletions that will make a node borrowing some element from a sibling.
-     * 
+     *
      * 1: remove the element before the rightmost element
      */
     @Test
@@ -1549,7 +1540,7 @@ public class InMemoryBTreeTest
     /**
      * Test deletions in a tree with more than one level. We are specifically testing
      * the deletions that will make a node borrowing some element from a sibling.
-     * 
+     *
      * 1: remove the leftmost element  of the rightmost leaf
      */
     @Test
@@ -1570,7 +1561,7 @@ public class InMemoryBTreeTest
     /**
      * Test deletions in a tree with more than one level. We are specifically testing
      * the deletions that will make a node borrowing some element from a sibling.
-     * 
+     *
      * 1: remove the second elemnt of the leftmost page on the rightmost second level node
      */
     @Test
@@ -1591,7 +1582,7 @@ public class InMemoryBTreeTest
     /**
      * Test deletions in a tree with more than one level. We are specifically testing
      * the deletions that will make a node borrowing some element from a sibling.
-     * 
+     *
      * 6: remove the first element of a leaf in the middle of the tree
      */
     @Test
@@ -1602,7 +1593,7 @@ public class InMemoryBTreeTest
         // deleting as many elements as necessary to get the node ready for a merge
         delete( btree, EXPECTED1, 42, 43, 46, 47 );
 
-        // delete 
+        // delete
         checkRemoval( btree, 50, EXPECTED1 );
 
         btree.close();
@@ -1612,7 +1603,7 @@ public class InMemoryBTreeTest
     /**
      * Test deletions in a tree with more than one level. We are specifically testing
      * the deletions that will make a node borrowing some element from a sibling.
-     * 
+     *
      * 7: remove the second element of a leaf in the middle of the tree
      */
     @Test
@@ -1623,7 +1614,7 @@ public class InMemoryBTreeTest
         // deleting as many elements as necessary to get the node ready for a merge
         delete( btree, EXPECTED1, 42, 43, 46, 47 );
 
-        // delete 
+        // delete
         checkRemoval( btree, 51, EXPECTED1 );
 
         btree.close();
@@ -1633,7 +1624,7 @@ public class InMemoryBTreeTest
     /**
      * Test deletions in a tree with more than one level. We are specifically testing
      * the deletions that will make a node borrowing some element from a sibling.
-     * 
+     *
      * 8: remove the last element of a leaf in the middle of the tree
      */
     @Test
@@ -1644,7 +1635,7 @@ public class InMemoryBTreeTest
         // deleting as many elements as necessary to get the node ready for a merge
         delete( btree, EXPECTED1, 42, 43, 46, 47 );
 
-        // delete 
+        // delete
         checkRemoval( btree, 59, EXPECTED1 );
 
         btree.close();
@@ -1654,7 +1645,7 @@ public class InMemoryBTreeTest
     /**
      * Test deletions in a tree with more than one level. We are specifically testing
      * the deletions that will make a node borrowing some element from a sibling.
-     * 
+     *
      * 9: remove the element before the last one of a leaf in the middle of the tree
      */
     @Test
@@ -1665,7 +1656,7 @@ public class InMemoryBTreeTest
         // deleting as many elements as necessary to get the node ready for a merge
         delete( btree, EXPECTED1, 42, 43, 46, 47 );
 
-        // delete 
+        // delete
         checkRemoval( btree, 58, EXPECTED1 );
 
         btree.close();
@@ -1675,7 +1666,7 @@ public class InMemoryBTreeTest
     /**
      * Test deletions in a tree with more than one level. We are specifically testing
      * the deletions that will make a node borrowing some element from a sibling.
-     * 
+     *
      * 10: remove the mid element of a leaf in the middle of the tree
      */
     @Test
@@ -1686,7 +1677,7 @@ public class InMemoryBTreeTest
         // deleting as many elements as necessary to get the node ready for a merge
         delete( btree, EXPECTED1, 42, 43, 46, 47 );
 
-        // delete 
+        // delete
         checkRemoval( btree, 54, EXPECTED1 );
 
         btree.close();
@@ -1696,7 +1687,7 @@ public class InMemoryBTreeTest
     /**
      * Test deletions in a tree with more than one level. We are specifically testing
      * the deletions that will make a node borrowing some element from a sibling.
-     * 
+     *
      * 11: remove the mid+1 element of a leaf in the middle of the tree
      */
     @Test
@@ -1707,7 +1698,7 @@ public class InMemoryBTreeTest
         // deleting as many elements as necessary to get the node ready for a merge
         delete( btree, EXPECTED1, 42, 43, 46, 47 );
 
-        // delete 
+        // delete
         checkRemoval( btree, 55, EXPECTED1 );
 
         btree.close();
@@ -1740,7 +1731,7 @@ public class InMemoryBTreeTest
 
         assertNotNull( deleted );
         assertNull( deleted.getValue() );
-        
+
         btree.close();
     }
 
@@ -1949,19 +1940,17 @@ public class InMemoryBTreeTest
         tuple = cursor.next();
         assertEquals( Integer.valueOf( 4 ), tuple.getKey() );
         assertEquals( Integer.valueOf( 4 ), tuple.getValue() );
-        
+
         cursor.close();
         btree.close();
     }
 
-    
+
     @Test
     public void testCheckRootPageContents() throws Exception
     {
         IntSerializer ser = new IntSerializer();
-        BTree<Integer, Integer> btree = BTreeFactory.createInMemoryBTree( "master1", ser, ser );
-        btree.setPageSize( 4 );
-        btree.init();
+        BTree<Integer, Integer> btree = BTreeFactory.createInMemoryBTree( "master1", ser, ser, 4 );
 
         for( int i=1; i < 8; i++ )
         {

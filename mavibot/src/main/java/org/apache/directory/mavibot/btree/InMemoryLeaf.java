@@ -23,13 +23,14 @@ package org.apache.directory.mavibot.btree;
 import java.io.IOException;
 import java.lang.reflect.Array;
 
+import org.apache.directory.mavibot.btree.exception.DuplicateValueNotAllowedException;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
 
 /**
  * A MVCC Leaf. It stores the keys and values. It does not have any children.
- * 
+ *
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
  *
@@ -43,7 +44,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
     /**
      * Constructor used to create a new Leaf when we read it from a file.
-     * 
+     *
      * @param btree The BTree this page belongs to.
      */
     InMemoryLeaf( BTree<K, V> btree )
@@ -54,7 +55,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
     /**
      * Internal constructor used to create Page instance used when a page is being copied or overflow
-     * 
+     *
      * @param btree The BTree this page belongs to.
      * @param revision The page revision
      * @param nbElems The number of elements this page will contain
@@ -156,7 +157,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             if ( valueHolder.contains( value ) )
             {
                 // this is a case to delete entire <K,sub-BTree> or <K,single-V>
-                if ( valueHolder.size() == 1 ) 
+                if ( valueHolder.size() == 1 )
                 {
                     // Ok, we can remove the value
                     removedElement = new Tuple<K, V>( getKey( index ), null ); // the entire value was removed
@@ -213,7 +214,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 // if it has more than N/2 elements, or to merge the two pages.
                 // Check in both next and previous page, if they have the same parent
                 // and select the biggest page with the same parent to borrow an element.
-                int siblingPos = selectSibling( (InMemoryNode<K, V> ) parent, parentPos );
+                int siblingPos = selectSibling( parent, parentPos );
                 InMemoryLeaf<K, V> sibling = (InMemoryLeaf<K, V> ) ( ( (InMemoryNode<K, V> ) parent ).getPage( siblingPos ) );
 
                 if ( sibling.getNbElems() == halfSize )
@@ -273,7 +274,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
     /**
      * Merges the sibling with the current leaf, after having removed the element in the page.
-     * 
+     *
      * @param revision The new revision
      * @param sibling The sibling we will merge with
      * @param isLeft Tells if the sibling is on the left or on the right
@@ -335,12 +336,12 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * Borrows an element from the left sibling, creating a new sibling with one
      * less element and creating a new page where the element to remove has been
      * deleted and the borrowed element added on the left.
-     * 
+     *
      * @param revision The new revision for all the pages
      * @param sibling The left sibling
      * @param pos The position of the element to remove
      * @return The resulting pages
-     * @throws IOException If we have an error while trying to access the page 
+     * @throws IOException If we have an error while trying to access the page
      */
     private DeleteResult<K, V> borrowFromLeft( Tuple<K, V> removedElement, long revision, InMemoryLeaf<K, V> sibling, int pos )
         throws IOException
@@ -382,12 +383,12 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * Borrows an element from the right sibling, creating a new sibling with one
      * less element and creating a new page where the element to remove has been
      * deleted and the borrowed element added on the right.
-     * 
+     *
      * @param revision The new revision for all the pages
      * @param sibling The right sibling
      * @param pos The position of the element to remove
      * @return The resulting pages
-     * @throws IOException If we have an error while trying to access the page 
+     * @throws IOException If we have an error while trying to access the page
      */
     private DeleteResult<K, V> borrowFromRight( Tuple<K, V> removedElement, long revision, InMemoryLeaf<K, V> sibling, int pos )
         throws IOException
@@ -475,9 +476,9 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         if ( pos < 0 )
         {
             InMemoryValueHolder<V> valueHolder = (InMemoryValueHolder<V> ) values[-( pos + 1 )];
-            
+
             V value = valueHolder.getCursor().next();
-            
+
             return value;
         }
         else
@@ -537,7 +538,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         if ( pos < 0 )
         {
             ValueHolder<V> valueHolder = values[-( pos + 1 )];
-            
+
             return valueHolder.contains( value );
         }
         else
@@ -588,7 +589,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
             // Start at the beginning of the page
             ParentPos<K, V> parentPos = new ParentPos<K, V>( this, pos );
-            
+
             // Create the value cursor
             parentPos.valueCursor = values[pos].getCursor();
 
@@ -605,7 +606,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
                 // Create the value cursor
                 parentPos.valueCursor = values[pos].getCursor();
-                
+
                 stack[depth] = parentPos;
 
                 cursor = new TupleCursor<K, V>( transaction, stack, depth );
@@ -617,11 +618,11 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
                 // Create the value cursor
                 parentPos.valueCursor = values[nbElems - 1].getCursor();
-                
+
                 stack[depth] = parentPos;
 
                 cursor = new TupleCursor<K, V>( transaction, stack, depth );
-                
+
                 try
                 {
                     cursor.afterLast();
@@ -679,7 +680,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
     /**
      * Copy the current page and all of the keys, values and children, if it's not a leaf.
-     * 
+     *
      * @param revision The new revision
      * @param nbElems The number of elements to copy
      * @return The copied page
@@ -698,7 +699,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
     /**
      * Copy the current page if needed, and replace the value at the position we have found the key.
-     * 
+     *
      * @param revision The new page revision
      * @param key The new key
      * @param value the new value
@@ -711,6 +712,17 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     {
         InMemoryLeaf<K, V> newLeaf = this;
 
+        // Get the previous value from the leaf (it's a copy)
+        ValueHolder<V> valueHolder = values[pos];
+
+        boolean valueExists = valueHolder.contains( value );
+
+        // Check we can add a new value
+        if ( !valueExists && !btree.isAllowDuplicates() )
+        {
+            throw new DuplicateValueNotAllowedException( "Duplicate values are not allowed" );
+        }
+
         if ( this.revision != revision )
         {
             // The page hasn't been modified yet, we need to copy it first
@@ -718,10 +730,10 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
 
         // Get the previous value from the leaf (it's a copy)
-        ValueHolder<V> valueHolder = newLeaf.values[pos];
+        valueHolder = newLeaf.values[pos];
         V replacedValue = null;
 
-        if ( !valueHolder.contains( value ) )
+        if ( !valueExists )
         {
             valueHolder.add( value );
             newLeaf.values[pos] = valueHolder;
@@ -746,7 +758,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * Adds a new <K, V> into a copy of the current page at a given position. We return the
      * modified page. The new page will have one more element than the current page.
-     * 
+     *
      * @param revision The revision of the modified page
      * @param key The key to insert
      * @param value The value to insert
@@ -794,7 +806,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * If the newly added element is in the middle, we will use it
      * as a pivot. Otherwise, we will use either the last element in the left page if the element is added
      * on the left, or the first element in the right page if it's added on the right.
-     * 
+     *
      * @param revision The new revision for all the created pages
      * @param key The key to add
      * @param value The value to add
@@ -896,8 +908,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         return new Tuple<K, V>( getKey( nbElems - 1 ), val );
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
@@ -905,8 +917,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     {
         return true;
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */

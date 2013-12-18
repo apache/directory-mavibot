@@ -25,12 +25,13 @@ import java.lang.reflect.Array;
 import java.util.Comparator;
 import java.util.UUID;
 
+import org.apache.directory.mavibot.btree.exception.BTreeOperationException;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
 
 /**
  * A holder to store the Values
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  * @param <V> The value type
  */
@@ -38,7 +39,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 {
     /**
      * Creates a new instance of a ValueHolder, containing the serialized values.
-     * 
+     *
      * @param parentBtree the parent BTree
      * @param valueSerializer The Value's serializer
      * @param raw The raw data containing the values
@@ -59,7 +60,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
     /**
      * Creates a new instance of a ValueHolder, containing Values. This constructor is called
      * when we need to create a new ValueHolder with deserialized values.
-     * 
+     *
      * @param parentBtree The parent BTree
      * @param values The Values stored in the ValueHolder
      */
@@ -139,8 +140,8 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
         valueBtree = subBtree;
         valueArray = null;
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
@@ -160,18 +161,18 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
         return removedValue;
     }
 
-    
+
     /**
      * Remove the value from a sub btree
      */
     private V removeFromBtree( V removedValue )
     {
         V returnedValue = null;
-        
+
         try
         {
             Tuple<V, V> removedTuple = valueBtree.delete( removedValue );
-            
+
             if ( removedTuple != null )
             {
                 returnedValue = removedTuple.getKey();
@@ -179,7 +180,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
         }
         catch ( IOException e )
         {
-            throw new RuntimeException( e );
+            throw new BTreeOperationException( e );
         }
 
         if ( valueBtree.getNbElems() == 1 )
@@ -194,18 +195,18 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
             }
             catch ( EndOfFileExceededException e )
             {
-                throw new RuntimeException( e );
+                throw new BTreeOperationException( e );
             }
             catch ( IOException e )
             {
-                throw new RuntimeException( e );
+                throw new BTreeOperationException( e );
             }
         }
-        
+
         return returnedValue;
     }
-    
-    
+
+
     /**
      * Remove a value from an array
      */
@@ -225,12 +226,12 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
         {
             V returnedValue = valueArray[0];
             nbArrayElems = 0;
-          
+
             return returnedValue;
         }
     }
 
-    
+
     /**
      * {@inheritDoc}
      */
@@ -254,7 +255,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
             Comparator<V> comparator = valueSerializer.getComparator();
 
             int result = comparator.compare( checkedValue, valueArray[0] );
-            
+
             return result == 0;
         }
     }
@@ -276,15 +277,15 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
         else
         {
             sb.append( ", {" );
-            
+
             if ( size() != 0 )
             {
                 sb.append( valueArray[0] );
             }
-            
+
             sb.append( "}" );
         }
-        
+
         sb.append( "]" );
 
         return sb.toString();

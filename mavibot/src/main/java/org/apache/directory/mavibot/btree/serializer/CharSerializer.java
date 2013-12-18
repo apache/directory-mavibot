@@ -24,11 +24,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.apache.directory.mavibot.btree.comparator.CharComparator;
+import org.apache.directory.mavibot.btree.exception.SerializerCreationException;
 
 
 /**
  * The Character serializer.
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class CharSerializer extends AbstractElementSerializer<Character>
@@ -55,7 +56,7 @@ public class CharSerializer extends AbstractElementSerializer<Character>
 
     /**
      * Serialize a char
-     * 
+     *
      * @param value the value to serialize
      * @return The byte[] containing the serialized char
      */
@@ -69,7 +70,7 @@ public class CharSerializer extends AbstractElementSerializer<Character>
 
     /**
      * Serialize a char
-     * 
+     *
      * @param buffer the Buffer that will contain the serialized value
      * @param start the position in the buffer we will store the serialized char
      * @param value the value to serialize
@@ -105,7 +106,7 @@ public class CharSerializer extends AbstractElementSerializer<Character>
     {
         if ( ( in == null ) || ( in.length < 2 + start ) )
         {
-            throw new RuntimeException( "Cannot extract a Character from a buffer with not enough bytes" );
+            throw new SerializerCreationException( "Cannot extract a Character from a buffer with not enough bytes" );
         }
 
         return Character.valueOf( ( char ) ( ( in[start] << 8 ) +
@@ -134,7 +135,7 @@ public class CharSerializer extends AbstractElementSerializer<Character>
     {
         if ( ( in == null ) || ( in.length < 2 + start ) )
         {
-            throw new RuntimeException( "Cannot extract a Character from a buffer with not enough bytes" );
+            throw new SerializerCreationException( "Cannot extract a Character from a buffer with not enough bytes" );
         }
 
         return Character.valueOf( ( char ) ( ( in[start] << 8 ) +

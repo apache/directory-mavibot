@@ -25,11 +25,12 @@ import java.nio.ByteBuffer;
 import java.util.Comparator;
 
 import org.apache.directory.mavibot.btree.comparator.ByteArrayComparator;
+import org.apache.directory.mavibot.btree.exception.SerializerCreationException;
 
 
 /**
  * A serializer for a byte[].
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
@@ -105,7 +106,7 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
 
     /**
      * Serialize a byte[]
-     * 
+     *
      * @param buffer the Buffer that will contain the serialized value
      * @param start the position in the buffer we will store the serialized byte[]
      * @param value the value to serialize
@@ -155,7 +156,7 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
 
     /**
      * A static method used to deserialize a byte array from a byte array.
-     * 
+     *
      * @param in The byte array containing the byte array
      * @return A byte[]
      */
@@ -163,7 +164,7 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
     {
         if ( ( in == null ) || ( in.length < 4 ) )
         {
-            throw new RuntimeException( "Cannot extract a byte[] from a buffer with not enough bytes" );
+            throw new SerializerCreationException( "Cannot extract a byte[] from a buffer with not enough bytes" );
         }
 
         int len = IntSerializer.deserialize( in );
@@ -188,7 +189,7 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
 
     /**
      * A static method used to deserialize a byte array from a byte array.
-     * 
+     *
      * @param in The byte array containing the byte array
      * @param start the position in the byte[] we will deserialize the byte[] from
      * @return A byte[]
@@ -197,7 +198,7 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
     {
         if ( ( in == null ) || ( in.length < 4 + start ) )
         {
-            throw new RuntimeException( "Cannot extract a byte[] from a buffer with not enough bytes" );
+            throw new SerializerCreationException( "Cannot extract a byte[] from a buffer with not enough bytes" );
         }
 
         int len = IntSerializer.deserialize( in, start );
@@ -222,7 +223,7 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
 
     /**
      * A method used to deserialize a byte array from a byte array.
-     * 
+     *
      * @param in The byte array containing the byte array
      * @return A byte[]
      */
@@ -230,7 +231,7 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
     {
         if ( ( in == null ) || ( in.length < 4 ) )
         {
-            throw new RuntimeException( "Cannot extract a byte[] from a buffer with not enough bytes" );
+            throw new SerializerCreationException( "Cannot extract a byte[] from a buffer with not enough bytes" );
         }
 
         int len = IntSerializer.deserialize( in );
@@ -255,7 +256,7 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
 
     /**
      * A method used to deserialize a byte array from a byte array.
-     * 
+     *
      * @param in The byte array containing the byte array
      * @param start the position in the byte[] we will deserialize the byte[] from
      * @return A byte[]
@@ -264,7 +265,7 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
     {
         if ( ( in == null ) || ( in.length < 4 + start ) )
         {
-            throw new RuntimeException( "Cannot extract a byte[] from a buffer with not enough bytes" );
+            throw new SerializerCreationException( "Cannot extract a byte[] from a buffer with not enough bytes" );
         }
 
         int len = IntSerializer.deserialize( in, start );

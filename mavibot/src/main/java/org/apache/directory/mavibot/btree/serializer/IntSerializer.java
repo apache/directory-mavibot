@@ -24,11 +24,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.apache.directory.mavibot.btree.comparator.IntComparator;
+import org.apache.directory.mavibot.btree.exception.SerializerCreationException;
 
 
 /**
  * The Integer serializer.
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class IntSerializer extends AbstractElementSerializer<Integer>
@@ -63,7 +64,7 @@ public class IntSerializer extends AbstractElementSerializer<Integer>
     {
         if ( ( in == null ) || ( in.length < 4 + start ) )
         {
-            throw new RuntimeException( "Cannot extract a Integer from a buffer with not enough bytes" );
+            throw new SerializerCreationException( "Cannot extract a Integer from a buffer with not enough bytes" );
         }
 
         return ( in[start] << 24 ) +
@@ -94,7 +95,7 @@ public class IntSerializer extends AbstractElementSerializer<Integer>
     {
         if ( ( in == null ) || ( in.length < 4 + start ) )
         {
-            throw new RuntimeException( "Cannot extract a Integer from a buffer with not enough bytes" );
+            throw new SerializerCreationException( "Cannot extract a Integer from a buffer with not enough bytes" );
         }
 
         return ( in[start] << 24 ) +
@@ -135,7 +136,7 @@ public class IntSerializer extends AbstractElementSerializer<Integer>
 
     /**
      * Serialize an int
-     * 
+     *
      * @param value the value to serialize
      * @return The byte[] containing the serialized int
      */
@@ -149,7 +150,7 @@ public class IntSerializer extends AbstractElementSerializer<Integer>
 
     /**
      * Serialize an int
-     * 
+     *
      * @param buffer the Buffer that will contain the serialized value
      * @param start the position in the buffer we will store the serialized int
      * @param value the value to serialize

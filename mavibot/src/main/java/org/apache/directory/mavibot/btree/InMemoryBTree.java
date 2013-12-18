@@ -31,7 +31,9 @@ import java.nio.channels.FileChannel;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.apache.directory.mavibot.btree.exception.InitializationException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
+import org.apache.directory.mavibot.btree.exception.MissingSerializerException;
 import org.apache.directory.mavibot.btree.serializer.BufferHandler;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.slf4j.Logger;
@@ -40,7 +42,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The B+Tree MVCC data structure.
- * 
+ *
  * @param <K> The type for the keys
  * @param <V> The type for the stored values
  *
@@ -76,7 +78,7 @@ import org.slf4j.LoggerFactory;
 
 
     /**
-     * Creates a new BTree, with no initialization. 
+     * Creates a new BTree, with no initialization.
      */
     /* no qualifier */ InMemoryBTree()
     {
@@ -87,9 +89,9 @@ import org.slf4j.LoggerFactory;
 
 
     /**
-     * Creates a new in-memory BTree using the BTreeConfiguration to initialize the 
+     * Creates a new in-memory BTree using the BTreeConfiguration to initialize the
      * BTree
-     * 
+     *
      * @param configuration The configuration to use
      */
     /* no qualifier */ InMemoryBTree( InMemoryBTreeConfiguration<K, V> configuration )
@@ -140,14 +142,14 @@ import org.slf4j.LoggerFactory;
         }
         catch ( IOException ioe )
         {
-            throw new RuntimeException( ioe.getMessage() );
+            throw new InitializationException( ioe.getMessage() );
         }
     }
 
 
     /**
      * Initialize the BTree.
-     * 
+     *
      * @throws IOException If we get some exception while initializing the BTree
      */
     public void init() throws IOException
@@ -181,7 +183,7 @@ import org.slf4j.LoggerFactory;
         {
             if ( file.length() > 0 )
             {
-                // We have some existing file, load it 
+                // We have some existing file, load it
                 load( file );
             }
 
@@ -197,7 +199,7 @@ import org.slf4j.LoggerFactory;
                 applyJournal();
             }
         }
-        else 
+        else
         {
             setType( BTreeTypeEnum.IN_MEMORY );
         }
@@ -229,12 +231,12 @@ import org.slf4j.LoggerFactory;
 
 
     /**
-     * 
+     *
      * Deletes the given <key,value> pair if both key and value match. If the given value is null
      * and there is no null value associated with the given key then the entry with the given key
      * will be removed.
      *
-     * @param key The key to be removed 
+     * @param key The key to be removed
      * @param value The value to be removed (can be null, and when no null value exists the key will be removed irrespective of the value)
      * @param revision The revision to be associated with this operation
      * @return
@@ -376,7 +378,7 @@ import org.slf4j.LoggerFactory;
 
     /**
      * Write the data in the ByteBuffer, and eventually on disk if needed.
-     * 
+     *
      * @param channel The channel we want to write to
      * @param bb The ByteBuffer we want to feed
      * @param buffer The data to inject
@@ -445,12 +447,12 @@ import org.slf4j.LoggerFactory;
 
         if ( keySerializer == null )
         {
-            throw new RuntimeException( "Cannot flush the btree without a Key serializer" );
+            throw new MissingSerializerException( "Cannot flush the btree without a Key serializer" );
         }
 
         if ( valueSerializer == null )
         {
-            throw new RuntimeException( "Cannot flush the btree without a Value serializer" );
+            throw new MissingSerializerException( "Cannot flush the btree without a Value serializer" );
         }
 
         // Write the number of elements first
@@ -492,9 +494,9 @@ import org.slf4j.LoggerFactory;
     }
 
 
-    /** 
+    /**
      * Inject all the modification from the journal into the btree
-     * 
+     *
      * @throws IOException If we had some issue while reading the journal
      */
     private void applyJournal() throws IOException
@@ -517,7 +519,7 @@ import org.slf4j.LoggerFactory;
         {
             while ( true )
             {
-                // Read the type 
+                // Read the type
                 byte[] type = bufferHandler.read( 1 );
 
                 if ( type[0] == Modification.ADDITION )
@@ -555,9 +557,9 @@ import org.slf4j.LoggerFactory;
 
 
     /**
-     * Read the data from the disk into this BTree. All the existing data in the 
+     * Read the data from the disk into this BTree. All the existing data in the
      * BTree are kept, the read data will be associated with a new revision.
-     * 
+     *
      * @param file
      * @throws IOException
      */
@@ -615,7 +617,7 @@ import org.slf4j.LoggerFactory;
 
     /**
      * Get the rootPzge associated to a give revision.
-     * 
+     *
      * @param revision The revision we are looking for
      * @return The rootPage associated to this revision
      * @throws IOException If we had an issue while accessing the underlying file

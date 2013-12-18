@@ -26,12 +26,13 @@ import java.nio.ByteBuffer;
 import java.util.Comparator;
 
 import org.apache.directory.mavibot.btree.comparator.StringComparator;
+import org.apache.directory.mavibot.btree.exception.SerializerCreationException;
 import org.apache.directory.mavibot.btree.util.Strings;
 
 
 /**
  * The String serializer.
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class StringSerializer extends AbstractElementSerializer<String>
@@ -84,7 +85,7 @@ public class StringSerializer extends AbstractElementSerializer<String>
 
         if ( in.length < length + 4 + start )
         {
-            throw new RuntimeException( "Cannot extract a String from a buffer with not enough bytes" );
+            throw new SerializerCreationException( "Cannot extract a String from a buffer with not enough bytes" );
         }
 
         return Strings.utf8ToString( in, start + 4, length );
@@ -118,7 +119,7 @@ public class StringSerializer extends AbstractElementSerializer<String>
 
         if ( in.length < length + start )
         {
-            throw new RuntimeException( "Cannot extract a String from a buffer with not enough bytes" );
+            throw new SerializerCreationException( "Cannot extract a String from a buffer with not enough bytes" );
         }
 
         return Strings.utf8ToString( in, start + 4, length );
@@ -127,7 +128,7 @@ public class StringSerializer extends AbstractElementSerializer<String>
 
     /**
      * Serialize a String. We store the length on 4 bytes, then the String
-     * 
+     *
      * @param buffer the Buffer that will contain the serialized value
      * @param start the position in the buffer we will store the serialized String
      * @param value the value to serialize
@@ -177,7 +178,7 @@ public class StringSerializer extends AbstractElementSerializer<String>
                 catch ( UnsupportedEncodingException uee )
                 {
                     // if this happens something is really strange
-                    throw new RuntimeException( uee );
+                    throw new SerializerCreationException( uee );
                 }
         }
 
@@ -263,7 +264,7 @@ public class StringSerializer extends AbstractElementSerializer<String>
 
     /**
      * {@inheritDoc}
-     * @throws IOException 
+     * @throws IOException
      */
     public String deserialize( BufferHandler bufferHandler ) throws IOException
     {

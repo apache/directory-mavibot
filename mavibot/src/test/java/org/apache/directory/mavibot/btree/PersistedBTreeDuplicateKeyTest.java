@@ -33,10 +33,8 @@ import java.util.NoSuchElementException;
 import java.util.UUID;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.RecordManager;
-import org.apache.directory.mavibot.btree.Tuple;
-import org.apache.directory.mavibot.btree.TupleCursor;
+import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
+import org.apache.directory.mavibot.btree.exception.DuplicateValueNotAllowedException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
@@ -74,20 +72,20 @@ public class PersistedBTreeDuplicateKeyTest
         try
         {
             // Create a new BTree
-            btree = recordManager1.addBTree( "test", new LongSerializer(), new StringSerializer(), false );
+            btree = recordManager1.addBTree( "test", new LongSerializer(), new StringSerializer(), BTree.ALLOW_DUPLICATES );
         }
         catch ( Exception e )
         {
             throw new RuntimeException( e );
         }
     }
-    
-    
+
+
     @After
     public void cleanup() throws IOException
     {
         dataDir = new File( System.getProperty( "java.io.tmpdir" ) + "/recordman" );
-        
+
         btree.close();
 
         if ( dataDir.exists() )
@@ -96,7 +94,7 @@ public class PersistedBTreeDuplicateKeyTest
         }
     }
 
-    
+
     private void openRecordManagerAndBtree()
     {
         try
@@ -121,7 +119,7 @@ public class PersistedBTreeDuplicateKeyTest
         }
     }
 
-    
+
     @Test
     public void testInsertNullValue() throws IOException
     {
@@ -136,7 +134,7 @@ public class PersistedBTreeDuplicateKeyTest
         assertEquals( null, t.getValue() );
 
         cursor.close();
-        
+
         btree.close();
     }
 
@@ -147,7 +145,6 @@ public class PersistedBTreeDuplicateKeyTest
         IntSerializer serializer = new IntSerializer();
 
         BTree<Integer, Integer> btree = BTreeFactory.createPersistedBTree( "master", serializer, serializer );
-        btree.init();
 
         TupleCursor<Integer, Integer> cursor = btree.browse();
         assertFalse( cursor.hasNext() );
@@ -344,7 +341,7 @@ public class PersistedBTreeDuplicateKeyTest
 
         // add one more value for 'a'
         btree.insert( Long.valueOf( 'a' ), "val" );
-        
+
         assertEquals( 27, btree.getNbElems() );
 
         // Start from c : we should have only 24 values
@@ -378,7 +375,7 @@ public class PersistedBTreeDuplicateKeyTest
             assertNotNull( tuple );
             i++;
         }
-        
+
         assertEquals( 26, i );
 
         cursor.close();
@@ -387,13 +384,13 @@ public class PersistedBTreeDuplicateKeyTest
         cursor = btree.browse();
 
         i = 0;
-        
+
         while ( cursor.hasNext() )
         {
             assertNotNull( cursor.next() );
             i++;
         }
-        
+
         // again, we should see 27 elements
         assertEquals( 27, i );
 
@@ -403,7 +400,7 @@ public class PersistedBTreeDuplicateKeyTest
         assertEquals( Long.valueOf( 'a' ), cursor.nextKey().getKey() );
 
         i = 0;
-        
+
         while ( cursor.hasNextKey() )
         {
             tuple = cursor.nextKey();
@@ -411,7 +408,7 @@ public class PersistedBTreeDuplicateKeyTest
             assertNotNull( key );
             i++;
         }
-        
+
         // We should have 25 keys only, as we just moved forward the first one
         assertEquals( 25, i );
     }
@@ -430,7 +427,7 @@ public class PersistedBTreeDuplicateKeyTest
 
         // add one more value for 'z'
         btree.insert( Long.valueOf( 'z' ), "val" );
-        
+
         assertEquals( 27, btree.getNbElems() );
 
         // Start from x : we should have only 23 values
@@ -464,7 +461,7 @@ public class PersistedBTreeDuplicateKeyTest
             assertNotNull( tuple );
             i++;
         }
-        
+
         assertEquals( 26, i );
 
         cursor.close();
@@ -474,13 +471,13 @@ public class PersistedBTreeDuplicateKeyTest
         cursor.afterLast();
 
         i = 0;
-        
+
         while ( cursor.hasPrev() )
         {
             assertNotNull( cursor.prev() );
             i++;
         }
-        
+
         // again, we should see 27 elements
         assertEquals( 27, i );
 
@@ -490,7 +487,7 @@ public class PersistedBTreeDuplicateKeyTest
         assertEquals( Long.valueOf( 'z' ), cursor.prevKey().getKey() );
 
         i = 0;
-        
+
         while ( cursor.hasPrevKey() )
         {
             tuple = cursor.prevKey();
@@ -498,7 +495,7 @@ public class PersistedBTreeDuplicateKeyTest
             assertNotNull( key );
             i++;
         }
-        
+
         // We should have 25 keys only, as we just moved forward the first one
         assertEquals( 25, i );
     }
@@ -538,7 +535,7 @@ public class PersistedBTreeDuplicateKeyTest
     public void testNextPrevKey() throws Exception
     {
         int i = 7;
-        
+
         // Insert keys from a to z with 7 values for each key
         for ( char ch = 'a'; ch <= 'z'; ch++ )
         {
@@ -552,7 +549,7 @@ public class PersistedBTreeDuplicateKeyTest
 
         assertTrue( cursor.hasNext() );
         assertFalse( cursor.hasPrev() );
-        
+
         for ( int k = 0; k < 2; k++ )
         {
             assertEquals( Long.valueOf( 'a' ), cursor.next().getKey() );
@@ -641,7 +638,7 @@ public class PersistedBTreeDuplicateKeyTest
         }
 
         // 15 is the last element of the first leaf
-        // Check that we correctly jump to the next page 
+        // Check that we correctly jump to the next page
         TupleCursor<Long, String> cursor = btree.browseFrom( 15L );
         Tuple<Long, String> tuple = cursor.nextKey();
 
@@ -736,7 +733,7 @@ public class PersistedBTreeDuplicateKeyTest
     public void testMoveToNextAndTraverseBackward() throws Exception
     {
         int i = 5;
-        
+
         for ( int k = 0; k < i; k++ )
         {
             btree.insert( (long)k, Long.toString( k ) );
@@ -747,7 +744,7 @@ public class PersistedBTreeDuplicateKeyTest
         cursor.nextKey();
 
         long currentKey = 4L;
-        
+
         while ( cursor.hasPrev() )
         {
             assertEquals( Long.valueOf( currentKey ), cursor.prev().getKey() );
@@ -767,7 +764,7 @@ public class PersistedBTreeDuplicateKeyTest
     public void testMoveToPrevAndTraverseForward() throws Exception
     {
         int i = 5;
-        
+
         for ( int k = 0; k < i; k++ )
         {
             btree.insert( (long)k, Long.toString( k ) );
@@ -777,7 +774,7 @@ public class PersistedBTreeDuplicateKeyTest
         TupleCursor<Long, String> cursor = btree.browseFrom( 0L );
 
         long currentKey = 0L;
-        
+
         while ( cursor.hasNext() )
         {
             assertEquals( Long.valueOf( currentKey ), cursor.next().getKey() );
@@ -787,4 +784,29 @@ public class PersistedBTreeDuplicateKeyTest
         cursor.close();
     }
 
+
+    /**
+     * Test that a BTree which forbid duplicate values does not accept them
+     */
+    @Test(expected=DuplicateValueNotAllowedException.class)
+    public void testBTreeForbidDups() throws IOException, BTreeAlreadyManagedException
+    {
+        BTree<Long, String> singleValueBtree = recordManager1.addBTree( "test2", new LongSerializer(),
+            new StringSerializer(), BTree.FORBID_DUPLICATES );
+
+        for ( long i = 0; i < 64; i++ )
+        {
+            singleValueBtree.insert( i, Long.toString( i  ) );
+        }
+
+        try
+        {
+            singleValueBtree.insert( 18L, "Duplicate" );
+            fail();
+        }
+        finally
+        {
+            singleValueBtree.close();
+        }
+    }
 }

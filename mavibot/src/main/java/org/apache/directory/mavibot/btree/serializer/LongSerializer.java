@@ -24,11 +24,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.apache.directory.mavibot.btree.comparator.LongComparator;
+import org.apache.directory.mavibot.btree.exception.SerializerCreationException;
 
 
 /**
  * The Long serializer.
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class LongSerializer extends AbstractElementSerializer<Long>
@@ -53,7 +54,7 @@ public class LongSerializer extends AbstractElementSerializer<Long>
 
     /**
      * Serialize an long
-     * 
+     *
      * @param value the value to serialize
      * @return The byte[] containing the serialized long
      */
@@ -67,7 +68,7 @@ public class LongSerializer extends AbstractElementSerializer<Long>
 
     /**
      * Serialize an long
-     * 
+     *
      * @param buffer the Buffer that will contain the serialized value
      * @param start the position in the buffer we will store the serialized long
      * @param value the value to serialize
@@ -110,7 +111,7 @@ public class LongSerializer extends AbstractElementSerializer<Long>
     {
         if ( ( in == null ) || ( in.length < 8 + start ) )
         {
-            throw new RuntimeException( "Cannot extract a Long from a buffer with not enough bytes" );
+            throw new SerializerCreationException( "Cannot extract a Long from a buffer with not enough bytes" );
         }
 
         long result = ( ( long ) in[start] << 56 ) +
@@ -148,7 +149,7 @@ public class LongSerializer extends AbstractElementSerializer<Long>
     {
         if ( ( in == null ) || ( in.length < 8 + start ) )
         {
-            throw new RuntimeException( "Cannot extract a Long from a buffer with not enough bytes" );
+            throw new SerializerCreationException( "Cannot extract a Long from a buffer with not enough bytes" );
         }
 
         long result = ( ( long ) in[start] << 56 ) +

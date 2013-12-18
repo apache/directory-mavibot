@@ -24,11 +24,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.apache.directory.mavibot.btree.comparator.BooleanComparator;
+import org.apache.directory.mavibot.btree.exception.SerializerCreationException;
 
 
 /**
  * The Boolean serializer.
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class BooleanSerializer extends AbstractElementSerializer<Boolean>
@@ -55,7 +56,7 @@ public class BooleanSerializer extends AbstractElementSerializer<Boolean>
 
     /**
      * Serialize a boolean
-     * 
+     *
      * @param value the value to serialize
      * @return The byte[] containing the serialized boolean
      */
@@ -69,7 +70,7 @@ public class BooleanSerializer extends AbstractElementSerializer<Boolean>
 
     /**
      * Serialize a boolean
-     * 
+     *
      * @param buffer the Buffer that will contain the serialized value
      * @param start the position in the buffer we will store the serialized boolean
      * @param value the value to serialize
@@ -85,7 +86,7 @@ public class BooleanSerializer extends AbstractElementSerializer<Boolean>
 
     /**
      * A static method used to deserialize a Boolean from a byte array.
-     * 
+     *
      * @param in The byte array containing the boolean
      * @return A boolean
      */
@@ -97,7 +98,7 @@ public class BooleanSerializer extends AbstractElementSerializer<Boolean>
 
     /**
      * A static method used to deserialize a Boolean from a byte array.
-     * 
+     *
      * @param in The byte array containing the boolean
      * @param start the position in the byte[] we will deserialize the boolean from
      * @return A boolean
@@ -106,7 +107,7 @@ public class BooleanSerializer extends AbstractElementSerializer<Boolean>
     {
         if ( ( in == null ) || ( in.length < 1 + start ) )
         {
-            throw new RuntimeException( "Cannot extract a Boolean from a buffer with not enough bytes" );
+            throw new SerializerCreationException( "Cannot extract a Boolean from a buffer with not enough bytes" );
         }
 
         return in[start] == 0x01;
@@ -115,7 +116,7 @@ public class BooleanSerializer extends AbstractElementSerializer<Boolean>
 
     /**
      * A method used to deserialize a Boolean from a byte array.
-     * 
+     *
      * @param in The byte array containing the boolean
      * @return A boolean
      */
@@ -127,7 +128,7 @@ public class BooleanSerializer extends AbstractElementSerializer<Boolean>
 
     /**
      * A method used to deserialize a Boolean from a byte array.
-     * 
+     *
      * @param in The byte array containing the boolean
      * @param start the position in the byte[] we will deserialize the boolean from
      * @return A boolean
@@ -136,7 +137,7 @@ public class BooleanSerializer extends AbstractElementSerializer<Boolean>
     {
         if ( ( in == null ) || ( in.length < 1 + start ) )
         {
-            throw new RuntimeException( "Cannot extract a Boolean from a buffer with not enough bytes" );
+            throw new SerializerCreationException( "Cannot extract a Boolean from a buffer with not enough bytes" );
         }
 
         return in[start] == 0x01;
