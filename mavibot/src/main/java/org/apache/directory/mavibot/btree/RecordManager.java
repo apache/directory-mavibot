@@ -1255,8 +1255,11 @@ public class RecordManager
         byte[] length = IntSerializer.serialize( buffer.length );
         serializedData.add( length );
 
-        // And store the serialized key now
-        serializedData.add( buffer );
+        // And store the serialized key now if not null
+        if ( buffer.length != 0 )
+        {
+            serializedData.add( buffer );
+        }
 
         return buffer.length + INT_SIZE;
     }
