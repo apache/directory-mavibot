@@ -104,7 +104,7 @@ import java.util.List;
         super( btree, revision, 1 );
 
         // Create the children array, and store the left and right children
-        children = ( PersistedPageHolder<K, V>[] ) Array.newInstance( PersistedPageHolder.class,
+        children = ( PageHolder<K, V>[] ) Array.newInstance( PageHolder.class,
             btree.getPageSize() + 1 );
 
         children[0] = leftPage;

@@ -170,6 +170,8 @@ public class RecordManager
     /** A flag used by internal btrees */
     public static final boolean NORMAL_BTREE = false;
 
+    /** A map of pending pages */
+    private Map<Page<?, ?>, BTree<?, ?>> pendingPages = new LinkedHashMap<Page<?, ?>, BTree<?, ?>>();
 
     /**
      * Create a Record manager which will either create the underlying file
@@ -3028,6 +3030,15 @@ public class RecordManager
             // should not happen
             throw new BTreeCreationException( e );
         }
+    }
+
+
+    /**
+     * @return the pendingPages
+     */
+    /* no qualifier*/ <K, V> Map<Page<?, ?>, BTree<?, ?>> getPendingPages()
+    {
+        return pendingPages;
     }
 
 

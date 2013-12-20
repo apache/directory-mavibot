@@ -19,6 +19,8 @@
  */
 package org.apache.directory.mavibot.btree;
 
+import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.directory.mavibot.btree.exception.BadTransactionStateException;
@@ -62,6 +64,38 @@ import org.apache.directory.mavibot.btree.exception.BadTransactionStateException
             throw new BadTransactionStateException( "Cannot commit a write transaction when it's not started" );
         }
 
+        Map<?, ?> pendingPages = recordManager.getPendingPages();
+
+        for ( Object object : pendingPages.keySet() )
+        {
+            BTree btree = (BTree)pendingPages.get( object );
+
+            try
+            {
+                recordManager.writePage( btree, (Page)object, ((Page)object).getRevision() );
+            }
+            catch ( IOException e )
+            {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+
+        /*
+        recordManager.updateRecordManagerHeader();
+
+        // Update the BTree header now
+        recordManager.updateBtreeHeader( btree, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
+
+        // Moved the free pages into the list of free pages
+        recordManager.addFreePages( this, result.getCopiedPages() );
+
+        // Store the created rootPage into the revision BTree, this will be stored in RecordManager only if revisions are set to keep
+        recordManager.storeRootPage( this, rootPage );
+        */
+
+        pendingPages.clear();
+
         writeLock.unlock();
     }
 
@@ -74,5 +108,15 @@ import org.apache.directory.mavibot.btree.exception.BadTransactionStateException
         }
 
         writeLock.unlock();
+    }
+
+
+    /**
+     * Tells if the transaction has started
+     * @return true if the transaction has started
+     */
+    /* no qualifier */ boolean isStarted()
+    {
+        return writeLock.isLocked();
     }
 }

@@ -24,6 +24,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -347,7 +348,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
                 // Write the modified page on disk
                 // Note that we don't use the holder, the new root page will
                 // remain in memory.
-                PageHolder<K, V> holder = recordManager.writePage( this, modifiedPage, revision );
+                PageHolder<K, V> holder = writePage( modifiedPage, revision );
 
                 // Store the offset on disk in the page in memory
                 ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( PersistedPageHolder<K, V> ) holder )
@@ -430,7 +431,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
             // Write the modified page on disk
             // Note that we don't use the holder, the new root page will
             // remain in memory.
-            PageHolder<K, V> holder = recordManager.writePage( this, modifiedPage, revision );
+            writePage( modifiedPage, revision );
 
             // The root has just been modified, we haven't split it
             // Get it and make it the current root page
@@ -451,17 +452,16 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
             // If the BTree is managed, we have to write the two pages that were created
             // and to keep a track of the two offsets for the upper node
-            PageHolder<K, V> holderLeft = recordManager.writePage( this, leftPage, revision );
+            PageHolder<K, V> holderLeft = writePage( leftPage, revision );
 
-            PageHolder<K, V> holderRight = recordManager.writePage( this, rightPage, revision );
+            PageHolder<K, V> holderRight = writePage( rightPage, revision );
 
             // Create the new rootPage
             newRootPage = new PersistedNode<K, V>( this, revision, pivot, holderLeft, holderRight );
 
             // If the BTree is managed, we now have to write the page on disk
             // and to add this page to the list of modified pages
-            PageHolder<K, V> holder = recordManager
-                .writePage( this, newRootPage, revision );
+            PageHolder<K, V> holder = writePage( newRootPage, revision );
 
             rootPage = newRootPage;
         }
@@ -475,16 +475,19 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
         // If the BTree is managed, we have to update the rootPage on disk
         // Update the RecordManager header
-        recordManager.updateRecordManagerHeader();
+        if ( ( writeTransaction == null ) || !writeTransaction.isStarted() )
+        {
+            recordManager.updateRecordManagerHeader();
 
-        // Update the BTree header now
-        recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
+            // Update the BTree header now
+            recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
 
-        // Moved the free pages into the list of free pages
-        recordManager.addFreePages( this, result.getCopiedPages() );
+            // Moved the free pages into the list of free pages
+            recordManager.addFreePages( this, result.getCopiedPages() );
 
-        // Store the created rootPage into the revision BTree, this will be stored in RecordManager only if revisions are set to keep
-        recordManager.storeRootPage( this, rootPage );
+            // Store the created rootPage into the revision BTree, this will be stored in RecordManager only if revisions are set to keep
+            recordManager.storeRootPage( this, rootPage );
+        }
 
         // Return the value we have found if it was modified
         return result;
@@ -531,6 +534,29 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
         while ( size > 0 );
     }
 
+
+    /**
+     * Write a page either in the pending pages if the transaction is started,
+     * or directly on disk.
+     */
+    private PageHolder<K, V> writePage( Page<K, V> modifiedPage, long revision ) throws IOException
+    {
+        if ( ( writeTransaction != null ) && writeTransaction.isStarted() )
+        {
+            Map<Page<?, ?>, BTree<?, ?>> pendingPages = recordManager.getPendingPages();
+            pendingPages.put( modifiedPage, this );
+
+            PageHolder<K, V> pageHolder = new PageHolder<K, V>( this, modifiedPage );
+
+            return pageHolder;
+        }
+        else
+        {
+            PageHolder<K, V> pageHolder = recordManager.writePage( this, modifiedPage, revision );
+
+            return pageHolder;
+        }
+    }
 
     /**
      * Get the rootPzge associated to a give revision.
