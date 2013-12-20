@@ -1324,11 +1324,10 @@ public class RecordManager
         // we just iterate on all the values
         ValueHolder<V> valueHolder = leaf.getValue( pos );
         int dataSize = 0;
+        int nbValues = valueHolder.size();
 
         if ( !valueHolder.isSubBtree() )
         {
-            int nbValues = valueHolder.size();
-
             // Write the nb elements first
             byte[] buffer = IntSerializer.serialize( nbValues );
             serializedData.add( buffer );
@@ -1343,14 +1342,14 @@ public class RecordManager
             serializedData.add( buffer );
             dataSize += INT_SIZE;
 
-            // and add the data
-            serializedData.add( data );
+            // and add the data if it's not 0
+            if ( data.length > 0 )
+            {
+                serializedData.add( data );
+            }
         }
         else
         {
-            // First take the number of values
-            int nbValues = valueHolder.size();
-
             if ( nbValues == 0 )
             {
                 // No value.
