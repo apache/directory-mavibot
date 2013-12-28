@@ -21,6 +21,7 @@ package org.apache.directory.mavibot.btree;
 
 
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.Comparator;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.ReentrantLock;
@@ -102,7 +103,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         ReadTransaction<K, V> transaction = beginReadTransaction();
 
         // Fetch the root page for this revision
-        ParentPos<K, V>[] stack = new ParentPos[32];
+        ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
 
         TupleCursor<K, V> cursor = rootPage.browse( transaction, stack, 0 );
 
@@ -123,7 +124,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         // Fetch the root page for this revision
         Page<K, V> revisionRootPage = getRootPage( revision );
 
-        ParentPos<K, V>[] stack = new ParentPos[32];
+        ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
 
         // And get the cursor
         TupleCursor<K, V> cursor = revisionRootPage.browse( transaction, stack, 0 );
@@ -140,7 +141,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         ReadTransaction<K, V> transaction = beginReadTransaction();
 
         // Fetch the root page for this revision
-        ParentPos<K, V>[] stack = new ParentPos[32];
+        ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
 
         TupleCursor<K, V> cursor = rootPage.browse( key, transaction, stack, 0 );
 
@@ -158,7 +159,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         // Fetch the rootPage for this revision
         Page<K, V> revisionRootPage = getRootPage( revision );
 
-        ParentPos<K, V>[] stack = new ParentPos[32];
+        ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
 
         // And get the cursor
         TupleCursor<K, V> cursor = revisionRootPage.browse( key, transaction, stack, 0 );
