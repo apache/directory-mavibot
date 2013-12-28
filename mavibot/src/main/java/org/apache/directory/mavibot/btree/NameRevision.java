@@ -21,21 +21,21 @@ package org.apache.directory.mavibot.btree;
 
 
 /**
- * A data structure that stores a revision associated to a BTree name. We use
- * it to allow the access to old revisions.
+ * A data structure that stores a Btree name associated with a revision. We use
+ * it to manage Btree of Btrees.
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* no qualifier*/class RevisionName extends Tuple<Long, String>
+/* no qualifier*/class NameRevision extends Tuple<String, Long>
 {
     /**
      * A constructor for the RevisionName class
      * @param revision The revision
      * @param name The BTree name
      */
-    /* no qualifier*/RevisionName( long revision, String name )
+    /* no qualifier*/NameRevision( String name, long revision )
     {
-        super( revision, name );
+        super( name, revision );
     }
 
 
@@ -44,7 +44,7 @@ package org.apache.directory.mavibot.btree;
      */
     /* no qualifier*/long getRevision()
     {
-        return getKey();
+        return getValue();
     }
 
 
@@ -53,7 +53,7 @@ package org.apache.directory.mavibot.btree;
      */
     /* no qualifier*/void setRevision( long revision )
     {
-        setKey( revision );
+        setValue( revision );
     }
 
 
@@ -62,7 +62,7 @@ package org.apache.directory.mavibot.btree;
      */
     /* no qualifier*/String getName()
     {
-        return getValue();
+        return getKey();
     }
 
 
@@ -71,7 +71,7 @@ package org.apache.directory.mavibot.btree;
      */
     /* no qualifier*/void setName( String name )
     {
-        setValue( name );
+        setKey( name );
     }
 
 
@@ -85,12 +85,12 @@ package org.apache.directory.mavibot.btree;
             return true;
         }
 
-        if ( !( that instanceof RevisionName ) )
+        if ( !( that instanceof NameRevision ) )
         {
             return false;
         }
 
-        RevisionName revisionName = ( RevisionName ) that;
+        NameRevision revisionName = ( NameRevision ) that;
 
         if ( getRevision() != revisionName.getRevision() )
         {
