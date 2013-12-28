@@ -77,12 +77,11 @@ public class RecordManager
 
     /** The first and last free page */
     private long firstFreePage;
-    private long lastFreePage;
 
     /** The list of available free pages */
     List<PageIO> freePages = new ArrayList<PageIO>();
 
-    /** A counter to track the number of free pages */
+    /** Some counters to track the number of free pages */
     public AtomicLong nbFreedPages = new AtomicLong( 0 );
     public AtomicLong nbCreatedPages = new AtomicLong( 0 );
     public AtomicLong nbReusedPages = new AtomicLong( 0 );
@@ -105,14 +104,8 @@ public class RecordManager
     /** A constant for an offset on a non existing page */
     private static final long NO_PAGE = -1L;
 
-    /** The number of stored BTrees */
-    private static final int NB_TREE_SIZE = 4;
-
     /** The header page size */
     private static final int PAGE_SIZE = 4;
-
-    /** The size of the data size in a page */
-    private static final int DATA_SIZE = 4;
 
     /** The size of the link to next page */
     private static final int LINK_SIZE = 8;
@@ -121,10 +114,6 @@ public class RecordManager
     private static final int BYTE_SIZE = 1;
     private static final int INT_SIZE = 4;
     private static final int LONG_SIZE = 8;
-
-    /** The size of the link to the first and last free page */
-    private static final int FIRST_FREE_PAGE_SIZE = 8;
-    private static final int LAST_FREE_PAGE_SIZE = 8;
 
     /** The default page size */
     private static final int DEFAULT_PAGE_SIZE = 512;
@@ -138,7 +127,7 @@ public class RecordManager
     /** A static buffer used to store the header */
     private static byte[] HEADER_BYTES;
 
-    /** The length of an Offset, as a nagative value */
+    /** The length of an Offset, as a negative value */
     private static byte[] LONG_LENGTH = new byte[]
         { ( byte ) 0xFF, ( byte ) 0xFF, ( byte ) 0xFF, ( byte ) 0xF8 };
 
@@ -173,6 +162,15 @@ public class RecordManager
     /** A map of pending pages */
     private Map<Page<?, ?>, BTree<?, ?>> pendingPages = new LinkedHashMap<Page<?, ?>, BTree<?, ?>>();
 
+    /** The Btree of Btrees */
+    private BTree<NameRevision, Long> btreeOfBtrees;
+
+    private static final String BOB_ONE_NAME = "_BTREE_OF_BTREES_";
+
+    /** The two latest revisions of the BOB */
+    private long bobCurrentRevision;
+    private long bobOldRevision;
+
     /**
      * Create a Record manager which will either create the underlying file
      * or load an existing one. If a folder is provided, then we will create
@@ -204,50 +202,15 @@ public class RecordManager
 
         // Open the file or create it
         File tmpFile = new File( fileName );
-        boolean isNewFile = false;
 
         if ( tmpFile.isDirectory() )
         {
             // It's a directory. Check that we don't have an existing mavibot file
-            File mavibotFile = new File( tmpFile, DEFAULT_FILE_NAME );
-
-            if ( !mavibotFile.exists() )
-            {
-                // We have to create a new file
-                try
-                {
-                    mavibotFile.createNewFile();
-                    isNewFile = true;
-                }
-                catch ( IOException ioe )
-                {
-                    LOG.error( "Cannot create the file {}", mavibotFile.getName() );
-                    return;
-                }
-            }
-
-            file = mavibotFile;
+            tmpFile = new File( tmpFile, DEFAULT_FILE_NAME );
         }
-        else
-        {
-            // It's a file. Let's see if it exists, otherwise create it
-            if ( !tmpFile.exists() || ( tmpFile.length() == 0 ) )
-            {
-                isNewFile = true;
 
-                try
-                {
-                    tmpFile.createNewFile();
-                }
-                catch ( IOException ioe )
-                {
-                    LOG.error( "Cannot create the file {}", tmpFile.getName() );
-                    return;
-                }
-            }
-
-            file = tmpFile;
-        }
+        // We have to create a new file, if it does not already exist
+        boolean isNewFile = createFile( tmpFile );
 
         try
         {
@@ -277,21 +240,53 @@ public class RecordManager
 
 
     /**
+     * Create the mavibot file if it does not exist
+     */
+    private boolean createFile( File mavibotFile )
+    {
+        try
+        {
+            boolean creation = mavibotFile.createNewFile();
+
+            file = mavibotFile;
+
+            if ( mavibotFile.length() == 0 )
+            {
+                return true;
+            }
+            else
+            {
+                return creation;
+            }
+        }
+        catch ( IOException ioe )
+        {
+            LOG.error( "Cannot create the file {}", mavibotFile.getName() );
+            return false;
+        }
+
+    }
+
+    /**
      * We will create a brand new RecordManager file, containing nothing, but the header,
      * a BTree to manage the old revisions we want to keep and
      * a BTree used to manage pages associated with old versions.
      * <br/>
      * The Header contains the following details :
      * <pre>
-     * +-----------+
-     * | PageSize  | 4 bytes : The size of a physical page (default to 4096)
-     * +-----------+
-     * |  NbTree   | 4 bytes : The number of managed BTrees (at least 1)
-     * +-----------+
-     * | FirstFree | 8 bytes : The offset of the first free page
-     * +-----------+
-     * | LastFree  | 8 bytes : The offset of the last free page
-     * +-----------+
+     * +---------------+
+     * | PageSize      | 4 bytes : The size of a physical page (default to 4096)
+     * +---------------+
+     * |  NbTree       | 4 bytes : The number of managed BTrees (at least 1)
+     * +---------------+
+     * | FirstFree     | 8 bytes : The offset of the first free page
+     * +---------------+
+     * | currentBoB    | 1 byte : The current BoB in use
+     * +---------------+
+     * | BoB offset[0] | 8 bytes : The offset of the first BoB
+     * +---------------+
+     * | BoB offset[1] | 8 bytes : The offset of the second BoB
+     * +---------------+
      * </pre>
      *
      * We then store the BTree managing the pages that have been copied when we have added
@@ -304,11 +299,17 @@ public class RecordManager
         // Create a new Header
         nbBtree = 0;
         firstFreePage = NO_PAGE;
-        lastFreePage = NO_PAGE;
+        bobCurrentRevision = 0L;
+        bobOldRevision = 0L;
+
         updateRecordManagerHeader();
 
         // Set the offset of the end of the file
         endOfFileOffset = fileChannel.size();
+
+        // First, create the btree of btrees <NameRevision, Long>
+        btreeOfBtrees = BTreeFactory.createPersistedBTree( BOB_ONE_NAME, new NameRevisionSerializer(),
+            new LongSerializer() );
 
         // Now, initialize the Copied Page BTree
         copiedPageBTree = BTreeFactory.createPersistedBTree( COPIED_PAGE_BTREE_NAME, new RevisionNameSerializer(),
@@ -352,6 +353,19 @@ public class RecordManager
 
             header.rewind();
 
+            // read the RecordManager Header :
+            // +----------------+
+            // | PageSize       | 4 bytes : The size of a physical page (default to 4096)
+            // +----------------+
+            // | NbTree         | 4 bytes : The number of managed BTrees (at least 1)
+            // +----------------+
+            // | FirstFree      | 8 bytes : The offset of the first free page
+            // +----------------+
+            // | BoB old offset | 8 bytes : The previous BoB revision
+            // +----------------+
+            // | BoB new offset | 8 bytes : The current BoB revision
+            // +----------------+
+
             // The page size
             pageSize = header.getInt();
 
@@ -360,7 +374,27 @@ public class RecordManager
 
             // The first and last free page
             firstFreePage = header.getLong();
-            lastFreePage = header.getLong();
+
+            // The BOB revisions
+            long bobRevision1 = header.getLong();
+            long bobRevision2 = header.getLong();
+
+            if ( bobRevision1 < bobRevision2 )
+            {
+                bobOldRevision = bobRevision1;
+                bobCurrentRevision = bobRevision2;
+            }
+            else if ( bobRevision1 > bobRevision2 )
+            {
+                bobOldRevision = bobRevision2;
+                bobCurrentRevision = bobRevision1;
+            }
+            else
+            {
+                // Special case : the RecordManage has been shtudown correctly
+                bobOldRevision = bobRevision1;
+                bobCurrentRevision = bobRevision2;
+            }
 
             // Now read each BTree. The first one is the one which
             // manage the modified pages. Once read, we can discard all
@@ -406,7 +440,7 @@ public class RecordManager
                 managedBTrees.put( btree.getName(), btree );
             }
 
-            // We are done ! Let's finish with the last initilization parts
+            // We are done ! Let's finish with the last initialization parts
             endOfFileOffset = fileChannel.size();
         }
     }
@@ -1430,7 +1464,22 @@ public class RecordManager
 
 
     /**
-     * Update the header, injecting the nbBtree, firstFreePage and lastFreePage
+     * Update the header, injecting the following data :
+     * <pre>
+     * +---------------+
+     * | PageSize      | 4 bytes : The size of a physical page (default to 4096)
+     * +---------------+
+     * | NbTree        | 4 bytes : The number of managed BTrees (at least 1)
+     * +---------------+
+     * | FirstFree     | 8 bytes : The offset of the first free page
+     * +---------------+
+     * | currentBoB    | 1 byte : The current BoB in use
+     * +---------------+
+     * | BoB offset[0] | 8 bytes : The offset of the first BoB
+     * +---------------+
+     * | BoB offset[1] | 8 bytes : The offset of the second BoB
+     * +---------------+
+     * </pre>
      */
     public void updateRecordManagerHeader() throws IOException
     {
@@ -1456,21 +1505,31 @@ public class RecordManager
         HEADER_BYTES[14] = ( byte ) ( firstFreePage >>> 8 );
         HEADER_BYTES[15] = ( byte ) ( firstFreePage );
 
-        // The last free page
-        HEADER_BYTES[16] = ( byte ) ( lastFreePage >>> 56 );
-        HEADER_BYTES[17] = ( byte ) ( lastFreePage >>> 48 );
-        HEADER_BYTES[18] = ( byte ) ( lastFreePage >>> 40 );
-        HEADER_BYTES[19] = ( byte ) ( lastFreePage >>> 32 );
-        HEADER_BYTES[20] = ( byte ) ( lastFreePage >>> 24 );
-        HEADER_BYTES[21] = ( byte ) ( lastFreePage >>> 16 );
-        HEADER_BYTES[22] = ( byte ) ( lastFreePage >>> 8 );
-        HEADER_BYTES[23] = ( byte ) ( lastFreePage );
+        // The offset of the first BoB
+        HEADER_BYTES[17] = ( byte ) ( bobOldRevision >>> 56 );
+        HEADER_BYTES[18] = ( byte ) ( bobOldRevision >>> 48 );
+        HEADER_BYTES[19] = ( byte ) ( bobOldRevision >>> 40 );
+        HEADER_BYTES[20] = ( byte ) ( bobOldRevision >>> 32 );
+        HEADER_BYTES[21] = ( byte ) ( bobOldRevision >>> 24 );
+        HEADER_BYTES[22] = ( byte ) ( bobOldRevision >>> 16 );
+        HEADER_BYTES[23] = ( byte ) ( bobOldRevision >>> 8 );
+        HEADER_BYTES[24] = ( byte ) ( bobOldRevision );
+
+        // The offset of the second BoB
+        HEADER_BYTES[17] = ( byte ) ( bobCurrentRevision >>> 56 );
+        HEADER_BYTES[18] = ( byte ) ( bobCurrentRevision >>> 48 );
+        HEADER_BYTES[19] = ( byte ) ( bobCurrentRevision >>> 40 );
+        HEADER_BYTES[20] = ( byte ) ( bobCurrentRevision >>> 32 );
+        HEADER_BYTES[21] = ( byte ) ( bobCurrentRevision >>> 24 );
+        HEADER_BYTES[22] = ( byte ) ( bobCurrentRevision >>> 16 );
+        HEADER_BYTES[23] = ( byte ) ( bobCurrentRevision >>> 8 );
+        HEADER_BYTES[24] = ( byte ) ( bobCurrentRevision );
 
         // Write the header on disk
         HEADER_BUFFER.put( HEADER_BYTES );
         HEADER_BUFFER.flip();
 
-        LOG.debug( "Update RM header, FF : {}, LF : {}", firstFreePage, lastFreePage );
+        LOG.debug( "Update RM header, FF : {}", firstFreePage );
         fileChannel.write( HEADER_BUFFER, 0 );
         HEADER_BUFFER.clear();
 
@@ -1479,11 +1538,14 @@ public class RecordManager
 
 
     /**
-     * Update the BTree header after a BTree modification. We update the following fields :
+     * Update the BTree header after a BTree modification. This will make the latest modification
+     * visible.
+     * We update the following fields :
      * <ul>
      * <li>the revision</li>
      * <li>the number of elements</li>
-     * <li>the rootPage offset</li>
+     * <li>the reference to the current BTree revisions</li>
+     * <li>the reference to the old BTree revisions</li>
      * </ul>
      * @param btree
      * @throws IOException
@@ -2071,12 +2133,6 @@ public class RecordManager
 
             LOG.debug( "Reused page at offset {}", pageIo.getOffset() );
 
-            // If we don't have any more free page, update the last free page pointer too
-            if ( firstFreePage == NO_PAGE )
-            {
-                lastFreePage = NO_PAGE;
-            }
-
             return pageIo;
         }
     }
@@ -2243,7 +2299,6 @@ public class RecordManager
 
         // The first and last free page
         long firstFreePage = header.getLong();
-        long lastFreePage = header.getLong();
 
         if ( LOG.isDebugEnabled() )
         {
@@ -2254,7 +2309,6 @@ public class RecordManager
             LOG.debug( "    page size : {}", pageSize );
             LOG.debug( "    nbTree : {}", nbBTree );
             LOG.debug( "    firstFreePage : {}", firstFreePage );
-            LOG.debug( "    lastFreePage : {}", lastFreePage );
         }
 
         long position = HEADER_SIZE;
@@ -2450,7 +2504,7 @@ public class RecordManager
                     // And flush it to disk
                     flushPages( pageIo );
 
-                    // We can update the lastFreePage offset
+                    // We can update the firstFreePage offset
                     firstFreePage = firstOffset;
                 }
             }
@@ -2580,24 +2634,12 @@ public class RecordManager
      * @param checkedPages
      * @throws IOException
      */
-    private void checkFreePages( long[] checkedPages, int pageSize, long firstFreePage, long lastFreePage )
+    private void checkFreePages( long[] checkedPages, int pageSize, long firstFreePage )
         throws IOException
     {
         if ( firstFreePage == NO_PAGE )
         {
-            if ( lastFreePage == NO_PAGE )
-            {
-                return;
-            }
-            else
-            {
-                throw new FreePageException( "Wrong last free page : " + lastFreePage );
-            }
-        }
-
-        if ( lastFreePage != NO_PAGE )
-        {
-            throw new FreePageException( "Wrong last free page : " + lastFreePage );
+            return;
         }
 
         // Now, read all the free pages
@@ -2975,15 +3017,6 @@ public class RecordManager
                 throw new InvalidBTreeException( "First free page not pointing to a correct offset : " + firstFreePage );
             }
 
-            // The last free page offset. It must be -1
-            long lastFreePage = header.getLong();
-
-            if ( ( ( lastFreePage != NO_PAGE ) && ( ( ( lastFreePage - HEADER_SIZE ) % pageSize ) != 0 ) ) )
-            //|| ( lastFreePage != 0 ) )
-            {
-                throw new InvalidBTreeException( "Invalid last free page : " + lastFreePage );
-            }
-
             int nbPageBits = ( int ) ( nbPages / 64 );
 
             // Create an array of pages to be checked
@@ -2992,7 +3025,7 @@ public class RecordManager
             long[] checkedPages = new long[nbPageBits + 1];
 
             // Then the free files
-            checkFreePages( checkedPages, pageSize, firstFreePage, lastFreePage );
+            checkFreePages( checkedPages, pageSize, firstFreePage );
 
             // The BTrees
             checkBTrees( checkedPages, pageSize, nbBTrees );
