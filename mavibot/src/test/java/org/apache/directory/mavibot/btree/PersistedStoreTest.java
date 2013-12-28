@@ -26,8 +26,6 @@ import java.io.File;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 
-import org.apache.directory.mavibot.btree.PageIO;
-import org.apache.directory.mavibot.btree.RecordManager;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -35,7 +33,7 @@ import org.junit.rules.TemporaryFolder;
 
 /**
  * Test the RecordManager.store() method using reflection
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class PersistedStoreTest
@@ -373,7 +371,7 @@ public class PersistedStoreTest
         assertEquals( 0x45, pageIos[0].getData().get( pos++ ) );
         assertEquals( 0x67, pageIos[0].getData().get( pos++ ) );
 
-        // Set A full page of bytes in the first page 
+        // Set A full page of bytes in the first page
         bytes = new byte[16];
 
         for ( int i = 0; i < 16; i++ )

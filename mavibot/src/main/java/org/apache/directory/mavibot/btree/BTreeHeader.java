@@ -46,7 +46,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * +--------------------+-------------+
  * </pre>
  * Each BtreeHeader will be written starting on a new page.
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 /* No qualifier*/class BTreeHeader
@@ -185,7 +185,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
     /**
      * Increment the revision
-     * 
+     *
      * @return the new revision
      */
     /* no qualifier */long incrementRevision()
