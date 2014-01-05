@@ -123,6 +123,6 @@ package org.apache.directory.mavibot.btree;
      */
     public String toString()
     {
-        return "[" + getRevision() + ":" + getName() + "]";
+        return "[" + getName() + ":" + getRevision() + "]";
     }
 }
