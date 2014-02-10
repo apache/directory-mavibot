@@ -17,54 +17,56 @@
  *  under the License.
  *
  */
-package org.apache.directory.mavibot.btree.comparator;
-
-
-import java.util.Comparator;
+package org.apache.directory.mavibot.btree.exception;
 
 
 /**
- * Compares booleans
+ * An exception thrown when there is a problem writing data on disk
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class BooleanComparator implements Comparator<Boolean>
+public class FileException extends RuntimeException
 {
-    /** A static instance of a BooleanComparator */
-    public static final BooleanComparator INSTANCE = new BooleanComparator();
+    /** The serial version UUID */
+    private static final long serialVersionUID = 1L;
+
 
     /**
-     * A private constructor of the BooleanComparator class
+     * Creates a new instance of FileException.
      */
-    private BooleanComparator()
+    public FileException()
     {
     }
 
 
     /**
-     * Compare two booleans.
+     * Creates a new instance of FileException.
      *
-     * @param boolean1 First boolean
-     * @param boolean2 Second boolean
-     * @return 1 if boolean1 > boolean2, 0 if boolean1 == boolean2, -1 if boolean1 < boolean2
+     * @param explanation The message associated with the exception
      */
-    public int compare( Boolean boolean1, Boolean boolean2 )
+    public FileException( String explanation )
     {
-        if ( boolean1 == boolean2 )
-        {
-            return 0;
-        }
+        super( explanation );
+    }
 
-        if ( boolean1 == null )
-        {
-            return -1;
-        }
 
-        if ( boolean2 == null )
-        {
-            return 1;
-        }
+    /**
+     * Creates a new instance of FileException.
+     */
+    public FileException( Throwable cause )
+    {
+        super( cause );
+    }
 
-        return boolean1.compareTo( boolean2 );
+
+    /**
+     * Creates a new instance of FileException.
+     *
+     * @param explanation The message associated with the exception
+     * @param cause The root cause for this exception
+     */
+    public FileException( String explanation, Throwable cause )
+    {
+        super( explanation, cause );
     }
 }

@@ -29,12 +29,12 @@ import org.junit.Test;
 
 /**
  * Test the BooleanSerializer class
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class BooleanSerializerTest
 {
-    private static BooleanSerializer serializer = new BooleanSerializer();
+    private static BooleanSerializer serializer = BooleanSerializer.INSTANCE;
 
 
     @Test

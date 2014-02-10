@@ -72,7 +72,7 @@ public class PersistedBTreeDuplicateKeyTest
         try
         {
             // Create a new BTree
-            btree = recordManager1.addBTree( "test", new LongSerializer(), new StringSerializer(),
+            btree = recordManager1.addBTree( "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE,
                 BTree.ALLOW_DUPLICATES );
         }
         catch ( Exception e )
@@ -143,7 +143,7 @@ public class PersistedBTreeDuplicateKeyTest
     @Test
     public void testBrowseEmptyTree() throws IOException
     {
-        IntSerializer serializer = new IntSerializer();
+        IntSerializer serializer = IntSerializer.INSTANCE;
 
         BTree<Integer, Integer> btree = BTreeFactory.createPersistedBTree( "master", serializer, serializer );
 
@@ -792,8 +792,8 @@ public class PersistedBTreeDuplicateKeyTest
     @Test(expected = DuplicateValueNotAllowedException.class)
     public void testBTreeForbidDups() throws IOException, BTreeAlreadyManagedException
     {
-        BTree<Long, String> singleValueBtree = recordManager1.addBTree( "test2", new LongSerializer(),
-            new StringSerializer(), BTree.FORBID_DUPLICATES );
+        BTree<Long, String> singleValueBtree = recordManager1.addBTree( "test2", LongSerializer.INSTANCE,
+            StringSerializer.INSTANCE, BTree.FORBID_DUPLICATES );
 
         for ( long i = 0; i < 64; i++ )
         {

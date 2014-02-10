@@ -29,14 +29,11 @@ import org.junit.Test;
 
 /**
  * Test the LongSerializer class
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class LongSerializerTest
 {
-    private static LongSerializer serializer = new LongSerializer();
-
-
     @Test
     public void testLongSerializer() throws IOException
     {
@@ -52,7 +49,7 @@ public class LongSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).longValue() );
+        assertEquals( value, LongSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).longValue() );
 
         // ------------------------------------------------------------------
         value = 0x0000000000000001L;
@@ -67,7 +64,7 @@ public class LongSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).longValue() );
+        assertEquals( value, LongSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).longValue() );
 
         // ------------------------------------------------------------------
         value = 0x00000000000000FFL;
@@ -82,7 +79,7 @@ public class LongSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).longValue() );
+        assertEquals( value, LongSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).longValue() );
 
         // ------------------------------------------------------------------
         value = 0x0000000000000100L;
@@ -97,7 +94,7 @@ public class LongSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).longValue() );
+        assertEquals( value, LongSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).longValue() );
 
         // ------------------------------------------------------------------
         value = 0x000000000000FFFFL;
@@ -112,7 +109,7 @@ public class LongSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).longValue() );
+        assertEquals( value, LongSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).longValue() );
 
         // ------------------------------------------------------------------
         value = 0x0000000000010000L;
@@ -127,7 +124,7 @@ public class LongSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).longValue() );
+        assertEquals( value, LongSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).longValue() );
 
         // ------------------------------------------------------------------
         value = 0x0000000000FFFFFFL;
@@ -142,7 +139,7 @@ public class LongSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).longValue() );
+        assertEquals( value, LongSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).longValue() );
 
         // ------------------------------------------------------------------
         value = 0x0000000001000000L;
@@ -157,7 +154,7 @@ public class LongSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).longValue() );
+        assertEquals( value, LongSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).longValue() );
 
         // ------------------------------------------------------------------
         value = 0x000000007FFFFFFFL;
@@ -172,7 +169,7 @@ public class LongSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).longValue() );
+        assertEquals( value, LongSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).longValue() );
 
         // ------------------------------------------------------------------
         value = 0x0000000080000000L;
@@ -187,7 +184,7 @@ public class LongSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).longValue() );
+        assertEquals( value, LongSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).longValue() );
 
         // ------------------------------------------------------------------
         value = 0x00000000FFFFFFFFL;
@@ -202,7 +199,7 @@ public class LongSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).longValue() );
+        assertEquals( value, LongSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).longValue() );
 
         // ------------------------------------------------------------------
         value = 0x0000000100000000L;
@@ -217,7 +214,7 @@ public class LongSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).longValue() );
+        assertEquals( value, LongSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).longValue() );
 
         // ------------------------------------------------------------------
         value = 0x000000FFFFFFFFFFL;
@@ -232,7 +229,7 @@ public class LongSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).longValue() );
+        assertEquals( value, LongSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).longValue() );
 
         // ------------------------------------------------------------------
         value = 0x0000010000000000L;
@@ -247,7 +244,7 @@ public class LongSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).longValue() );
+        assertEquals( value, LongSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).longValue() );
 
         // ------------------------------------------------------------------
         value = 0x0000FFFFFFFFFFFFL;
@@ -262,7 +259,7 @@ public class LongSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).longValue() );
+        assertEquals( value, LongSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).longValue() );
 
         // ------------------------------------------------------------------
         value = 0x0001000000000000L;
@@ -277,7 +274,7 @@ public class LongSerializerTest
         assertEquals( ( byte ) 0x01, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).longValue() );
+        assertEquals( value, LongSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).longValue() );
 
         // ------------------------------------------------------------------
         value = 0x00FFFFFFFFFFFFFFL;
@@ -292,7 +289,7 @@ public class LongSerializerTest
         assertEquals( ( byte ) 0xFF, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).longValue() );
+        assertEquals( value, LongSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).longValue() );
 
         // ------------------------------------------------------------------
         value = 0x0100000000000000L;
@@ -307,7 +304,7 @@ public class LongSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x01, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).longValue() );
+        assertEquals( value, LongSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).longValue() );
 
         // ------------------------------------------------------------------
         value = 0x7FFFFFFFFFFFFFFFL;
@@ -322,7 +319,7 @@ public class LongSerializerTest
         assertEquals( ( byte ) 0xFF, result[1] );
         assertEquals( ( byte ) 0x7F, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).longValue() );
+        assertEquals( value, LongSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).longValue() );
 
         // ------------------------------------------------------------------
         value = 0x8000000000000000L;
@@ -337,7 +334,7 @@ public class LongSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x80, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).longValue() );
+        assertEquals( value, LongSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).longValue() );
 
         // ------------------------------------------------------------------
         value = 0xFFFFFFFFFFFFFFFFL;
@@ -352,6 +349,6 @@ public class LongSerializerTest
         assertEquals( ( byte ) 0xFF, result[1] );
         assertEquals( ( byte ) 0xFF, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).longValue() );
+        assertEquals( value, LongSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).longValue() );
     }
 }

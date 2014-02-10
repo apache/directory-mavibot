@@ -19,24 +19,18 @@
  */
 package org.apache.directory.mavibot.btree;
 
-
-import java.util.Comparator;
-
-
 /**
- * A comparator for the RevisionName class
+ * An implementation of a TransactionManager for in-memory B-trees
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* no qualifier*/class RevisionNameComparator implements Comparator<RevisionName>
+public class InMemoryTransactionManager implements TransactionManager
 {
-    /** A static instance of a RevisionNameComparator */
-    public static final RevisionNameComparator INSTANCE = new RevisionNameComparator();
-
     /**
-     * A private constructor of the RevisionNameComparator class
+     * {@inheritDoc}
      */
-    private RevisionNameComparator()
+    @Override
+    public void beginTransaction()
     {
     }
 
@@ -44,24 +38,17 @@ import java.util.Comparator;
     /**
      * {@inheritDoc}
      */
-    public int compare( RevisionName rn1, RevisionName rn2 )
+    @Override
+    public void commit()
     {
-        if ( rn1 == rn2 )
-        {
-            return 0;
-        }
+    }
 
-        // First compare the revisions
-        if ( rn1.getRevision() < rn2.getRevision() )
-        {
-            return -1;
-        }
-        else if ( rn1.getRevision() > rn2.getRevision() )
-        {
-            return 1;
-        }
 
-        // The revision are equal : check the name
-        return rn1.getName().compareTo( rn2.getName() );
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void rollback()
+    {
     }
 }

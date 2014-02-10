@@ -35,7 +35,7 @@ import java.util.Date;
  * A Transaction can be hold for quite a long time, for instance while doing
  * a browse against a big BTree. At some point, transactions which are pending
  * for too long will be closed by the transaction manager.
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  *
  * @param <K> The type for the Key
@@ -50,7 +50,10 @@ public class ReadTransaction<K, V>
     private long creationDate;
 
     /** The revision on which we are having a transaction */
-    private volatile Page<K, V> root;
+    private volatile Page<K, V> rootPage;
+
+    /** The associated B-tree header */
+    private BTreeHeader<K, V> btreeHeader;
 
     /** A flag used to tell if a transaction is closed or not */
     private volatile boolean closed;
@@ -58,16 +61,15 @@ public class ReadTransaction<K, V>
 
     /**
      * Creates a new transaction instance
-     * 
-     * @param root The associated root
-     * @param revision The revision this transaction is using
-     * @param creationDate The creation date for this transaction
+     *
+     * @param btreeHeader The BtreeHeader we will use for this read transaction
      */
-    public ReadTransaction( Page<K, V> root, long revision, long creationDate )
+    public ReadTransaction( BTreeHeader<K, V> btreeHeader )
     {
-        this.revision = revision;
-        this.creationDate = creationDate;
-        this.root = root;
+        this.revision = btreeHeader.getRevision();
+        this.creationDate = System.currentTimeMillis();
+        this.rootPage = btreeHeader.getRootPage();
+        this.btreeHeader = btreeHeader;
         closed = false;
     }
 
@@ -82,11 +84,11 @@ public class ReadTransaction<K, V>
 
 
     /**
-     * @return the associated root
+     * @return the associated rootPage
      */
-    public Page<K, V> getRoot()
+    public Page<K, V> getRootPage()
     {
-        return root;
+        return rootPage;
     }
 
 
@@ -100,11 +102,20 @@ public class ReadTransaction<K, V>
 
 
     /**
+     * @return the btreeHeader
+     */
+    public BTreeHeader<K, V> getBtreeHeader()
+    {
+        return btreeHeader;
+    }
+
+
+    /**
      * Close the transaction, releasing the revision it was using.
      */
     public void close()
     {
-        root = null;
+        rootPage = null;
         closed = true;
     }
 

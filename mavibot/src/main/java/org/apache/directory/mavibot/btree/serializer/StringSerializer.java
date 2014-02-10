@@ -37,15 +37,15 @@ import org.apache.directory.mavibot.btree.util.Strings;
  */
 public class StringSerializer extends AbstractElementSerializer<String>
 {
+    /** A static instance of a StringSerializer */
     public static final StringSerializer INSTANCE = new StringSerializer();
-
 
     /**
      * Create a new instance of StringSerializer
      */
-    public StringSerializer()
+    private StringSerializer()
     {
-        super( new StringComparator() );
+        super( StringComparator.INSTANCE );
     }
 
 

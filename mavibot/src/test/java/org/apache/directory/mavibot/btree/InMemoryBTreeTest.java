@@ -168,8 +168,8 @@ public class InMemoryBTreeTest
 
         for ( int j = 0; j < nbTrees; j++ )
         {
-            BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( "test", new LongSerializer(),
-                new StringSerializer() );
+            BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( "test", LongSerializer.INSTANCE,
+                StringSerializer.INSTANCE );
             btree.setPageSize( 32 );
 
             for ( int i = 0; i < nbElems; i++ )
@@ -271,8 +271,8 @@ public class InMemoryBTreeTest
 
         for ( int j = 0; j < nbTrees; j++ )
         {
-            BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( "test", new LongSerializer(),
-                new StringSerializer() );
+            BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( "test", LongSerializer.INSTANCE,
+                StringSerializer.INSTANCE );
             btree.setPageSize( 8 );
 
             for ( int i = 0; i < nbElems; i++ )
@@ -387,8 +387,8 @@ public class InMemoryBTreeTest
                 368, 245, 1005, 226, 939, 320, 396, 437, 373, 61
         };
 
-        BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( "test", new LongSerializer(),
-            new StringSerializer() );
+        BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( "test", LongSerializer.INSTANCE,
+            StringSerializer.INSTANCE );
         btree.setPageSize( 8 );
 
         for ( long value : values )
@@ -447,8 +447,8 @@ public class InMemoryBTreeTest
 
         Random random = new Random( System.nanoTime() );
 
-        BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( "test", new LongSerializer(),
-            new StringSerializer() );
+        BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( "test", LongSerializer.INSTANCE,
+            StringSerializer.INSTANCE );
         btree.setPageSize( 8 );
 
         // Insert some values
@@ -508,8 +508,8 @@ public class InMemoryBTreeTest
     @Ignore("This is a debug test")
     public void testPageInsertDebug() throws Exception
     {
-        BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( "test", new LongSerializer(),
-            new StringSerializer() );
+        BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( "test", LongSerializer.INSTANCE,
+            StringSerializer.INSTANCE );
         btree.setPageSize( 4 );
 
         Long[] elems = new Long[]
@@ -615,8 +615,8 @@ public class InMemoryBTreeTest
     public void testBrowseForward() throws Exception
     {
         // Create a BTree with pages containing 8 elements
-        BTree<Integer, String> btree = BTreeFactory.createInMemoryBTree( "test", new IntSerializer(),
-            new StringSerializer() );
+        BTree<Integer, String> btree = BTreeFactory.createInMemoryBTree( "test", IntSerializer.INSTANCE,
+            StringSerializer.INSTANCE );
         btree.setPageSize( 8 );
 
         // Inject the values
@@ -700,8 +700,8 @@ public class InMemoryBTreeTest
     public void testBrowseBackward() throws Exception
     {
         // Create a BTree with pages containing 8 elements
-        BTree<Integer, String> btree = BTreeFactory.createInMemoryBTree( "test", new IntSerializer(),
-            new StringSerializer() );
+        BTree<Integer, String> btree = BTreeFactory.createInMemoryBTree( "test", IntSerializer.INSTANCE,
+            StringSerializer.INSTANCE );
         btree.setPageSize( 8 );
 
         // Inject the values
@@ -776,8 +776,8 @@ public class InMemoryBTreeTest
     public void testBrowseEmptyTree() throws Exception
     {
         // Create a BTree with pages containing 8 elements
-        BTree<Integer, String> btree = BTreeFactory.createInMemoryBTree( "test", new IntSerializer(),
-            new StringSerializer() );
+        BTree<Integer, String> btree = BTreeFactory.createInMemoryBTree( "test", IntSerializer.INSTANCE,
+            StringSerializer.INSTANCE );
         btree.setPageSize( 8 );
 
         TupleCursor<Integer, String> cursor = btree.browse();
@@ -797,8 +797,8 @@ public class InMemoryBTreeTest
     public void testBrowseForwardBackward() throws Exception
     {
         // Create a BTree with pages containing 4 elements
-        BTree<Integer, String> btree = BTreeFactory.createInMemoryBTree( "test", new IntSerializer(),
-            new StringSerializer() );
+        BTree<Integer, String> btree = BTreeFactory.createInMemoryBTree( "test", IntSerializer.INSTANCE,
+            StringSerializer.INSTANCE );
         btree.setPageSize( 4 );
 
         for ( int i = 0; i < 16; i++ )
@@ -1026,8 +1026,8 @@ public class InMemoryBTreeTest
     public void testBrowseNonExistingKey() throws Exception
     {
         // Create a BTree with pages containing 8 elements
-        BTree<Integer, String> btree = BTreeFactory.createInMemoryBTree( "test", new IntSerializer(),
-            new StringSerializer() );
+        BTree<Integer, String> btree = BTreeFactory.createInMemoryBTree( "test", IntSerializer.INSTANCE,
+            StringSerializer.INSTANCE );
         btree.setPageSize( 8 );
         for ( int i = 0; i < 11; i++ )
         {
@@ -1091,8 +1091,8 @@ public class InMemoryBTreeTest
      */
     private BTree<Integer, String> createTwoLevelBTreeFullLeaves() throws IOException
     {
-        BTree<Integer, String> btree = BTreeFactory.createInMemoryBTree( "test", new IntSerializer(),
-            new StringSerializer() );
+        BTree<Integer, String> btree = BTreeFactory.createInMemoryBTree( "test", IntSerializer.INSTANCE,
+            StringSerializer.INSTANCE );
         btree.setPageSize( 4 );
 
         // Create a tree with 5 children containing 4 elements each. The tree is full.
@@ -1114,8 +1114,8 @@ public class InMemoryBTreeTest
      */
     private BTree<Integer, String> createTwoLevelBTreeHalfFullLeaves() throws IOException
     {
-        BTree<Integer, String> btree = BTreeFactory.createInMemoryBTree( "test", new IntSerializer(),
-            new StringSerializer() );
+        BTree<Integer, String> btree = BTreeFactory.createInMemoryBTree( "test", IntSerializer.INSTANCE,
+            StringSerializer.INSTANCE );
         btree.setPageSize( 4 );
 
         // Create a tree with 5 children containing 4 elements each. The tree is full.
@@ -1146,8 +1146,8 @@ public class InMemoryBTreeTest
         // Create a BTree with pages containing 4 elements
         int pageSize = 4;
 
-        BTree<Integer, String> btree = BTreeFactory.createInMemoryBTree( "test", new IntSerializer(),
-            new StringSerializer(),
+        BTree<Integer, String> btree = BTreeFactory.createInMemoryBTree( "test", IntSerializer.INSTANCE,
+            StringSerializer.INSTANCE,
             pageSize );
 
         InMemoryNode<Integer, String> root = new InMemoryNode<Integer, String>( btree, 1L, pageSize );
@@ -1766,8 +1766,8 @@ public class InMemoryBTreeTest
         long delta = System.currentTimeMillis();
 
         // Create a BTree with 5 million entries
-        BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( "test", new LongSerializer(),
-            new StringSerializer() );
+        BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( "test", LongSerializer.INSTANCE,
+            StringSerializer.INSTANCE );
         btree.setPageSize( 32 );
 
         for ( int i = 0; i < nbElems; i++ )
@@ -1869,8 +1869,8 @@ public class InMemoryBTreeTest
     public void testBrowseForwardBackwardExtremes() throws Exception
     {
         // Create a BTree with pages containing 4 elements
-        BTree<Integer, String> btree = BTreeFactory.createInMemoryBTree( "test", new IntSerializer(),
-            new StringSerializer() );
+        BTree<Integer, String> btree = BTreeFactory.createInMemoryBTree( "test", IntSerializer.INSTANCE,
+            StringSerializer.INSTANCE );
         btree.setPageSize( 4 );
 
         for ( int i = 8; i < 13; i++ )
@@ -1925,7 +1925,7 @@ public class InMemoryBTreeTest
     @Test
     public void testNextAfterPrev() throws Exception
     {
-        IntSerializer serializer = new IntSerializer();
+        IntSerializer serializer = IntSerializer.INSTANCE;
 
         InMemoryBTreeConfiguration<Integer, Integer> config = new InMemoryBTreeConfiguration<Integer, Integer>();
         config.setName( "master" );
@@ -1965,7 +1965,7 @@ public class InMemoryBTreeTest
     @Test
     public void testCheckRootPageContents() throws Exception
     {
-        IntSerializer ser = new IntSerializer();
+        IntSerializer ser = IntSerializer.INSTANCE;
         BTree<Integer, Integer> btree = BTreeFactory.createInMemoryBTree( "master1", ser, ser, 4 );
 
         for ( int i = 1; i < 8; i++ )

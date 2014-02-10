@@ -32,10 +32,6 @@ import java.util.NoSuchElementException;
 import java.util.UUID;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.RecordManager;
-import org.apache.directory.mavibot.btree.Tuple;
-import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
@@ -49,7 +45,7 @@ import org.junit.rules.TemporaryFolder;
 
 /**
  * Tests the browse methods on a managed BTree
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class PersistedBTreeBrowseTest
@@ -77,7 +73,7 @@ public class PersistedBTreeBrowseTest
         try
         {
             // Create a new BTree which allows duplicate values
-            btree = recordManager1.addBTree( "test", new LongSerializer(), new StringSerializer(), true );
+            btree = recordManager1.addBTree( "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE, true );
         }
         catch ( Exception e )
         {
@@ -196,7 +192,7 @@ public class PersistedBTreeBrowseTest
     // The Browse tests
     //----------------------------------------------------------------------------------------
     /**
-     * Test the browse methods on an empty btree  
+     * Test the browse methods on an empty btree
      */
     @Test
     public void testBrowseEmptyBTree() throws IOException, BTreeAlreadyManagedException
@@ -936,7 +932,7 @@ public class PersistedBTreeBrowseTest
     // The TupleCursor.moveToNext/PrevNonDuplicateKey method tests
     //----------------------------------------------------------------------------------------
     /**
-      * Test the TupleCursor.nextKey method on a btree containing nodes 
+      * Test the TupleCursor.nextKey method on a btree containing nodes
       * with duplicate values.
       */
     @Test
@@ -985,7 +981,7 @@ public class PersistedBTreeBrowseTest
 
 
     /**
-     * Test the TupleCursor.moveToPrevNonDuplicateKey method on a btree containing nodes 
+     * Test the TupleCursor.moveToPrevNonDuplicateKey method on a btree containing nodes
      * with duplicate values.
      */
     @Test

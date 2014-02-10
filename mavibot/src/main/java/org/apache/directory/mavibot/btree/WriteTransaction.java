@@ -19,8 +19,6 @@
  */
 package org.apache.directory.mavibot.btree;
 
-import java.io.IOException;
-import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.directory.mavibot.btree.exception.BadTransactionStateException;
@@ -32,28 +30,29 @@ import org.apache.directory.mavibot.btree.exception.BadTransactionStateException
  */
 /* no qualifier */ class WriteTransaction
 {
-    /** The recordManager on which this transaction is applied */
-    private RecordManager recordManager;
-
     /** A lock used to protect the write operation against concurrent access */
     protected ReentrantLock writeLock;
 
-    /* no qualifier */WriteTransaction( RecordManager recordManager )
+    /* no qualifier */WriteTransaction()
     {
-        System.out.println( "Creating the transaction oject" );
-        this.recordManager = recordManager;
+        //System.out.println( "Creating the transaction oject" );
         writeLock = new ReentrantLock();
     }
 
 
     /* no qualifier */ void start()
     {
+        /*
         if ( writeLock.isLocked() )
         {
             throw new BadTransactionStateException( "Cannot start a write transaction when it's already started" );
         }
+        */
+
+        //System.out.println( "Start a TXN [" + Thread.currentThread().getName() + "]" );
 
         writeLock.lock();
+        //System.out.println( "WriteTransaction " + Thread.currentThread().getName() );
     }
 
 
@@ -64,37 +63,7 @@ import org.apache.directory.mavibot.btree.exception.BadTransactionStateException
             throw new BadTransactionStateException( "Cannot commit a write transaction when it's not started" );
         }
 
-        Map<?, ?> pendingPages = recordManager.getPendingPages();
-
-        for ( Object object : pendingPages.keySet() )
-        {
-            BTree btree = (BTree)pendingPages.get( object );
-
-            try
-            {
-                recordManager.writePage( btree, (Page)object, ((Page)object).getRevision() );
-            }
-            catch ( IOException e )
-            {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-        }
-
-        /*
-        recordManager.updateRecordManagerHeader();
-
-        // Update the BTree header now
-        recordManager.updateBtreeHeader( btree, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
-
-        // Moved the free pages into the list of free pages
-        recordManager.addFreePages( this, result.getCopiedPages() );
-
-        // Store the created rootPage into the revision BTree, this will be stored in RecordManager only if revisions are set to keep
-        recordManager.storeRootPage( this, rootPage );
-        */
-
-        pendingPages.clear();
+        //System.out.println( "Commit a TXN[" + Thread.currentThread().getName() + "]" );
 
         writeLock.unlock();
     }
@@ -107,6 +76,7 @@ import org.apache.directory.mavibot.btree.exception.BadTransactionStateException
             throw new BadTransactionStateException( "Cannot commit a write transaction when it's not started" );
         }
 
+        //System.out.println( "Rollback a TXN" );
         writeLock.unlock();
     }
 

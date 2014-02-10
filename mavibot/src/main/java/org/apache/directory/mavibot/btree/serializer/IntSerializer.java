@@ -34,12 +34,15 @@ import org.apache.directory.mavibot.btree.exception.SerializerCreationException;
  */
 public class IntSerializer extends AbstractElementSerializer<Integer>
 {
+    /** A static instance of a IntSerializer */
+    public static final IntSerializer INSTANCE = new IntSerializer();
+
     /**
      * Create a new instance of IntSerializer
      */
-    public IntSerializer()
+    private IntSerializer()
     {
-        super( new IntComparator() );
+        super( IntComparator.INSTANCE );
     }
 
 

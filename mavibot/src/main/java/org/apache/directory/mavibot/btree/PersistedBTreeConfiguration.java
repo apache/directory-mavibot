@@ -25,11 +25,11 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 /**
  * The B+Tree Configuration. This class can be used to store all the configurable
- * parameters used by the BTree class
- * 
+ * parameters used by the B-tree class
+ *
  * @param <K> The type for the keys
  * @param <V> The type for the stored values
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class PersistedBTreeConfiguration<K, V>
@@ -40,23 +40,23 @@ public class PersistedBTreeConfiguration<K, V>
     /** The size of the buffer used to write data in disk */
     private int writeBufferSize = BTree.DEFAULT_WRITE_BUFFER_SIZE;
 
-    /** The Key and Value serializer used for this tree. If none is provided, 
-     * the BTree will deduce the serializer to use from the generic type, and
+    /** The Key and Value serializer used for this tree. If none is provided,
+     * the B-tree will deduce the serializer to use from the generic type, and
      * use the default Java serialization  */
     private ElementSerializer<K> keySerializer;
     private ElementSerializer<V> valueSerializer;
 
-    /** The BTree name */
+    /** The B-tree name */
     private String name;
 
-    /** The path where the BTree file will be stored. Default to the local 
+    /** The path where the B-tree file will be stored. Default to the local
      * temporary directory.
      */
     private String filePath;
 
-    /** 
+    /**
      * The maximum delay to wait before a revision is considered as unused.
-     * This delay is necessary so that a read that does not ends does not 
+     * This delay is necessary so that a read that does not ends does not
      * hold a revision in memory forever.
      * The default value is 10000 (10 seconds). If the value is 0 or below,
      * the delay is considered as infinite
@@ -66,13 +66,13 @@ public class PersistedBTreeConfiguration<K, V>
     /** Flag to enable duplicate key support */
     private boolean allowDuplicates;
 
-    /** A flag set when the BTree is a sub btree */
-    private boolean isSubBtree = false;
+    /** The B-tree type */
+    private BTreeTypeEnum btreeType = BTreeTypeEnum.PERSISTED;
 
     /** The cache size, if it's <= 0, we don't have cache */
     private int cacheSize;
 
-    /** The inherited BTree if we create a sub BTree */
+    /** The inherited B-tree if we create a sub B-tree */
     private BTree<?, V> parentBTree;
 
 
@@ -224,10 +224,10 @@ public class PersistedBTreeConfiguration<K, V>
 
     /**
      * enable duplicate key support
-     * 
+     *
      * @param allowDuplicates
-     * @throws IllegalStateException if the btree was already initialized or when tried to turn off duplicate suport on
-     * an existing btree containing duplicate keys
+     * @throws IllegalStateException if the B-tree was already initialized or when tried to turn off duplicate suport on
+     * an existing B-tree containing duplicate keys
      */
     public void setAllowDuplicates( boolean allowDuplicates )
     {
@@ -272,19 +272,19 @@ public class PersistedBTreeConfiguration<K, V>
 
 
     /**
-     * @return True if this is a sub btree, false otherwise
+     * @return The BtreeType for this Btree
      */
-    public boolean isSubBtree()
+    public BTreeTypeEnum getBtreeType()
     {
-        return isSubBtree;
+        return btreeType;
     }
 
 
     /**
-     * @param isSubBtree True if the BTree will be a sub btree, false otherwise
+     * @param btreeType The BtreeType
      */
-    public void setSubBtree( boolean isSubBtree )
+    public void setBtreeType( BTreeTypeEnum btreeType )
     {
-        this.isSubBtree = isSubBtree;
+        this.btreeType = btreeType;
     }
 }

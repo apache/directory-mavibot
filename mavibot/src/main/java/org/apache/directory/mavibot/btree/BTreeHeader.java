@@ -19,13 +19,14 @@
  */
 package org.apache.directory.mavibot.btree;
 
+import java.util.concurrent.atomic.AtomicInteger;
 
-import java.util.concurrent.atomic.AtomicLong;
+
 
 
 /**
- * Store in memory the information associated with a BTree. <br>
- * A BTree Header on disk contains the following elements :
+ * Store in memory the information associated with a B-tree. <br>
+ * A B-tree Header on disk contains the following elements :
  * <pre>
  * +--------------------+-------------+
  * | revision           | 8 bytes     |
@@ -49,40 +50,26 @@ import java.util.concurrent.atomic.AtomicLong;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier*/class BTreeHeader
+/* No qualifier*/class BTreeHeader<K, V>
 {
     /** The current revision */
-    private AtomicLong revision = new AtomicLong( 0L );
+    private long revision = 0L;
 
-    /** The number of elements in this BTree */
-    private AtomicLong nbElems = new AtomicLong( 0L );
+    /** The number of elements in this B-tree */
+    private Long nbElems = 0L;
 
-    /** The offset of the BTree RootPage */
+    /** The offset of the B-tree RootPage */
     private long rootPageOffset;
-
-    /** The offset of the next BTree */
-    private long nextBTreeOffset;
-
-    /** The number of elements in a page for this BTree */
-    private int pageSize;
-
-    /** The BTree name */
-    private String name;
-
-    /** The FQCN of the Key serializer */
-    private String keySerializerFQCN;
-
-    /** The FQCN of the Value serializer */
-    private String valueSerializerFQCN;
 
     // Those are data which aren't serialized : they are in memory only */
     /** The position in the file */
     private long btreeOffset;
 
-    /** The existing versions */
-    private long[] versions;
+    /** A Map containing the rootPage for this tree */
+    private Page<K, V> rootPage;
 
-    private int allowDuplicates = 0;
+    /** The number of users for this BtreeHeader */
+    private AtomicInteger nbUsers = new AtomicInteger( 0 );
 
 
     /**
@@ -90,42 +77,6 @@ import java.util.concurrent.atomic.AtomicLong;
      */
     public BTreeHeader()
     {
-    }
-
-
-    /**
-     * @return the name
-     */
-    public String getName()
-    {
-        return name;
-    }
-
-
-    /**
-     * @param name the name to set
-     */
-    /* no qualifier */void setName( String name )
-    {
-        this.name = name;
-    }
-
-
-    /**
-     * @return the versions
-     */
-    public long[] getVersions()
-    {
-        return versions;
-    }
-
-
-    /**
-     * @param versions the versions to set
-     */
-    /* no qualifier */void setVersions( long[] versions )
-    {
-        this.versions = versions;
     }
 
 
@@ -170,7 +121,7 @@ import java.util.concurrent.atomic.AtomicLong;
      */
     public long getRevision()
     {
-        return revision.get();
+        return revision;
     }
 
 
@@ -179,18 +130,7 @@ import java.util.concurrent.atomic.AtomicLong;
      */
     /* no qualifier */void setRevision( long revision )
     {
-        this.revision.set( revision );
-    }
-
-
-    /**
-     * Increment the revision
-     *
-     * @return the new revision
-     */
-    /* no qualifier */long incrementRevision()
-    {
-        return revision.incrementAndGet();
+        this.revision = revision;
     }
 
 
@@ -199,25 +139,7 @@ import java.util.concurrent.atomic.AtomicLong;
      */
     public long getNbElems()
     {
-        return nbElems.get();
-    }
-
-
-    /**
-     * Increment the number of elements
-     */
-    /* no qualifier */void incrementNbElems()
-    {
-        nbElems.incrementAndGet();
-    }
-
-
-    /**
-     * Decrement the number of elements
-     */
-    public void decrementNbElems()
-    {
-        nbElems.decrementAndGet();
+        return nbElems;
     }
 
 
@@ -226,91 +148,70 @@ import java.util.concurrent.atomic.AtomicLong;
      */
     /* no qualifier */void setNbElems( long nbElems )
     {
-        this.nbElems.set( nbElems );
+        this.nbElems = nbElems;
     }
 
 
     /**
-     * @return the nextBTreeOffset
+     * Increment the number of elements
      */
-    public long getNextBTreeOffset()
+    /* no qualifier */void incrementNbElems()
     {
-        return nextBTreeOffset;
+        nbElems++;
     }
 
 
     /**
-     * @param nextBtreeOffset the nextBtreeOffset to set
+     * Decrement the number of elements
      */
-    /* no qualifier */void setNextBTreeOffset( long nextBTreeOffset )
+    /* no qualifier */void decrementNbElems()
     {
-        this.nextBTreeOffset = nextBTreeOffset;
+        nbElems--;
     }
 
 
     /**
-     * @return the pageSize
+     * @return the rootPage
      */
-    public int getPageSize()
+    /* no qualifier */ Page<K, V> getRootPage()
     {
-        return pageSize;
+        return rootPage;
     }
 
 
     /**
-     * @param pageSize the pageSize to set
+     * @param rootPage the rootPage to set
      */
-    /* no qualifier */void setPageSize( int pageSize )
+    /* no qualifier */ void setRootPage( Page<K, V> rootPage )
     {
-        this.pageSize = pageSize;
+        this.rootPage = rootPage;
     }
 
 
     /**
-     * @return the keySerializerFQCN
+     * @return the nbUsers
      */
-    public String getKeySerializerFQCN()
+    /* no qualifier */ int getNbUsers()
     {
-        return keySerializerFQCN;
+        return nbUsers.get();
     }
 
 
     /**
-     * @param keySerializerFQCN the keySerializerFQCN to set
+     * Increment the number of users
      */
-    /* no qualifier */void setKeySerializerFQCN( String keySerializerFQCN )
+    /* no qualifier */ void incrementNbUsers()
     {
-        this.keySerializerFQCN = keySerializerFQCN;
+        nbUsers.incrementAndGet();
     }
 
 
     /**
-     * @return the valueSerializerFQCN
+     * Decrement the number of users
      */
-    public String getValueSerializerFQCN()
+    /* no qualifier */ void decrementNbUsers()
     {
-        return valueSerializerFQCN;
-    }
-
-
-    /**
-     * @param valueSerializerFQCN the valueSerializerFQCN to set
-     */
-    /* no qualifier */void setValueSerializerFQCN( String valueSerializerFQCN )
-    {
-        this.valueSerializerFQCN = valueSerializerFQCN;
-    }
-
-
-    public boolean isAllowDuplicates()
-    {
-        return ( allowDuplicates == 1 );
-    }
-
-
-    /* no qualifier */void setAllowDuplicates( boolean allowDuplicates )
-    {
-        this.allowDuplicates = ( allowDuplicates ? 1 : 0 );
+        nbUsers.decrementAndGet();
     }
 
 
@@ -321,42 +222,12 @@ import java.util.concurrent.atomic.AtomicLong;
     {
         StringBuilder sb = new StringBuilder();
 
-        sb.append( "Btree '" ).append( name ).append( "'" );
+        sb.append( "B-treeHeader " );
         sb.append( ", revision[" ).append( revision ).append( "]" );
         sb.append( ", btreeOffset[" ).append( btreeOffset ).append( "]" );
         sb.append( ", rootPageOffset[" ).append( rootPageOffset ).append( "]" );
-        sb.append( ", nextBTree[" ).append( nextBTreeOffset ).append( "]" );
         sb.append( ", nbElems[" ).append( nbElems ).append( "]" );
-        sb.append( ", pageSize[" ).append( pageSize ).append( "]" );
-        sb.append( ", hasDuplicates[" ).append( isAllowDuplicates() ).append( "]" );
-        sb.append( "{\n" );
-        sb.append( "    Key serializer   : " ).append( keySerializerFQCN ).append( "\n" );
-        sb.append( "    Value serializer : " ).append( valueSerializerFQCN ).append( "\n" );
-        sb.append( "}\n" );
-
-        if ( ( versions != null ) && ( versions.length != 0 ) )
-        {
-            sb.append( "Versions : \n" );
-            sb.append( "{\n" );
-
-            boolean isFirst = true;
-
-            for ( long version : versions )
-            {
-                if ( isFirst )
-                {
-                    isFirst = false;
-                }
-                else
-                {
-                    sb.append( ",\n" );
-                }
-
-                sb.append( "    " ).append( version );
-            }
-
-            sb.append( "}\n" );
-        }
+        sb.append( ", nbUsers[" ).append( nbUsers.get() ).append( "]" );
 
         return sb.toString();
     }

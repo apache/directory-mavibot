@@ -27,7 +27,7 @@ import org.junit.Test;
 
 /**
  * Test the ByteArrayComparator class
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class ByteArrayComparatorTest
@@ -35,7 +35,7 @@ public class ByteArrayComparatorTest
     @Test
     public void testByteArrayComparator()
     {
-        ByteArrayComparator comparator = new ByteArrayComparator();
+        ByteArrayComparator comparator = ByteArrayComparator.INSTANCE;
 
         // Check equality
         assertEquals( 0, comparator.compare( null, null ) );

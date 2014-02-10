@@ -28,17 +28,20 @@ import org.apache.directory.mavibot.btree.comparator.LongArrayComparator;
 
 /**
  * A serializer for a Long[].
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class LongArraySerializer extends AbstractElementSerializer<long[]>
 {
+    /** A static instance of a LongArraySerializer */
+    public static final LongArraySerializer INSTANCE = new LongArraySerializer();
+
     /**
      * Create a new instance of LongSerializer
      */
-    public LongArraySerializer()
+    private LongArraySerializer()
     {
-        super( new LongArrayComparator() );
+        super( LongArrayComparator.INSTANCE );
     }
 
 

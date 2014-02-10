@@ -35,11 +35,6 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.RecordManager;
-import org.apache.directory.mavibot.btree.Tuple;
-import org.apache.directory.mavibot.btree.TupleCursor;
-import org.apache.directory.mavibot.btree.ValueCursor;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
@@ -54,7 +49,7 @@ import org.junit.rules.TemporaryFolder;
 
 /**
  * test the RecordManager
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class RecordManagerTest
@@ -74,12 +69,14 @@ public class RecordManagerTest
     {
         dataDir = tempFolder.newFolder( UUID.randomUUID().toString() );
 
+        System.out.println( dataDir + "/mavibot.db" );
+
         openRecordManagerAndBtree();
 
         try
         {
             // Create a new BTree
-            btree = recordManager.addBTree( "test", new LongSerializer(), new StringSerializer(), false );
+            btree = recordManager.addBTree( "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
         }
         catch ( Exception e )
         {
@@ -126,7 +123,7 @@ public class RecordManagerTest
 
 
     /**
-     * Test the creation of a RecordManager, and that we can read it back.  
+     * Test the creation of a RecordManager, and that we can read it back.
      */
     @Test
     public void testRecordManager() throws IOException, BTreeAlreadyManagedException
@@ -397,7 +394,7 @@ public class RecordManagerTest
 
 
     /**
-     * Test the creation of a RecordManager with a BTree containing data, where we keep the revisions, 
+     * Test the creation of a RecordManager with a BTree containing data, where we keep the revisions,
      * and browse the BTree.
      */
     @Test
@@ -468,7 +465,7 @@ public class RecordManagerTest
 
 
     /**
-     * Test the creation of a RecordManager with a BTree containing data, where we keep the revision, and 
+     * Test the creation of a RecordManager with a BTree containing data, where we keep the revision, and
      * we browse from a key
      */
     @Test
@@ -848,8 +845,8 @@ public class RecordManagerTest
         String[] testValues = new String[]
             { "00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "0A", "0B", "0C", "0D", "0E", "0F", "10" };
 
-        BTree<Long, String> dupsTree = BTreeFactory.createPersistedBTree( name, new LongSerializer(),
-            new StringSerializer(), pageSize, true );
+        BTree<Long, String> dupsTree = BTreeFactory.createPersistedBTree( name, LongSerializer.INSTANCE,
+            StringSerializer.INSTANCE, pageSize, true );
 
         recordManager.manage( dupsTree );
 

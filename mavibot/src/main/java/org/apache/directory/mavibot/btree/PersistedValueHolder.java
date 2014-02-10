@@ -248,7 +248,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             configuration.setName( UUID.randomUUID().toString() );
             configuration.setValueSerializer( valueSerializer );
             configuration.setParentBTree( parentBtree );
-            configuration.setSubBtree( true );
+            configuration.setBtreeType( BTreeTypeEnum.PERSISTED_SUB );
 
             valueBtree = BTreeFactory.createPersistedBTree( configuration );
 
@@ -655,7 +655,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         long offset = LongSerializer.deserialize( raw );
 
         // and reload the sub btree
-        valueBtree = parentBtree.getRecordManager().loadDupsBTree( offset );
+        valueBtree = parentBtree.getRecordManager().loadDupsBtree( offset );
     }
 
 

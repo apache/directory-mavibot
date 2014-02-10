@@ -26,18 +26,6 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.BorrowedFromLeftResult;
-import org.apache.directory.mavibot.btree.BorrowedFromRightResult;
-import org.apache.directory.mavibot.btree.DeleteResult;
-import org.apache.directory.mavibot.btree.InsertResult;
-import org.apache.directory.mavibot.btree.KeyHolder;
-import org.apache.directory.mavibot.btree.MergedWithSiblingResult;
-import org.apache.directory.mavibot.btree.NotPresentResult;
-import org.apache.directory.mavibot.btree.Page;
-import org.apache.directory.mavibot.btree.PageHolder;
-import org.apache.directory.mavibot.btree.RemoveResult;
-import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
@@ -48,7 +36,7 @@ import org.junit.Test;
 
 /**
  * A unit test class for Leaf
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class InMemoryLeafTest
@@ -62,7 +50,7 @@ public class InMemoryLeafTest
     @Before
     public void setup() throws IOException
     {
-        btree = BTreeFactory.createInMemoryBTree( "test", new LongSerializer(), new StringSerializer() );
+        btree = BTreeFactory.createInMemoryBTree( "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE );
         btree.setPageSize( 8 );
     }
 
@@ -76,12 +64,12 @@ public class InMemoryLeafTest
 
     /**
      * A helper method to insert elements in a Leaf
-     * @throws IOException 
+     * @throws IOException
      */
     private InMemoryLeaf<Long, String> insert( InMemoryLeaf<Long, String> leaf, long key, String value )
         throws IOException
     {
-        InsertResult<Long, String> result = leaf.insert( 1L, key, value );
+        InsertResult<Long, String> result = leaf.insert( key, value, 1L );
 
         return ( InMemoryLeaf<Long, String> ) ( ( ModifyResult<Long, String> ) result ).getModifiedPage();
     }
@@ -96,7 +84,7 @@ public class InMemoryLeafTest
     {
         InMemoryLeaf<Long, String> leaf = new InMemoryLeaf<Long, String>( btree );
 
-        DeleteResult<Long, String> result = leaf.delete( 1L, 1L, null, null, -1 );
+        DeleteResult<Long, String> result = leaf.delete( 1L, null, 1L, null, -1 );
 
         assertEquals( NotPresentResult.NOT_PRESENT, result );
     }
@@ -115,7 +103,7 @@ public class InMemoryLeafTest
         leaf = insert( leaf, 3L, "v3" );
         leaf = insert( leaf, 4L, "v4" );
 
-        DeleteResult<Long, String> result = leaf.delete( 2L, 5L, null, null, -1 );
+        DeleteResult<Long, String> result = leaf.delete( 5L, null, 2L, null, -1 );
 
         assertEquals( NotPresentResult.NOT_PRESENT, result );
     }
@@ -134,7 +122,7 @@ public class InMemoryLeafTest
         leaf = insert( leaf, 3L, "v3" );
         leaf = insert( leaf, 4L, "v4" );
 
-        DeleteResult<Long, String> result = leaf.delete( 4L, 3L, null, null, -1 );
+        DeleteResult<Long, String> result = leaf.delete( 3L, null, 4L, null, -1 );
 
         assertTrue( result instanceof RemoveResult );
 
@@ -181,7 +169,7 @@ public class InMemoryLeafTest
         leaf = insert( leaf, 3L, "v3" );
         leaf = insert( leaf, 4L, "v4" );
 
-        DeleteResult<Long, String> result = leaf.delete( 4L, 1L, null, null, -1 );
+        DeleteResult<Long, String> result = leaf.delete( 1L, null, 4L, null, -1 );
 
         assertTrue( result instanceof RemoveResult );
 
@@ -224,7 +212,7 @@ public class InMemoryLeafTest
      *            +--[1, 2, 3, 4, 5]
      * [6, 10]-+--[6, 7, 8, 9]
      *            +--[10, 11, 12, 13]
-     * @throws IOException 
+     * @throws IOException
      */
     @Test
     public void testDeleteBorrowingFromLeftSibling() throws IOException
@@ -262,7 +250,7 @@ public class InMemoryLeafTest
         parent.setKey( 1, new KeyHolder<Long>( 10L ) );
 
         // Now, delete the element from the target page
-        DeleteResult<Long, String> result = target.delete( 2L, 7L, null, parent, 1 );
+        DeleteResult<Long, String> result = target.delete( 7L, null, 2L, parent, 1 );
 
         assertTrue( result instanceof BorrowedFromLeftResult );
 
@@ -294,7 +282,7 @@ public class InMemoryLeafTest
     /**
      * Check that deleting an element from a leaf with N/2 element works when we borrow
      * an element in a right page with more than N/2 elements
-     * @throws IOException 
+     * @throws IOException
      */
     @Test
     public void testDeleteBorrowingFromRightSibling() throws IOException
@@ -332,7 +320,7 @@ public class InMemoryLeafTest
         parent.setKey( 1, new KeyHolder<Long>( 10L ) );
 
         // Now, delete the element from the target page
-        DeleteResult<Long, String> result = target.delete( 2L, 7L, null, parent, 1 );
+        DeleteResult<Long, String> result = target.delete( 7L, null, 2L, parent, 1 );
 
         assertTrue( result instanceof BorrowedFromRightResult );
 
@@ -365,7 +353,7 @@ public class InMemoryLeafTest
     /**
      * Check that deleting an element from a leaf with N/2 element works when we merge
      * it with one of its sibling, if both has N/2 elements
-     * @throws IOException 
+     * @throws IOException
      */
     @Test
     public void testDeleteMergeWithSibling() throws IOException
@@ -402,7 +390,7 @@ public class InMemoryLeafTest
         parent.setKey( 1, new KeyHolder<Long>( 9L ) );
 
         // Now, delete the element from the target page
-        DeleteResult<Long, String> result = target.delete( 2L, 7L, null, parent, 1 );
+        DeleteResult<Long, String> result = target.delete( 7L, null, 2L, parent, 1 );
 
         assertTrue( result instanceof MergedWithSiblingResult );
 
@@ -438,7 +426,7 @@ public class InMemoryLeafTest
         for ( long i = 0; i < 8; i++ )
         {
             long value = i + i + 1;
-            leaf = ( InMemoryLeaf<Long, String> ) ( ( ModifyResult<Long, String> ) leaf.insert( 0L, value, "V" + value ) )
+            leaf = ( InMemoryLeaf<Long, String> ) ( ( ModifyResult<Long, String> ) leaf.insert( value, "V" + value, 0L ) )
                 .getModifiedPage();
         }
 

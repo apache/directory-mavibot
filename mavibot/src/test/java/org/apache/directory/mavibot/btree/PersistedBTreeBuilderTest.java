@@ -27,11 +27,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.PersistedBTreeBuilder;
-import org.apache.directory.mavibot.btree.RecordManager;
-import org.apache.directory.mavibot.btree.Tuple;
-import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.junit.Test;
 
@@ -60,7 +55,7 @@ public class PersistedBTreeBuilderTest
 
         RecordManager rm = new RecordManager( file.getAbsolutePath() );
 
-        IntSerializer ser = new IntSerializer();
+        IntSerializer ser = IntSerializer.INSTANCE;
         PersistedBTreeBuilder<Integer, Integer> bb = new PersistedBTreeBuilder<Integer, Integer>( rm, "master", 4, ser,
             ser );
 

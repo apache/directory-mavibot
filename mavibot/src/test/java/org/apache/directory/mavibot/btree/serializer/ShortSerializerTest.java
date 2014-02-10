@@ -29,14 +29,11 @@ import org.junit.Test;
 
 /**
  * Test the ShortSerializer class
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class ShortSerializerTest
 {
-    private static ShortSerializer serializer = new ShortSerializer();
-
-
     @Test
     public void testShortSerializer() throws IOException
     {
@@ -46,7 +43,7 @@ public class ShortSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).shortValue() );
+        assertEquals( value, ShortSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).shortValue() );
 
         // ------------------------------------------------------------------
         value = 0x0001;
@@ -55,7 +52,7 @@ public class ShortSerializerTest
         assertEquals( ( byte ) 0x01, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).shortValue() );
+        assertEquals( value, ShortSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).shortValue() );
 
         // ------------------------------------------------------------------
         value = 0x00FF;
@@ -64,7 +61,7 @@ public class ShortSerializerTest
         assertEquals( ( byte ) 0xFF, result[1] );
         assertEquals( ( byte ) 0x00, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).shortValue() );
+        assertEquals( value, ShortSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).shortValue() );
 
         // ------------------------------------------------------------------
         value = 0x0100;
@@ -73,7 +70,7 @@ public class ShortSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x01, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).shortValue() );
+        assertEquals( value, ShortSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).shortValue() );
 
         // ------------------------------------------------------------------
         value = 0x7FFF;
@@ -82,7 +79,7 @@ public class ShortSerializerTest
         assertEquals( ( byte ) 0xFF, result[1] );
         assertEquals( ( byte ) 0x7F, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).shortValue() );
+        assertEquals( value, ShortSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).shortValue() );
 
         // ------------------------------------------------------------------
         value = ( short ) 0x8000;
@@ -91,7 +88,7 @@ public class ShortSerializerTest
         assertEquals( ( byte ) 0x00, result[1] );
         assertEquals( ( byte ) 0x80, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).shortValue() );
+        assertEquals( value, ShortSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).shortValue() );
 
         // ------------------------------------------------------------------
         value = ( short ) 0xFFFF;
@@ -100,6 +97,6 @@ public class ShortSerializerTest
         assertEquals( ( byte ) 0xFF, result[1] );
         assertEquals( ( byte ) 0xFF, result[0] );
 
-        assertEquals( value, serializer.deserialize( new BufferHandler( result ) ).shortValue() );
+        assertEquals( value, ShortSerializer.INSTANCE.deserialize( new BufferHandler( result ) ).shortValue() );
     }
 }

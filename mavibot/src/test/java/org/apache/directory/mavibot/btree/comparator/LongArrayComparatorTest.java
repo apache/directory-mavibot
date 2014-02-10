@@ -27,7 +27,7 @@ import org.junit.Test;
 
 /**
  * Test the LongArrayComparator class
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class LongArrayComparatorTest
@@ -35,7 +35,7 @@ public class LongArrayComparatorTest
     @Test
     public void testLongArrayComparator()
     {
-        LongArrayComparator comparator = new LongArrayComparator();
+        LongArrayComparator comparator = LongArrayComparator.INSTANCE;
 
         // Check equality
         assertEquals( 0, comparator.compare( null, null ) );

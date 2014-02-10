@@ -28,7 +28,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 
 /**
- * A BTree interface, to be implemented by the PersistedBTree or the InMemoryBTree
+ * A B-tree interface, to be implemented by the PersistedBTree or the InMemoryBTree
  *
  * @param <K> The Key type
  * @param <V> The Value type
@@ -46,23 +46,15 @@ public interface BTree<K, V>
     /** Define a default delay for a read transaction. This is 10 seconds */
     static final long DEFAULT_READ_TIMEOUT = 10 * 1000L;
 
-    /** The BTree allows duplicate values */
+    /** The B-tree allows duplicate values */
     static final boolean ALLOW_DUPLICATES = true;
 
-    /** The BTree forbids duplicate values */
+    /** The B-tree forbids duplicate values */
     static final boolean FORBID_DUPLICATES = false;
 
 
     /**
-     * Initialize the BTree.
-     *
-     * @throws IOException If we get some exception while initializing the BTree
-     */
-    void init() throws IOException;
-
-
-    /**
-     * Close the BTree, cleaning up all the data structure
+     * Close the B-tree, cleaning up all the data structure
      */
     void close() throws IOException;
 
@@ -87,10 +79,10 @@ public interface BTree<K, V>
 
 
     /**
-     * Insert an entry in the BTree.
+     * Insert an entry in the B-tree.
      * <p>
      * We will replace the value if the provided key already exists in the
-     * btree.
+     * B-tree.
      *
      * @param key Inserted key
      * @param value Inserted value
@@ -130,7 +122,7 @@ public interface BTree<K, V>
      *
      * @param key The key we are looking at
      * @return The found value, or null if the key is not present in the tree
-     * @throws KeyNotFoundException If the key is not found in the BTree
+     * @throws KeyNotFoundException If the key is not found in the B-tree
      * @throws IOException TODO
      */
     V get( K key ) throws IOException, KeyNotFoundException;
@@ -142,7 +134,7 @@ public interface BTree<K, V>
      * @param revision The revision we are looking for
      * @return The rootPage associated to this revision
      * @throws IOException If we had an issue while accessing the underlying file
-     * @throws KeyNotFoundException If the revision does not exist for this Btree
+     * @throws KeyNotFoundException If the revision does not exist for this B-tree
      */
     Page<K, V> getRootPage( long revision ) throws IOException, KeyNotFoundException;
 
@@ -169,7 +161,7 @@ public interface BTree<K, V>
      * @param revision The revision for which we want to find a key
      * @param key The key we are looking at
      * @return The found value, or null if the key is not present in the tree
-     * @throws KeyNotFoundException If the key is not found in the BTree
+     * @throws KeyNotFoundException If the key is not found in the B-tree
      * @throws IOException If there was an issue while fetching data from the disk
      */
     V get( long revision, K key ) throws IOException, KeyNotFoundException;
@@ -192,13 +184,13 @@ public interface BTree<K, V>
      * @param key The key we are looking at
      * @return true if the key is present, false otherwise
      * @throws IOException If we have an error while trying to access the page
-     * @throws KeyNotFoundException If the key is not found in the BTree
+     * @throws KeyNotFoundException If the key is not found in the B-tree
      */
     boolean hasKey( long revision, K key ) throws IOException, KeyNotFoundException;
 
 
     /**
-     * Checks if the BTree contains the given key with the given value.
+     * Checks if the B-tree contains the given key with the given value.
      *
      * @param key The key we are looking for
      * @param value The value associated with the given key
@@ -208,13 +200,13 @@ public interface BTree<K, V>
 
 
     /**
-     * Checks if the BTree contains the given key with the given value for a given revision
+     * Checks if the B-tree contains the given key with the given value for a given revision
      *
      * @param revision The revision we would like to browse
      * @param key The key we are looking for
      * @param value The value associated with the given key
      * @return true if the key and value are associated with each other, false otherwise
-     * @throws KeyNotFoundException If the key is not found in the BTree
+     * @throws KeyNotFoundException If the key is not found in the B-tree
      */
     boolean contains( long revision, K key, V value ) throws IOException, KeyNotFoundException;
 
@@ -222,7 +214,7 @@ public interface BTree<K, V>
     /**
      * Creates a cursor starting at the beginning of the tree
      *
-     * @return A cursor on the btree
+     * @return A cursor on the B-tree
      * @throws IOException
      */
     TupleCursor<K, V> browse() throws IOException;
@@ -232,9 +224,9 @@ public interface BTree<K, V>
      * Creates a cursor starting at the beginning of the tree, for a given revision
      *
      * @param revision The revision we would like to browse
-     * @return A cursor on the btree
+     * @return A cursor on the B-tree
      * @throws IOException If we had an issue while fetching data from the disk
-     * @throws KeyNotFoundException If the key is not found in the BTree
+     * @throws KeyNotFoundException If the key is not found in the B-tree
      */
     TupleCursor<K, V> browse( long revision ) throws IOException, KeyNotFoundException;
 
@@ -244,7 +236,7 @@ public interface BTree<K, V>
      *
      * @param key The key which is the starting point. If the key is not found,
      * then the cursor will always return null.
-     * @return A cursor on the btree
+     * @return A cursor on the B-tree
      * @throws IOException
      */
     TupleCursor<K, V> browseFrom( K key ) throws IOException;
@@ -256,8 +248,8 @@ public interface BTree<K, V>
      * @param The revision we are looking for
      * @param key The key which is the starting point. If the key is not found,
      * then the cursor will always return null.
-     * @return A cursor on the btree
-     * @throws IOException If wxe had an issue reading the BTree from disk
+     * @return A cursor on the B-tree
+     * @throws IOException If wxe had an issue reading the B-tree from disk
      * @throws KeyNotFoundException  If we can't find a rootPage for this revision
      */
     TupleCursor<K, V> browseFrom( long revision, K key ) throws IOException, KeyNotFoundException;
@@ -349,25 +341,25 @@ public interface BTree<K, V>
 
 
     /**
-     * @return The current BTree revision
+     * @return The current B-tree revision
      */
     long getRevision();
 
 
     /**
-     * @return The current number of elements in the BTree
+     * @return The current number of elements in the B-tree
      */
     long getNbElems();
 
 
     /**
-     * @return true if this BTree allow duplicate values
+     * @return true if this B-tree allow duplicate values
      */
     boolean isAllowDuplicates();
 
 
     /**
-     * @param allowDuplicates True if the BTree will allow duplicate values
+     * @param allowDuplicates True if the B-tree will allow duplicate values
      */
     void setAllowDuplicates( boolean allowDuplicates );
 

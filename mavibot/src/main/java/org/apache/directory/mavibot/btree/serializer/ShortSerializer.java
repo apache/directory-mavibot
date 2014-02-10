@@ -34,12 +34,15 @@ import org.apache.directory.mavibot.btree.exception.SerializerCreationException;
  */
 public class ShortSerializer extends AbstractElementSerializer<Short>
 {
+    /** A static instance of a ShortSerializer */
+    public final static ShortSerializer INSTANCE = new ShortSerializer();
+
     /**
      * Create a new instance of ShortSerializer
      */
-    public ShortSerializer()
+    private ShortSerializer()
     {
-        super( new ShortComparator() );
+        super( ShortComparator.INSTANCE );
     }
 
 

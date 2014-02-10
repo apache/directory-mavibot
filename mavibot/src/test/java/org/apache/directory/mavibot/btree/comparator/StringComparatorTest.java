@@ -27,7 +27,7 @@ import org.junit.Test;
 
 /**
  * Test the StringComparator class
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class StringComparatorTest
@@ -35,7 +35,7 @@ public class StringComparatorTest
     @Test
     public void testStringComparator()
     {
-        StringComparator comparator = new StringComparator();
+        StringComparator comparator = StringComparator.INSTANCE;
 
         assertEquals( 0, comparator.compare( null, null ) );
         assertEquals( 0, comparator.compare( "", "" ) );

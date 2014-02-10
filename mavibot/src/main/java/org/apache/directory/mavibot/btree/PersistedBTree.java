@@ -24,8 +24,8 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 
 import net.sf.ehcache.Cache;
@@ -45,15 +45,15 @@ import org.slf4j.LoggerFactory;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeable
+public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements TransactionManager, Closeable
 {
     /** The LoggerFactory used by this class */
     protected static final Logger LOG = LoggerFactory.getLogger( PersistedBTree.class );
 
-    /** The RecordManager if the BTree is managed */
+    /** The RecordManager if the B-tree is managed */
     private RecordManager recordManager;
 
-    /** The cache associated with this BTree */
+    /** The cache associated with this B-tree */
     protected Cache cache;
 
     /** The default number of pages to keep in memory */
@@ -62,35 +62,33 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
     /** The cache size, default to 1000 elements */
     protected int cacheSize = DEFAULT_CACHE_SIZE;
 
-    /** A flag indicating if this BTree is a Sub BTree */
-    private boolean isSubBtree = false;
-
-    /** The number of stored Values before we switch to a BTree */
+    /** The number of stored Values before we switch to a B-tree */
     private static final int DEFAULT_VALUE_THRESHOLD_UP = 8;
 
     /** The number of stored Values before we switch back to an array */
     private static final int DEFAULT_VALUE_THRESHOLD_LOW = 1;
 
-    /** The configuration for the array <-> BTree switch */
+    /** The configuration for the array <-> B-tree switch */
     /*No qualifier*/static int valueThresholdUp = DEFAULT_VALUE_THRESHOLD_UP;
     /*No qualifier*/static int valueThresholdLow = DEFAULT_VALUE_THRESHOLD_LOW;
 
     /** A lock to protect the creation of the transaction */
-    protected ReentrantLock createTransaction = new ReentrantLock();
+    private ReentrantLock createTransaction = new ReentrantLock();
 
+    /** A flag set when we initiate an automatic transaction */
+    private AtomicBoolean automaticTransaction = new AtomicBoolean( true );
 
     /**
      * Creates a new BTree, with no initialization.
      */
     /* no qualifier */PersistedBTree()
     {
-        btreeHeader = new BTreeHeader();
         setType( BTreeTypeEnum.PERSISTED );
     }
 
 
     /**
-     * Creates a new persisted BTree using the BTreeConfiguration to initialize the
+     * Creates a new persisted B-tree using the BTreeConfiguration to initialize the
      * BTree
      *
      * @param configuration The configuration to use
@@ -105,22 +103,17 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
             throw new IllegalArgumentException( "BTree name cannot be null" );
         }
 
-        btreeHeader = new BTreeHeader();
-        btreeHeader.setName( name );
-        btreeHeader.setPageSize( configuration.getPageSize() );
-        isSubBtree = configuration.isSubBtree();
-
-        keySerializer = configuration.getKeySerializer();
-        btreeHeader.setKeySerializerFQCN( keySerializer.getClass().getName() );
-
-        valueSerializer = configuration.getValueSerializer();
-        btreeHeader.setValueSerializerFQCN( valueSerializer.getClass().getName() );
+        BTreeHeader<K, V> btreeHeader = getBtreeHeader();
+        setName( name );
+        setPageSize( configuration.getPageSize() );
+        setKeySerializer( configuration.getKeySerializer() );
+        setValueSerializer( configuration.getValueSerializer() );
+        setAllowDuplicates( configuration.isAllowDuplicates() );
+        setType( configuration.getBtreeType() );
 
         readTimeOut = configuration.getReadTimeOut();
         writeBufferSize = configuration.getWriteBufferSize();
-        btreeHeader.setAllowDuplicates( configuration.isAllowDuplicates() );
         cacheSize = configuration.getCacheSize();
-        setType( BTreeTypeEnum.PERSISTED );
 
         if ( keySerializer.getComparator() == null )
         {
@@ -129,13 +122,14 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
         // Create the first root page, with revision 0L. It will be empty
         // and increment the revision at the same time
-        rootPage = new PersistedLeaf<K, V>( this );
+        // Create the first root page, with revision 0L. It will be empty
+        // and increment the revision at the same time
+        btreeHeader.setRootPage( new PersistedLeaf<K, V>( this ) );
 
-        if ( isSubBtree )
+        if ( btreeType == BTreeTypeEnum.PERSISTED_SUB )
         {
             // The subBTree inherit its cache from its parent BTree
             this.cache = ( ( PersistedBTree<K, V> ) configuration.getParentBTree() ).getCache();
-            this.writeLock = ( ( PersistedBTree<K, V> ) configuration.getParentBTree() ).getWriteLock();
             readTransactions = new ConcurrentLinkedQueue<ReadTransaction<K, V>>();
         }
 
@@ -151,14 +145,12 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
      */
     public void init()
     {
-        if ( !isSubBtree )
+        if ( btreeType != BTreeTypeEnum.PERSISTED_SUB )
         {
             // This is not a subBtree, we have to initialize the cache
 
             // Create the queue containing the pending read transactions
             readTransactions = new ConcurrentLinkedQueue<ReadTransaction<K, V>>();
-
-            writeLock = new ReentrantLock();
 
             // Initialize the caches
             CacheConfiguration cacheConfiguration = new CacheConfiguration();
@@ -191,15 +183,6 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
     /**
      * Return the cache we use in this BTree
      */
-    /* No qualifier */ReentrantLock getWriteLock()
-    {
-        return writeLock;
-    }
-
-
-    /**
-     * Return the cache we use in this BTree
-     */
     /* No qualifier */ConcurrentLinkedQueue<ReadTransaction<K, V>> getReadTransactions()
     {
         return readTransactions;
@@ -222,8 +205,6 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
         }
 
         cache.dispose();
-
-        rootPage = null;
     }
 
 
@@ -232,7 +213,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
      */
     /* No qualifier*/long getBtreeOffset()
     {
-        return btreeHeader.getBTreeOffset();
+        return getBtreeHeader().getBTreeOffset();
     }
 
 
@@ -241,7 +222,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
      */
     /* No qualifier*/void setBtreeOffset( long btreeOffset )
     {
-        btreeHeader.setBTreeOffset( btreeOffset );
+        getBtreeHeader().setBTreeOffset( btreeOffset );
     }
 
 
@@ -250,7 +231,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
      */
     /* No qualifier*/long getRootPageOffset()
     {
-        return btreeHeader.getRootPageOffset();
+        return getBtreeHeader().getRootPageOffset();
     }
 
 
@@ -259,32 +240,14 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
      */
     /* No qualifier*/void setRootPageOffset( long rootPageOffset )
     {
-        btreeHeader.setRootPageOffset( rootPageOffset );
-    }
-
-
-    /**
-     * @return the nextBTreeOffset
-     */
-    /* No qualifier*/long getNextBTreeOffset()
-    {
-        return btreeHeader.getNextBTreeOffset();
-    }
-
-
-    /**
-     * @param nextBTreeOffset the nextBTreeOffset to set
-     */
-    /* No qualifier*/void setNextBTreeOffset( long nextBTreeOffset )
-    {
-        btreeHeader.setNextBTreeOffset( nextBTreeOffset );
+        getBtreeHeader().setRootPageOffset( rootPageOffset );
     }
 
 
     /**
      * Gets the RecordManager for a managed BTree
      *
-     * @return The recordManager if the BTree is managed
+     * @return The recordManager if the B-tree is managed
      */
     /* No qualifier */RecordManager getRecordManager()
     {
@@ -315,81 +278,119 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
      * @return
      * @throws IOException
      */
-    protected Tuple<K, V> delete( K key, V value, long revision ) throws IOException
+    /* no qualifier */ Tuple<K, V> delete( K key, V value, long revision ) throws IOException
     {
-        writeLock.lock();
+        boolean inTransaction = recordManager.isTransactionStarted();
 
-        try
+        if ( !inTransaction )
         {
-            // If the key exists, the existing value will be replaced. We store it
-            // to return it to the caller.
-            Tuple<K, V> tuple = null;
-
-            // Try to delete the entry starting from the root page. Here, the root
-            // page may be either a Node or a Leaf
-            DeleteResult<K, V> result = rootPage.delete( revision, key, value, null, -1 );
-
-            if ( result instanceof NotPresentResult )
-            {
-                // Key not found.
-                return null;
-            }
-
-            // Keep the oldRootPage so that we can later access it
-            Page<K, V> oldRootPage = rootPage;
-
-            if ( result instanceof RemoveResult )
-            {
-                // The element was found, and removed
-                RemoveResult<K, V> removeResult = ( RemoveResult<K, V> ) result;
-
-                Page<K, V> modifiedPage = removeResult.getModifiedPage();
-
-                // Write the modified page on disk
-                // Note that we don't use the holder, the new root page will
-                // remain in memory.
-                PageHolder<K, V> holder = writePage( modifiedPage, revision );
-
-                // Store the offset on disk in the page in memory
-                ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( PersistedPageHolder<K, V> ) holder )
-                    .getOffset() );
-
-                // Store the last offset on disk in the page in memory
-                ( ( AbstractPage<K, V> ) modifiedPage )
-                    .setLastOffset( ( ( PersistedPageHolder<K, V> ) holder )
-                        .getLastOffset() );
-
-                // This is a new root
-                rootPage = modifiedPage;
-                tuple = removeResult.getRemovedElement();
-            }
-
-            // Decrease the number of elements in the current tree if the deletion is successful
-            if ( tuple != null )
-            {
-                btreeHeader.decrementNbElems();
-
-                // We have to update the rootPage on disk
-                // Update the BTree header now
-                recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
-            }
-
-            recordManager.addFreePages( this, result.getCopiedPages() );
-
-            // Update the RecordManager header
-            recordManager.updateRecordManagerHeader();
-
-            // Store the created rootPage into the revision BTree, this will be stored in RecordManager only if revisions are set to keep
-            recordManager.storeRootPage( this, rootPage );
-
-            // Return the value we have found if it was modified
-            return tuple;
+            recordManager.beginTransaction();
         }
-        finally
+
+        // Try to delete the entry starting from the root page. Here, the root
+        // page may be either a Node or a Leaf
+        DeleteResult<K, V> result = processDelete( key, value, revision );
+
+        // Check that we have found the element to delete
+        if ( result instanceof NotPresentResult )
         {
-            // See above
-            writeLock.unlock();
+            // We haven't found the element in the B-tree, just get out
+            if ( !inTransaction )
+            {
+                recordManager.commit();
+            }
+
+            return null;
         }
+
+        // The element was found, and removed
+        AbstractDeleteResult<K, V> deleteResult = ( AbstractDeleteResult<K, V> ) result;
+
+        Tuple<K, V> tuple = deleteResult.getRemovedElement();
+
+        // Update the B-tree header, creating a new BtreeHeader page now
+        long newBtreeHeaderOffset = recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) getRootPage() ).getOffset() );
+
+        // Update the B-tree of B-trees with this new offset, if we are not already doing so
+        switch ( btreeType )
+        {
+            case PERSISTED :
+                // We have a new B-tree header to inject into the B-tree of btrees
+                recordManager.addInBtreeOfBtrees( getName(), revision, newBtreeHeaderOffset );
+                break;
+
+            case PERSISTED_MANAGEMENT :
+                // The B-tree of B-trees or the copiedPages B-tree has been updated, update the RMheader parameters
+                getBtreeHeader().setBTreeOffset( newBtreeHeaderOffset );
+
+                break;
+
+            default:
+                // Nothing to do for sub-btrees
+                break;
+        }
+
+        // We can safely free the copied pages
+        recordManager.freePages( this, revision, result.getCopiedPages() );
+
+        // If the B-tree is managed, we have to update the rootPage on disk
+        // Update the RecordManager header
+        if ( !inTransaction )
+        {
+            recordManager.commit();
+        }
+
+        // Return the value we have found if it was modified
+        return tuple;
+    }
+
+
+    /**
+     * Insert the tuple into the B-tree rootPage, get back the new rootPage
+     */
+    private DeleteResult<K, V> processDelete( K key, V value, long revision ) throws IOException
+    {
+        // Try to delete the entry starting from the root page. Here, the root
+        // page may be either a Node or a Leaf
+        DeleteResult<K, V> result = getRootPage().delete( key, value, revision);
+
+        if ( result instanceof NotPresentResult )
+        {
+            // Key not found.
+            return result;
+        }
+
+        // The element was found, and removed
+        AbstractDeleteResult<K, V> removeResult = ( AbstractDeleteResult<K, V> ) result;
+
+        Page<K, V> modifiedPage = removeResult.getModifiedPage();
+
+        // Write the modified page on disk
+        // Note that we don't use the holder, the new root page will
+        // remain in memory.
+        PageHolder<K, V> holder = writePage( modifiedPage, revision );
+
+        // Store the offset on disk in the page in memory
+        ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( PersistedPageHolder<K, V> ) holder )
+            .getOffset() );
+
+        // Store the last offset on disk in the page in memory
+        ( ( AbstractPage<K, V> ) modifiedPage )
+            .setLastOffset( ( ( PersistedPageHolder<K, V> ) holder )
+                .getLastOffset() );
+
+        // This is a new root
+        rootPage = modifiedPage;
+
+        // Decrease the number of elements in the current tree
+        getBtreeHeader().decrementNbElems();
+
+        // We have to update the rootPage on disk
+        // Update the B-tree header now
+        recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) getBtreeHeader().getRootPage() ).getOffset() );
+
+        // Return the value we have found if it was modified
+        return result;
     }
 
 
@@ -413,31 +414,87 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
             throw new IllegalArgumentException( "Key must not be null" );
         }
 
-        // If the key exists, the existing value will be replaced. We store it
-        // to return it to the caller.
-        V modifiedValue = null;
+        // We have to start a new transaction, which will be committed or rollbacked
+        // locally. This will duplicate the current BtreeHeader during this phase.
+        boolean inTransaction = beginTransaction( revision );
+
+        if ( revision == -1L )
+        {
+            revision = currentRevision.get() + 1;
+        }
+
+
+        if ( !inTransaction )
+        {
+            recordManager.beginTransaction();
+        }
 
         // Try to insert the new value in the tree at the right place,
         // starting from the root page. Here, the root page may be either
         // a Node or a Leaf
-        InsertResult<K, V> result = rootPage.insert( revision, key, value );
+        InsertResult<K, V> result = processInsert( key, value, revision );
+
+        // Update the B-tree header, creating a new BtreeHeader page now
+        long newBtreeHeaderOffset = recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) getBtreeHeader().getRootPage() ).getOffset() );
+
+        // Update the B-tree of B-trees with this new offset, if we are not already doing so
+        switch ( btreeType )
+        {
+            case PERSISTED :
+                // We have a new B-tree header to inject into the B-tree of btrees
+                recordManager.addInBtreeOfBtrees( getName(), revision, newBtreeHeaderOffset );
+                break;
+
+            case PERSISTED_MANAGEMENT :
+                // The B-tree of B-trees or the copiedPages B-tree has been updated, update the RMheader parameters
+                getBtreeHeader().setBTreeOffset( newBtreeHeaderOffset );
+
+                break;
+
+            default:
+                // Nothing to do for sub-btrees
+                break;
+        }
+
+        // We can safely free the copied pages
+        recordManager.freePages( this, revision, result.getCopiedPages() );
+
+        // If the B-tree is managed, we have to update the rootPage on disk
+        // Update the RecordManager header
+        if ( !inTransaction )
+        {
+            recordManager.commit();
+        }
+
+        // Return the value we have found if it was modified
+        return result;
+    }
+
+
+    /**
+     * Insert the tuple into the B-tree rootPage, get back the new rootPage
+     */
+    private InsertResult<K, V> processInsert( K key, V value, long revision ) throws IOException
+    {
+        InsertResult<K, V> result = getBtreeHeader().getRootPage().insert( key, value, revision );
+        Page<K, V> newRootPage;
 
         if ( result instanceof ModifyResult )
         {
             ModifyResult<K, V> modifyResult = ( ( ModifyResult<K, V> ) result );
 
-            Page<K, V> modifiedPage = modifyResult.getModifiedPage();
+            newRootPage = modifyResult.getModifiedPage();
 
-            // Write the modified page on disk
+            // Write the new root page on disk
             // Note that we don't use the holder, the new root page will
             // remain in memory.
-            writePage( modifiedPage, revision );
+            writePage( newRootPage, revision );
 
-            // The root has just been modified, we haven't split it
-            // Get it and make it the current root page
-            rootPage = modifiedPage;
-
-            modifiedValue = modifyResult.getModifiedValue();
+            // Increment the counter if we have inserted a new value
+            if ( modifyResult.getModifiedValue() == null )
+            {
+                getBtreeHeader().incrementNbElems();
+            }
         }
         else
         {
@@ -448,9 +505,8 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
             K pivot = splitResult.getPivot();
             Page<K, V> leftPage = splitResult.getLeftPage();
             Page<K, V> rightPage = splitResult.getRightPage();
-            Page<K, V> newRootPage = null;
 
-            // If the BTree is managed, we have to write the two pages that were created
+            // If the B-tree is managed, we have to write the two pages that were created
             // and to keep a track of the two offsets for the upper node
             PageHolder<K, V> holderLeft = writePage( leftPage, revision );
 
@@ -459,40 +515,19 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
             // Create the new rootPage
             newRootPage = new PersistedNode<K, V>( this, revision, pivot, holderLeft, holderRight );
 
-            // If the BTree is managed, we now have to write the page on disk
+            // If the B-tree is managed, we now have to write the page on disk
             // and to add this page to the list of modified pages
-            PageHolder<K, V> holder = writePage( newRootPage, revision );
+            writePage( newRootPage, revision );
 
-            rootPage = newRootPage;
+            // Always increment the counter : we have added a new value
+            getBtreeHeader().incrementNbElems();
         }
 
-        // Increase the number of element in the current tree if the insertion is successful
-        // and does not replace an element
-        if ( modifiedValue == null )
-        {
-            btreeHeader.incrementNbElems();
-        }
+        // Get the new root page and make it the current root page
+        rootPage = newRootPage;
 
-        // If the BTree is managed, we have to update the rootPage on disk
-        // Update the RecordManager header
-        if ( ( writeTransaction == null ) || !writeTransaction.isStarted() )
-        {
-            recordManager.updateRecordManagerHeader();
-
-            // Update the BTree header now
-            recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
-
-            // Moved the free pages into the list of free pages
-            recordManager.addFreePages( this, result.getCopiedPages() );
-
-            // Store the created rootPage into the revision BTree, this will be stored in RecordManager only if revisions are set to keep
-            recordManager.storeRootPage( this, rootPage );
-        }
-
-        // Return the value we have found if it was modified
         return result;
     }
-
 
     /**
      * Write the data in the ByteBuffer, and eventually on disk if needed.
@@ -541,21 +576,9 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
      */
     private PageHolder<K, V> writePage( Page<K, V> modifiedPage, long revision ) throws IOException
     {
-        if ( ( writeTransaction != null ) && writeTransaction.isStarted() )
-        {
-            Map<Page<?, ?>, BTree<?, ?>> pendingPages = recordManager.getPendingPages();
-            pendingPages.put( modifiedPage, this );
+        PageHolder<K, V> pageHolder = recordManager.writePage( this, modifiedPage, revision );
 
-            PageHolder<K, V> pageHolder = new PageHolder<K, V>( this, modifiedPage );
-
-            return pageHolder;
-        }
-        else
-        {
-            PageHolder<K, V> pageHolder = recordManager.writePage( this, modifiedPage, revision );
-
-            return pageHolder;
-        }
+        return pageHolder;
     }
 
     /**
@@ -573,20 +596,71 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
 
     /**
+     * Get the current rootPage
+     *
+     * @return The rootPage
+     */
+    public Page<K, V> getRootPage()
+    {
+        return getBtreeHeader().getRootPage();
+    }
+
+
+    /* no qualifier */void setRootPage( Page<K, V> root )
+    {
+        getBtreeHeader().setRootPage( root );
+    }
+
+
+    /**
      * Starts a transaction
      */
     public void beginTransaction()
+    {
+        automaticTransaction.set( false );
+        beginTransaction( getRevision() + 1 );
+    }
+
+
+    /**
+     * Starts a transaction
+     */
+    private boolean beginTransaction( long revision )
     {
         createTransaction.lock();
 
         if ( writeTransaction == null )
         {
-            writeTransaction = new WriteTransaction( recordManager );
+            writeTransaction = new WriteTransaction();
+        }
+
+        if ( isTransactionStarted() && !automaticTransaction.get() )
+        {
+            createTransaction.unlock();
+
+            return true;
         }
 
         createTransaction.unlock();
 
         writeTransaction.start();
+
+        return false;
+    }
+
+
+    /**
+     * Tells if a transaction has been started or not
+     */
+    private boolean isTransactionStarted()
+    {
+        createTransaction.lock();
+
+        boolean started = ( writeTransaction != null ) && ( writeTransaction.isStarted() );
+
+        createTransaction.unlock();
+
+        return started;
     }
 
 
@@ -595,16 +669,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
      */
     public void commit()
     {
-        createTransaction.lock();
-
-        if ( writeTransaction == null )
-        {
-            writeTransaction = new WriteTransaction( recordManager );
-        }
-
-        createTransaction.unlock();
-
-        writeTransaction.commit();
+        recordManager.commit();
     }
 
 
@@ -613,19 +678,8 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
      */
     public void rollback()
     {
-        createTransaction.lock();
-
-        if ( writeTransaction == null )
-        {
-            writeTransaction = new WriteTransaction( recordManager );
-        }
-
-        createTransaction.unlock();
-
-        writeTransaction.rollback();
+        recordManager.rollback();
     }
-
-
 
 
     /**
@@ -636,12 +690,12 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
         StringBuilder sb = new StringBuilder();
 
         sb.append( "Managed BTree" );
-        sb.append( "[" ).append( btreeHeader.getName() ).append( "]" );
-        sb.append( "( pageSize:" ).append( btreeHeader.getPageSize() );
+        sb.append( "[" ).append( getName() ).append( "]" );
+        sb.append( "( pageSize:" ).append( getPageSize() );
 
-        if ( rootPage != null )
+        if ( getBtreeHeader().getRootPage() != null )
         {
-            sb.append( ", nbEntries:" ).append( btreeHeader.getNbElems() );
+            sb.append( ", nbEntries:" ).append( getBtreeHeader().getNbElems() );
         }
         else
         {
@@ -659,10 +713,10 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
             sb.append( keySerializer.getComparator().getClass().getSimpleName() );
         }
 
-        sb.append( ", DuplicatesAllowed: " ).append( btreeHeader.isAllowDuplicates() );
+        sb.append( ", DuplicatesAllowed: " ).append( isAllowDuplicates() );
 
         sb.append( ") : \n" );
-        sb.append( rootPage.dumpPage( "" ) );
+        sb.append( getBtreeHeader().getRootPage().dumpPage( "" ) );
 
         return sb.toString();
     }

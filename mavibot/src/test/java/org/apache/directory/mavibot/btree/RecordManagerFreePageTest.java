@@ -28,10 +28,6 @@ import java.io.IOException;
 import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.RecordManager;
-import org.apache.directory.mavibot.btree.Tuple;
-import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
@@ -42,7 +38,7 @@ import org.junit.Test;
 
 /**
  * test the RecordManager's free page management
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class RecordManagerFreePageTest
@@ -71,7 +67,7 @@ public class RecordManagerFreePageTest
         try
         {
             // Create a new BTree
-            btree = recordManager1.addBTree( "test", new LongSerializer(), new StringSerializer(), false );
+            btree = recordManager1.addBTree( "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
         }
         catch ( Exception e )
         {
@@ -120,11 +116,11 @@ public class RecordManagerFreePageTest
         }
     }
 
-    private int nbElems = 100000;
+    private int nbElems = 10000;
 
 
     /**
-     * Test the creation of a RecordManager, and that we can read it back.  
+     * Test the creation of a RecordManager, and that we can read it back.
      */
     @Test
     public void testRecordManager() throws IOException, BTreeAlreadyManagedException
@@ -144,6 +140,7 @@ public class RecordManagerFreePageTest
 
         for ( int i = 0; i < nbElems; i++ )
         {
+            System.out.println( i );
             Long key = ( long ) i;
             String value = Long.toString( key );
 

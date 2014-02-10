@@ -27,10 +27,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.InMemoryBTreeBuilder;
-import org.apache.directory.mavibot.btree.Tuple;
-import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.junit.Test;
 
@@ -53,7 +49,7 @@ public class InMemoryBTreeBuilderTest
             sortedTuple.add( t );
         }
 
-        IntSerializer ser = new IntSerializer();
+        IntSerializer ser = IntSerializer.INSTANCE;
         InMemoryBTreeBuilder<Integer, Integer> bb = new InMemoryBTreeBuilder<Integer, Integer>( "master", 4, ser, ser );
 
         // contains 1, 2, 3, 4, 5, 6, 7

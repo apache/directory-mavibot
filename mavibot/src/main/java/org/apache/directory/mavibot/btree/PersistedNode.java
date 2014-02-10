@@ -120,7 +120,7 @@ import java.util.List;
     /**
      * {@inheritDoc}
      */
-    public InsertResult<K, V> insert( long revision, K key, V value ) throws IOException
+    public InsertResult<K, V> insert( K key, V value, long revision ) throws IOException
     {
         // Find the key into this leaf
         int pos = findPos( key );
@@ -136,7 +136,7 @@ import java.util.List;
         Page<K, V> child = children[pos].getValue();
 
         // and insert the <K, V> into this child
-        InsertResult<K, V> result = child.insert( revision, key, value );
+        InsertResult<K, V> result = child.insert( key, value, revision );
 
         // Ok, now, we have injected the <K, V> tuple down the tree. Let's check
         // the result to see if we have to split the current page
@@ -567,7 +567,7 @@ import java.util.List;
     /**
      * {@inheritDoc}
      */
-    public DeleteResult<K, V> delete( long revision, K key, V value, Page<K, V> parent, int parentPos )
+    /* no qualifier */ DeleteResult<K, V> delete( K key, V value, long revision, Page<K, V> parent, int parentPos )
         throws IOException
     {
         // We first try to delete the element from the child it belongs to
@@ -582,12 +582,12 @@ import java.util.List;
         {
             index = -( pos + 1 );
             child = children[-pos].getValue();
-            deleteResult = child.delete( revision, key, value, this, -pos );
+            deleteResult = ((AbstractPage<K, V>)child).delete( key, value, revision, this, -pos );
         }
         else
         {
             child = children[pos].getValue();
-            deleteResult = child.delete( revision, key, value, this, pos );
+            deleteResult = ((AbstractPage<K, V>)child).delete( key, value, revision, this, pos );
         }
 
         // If the key is not present in the tree, we simply return

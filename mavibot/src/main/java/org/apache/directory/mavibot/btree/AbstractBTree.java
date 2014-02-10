@@ -23,8 +23,10 @@ package org.apache.directory.mavibot.btree;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.Comparator;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
@@ -44,11 +46,8 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     /** The read transaction timeout */
     protected long readTimeOut = DEFAULT_READ_TIMEOUT;
 
-    /** The Header for a managed BTree */
-    protected BTreeHeader btreeHeader;
-
-    /** The current rootPage */
-    protected volatile Page<K, V> rootPage;
+    /** The copied Header for a managed BTree */
+    //protected BTreeHeader<K, V> newBtreeHeader = new BTreeHeader<K, V>();
 
     /** The Key serializer used for this tree.*/
     protected ElementSerializer<K> keySerializer;
@@ -62,21 +61,35 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     /** The size of the buffer used to write data in disk */
     protected int writeBufferSize;
 
-    /** A lock used to protect the write operation against concurrent access */
-    protected ReentrantLock writeLock;
-
     /** Flag to enable duplicate key support */
-    private boolean allowDuplicates;
+    protected boolean allowDuplicates;
+
+    /** The number of elements in a page for this B-tree */
+    protected int pageSize;
+
+    /** The BTree name */
+    protected String name;
+
+    /** The FQCN of the Key serializer */
+    protected String keySerializerFQCN;
+
+    /** The FQCN of the Value serializer */
+    protected String valueSerializerFQCN;
 
     /** The thread responsible for the cleanup of timed out reads */
     protected Thread readTransactionsThread;
 
     /** The BTree type : either in-memory, disk backed or persisted */
-    private BTreeTypeEnum type;
+    protected BTreeTypeEnum btreeType;
 
     /** The current transaction */
     protected WriteTransaction writeTransaction;
 
+    /** The map of all the used BtreeHeaders */
+    protected Map<Long, BTreeHeader<K, V>> btreeRevisions = new ConcurrentHashMap<Long, BTreeHeader<K, V>>();
+
+    /** The current revision */
+    protected AtomicLong currentRevision = new AtomicLong( 0L );
 
     /**
      * Starts a Read Only transaction. If the transaction is not closed, it will be
@@ -86,8 +99,25 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     protected ReadTransaction<K, V> beginReadTransaction()
     {
-        ReadTransaction<K, V> readTransaction = new ReadTransaction<K, V>( rootPage, btreeHeader.getRevision() - 1,
-            System.currentTimeMillis() );
+        BTreeHeader<K, V> btreeHeader = getBtreeHeader();
+
+        ReadTransaction<K, V> readTransaction = new ReadTransaction<K, V>( btreeHeader );
+
+        readTransactions.add( readTransaction );
+
+        return readTransaction;
+    }
+
+
+    /**
+     * Starts a Read Only transaction. If the transaction is not closed, it will be
+     * automatically closed after the timeout
+     *
+     * @return The created transaction
+     */
+    protected ReadTransaction<K, V> beginReadTransaction( long revision )
+    {
+        ReadTransaction<K, V> readTransaction = new ReadTransaction<K, V>( getBtreeHeader( revision ) );
 
         readTransactions.add( readTransaction );
 
@@ -102,10 +132,9 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     {
         ReadTransaction<K, V> transaction = beginReadTransaction();
 
-        // Fetch the root page for this revision
         ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
 
-        TupleCursor<K, V> cursor = rootPage.browse( transaction, stack, 0 );
+        TupleCursor<K, V> cursor = transaction.getRootPage().browse( transaction, stack, 0 );
 
         // Set the position before the first element
         cursor.beforeFirst();
@@ -119,15 +148,12 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public TupleCursor<K, V> browse( long revision ) throws IOException, KeyNotFoundException
     {
-        ReadTransaction<K, V> transaction = beginReadTransaction();
-
-        // Fetch the root page for this revision
-        Page<K, V> revisionRootPage = getRootPage( revision );
+        ReadTransaction<K, V> transaction = beginReadTransaction( revision );
 
         ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
 
         // And get the cursor
-        TupleCursor<K, V> cursor = revisionRootPage.browse( transaction, stack, 0 );
+        TupleCursor<K, V> cursor = transaction.getRootPage().browse( transaction, stack, 0 );
 
         return cursor;
     }
@@ -140,10 +166,9 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     {
         ReadTransaction<K, V> transaction = beginReadTransaction();
 
-        // Fetch the root page for this revision
         ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
 
-        TupleCursor<K, V> cursor = rootPage.browse( key, transaction, stack, 0 );
+        TupleCursor<K, V> cursor = transaction.getRootPage().browse( key, transaction, stack, 0 );
 
         return cursor;
     }
@@ -154,15 +179,12 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public TupleCursor<K, V> browseFrom( long revision, K key ) throws IOException, KeyNotFoundException
     {
-        ReadTransaction<K, V> transaction = beginReadTransaction();
-
-        // Fetch the rootPage for this revision
-        Page<K, V> revisionRootPage = getRootPage( revision );
+        ReadTransaction<K, V> transaction = beginReadTransaction( revision );
 
         ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
 
         // And get the cursor
-        TupleCursor<K, V> cursor = revisionRootPage.browse( key, transaction, stack, 0 );
+        TupleCursor<K, V> cursor = transaction.getRootPage().browse( key, transaction, stack, 0 );
 
         return cursor;
     }
@@ -173,7 +195,16 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public boolean contains( K key, V value ) throws IOException
     {
-        return rootPage.contains( key, value );
+        ReadTransaction<K, V> transaction = beginReadTransaction();
+
+        try
+        {
+            return transaction.getRootPage().contains( key, value );
+        }
+        finally
+        {
+            transaction.close();
+        }
     }
 
 
@@ -183,9 +214,16 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     public boolean contains( long revision, K key, V value ) throws IOException, KeyNotFoundException
     {
         // Fetch the root page for this revision
-        Page<K, V> revisionRootPage = getRootPage( revision );
+        ReadTransaction<K, V> transaction = beginReadTransaction( revision );
 
-        return revisionRootPage.contains( key, value );
+        try
+        {
+            return transaction.getRootPage().contains( key, value );
+        }
+        finally
+        {
+            transaction.close();
+        }
     }
 
 
@@ -199,9 +237,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             throw new IllegalArgumentException( "Key must not be null" );
         }
 
-        long revision = generateRevision();
-
-        Tuple<K, V> deleted = delete( key, revision );
+        Tuple<K, V> deleted = delete( key, currentRevision.get() + 1 );
 
         return deleted;
     }
@@ -222,9 +258,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             throw new IllegalArgumentException( "Value must not be null" );
         }
 
-        long revision = generateRevision();
-
-        Tuple<K, V> deleted = delete( key, value, revision );
+        Tuple<K, V> deleted = delete( key, value, currentRevision.get() + 1 );
 
         return deleted;
     }
@@ -251,31 +285,13 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public V insert( K key, V value ) throws IOException
     {
-        long revision = generateRevision();
-
         V existingValue = null;
 
-        try
-        {
-            if ( writeTransaction == null )
-            {
-                writeLock.lock();
-            }
+        InsertResult<K, V> result = insert( key, value, -1L );
 
-            InsertResult<K, V> result = insert( key, value, revision );
-
-            if ( result instanceof ModifyResult )
-            {
-                existingValue = ( ( ModifyResult<K, V> ) result ).getModifiedValue();
-            }
-        }
-        finally
+        if ( result instanceof ModifyResult )
         {
-            // See above
-            if ( writeTransaction == null )
-            {
-                writeLock.unlock();
-            }
+            existingValue = ( ( ModifyResult<K, V> ) result ).getModifiedValue();
         }
 
         return existingValue;
@@ -302,7 +318,16 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public V get( K key ) throws IOException, KeyNotFoundException
     {
-        return rootPage.get( key );
+        ReadTransaction<K, V> transaction = beginReadTransaction();
+
+        try
+        {
+            return transaction.getRootPage().get( key );
+        }
+        finally
+        {
+            transaction.close();
+        }
     }
 
 
@@ -311,29 +336,29 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public V get( long revision, K key ) throws IOException, KeyNotFoundException
     {
-        // Fetch the root page for this revision
-        Page<K, V> revisionRootPage = getRootPage( revision );
+        ReadTransaction<K, V> transaction = beginReadTransaction( revision );
 
-        return revisionRootPage.get( key );
+        try
+        {
+            return transaction.getRootPage().get( key );
+        }
+        finally
+        {
+            transaction.close();
+        }
     }
 
 
     /**
      * {@inheritDoc}
      */
-    public Page<K, V> getRootPage()
-    {
-        return rootPage;
-    }
+    public abstract Page<K, V> getRootPage();
 
 
     /**
      * {@inheritDoc}
      */
-    /* no qualifier */void setRootPage( Page<K, V> root )
-    {
-        rootPage = root;
-    }
+    /* no qualifier */abstract void setRootPage( Page<K, V> root );
 
 
     /**
@@ -341,7 +366,16 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public ValueCursor<V> getValues( K key ) throws IOException, KeyNotFoundException
     {
-        return rootPage.getValues( key );
+        ReadTransaction<K, V> transaction = beginReadTransaction();
+
+        try
+        {
+            return transaction.getRootPage().getValues( key );
+        }
+        finally
+        {
+            transaction.close();
+        }
     }
 
 
@@ -355,7 +389,16 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             return false;
         }
 
-        return rootPage.hasKey( key );
+        ReadTransaction<K, V> transaction = beginReadTransaction();
+
+        try
+        {
+            return transaction.getRootPage().hasKey( key );
+        }
+        finally
+        {
+            transaction.close();
+        }
     }
 
 
@@ -369,10 +412,16 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             return false;
         }
 
-        // Fetch the root page for this revision
-        Page<K, V> revisionRootPage = getRootPage( revision );
+        ReadTransaction<K, V> transaction = beginReadTransaction( revision );
 
-        return revisionRootPage.hasKey( key );
+        try
+        {
+            return transaction.getRootPage().hasKey( key );
+        }
+        finally
+        {
+            transaction.close();
+        }
     }
 
 
@@ -391,7 +440,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     public void setKeySerializer( ElementSerializer<K> keySerializer )
     {
         this.keySerializer = keySerializer;
-        btreeHeader.setKeySerializerFQCN( keySerializer.getClass().getName() );
+        keySerializerFQCN = keySerializer.getClass().getName();
     }
 
 
@@ -400,7 +449,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public String getKeySerializerFQCN()
     {
-        return btreeHeader.getKeySerializerFQCN();
+        return keySerializerFQCN;
     }
 
 
@@ -419,7 +468,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     public void setValueSerializer( ElementSerializer<V> valueSerializer )
     {
         this.valueSerializer = valueSerializer;
-        btreeHeader.setValueSerializerFQCN( valueSerializer.getClass().getName() );
+        valueSerializerFQCN = valueSerializer.getClass().getName();
     }
 
 
@@ -428,7 +477,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public String getValueSerializerFQCN()
     {
-        return btreeHeader.getValueSerializerFQCN();
+        return valueSerializerFQCN;
     }
 
 
@@ -437,7 +486,16 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public long getRevision()
     {
-        return btreeHeader.getRevision();
+        ReadTransaction<K, V> transaction = beginReadTransaction();
+
+        try
+        {
+            return transaction.getRevision();
+        }
+        finally
+        {
+            transaction.close();
+        }
     }
 
 
@@ -446,18 +504,23 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     /* no qualifier */void setRevision( long revision )
     {
-        btreeHeader.setRevision( revision );
+        getBtreeHeader().setRevision( revision );
     }
 
 
     /**
-     * Generates a new revision number. It's only used by the Page instances.
-     *
-     * @return a new incremental revision number
+     * Store the new revision in the map of btrees, increment the current revision
      */
-    /* no qualifier */long generateRevision()
+    protected void storeRevision( BTreeHeader<K, V> btreeHeader )
     {
-        return btreeHeader.incrementRevision();
+        long revision = btreeHeader.getRevision();
+
+        synchronized ( btreeRevisions )
+        {
+            btreeRevisions.put( revision, btreeHeader );
+        }
+
+        currentRevision.set( revision );
     }
 
 
@@ -484,7 +547,16 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public long getNbElems()
     {
-        return btreeHeader.getNbElems();
+        ReadTransaction<K, V> transaction = beginReadTransaction();
+
+        try
+        {
+            return transaction.getBtreeHeader().getNbElems();
+        }
+        finally
+        {
+            transaction.close();
+        }
     }
 
 
@@ -493,7 +565,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     /* no qualifier */void setNbElems( long nbElems )
     {
-        btreeHeader.setNbElems( nbElems );
+        getBtreeHeader().setNbElems( nbElems );
     }
 
 
@@ -502,7 +574,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public int getPageSize()
     {
-        return btreeHeader.getPageSize();
+        return pageSize;
     }
 
 
@@ -513,11 +585,11 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     {
         if ( pageSize <= 2 )
         {
-            btreeHeader.setPageSize( DEFAULT_PAGE_SIZE );
+            this.pageSize = DEFAULT_PAGE_SIZE;
         }
         else
         {
-            btreeHeader.setPageSize( getPowerOf2( pageSize ) );
+            this.pageSize = getPowerOf2( pageSize );
         }
     }
 
@@ -527,7 +599,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public String getName()
     {
-        return btreeHeader.getName();
+        return name;
     }
 
 
@@ -536,7 +608,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public void setName( String name )
     {
-        btreeHeader.setName( name );
+        this.name = name;
     }
 
 
@@ -572,7 +644,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public boolean isAllowDuplicates()
     {
-        return btreeHeader.isAllowDuplicates();
+        return allowDuplicates;
     }
 
 
@@ -581,7 +653,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public void setAllowDuplicates( boolean allowDuplicates )
     {
-        btreeHeader.setAllowDuplicates( allowDuplicates );
+        this.allowDuplicates = allowDuplicates;
     }
 
 
@@ -590,7 +662,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public BTreeTypeEnum getType()
     {
-        return type;
+        return btreeType;
     }
 
 
@@ -599,7 +671,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public void setType( BTreeTypeEnum type )
     {
-        this.type = type;
+        this.btreeType = type;
     }
 
 
@@ -617,6 +689,30 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         newSize++;
 
         return newSize;
+    }
+
+
+    /**
+     * @return The current BtreeHeader
+     */
+    protected BTreeHeader<K, V> getBtreeHeader()
+    {
+        synchronized ( btreeRevisions )
+        {
+            long revision = currentRevision.get();
+            BTreeHeader<K, V> btreeHeader = btreeRevisions.get( revision );
+
+            return btreeHeader;
+        }
+    }
+
+
+    /**
+     * @return The current BtreeHeader
+     */
+    protected BTreeHeader<K, V> getBtreeHeader( long revision )
+    {
+        return btreeRevisions.get( revision );
     }
 
 
@@ -657,6 +753,12 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
                             {
                                 transaction.close();
                                 readTransactions.poll();
+
+                                synchronized ( btreeRevisions )
+                                {
+                                    btreeRevisions.remove( transaction.getRevision() );
+                                }
+
                                 continue;
                             }
 

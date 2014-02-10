@@ -59,8 +59,8 @@ public class PersistedBTreeTransactionTest
         try
         {
             // Create a new BTree with transaction and another one without
-            btreeWithTransactions = recordManagerTxn.addBTree( "testWithTxn", new LongSerializer(), new StringSerializer(), false );
-            btreeNoTransactions = recordManagerNoTxn.addBTree( "testNoTxn", new LongSerializer(), new StringSerializer(), false );
+            btreeWithTransactions = recordManagerTxn.addBTree( "testWithTxn", LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
+            btreeNoTransactions = recordManagerNoTxn.addBTree( "testNoTxn", LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
         }
         catch ( Exception e )
         {

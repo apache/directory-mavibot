@@ -29,12 +29,12 @@ import org.junit.Test;
 
 /**
  * Test the CharSerializer class
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class CharSerializerTest
 {
-    private static CharSerializer serializer = new CharSerializer();
+    private static CharSerializer serializer = CharSerializer.INSTANCE;
 
 
     @Test
