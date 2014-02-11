@@ -29,8 +29,8 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.directory.mavibot.btree.exception.InitializationException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
@@ -79,14 +79,8 @@ import org.slf4j.LoggerFactory;
     /** The Journal channel */
     private FileChannel journalChannel = null;
 
-    /** The current transaction */
-    private WriteTransaction writeTransaction;
-
-    /** A lock to protect the creation of the transaction */
-    private ReentrantLock createTransaction = new ReentrantLock();
-
-    /** A flag set when we initiate an automatic transaction */
-    private AtomicBoolean automaticTransaction = new AtomicBoolean( true );
+    /** A lock to protect the transaction handling */
+    private ReadWriteLock transactionLock = new ReentrantReadWriteLock();
 
     /**
      * Creates a new BTree, with no initialization.
@@ -261,7 +255,7 @@ import org.slf4j.LoggerFactory;
      */
     protected Tuple<K, V> delete( K key, V value, long revision ) throws IOException
     {
-        boolean inTransaction = beginTransaction( revision );
+        beginTransaction( revision );
 
         if ( revision == -1L )
         {
@@ -282,10 +276,7 @@ import org.slf4j.LoggerFactory;
         if ( result instanceof NotPresentResult )
         {
             // Key not found.
-            if ( !inTransaction )
-            {
-                commit();
-            }
+            commit();
 
             return null;
         }
@@ -317,19 +308,14 @@ import org.slf4j.LoggerFactory;
             newBtreeHeader.decrementNbElems();
         }
 
+        storeRevision( newBtreeHeader );
+
         // Return the value we have found if it was modified
-        if ( !inTransaction )
-        {
-            storeRevision( newBtreeHeader );
-            commit();
-        }
+        commit();
 
         if ( oldBtreeHeader.getNbUsers() == 0 )
         {
-            synchronized ( btreeRevisions )
-            {
-                btreeRevisions.remove( oldBtreeHeader.getRevision() );
-            }
+            btreeRevisions.remove( oldBtreeHeader.getRevision() );
         }
 
         return tuple;
@@ -358,7 +344,7 @@ import org.slf4j.LoggerFactory;
 
         // We have to start a new transaction, which will be committed or rollbacked
         // locally. This will duplicate the current BtreeHeader during this phase.
-        boolean inTransaction = beginTransaction( revision );
+        beginTransaction( revision );
 
         if ( revision == -1L )
         {
@@ -416,23 +402,17 @@ import org.slf4j.LoggerFactory;
             newBtreeHeader.incrementNbElems();
         }
 
-        if ( !inTransaction )
-        {
-            storeRevision( newBtreeHeader );
+        storeRevision( newBtreeHeader );
 
-            commit();
-        }
+        commit();
 
         if ( oldBtreeHeader.getNbUsers() == 0 )
         {
-            synchronized ( btreeRevisions )
-            {
-                long oldRevision = oldBtreeHeader.getRevision();
+            long oldRevision = oldBtreeHeader.getRevision();
 
-                if ( oldRevision < newBtreeHeader.getRevision() )
-                {
-                    btreeRevisions.remove( oldBtreeHeader.getRevision() );
-                }
+            if ( oldRevision < newBtreeHeader.getRevision() )
+            {
+                btreeRevisions.remove( oldBtreeHeader.getRevision() );
             }
         }
 
@@ -791,7 +771,6 @@ import org.slf4j.LoggerFactory;
      */
     public void beginTransaction()
     {
-        automaticTransaction.set( false );
         beginTransaction( getRevision() + 1 );
     }
 
@@ -799,27 +778,48 @@ import org.slf4j.LoggerFactory;
     /**
      * Starts a transaction
      */
-    private boolean beginTransaction( long revision )
+    private void beginTransaction( long revision )
     {
-        createTransaction.lock();
+        transactionLock.writeLock().lock();
 
-        if ( writeTransaction == null )
+        /*
+        if ( transactionStarted.get() )
         {
-            writeTransaction = new WriteTransaction();
+            try
+            {
+                // A transaction has already been started, just wait on the write list
+                transactionLock.writeLock().lock();
+            }
+            finally
+            {
+                // Done, we can release the readLock
+                transactionLock.readLock().unlock();
+            }
         }
-
-        if ( isTransactionStarted() && !automaticTransaction.get() )
+        else
         {
-            createTransaction.unlock();
+            // We have to start a transaction
+            // First let's release the read lock
+            transactionLock.readLock().unlock();
 
-            return true;
+            // Get the write lock now
+            transactionLock.writeLock().lock();
+
+            try
+            {
+                // Check the condition again
+                if ( !transactionStarted.get() )
+                {
+                    // Start a new transaction
+                    transactionStarted.set( true );
+                }
+            }
+            finally
+            {
+                transactionLock.readLock().unlock();
+            }
         }
-
-        createTransaction.unlock();
-
-        writeTransaction.start();
-
-        return false;
+        */
     }
 
 
@@ -846,41 +846,7 @@ import org.slf4j.LoggerFactory;
      */
     public void commit()
     {
-        createTransaction.lock();
-
-        if ( writeTransaction == null )
-        {
-            throw new RuntimeException( "Cannot commit a transaction which hasn't been started");
-        }
-
-        createTransaction.unlock();
-
-        writeTransaction.commit();
-        automaticTransaction.set( true );
-    }
-
-
-    /**
-     * Tells if a transaction has been started or not
-     */
-    private boolean isTransactionStarted()
-    {
-        createTransaction.lock();
-
-        if ( writeTransaction == null )
-        {
-
-        }
-        boolean started = ( writeTransaction != null ) && ( writeTransaction.isStarted() );
-
-        if ( !started )
-        {
-
-        }
-
-        createTransaction.unlock();
-
-        return started;
+        transactionLock.writeLock().unlock();
     }
 
 
@@ -889,16 +855,7 @@ import org.slf4j.LoggerFactory;
      */
     public void rollback()
     {
-        createTransaction.lock();
-
-        if ( writeTransaction == null )
-        {
-            throw new RuntimeException( "Cannot rollback a transaction which hasn't been started");
-        }
-
-        createTransaction.unlock();
-
-        writeTransaction.rollback();
+        transactionLock.writeLock().unlock();
     }
 
 

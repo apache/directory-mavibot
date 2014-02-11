@@ -26,6 +26,7 @@ import java.util.Comparator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
@@ -83,7 +84,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     protected BTreeTypeEnum btreeType;
 
     /** The current transaction */
-    protected WriteTransaction writeTransaction;
+    protected AtomicBoolean transactionStarted = new AtomicBoolean( false );
 
     /** The map of all the used BtreeHeaders */
     protected Map<Long, BTreeHeader<K, V>> btreeRevisions = new ConcurrentHashMap<Long, BTreeHeader<K, V>>();
