@@ -749,7 +749,7 @@ public class BTreeFactory<K, V>
     {
         if ( btree instanceof PersistedBTree )
         {
-            ( ( PersistedBTree<K, V> ) btree ).setRootPageOffset( rootPageOffset );
+            ( ( PersistedBTree<K, V> ) btree ).getBtreeHeader().setRootPageOffset( rootPageOffset );
         }
         else
         {

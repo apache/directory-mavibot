@@ -25,8 +25,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.ReentrantLock;
 
 import net.sf.ehcache.Cache;
 import net.sf.ehcache.Status;
@@ -72,11 +70,8 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
     /*No qualifier*/static int valueThresholdUp = DEFAULT_VALUE_THRESHOLD_UP;
     /*No qualifier*/static int valueThresholdLow = DEFAULT_VALUE_THRESHOLD_LOW;
 
-    /** A lock to protect the creation of the transaction */
-    private ReentrantLock createTransaction = new ReentrantLock();
-
-    /** A flag set when we initiate an automatic transaction */
-    private AtomicBoolean automaticTransaction = new AtomicBoolean( true );
+    /** The BtreeInfo offset */
+    private long btreeInfoOffset;
 
     /**
      * Creates a new BTree, with no initialization.
@@ -103,7 +98,6 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
             throw new IllegalArgumentException( "BTree name cannot be null" );
         }
 
-        BTreeHeader<K, V> btreeHeader = getBtreeHeader();
         setName( name );
         setPageSize( configuration.getPageSize() );
         setKeySerializer( configuration.getKeySerializer() );
@@ -122,9 +116,12 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
 
         // Create the first root page, with revision 0L. It will be empty
         // and increment the revision at the same time
-        // Create the first root page, with revision 0L. It will be empty
-        // and increment the revision at the same time
-        btreeHeader.setRootPage( new PersistedLeaf<K, V>( this ) );
+        Page<K, V> rootPage = new PersistedLeaf<K, V>( this );
+
+        // Create a B-tree header, and initialize it
+        BTreeHeader<K, V> btreeHeader = new BTreeHeader<K, V>();
+        btreeHeader.setRootPage( rootPage );
+        btreeHeader.setBtree( this );
 
         if ( btreeType == BTreeTypeEnum.PERSISTED_SUB )
         {
@@ -132,6 +129,9 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
             this.cache = ( ( PersistedBTree<K, V> ) configuration.getParentBTree() ).getCache();
             readTransactions = new ConcurrentLinkedQueue<ReadTransaction<K, V>>();
         }
+
+        // Add the B-tree header into the revisions
+        btreeRevisions.put( 0L, btreeHeader );
 
         // Now, initialize the BTree
         init();
@@ -213,16 +213,16 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
      */
     /* No qualifier*/long getBtreeOffset()
     {
-        return getBtreeHeader().getBTreeOffset();
+        return getBtreeHeader().getBTreeInfoOffset();
     }
 
 
     /**
-     * @param btreeOffset the btreeOffset to set
+     * @param btreeOffset the B-tree header Offset to set
      */
-    /* No qualifier*/void setBtreeOffset( long btreeOffset )
+    /* No qualifier*/void setBtreeHeaderOffset( long btreeHeaderOffset )
     {
-        getBtreeHeader().setBTreeOffset( btreeOffset );
+        getBtreeHeader().setBTreeHeaderOffset( btreeHeaderOffset );
     }
 
 
@@ -232,15 +232,6 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
     /* No qualifier*/long getRootPageOffset()
     {
         return getBtreeHeader().getRootPageOffset();
-    }
-
-
-    /**
-     * @param rootPageOffset the rootPageOffset to set
-     */
-    /* No qualifier*/void setRootPageOffset( long rootPageOffset )
-    {
-        getBtreeHeader().setRootPageOffset( rootPageOffset );
     }
 
 
@@ -280,12 +271,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
      */
     /* no qualifier */ Tuple<K, V> delete( K key, V value, long revision ) throws IOException
     {
-        boolean inTransaction = recordManager.isTransactionStarted();
-
-        if ( !inTransaction )
-        {
-            recordManager.beginTransaction();
-        }
+        recordManager.beginTransaction();
 
         // Try to delete the entry starting from the root page. Here, the root
         // page may be either a Node or a Leaf
@@ -295,10 +281,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
         if ( result instanceof NotPresentResult )
         {
             // We haven't found the element in the B-tree, just get out
-            if ( !inTransaction )
-            {
-                recordManager.commit();
-            }
+            recordManager.commit();
 
             return null;
         }
@@ -321,7 +304,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
 
             case PERSISTED_MANAGEMENT :
                 // The B-tree of B-trees or the copiedPages B-tree has been updated, update the RMheader parameters
-                getBtreeHeader().setBTreeOffset( newBtreeHeaderOffset );
+                getBtreeHeader().setBTreeHeaderOffset( newBtreeHeaderOffset );
 
                 break;
 
@@ -335,10 +318,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
 
         // If the B-tree is managed, we have to update the rootPage on disk
         // Update the RecordManager header
-        if ( !inTransaction )
-        {
-            recordManager.commit();
-        }
+        recordManager.commit();
 
         // Return the value we have found if it was modified
         return tuple;
@@ -380,7 +360,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
                 .getLastOffset() );
 
         // This is a new root
-        rootPage = modifiedPage;
+        //rootPage = modifiedPage;
 
         // Decrease the number of elements in the current tree
         getBtreeHeader().decrementNbElems();
@@ -416,55 +396,24 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
 
         // We have to start a new transaction, which will be committed or rollbacked
         // locally. This will duplicate the current BtreeHeader during this phase.
-        boolean inTransaction = beginTransaction( revision );
-
         if ( revision == -1L )
         {
             revision = currentRevision.get() + 1;
         }
 
-
-        if ( !inTransaction )
-        {
-            recordManager.beginTransaction();
-        }
+        recordManager.beginTransaction();
 
         // Try to insert the new value in the tree at the right place,
         // starting from the root page. Here, the root page may be either
         // a Node or a Leaf
         InsertResult<K, V> result = processInsert( key, value, revision );
 
-        // Update the B-tree header, creating a new BtreeHeader page now
-        long newBtreeHeaderOffset = recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) getBtreeHeader().getRootPage() ).getOffset() );
-
-        // Update the B-tree of B-trees with this new offset, if we are not already doing so
-        switch ( btreeType )
-        {
-            case PERSISTED :
-                // We have a new B-tree header to inject into the B-tree of btrees
-                recordManager.addInBtreeOfBtrees( getName(), revision, newBtreeHeaderOffset );
-                break;
-
-            case PERSISTED_MANAGEMENT :
-                // The B-tree of B-trees or the copiedPages B-tree has been updated, update the RMheader parameters
-                getBtreeHeader().setBTreeOffset( newBtreeHeaderOffset );
-
-                break;
-
-            default:
-                // Nothing to do for sub-btrees
-                break;
-        }
-
         // We can safely free the copied pages
-        recordManager.freePages( this, revision, result.getCopiedPages() );
+        //recordManager.freePages( this, revision, result.getCopiedPages() );
 
         // If the B-tree is managed, we have to update the rootPage on disk
         // Update the RecordManager header
-        if ( !inTransaction )
-        {
-            recordManager.commit();
-        }
+        commit();
 
         // Return the value we have found if it was modified
         return result;
@@ -476,7 +425,24 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
      */
     private InsertResult<K, V> processInsert( K key, V value, long revision ) throws IOException
     {
-        InsertResult<K, V> result = getBtreeHeader().getRootPage().insert( key, value, revision );
+        BTreeHeader<K, V> btreeHeader = getBtreeHeader();
+        InsertResult<K, V> result = btreeHeader.getRootPage().insert( key, value, revision );
+
+        // Create a new BTreeHeader
+        BTreeHeader<K, V> newBtreeHeader = btreeHeader.copy();
+
+        // Inject the old btreeHeader into the pages to be freed
+        // if we are inserting an element in a management BTree
+        if ( btreeType == BTreeTypeEnum.PERSISTED_MANAGEMENT )
+        {
+            PageIO[] pageIos = recordManager.readPageIOs( btreeHeader.getBTreeHeaderOffset(), -1L );
+
+            for ( PageIO pageIo : pageIos )
+            {
+                recordManager.freedPages.add( pageIo );
+            }
+        }
+
         Page<K, V> newRootPage;
 
         if ( result instanceof ModifyResult )
@@ -486,14 +452,12 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
             newRootPage = modifyResult.getModifiedPage();
 
             // Write the new root page on disk
-            // Note that we don't use the holder, the new root page will
-            // remain in memory.
-            writePage( newRootPage, revision );
+            PageHolder<K, V> newRootPageHolder = writePage( newRootPage, revision );
 
             // Increment the counter if we have inserted a new value
             if ( modifyResult.getModifiedValue() == null )
             {
-                getBtreeHeader().incrementNbElems();
+                newBtreeHeader.incrementNbElems();
             }
         }
         else
@@ -515,17 +479,46 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
             // Create the new rootPage
             newRootPage = new PersistedNode<K, V>( this, revision, pivot, holderLeft, holderRight );
 
-            // If the B-tree is managed, we now have to write the page on disk
-            // and to add this page to the list of modified pages
-            writePage( newRootPage, revision );
-
             // Always increment the counter : we have added a new value
-            getBtreeHeader().incrementNbElems();
+            newBtreeHeader.incrementNbElems();
+        }
+
+        // Update the new B-tree header
+        long newRootPageOffset = ((AbstractPage<K, V>)newRootPage).getOffset();
+        newBtreeHeader.setRootPage( newRootPage );
+        newBtreeHeader.setRootPageOffset( newRootPageOffset );
+        newBtreeHeader.setRevision( revision );
+
+        // Write down the data on disk
+        long newBtreeHeaderOffset = recordManager.writeBtreeHeader( this, newBtreeHeader );
+
+        // Update the B-tree of B-trees with this new offset, if we are not already doing so
+        switch ( btreeType )
+        {
+            case PERSISTED :
+                // We have a new B-tree header to inject into the B-tree of btrees
+                recordManager.addInBtreeOfBtrees( getName(), revision, newBtreeHeaderOffset );
+
+                // Store the new revision
+                storeRevision( newBtreeHeader );
+
+                break;
+
+            case PERSISTED_MANAGEMENT :
+                // The B-tree of B-trees or the copiedPages B-tree has been updated, update the RMheader parameters
+                recordManager.updateRecordManagerHeader( newBtreeHeaderOffset, -1L );
+
+                // Store the new revision
+                storeRevision( newBtreeHeader );
+
+                break;
+
+            default:
+                // Nothing to do for sub-btrees
+                break;
         }
 
         // Get the new root page and make it the current root page
-        rootPage = newRootPage;
-
         return result;
     }
 
@@ -613,11 +606,28 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
 
 
     /**
+     * @return the btreeInfoOffset
+     */
+    public long getBtreeInfoOffset()
+    {
+        return btreeInfoOffset;
+    }
+
+
+    /**
+     * @param btreeInfoOffset the btreeInfoOffset to set
+     */
+    public void setBtreeInfoOffset( long btreeInfoOffset )
+    {
+        this.btreeInfoOffset = btreeInfoOffset;
+    }
+
+
+    /**
      * Starts a transaction
      */
     public void beginTransaction()
     {
-        automaticTransaction.set( false );
         beginTransaction( getRevision() + 1 );
     }
 
@@ -625,42 +635,8 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
     /**
      * Starts a transaction
      */
-    private boolean beginTransaction( long revision )
+    private void beginTransaction( long revision )
     {
-        createTransaction.lock();
-
-        if ( writeTransaction == null )
-        {
-            writeTransaction = new WriteTransaction();
-        }
-
-        if ( isTransactionStarted() && !automaticTransaction.get() )
-        {
-            createTransaction.unlock();
-
-            return true;
-        }
-
-        createTransaction.unlock();
-
-        writeTransaction.start();
-
-        return false;
-    }
-
-
-    /**
-     * Tells if a transaction has been started or not
-     */
-    private boolean isTransactionStarted()
-    {
-        createTransaction.lock();
-
-        boolean started = ( writeTransaction != null ) && ( writeTransaction.isStarted() );
-
-        createTransaction.unlock();
-
-        return started;
     }
 
 

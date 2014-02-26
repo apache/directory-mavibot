@@ -22,8 +22,6 @@ package org.apache.directory.mavibot.btree;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
-
-
 /**
  * Store in memory the information associated with a B-tree. <br>
  * A B-tree Header on disk contains the following elements :
@@ -35,22 +33,20 @@ import java.util.concurrent.atomic.AtomicInteger;
  * +--------------------+-------------+
  * | rootPageOffset     | 8 bytes     |
  * +--------------------+-------------+
- * | nextBtreeHeader    | 8 bytes     |
- * +--------------------+-------------+
- * | pageSize           | 4 bytes     |
- * +--------------------+-------------+
- * | name               | 4 bytes + N |
- * +--------------------+-------------+
- * | keySerializeFQCN   | 4 bytes + N |
- * +--------------------+-------------+
- * | valueSerializeFQCN | 4 bytes + N |
+ * | BtreeOffset        | 8 bytes     |
  * +--------------------+-------------+
  * </pre>
- * Each BtreeHeader will be written starting on a new page.
+ * Each B-tree Header will be written starting on a new page.
+ * In memory, a B-tree Header store a bit more of information :
+ * <li>
+ * <ul>rootPage : the associated rootPage in memory</lu>
+ * <ul>nbUsers : the number of readThreads using this revision</lu>
+ * <ul>offset : the offset of this B-tre header</lu>
+ * </li>
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier*/class BTreeHeader<K, V>
+/* No qualifier*/class BTreeHeader<K, V> implements Cloneable
 {
     /** The current revision */
     private long revision = 0L;
@@ -61,15 +57,18 @@ import java.util.concurrent.atomic.AtomicInteger;
     /** The offset of the B-tree RootPage */
     private long rootPageOffset;
 
-    // Those are data which aren't serialized : they are in memory only */
-    /** The position in the file */
-    private long btreeOffset;
+    /** The position of the B-tree header in the file */
+    private long btreeHeaderOffset;
 
+    // Those are data which aren't serialized : they are in memory only */
     /** A Map containing the rootPage for this tree */
     private Page<K, V> rootPage;
 
     /** The number of users for this BtreeHeader */
     private AtomicInteger nbUsers = new AtomicInteger( 0 );
+
+    /** The B-tree this header is associated with */
+    private BTree<K, V> btree;
 
 
     /**
@@ -81,20 +80,61 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 
     /**
-     * @return the btreeOffset
+     * @return the B-tree info Offset
      */
-    public long getBTreeOffset()
+    public long getBTreeInfoOffset()
     {
-        return btreeOffset;
+        return ((PersistedBTree<K, V>)btree).getBtreeInfoOffset();
     }
 
 
     /**
-     * @param btreeOffset the btreeOffset to set
+     * @return the B-tree header Offset
      */
-    /* no qualifier */void setBTreeOffset( long btreeOffset )
+    public long getBTreeHeaderOffset()
     {
-        this.btreeOffset = btreeOffset;
+        return btreeHeaderOffset;
+    }
+
+
+    public BTreeHeader<K, V> clone()
+    {
+        try
+        {
+            BTreeHeader<K, V> copy = (BTreeHeader<K, V>)super.clone();
+
+            return copy;
+        }
+        catch ( CloneNotSupportedException cnse )
+        {
+            return null;
+        }
+    }
+
+
+    /**
+     * Copy the current B-tre header and return the copy
+     * @return
+     */
+    /* no qualifier */ BTreeHeader<K, V> copy()
+    {
+        BTreeHeader<K, V> copy = clone();
+
+        // Clear the fields that should not be copied
+        copy.rootPage = null;
+        copy.rootPageOffset = -1L;
+        copy.btreeHeaderOffset = -1L;
+
+        return copy;
+    }
+
+
+    /**
+     * @param btreeOffset the B-tree header Offset to set
+     */
+    /* no qualifier */void setBTreeHeaderOffset( long btreeHeaderOffset )
+    {
+        this.btreeHeaderOffset = btreeHeaderOffset;
     }
 
 
@@ -216,6 +256,24 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 
     /**
+     * @return the btree
+     */
+    /* no qualifier */ BTree<K, V> getBtree()
+    {
+        return btree;
+    }
+
+
+    /**
+     * @param btree the btree to set
+     */
+    /* no qualifier */ void setBtree( BTree<K, V> btree )
+    {
+        this.btree = btree;
+    }
+
+
+    /**
      * @see Object#toString()
      */
     public String toString()
@@ -223,9 +281,11 @@ import java.util.concurrent.atomic.AtomicInteger;
         StringBuilder sb = new StringBuilder();
 
         sb.append( "B-treeHeader " );
+        sb.append( ", offset[0x" ).append( Long.toHexString( btreeHeaderOffset ) ).append( "]" );
+        sb.append( ", name[" ).append( btree.getName() ).append( "]" );
         sb.append( ", revision[" ).append( revision ).append( "]" );
-        sb.append( ", btreeOffset[" ).append( btreeOffset ).append( "]" );
-        sb.append( ", rootPageOffset[" ).append( rootPageOffset ).append( "]" );
+        sb.append( ", btreeInfoOffset[0x" ).append( Long.toHexString( ((PersistedBTree<K, V>)btree).getBtreeInfoOffset() ) ).append( "]" );
+        sb.append( ", rootPageOffset[0x" ).append( Long.toHexString( rootPageOffset ) ).append( "]" );
         sb.append( ", nbElems[" ).append( nbElems ).append( "]" );
         sb.append( ", nbUsers[" ).append( nbUsers.get() ).append( "]" );
 

@@ -136,7 +136,7 @@ import org.slf4j.LoggerFactory;
 
         // Create the first root page, with revision 0L. It will be empty
         // and increment the revision at the same time
-        newBtreeHeader.setBTreeOffset( 0L );
+        newBtreeHeader.setBTreeHeaderOffset( 0L );
         newBtreeHeader.setRevision( 0L );
         newBtreeHeader.setNbElems( 0L );
         newBtreeHeader.setRootPage( new InMemoryLeaf<K, V>( this ) );
@@ -831,7 +831,7 @@ import org.slf4j.LoggerFactory;
     {
         BTreeHeader<K, V> newBtreeHeader = new BTreeHeader<K, V>();
 
-        newBtreeHeader.setBTreeOffset( btreeHeader.getBTreeOffset() );
+        newBtreeHeader.setBTreeHeaderOffset( btreeHeader.getBTreeHeaderOffset() );
         newBtreeHeader.setRevision( revision );
         newBtreeHeader.setNbElems( btreeHeader.getNbElems() );
         newBtreeHeader.setRootPage( btreeHeader.getRootPage() );
