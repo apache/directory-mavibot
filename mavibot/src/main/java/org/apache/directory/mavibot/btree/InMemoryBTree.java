@@ -835,7 +835,6 @@ import org.slf4j.LoggerFactory;
         newBtreeHeader.setRevision( revision );
         newBtreeHeader.setNbElems( btreeHeader.getNbElems() );
         newBtreeHeader.setRootPage( btreeHeader.getRootPage() );
-        newBtreeHeader.setRootPageOffset( btreeHeader.getRootPageOffset() );
 
         return newBtreeHeader;
     }

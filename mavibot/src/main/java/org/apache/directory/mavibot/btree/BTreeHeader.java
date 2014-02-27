@@ -225,6 +225,7 @@ import java.util.concurrent.atomic.AtomicInteger;
     /* no qualifier */ void setRootPage( Page<K, V> rootPage )
     {
         this.rootPage = rootPage;
+        this.rootPageOffset = ((AbstractPage<K, V>)rootPage).getOffset();
     }
 
 

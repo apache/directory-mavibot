@@ -403,20 +403,26 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
 
         recordManager.beginTransaction();
 
-        // Try to insert the new value in the tree at the right place,
-        // starting from the root page. Here, the root page may be either
-        // a Node or a Leaf
-        InsertResult<K, V> result = processInsert( key, value, revision );
+        try
+        {
+            // Try to insert the new value in the tree at the right place,
+            // starting from the root page. Here, the root page may be either
+            // a Node or a Leaf
+            InsertResult<K, V> result = processInsert( key, value, revision );
 
-        // We can safely free the copied pages
-        //recordManager.freePages( this, revision, result.getCopiedPages() );
+            // Done ! we can commit now
+            commit();
 
-        // If the B-tree is managed, we have to update the rootPage on disk
-        // Update the RecordManager header
-        commit();
+            // Return the value we have found if it was modified
+            return result;
+        }
+        catch ( IOException ioe )
+        {
+            // if we've got an error, we have to rollback
+            rollback();
 
-        // Return the value we have found if it was modified
-        return result;
+            throw ioe;
+        }
     }
 
 
@@ -425,13 +431,14 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
      */
     private InsertResult<K, V> processInsert( K key, V value, long revision ) throws IOException
     {
+        // Get the current B-tree header, and insert the value into it
         BTreeHeader<K, V> btreeHeader = getBtreeHeader();
         InsertResult<K, V> result = btreeHeader.getRootPage().insert( key, value, revision );
 
         // Create a new BTreeHeader
         BTreeHeader<K, V> newBtreeHeader = btreeHeader.copy();
 
-        // Inject the old btreeHeader into the pages to be freed
+        // Inject the old B-tree header into the pages to be freed
         // if we are inserting an element in a management BTree
         if ( btreeType == BTreeTypeEnum.PERSISTED_MANAGEMENT )
         {
@@ -450,9 +457,6 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
             ModifyResult<K, V> modifyResult = ( ( ModifyResult<K, V> ) result );
 
             newRootPage = modifyResult.getModifiedPage();
-
-            // Write the new root page on disk
-            PageHolder<K, V> newRootPageHolder = writePage( newRootPage, revision );
 
             // Increment the counter if we have inserted a new value
             if ( modifyResult.getModifiedValue() == null )
@@ -483,10 +487,11 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
             newBtreeHeader.incrementNbElems();
         }
 
+        // Write the new root page on disk
+        writePage( newRootPage, revision );
+
         // Update the new B-tree header
-        long newRootPageOffset = ((AbstractPage<K, V>)newRootPage).getOffset();
         newBtreeHeader.setRootPage( newRootPage );
-        newBtreeHeader.setRootPageOffset( newRootPageOffset );
         newBtreeHeader.setRevision( revision );
 
         // Write down the data on disk
