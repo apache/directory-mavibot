@@ -68,8 +68,11 @@ public class RecordManager
     /** The LoggerFactory used by this class */
     protected static final Logger LOG = LoggerFactory.getLogger( RecordManager.class );
 
+    /** The LoggerFactory used by this class */
+    protected static final Logger LOG_PAGES = LoggerFactory.getLogger( "LOG_PAGES" );
+
     /** A dedicated logger for the check */
-    protected static final Logger LOG_CHECK = LoggerFactory.getLogger( "RM_CHECK" );
+    protected static final Logger LOG_CHECK = LoggerFactory.getLogger( "LOG_CHECK" );
 
     /** The associated file */
     private File file;
@@ -370,7 +373,7 @@ public class RecordManager
         configuration.setKeySerializer( NameRevisionSerializer.INSTANCE );
         configuration.setName( BTREE_OF_BTREES_NAME );
         configuration.setValueSerializer( LongSerializer.INSTANCE );
-        configuration.setBtreeType( BTreeTypeEnum.PERSISTED_MANAGEMENT );
+        configuration.setBtreeType( BTreeTypeEnum.BTREE_OF_BTREES );
 
         btreeOfBtrees = BTreeFactory.createPersistedBTree( configuration );
     }
@@ -385,7 +388,7 @@ public class RecordManager
         configuration.setKeySerializer( RevisionNameSerializer.INSTANCE );
         configuration.setName( COPIED_PAGE_BTREE_NAME );
         configuration.setValueSerializer( LongArraySerializer.INSTANCE );
-        configuration.setBtreeType( BTreeTypeEnum.PERSISTED_MANAGEMENT );
+        configuration.setBtreeType( BTreeTypeEnum.COPIED_PAGES_BTREE );
 
         copiedPageBtree = BTreeFactory.createPersistedBTree( configuration );
     }
@@ -1632,7 +1635,60 @@ public class RecordManager
         RECORD_MANAGER_HEADER_BUFFER.put( RECORD_MANAGER_HEADER_BYTES );
         RECORD_MANAGER_HEADER_BUFFER.flip();
 
-        LOG.debug( "Update RM header, FF : {}", firstFreePage );
+        LOG.debug( "Update RM header" );
+
+        if ( LOG_PAGES.isDebugEnabled() )
+        {
+            StringBuilder sb = new StringBuilder();
+
+            sb.append( "First free page     : 0x" ).append( Long.toHexString( firstFreePage ) ).append( "\n" );
+            sb.append( "Current BOB header  : 0x" ).append( Long.toHexString( currentBtreeOfBtreesOffset ) ).append( "\n" );
+            sb.append( "Previous BOB header : 0x" ).append( Long.toHexString( previousBtreeOfBtreesOffset ) ).append( "\n" );
+            sb.append( "Current CPB header  : 0x" ).append( Long.toHexString( currentCopiedPagesBtreeOffset ) ).append( "\n" );
+            sb.append( "Previous CPB header : 0x" ).append( Long.toHexString( previousCopiedPagesBtreeOffset ) ).append( "\n" );
+
+            if ( firstFreePage != NO_PAGE )
+            {
+                long freePage = firstFreePage;
+                sb.append( "free pages list : " );
+
+                boolean isFirst = true;
+
+                while ( freePage != NO_PAGE )
+                {
+                    if ( isFirst )
+                    {
+                        isFirst = false;
+                    }
+                    else
+                    {
+                        sb.append( " -> " );
+                    }
+
+                    sb.append( "0x" ).append( Long.toHexString( freePage ) );
+
+                    try
+                    {
+                        PageIO[] freePageIO = readPageIOs( freePage, 8 );
+
+                        freePage = freePageIO[0].getNextPage();
+                    }
+                    catch ( EndOfFileExceededException e )
+                    {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+                    catch ( IOException e )
+                    {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+                }
+
+            }
+
+            LOG_PAGES.debug( "Update RM Header : \n{}", sb.toString() );
+        }
 
         try
         {
@@ -1674,12 +1730,19 @@ public class RecordManager
      * +---------------------+
      * </pre>
      */
-    public void updateRecordManagerHeader( long newBtreeOfBtreeOffset, long newCopiedPageBtreeOffset )
+    public void updateRecordManagerHeader( long newBtreeOfBtreesOffset, long newCopiedPageBtreeOffset )
     {
-        previousBtreeOfBtreesOffset = currentBtreeOfBtreesOffset;
-        currentBtreeOfBtreesOffset = newBtreeOfBtreeOffset;
-        previousCopiedPagesBtreeOffset = currentCopiedPagesBtreeOffset;
-        currentCopiedPagesBtreeOffset = newCopiedPageBtreeOffset;
+        if ( newBtreeOfBtreesOffset != -1L )
+        {
+            previousBtreeOfBtreesOffset = currentBtreeOfBtreesOffset;
+            currentBtreeOfBtreesOffset = newBtreeOfBtreesOffset;
+        }
+
+        if ( newCopiedPageBtreeOffset != -1L )
+        {
+            previousCopiedPagesBtreeOffset = currentCopiedPagesBtreeOffset;
+            currentCopiedPagesBtreeOffset = newCopiedPageBtreeOffset;
+        }
     }
 
 
@@ -1732,6 +1795,33 @@ public class RecordManager
 
         // Update the B-tree of B-trees
         currentBtreeOfBtreesOffset = ((AbstractBTree<K, V>)btreeOfBtrees).getBtreeHeader().getBTreeHeaderOffset();
+    }
+
+
+    /**
+     * Add a new <btree, revision> tuple into the CopiedPages B-tree.
+     *
+     * @param name The B-tree name
+     * @param revision The B-tree revision
+     * @param btreeHeaderOffset The B-tree offset
+     * @throws IOException If the update failed
+     */
+    /* no qualifier */ <K, V> void addInCopiedPagesBtree( String name, long revision, List<Page<K, V>> pages ) throws IOException
+    {
+        RevisionName revisionName = new RevisionName( revision, name );
+
+        long[] pageOffsets = new long[pages.size()];
+        int pos = 0;
+
+        for ( Page<K, V> page : pages )
+        {
+            pageOffsets[pos++] = ((AbstractPage<K, V>)page).getOffset();
+        }
+
+        copiedPageBtree.insert( revisionName, pageOffsets );
+
+        // Update the B-tree of B-trees
+        currentCopiedPagesBtreeOffset = ((AbstractBTree<K, V>)copiedPageBtree).getBtreeHeader().getBTreeHeaderOffset();
     }
 
 
@@ -1801,6 +1891,21 @@ public class RecordManager
 
         // And flush the pages to disk now
         LOG.debug( "Flushing the newly managed '{}' btree header", btree.getName() );
+
+        if ( LOG_PAGES.isDebugEnabled() )
+        {
+            LOG_PAGES.debug( "Writing BTreeHeader revision {} for {}", btreeHeader.getRevision(), btree.getName() );
+            StringBuilder sb = new StringBuilder();
+
+            sb.append( "Offset : " ).append( Long.toHexString( btreeHeaderOffset ) ).append( "\n" );
+            sb.append( "    Revision : " ).append( btreeHeader.getRevision() ).append( "\n" );
+            sb.append( "    NbElems  : " ).append( btreeHeader.getNbElems() ).append( "\n" );
+            sb.append( "    RootPage : 0x" ).append( Long.toHexString( btreeHeader.getRootPageOffset() ) ).append( "\n" );
+            sb.append( "    Info     : 0x" ).append( Long.toHexString( ((PersistedBTree<K, V>)btree).getBtreeInfoOffset() ) ).append( "\n" );
+
+            LOG_PAGES.debug( "Btree Header[{}]\n{}", btreeHeader.getRevision(), sb.toString() );
+        }
+
         flushPages( btreeHeaderPageIos );
 
         btreeHeader.setBTreeHeaderOffset( btreeHeaderOffset );
@@ -2013,7 +2118,7 @@ public class RecordManager
 
                 // keep a track of the allocated and copied pages so that we can
                 // free them when we do a commit or rollback, if the btree is an management one
-                if ( btree.getType() == BTreeTypeEnum.PERSISTED_MANAGEMENT )
+                if ( ( btree.getType() == BTreeTypeEnum.BTREE_OF_BTREES ) || ( btree.getType() == BTreeTypeEnum.COPIED_PAGES_BTREE ) )
                 {
                     freedPages.add( pageIo );
                     allocatedPages.add( newPageIOs[pos] );
@@ -2461,8 +2566,12 @@ public class RecordManager
         // We first need to save the new page on disk
         PageIO[] pageIos = serializePage( btree, newRevision, newPage );
 
-//        System.out.println( "Write data for '" + btree.getName() + "' btree " );
-        LOG.debug( "Write data for '{}' btree ", btree.getName() );
+        if ( LOG_PAGES.isDebugEnabled() )
+        {
+            LOG_PAGES.debug( "Write data for '{}' btree", btree.getName()  );
+
+            logPageIos( pageIos );
+        }
 
         // Write the page on disk
         flushPages( pageIos );
@@ -2479,6 +2588,62 @@ public class RecordManager
         }
 
         return pageHolder;
+    }
+
+
+    /* No qualifier */ static void logPageIos( PageIO[] pageIos )
+    {
+        int pageNb = 0;
+
+        for ( PageIO pageIo : pageIos )
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.append( "PageIO[" ).append( pageNb ).append( "]:0x" );
+            sb.append( Long.toHexString( pageIo.getOffset() ) ).append( "/");
+            sb.append( pageIo.getSize() );
+            pageNb++;
+
+            ByteBuffer data = pageIo.getData();
+
+            int position = data.position();
+            byte[] bytes = new byte[(int)pageIo.getSize() + 12];
+
+            data.get( bytes );
+            data.position( position );
+            int pos = 0;
+
+            for ( byte b : bytes )
+            {
+                int mod = pos%16;
+
+                switch ( mod )
+                {
+                    case 0:
+                        sb.append( "\n    " );
+                        // No break
+                    case 4:
+                    case 8:
+                    case 12:
+                        sb.append( " " );
+                    case 1:
+                    case 2:
+                    case 3:
+                    case 5:
+                    case 6:
+                    case 7:
+                    case 9:
+                    case 10:
+                    case 11:
+                    case 13:
+                    case 14:
+                    case 15:
+                        sb.append( Strings.dumpByte( b ) ).append( " " );
+                }
+                pos++;
+            }
+
+            LOG_PAGES.debug( sb.toString() );
+        }
     }
 
 
@@ -3207,7 +3372,7 @@ public class RecordManager
                 pageOffsets[pos++] = ((AbstractPage<K, V>)page).offset;
             }
 
-            if ( btree.getType() != BTreeTypeEnum.PERSISTED_MANAGEMENT )
+            if ( ( btree.getType() != BTreeTypeEnum.BTREE_OF_BTREES ) && ( btree.getType() != BTreeTypeEnum.COPIED_PAGES_BTREE ) )
             {
                 // Deal with standard B-trees
                 RevisionName revisionName = new RevisionName( revision, btree.getName() );

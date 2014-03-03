@@ -48,6 +48,8 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
     /** The LoggerFactory used by this class */
     protected static final Logger LOG = LoggerFactory.getLogger( PersistedBTree.class );
 
+    protected static final Logger LOG_PAGES = LoggerFactory.getLogger( "LOG_PAGES" );
+
     /** The RecordManager if the B-tree is managed */
     private RecordManager recordManager;
 
@@ -302,7 +304,8 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
                 recordManager.addInBtreeOfBtrees( getName(), revision, newBtreeHeaderOffset );
                 break;
 
-            case PERSISTED_MANAGEMENT :
+            case BTREE_OF_BTREES :
+            case COPIED_PAGES_BTREE :
                 // The B-tree of B-trees or the copiedPages B-tree has been updated, update the RMheader parameters
                 getBtreeHeader().setBTreeHeaderOffset( newBtreeHeaderOffset );
 
@@ -440,7 +443,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
 
         // Inject the old B-tree header into the pages to be freed
         // if we are inserting an element in a management BTree
-        if ( btreeType == BTreeTypeEnum.PERSISTED_MANAGEMENT )
+        if ( ( btreeType == BTreeTypeEnum.BTREE_OF_BTREES ) || ( btreeType == BTreeTypeEnum.COPIED_PAGES_BTREE ) )
         {
             PageIO[] pageIos = recordManager.readPageIOs( btreeHeader.getBTreeHeaderOffset(), -1L );
 
@@ -488,6 +491,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
         }
 
         // Write the new root page on disk
+        LOG_PAGES.debug( "Writing the new rootPage revision {} for {}", revision, name );
         writePage( newRootPage, revision );
 
         // Update the new B-tree header
@@ -504,14 +508,31 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
                 // We have a new B-tree header to inject into the B-tree of btrees
                 recordManager.addInBtreeOfBtrees( getName(), revision, newBtreeHeaderOffset );
 
+                recordManager.addInCopiedPagesBtree( getName(), revision, result.getCopiedPages() );
+
                 // Store the new revision
                 storeRevision( newBtreeHeader );
 
                 break;
 
-            case PERSISTED_MANAGEMENT :
+            case BTREE_OF_BTREES :
                 // The B-tree of B-trees or the copiedPages B-tree has been updated, update the RMheader parameters
                 recordManager.updateRecordManagerHeader( newBtreeHeaderOffset, -1L );
+
+                // We can free the copied pages
+                recordManager.freePages( this, revision, result.getCopiedPages() );
+
+                // Store the new revision
+                storeRevision( newBtreeHeader );
+
+                break;
+
+            case COPIED_PAGES_BTREE :
+                // The B-tree of B-trees or the copiedPages B-tree has been updated, update the RMheader parameters
+                recordManager.updateRecordManagerHeader( -1L, newBtreeHeaderOffset );
+
+                // We can free the copied pages
+                recordManager.freePages( this, revision, result.getCopiedPages() );
 
                 // Store the new revision
                 storeRevision( newBtreeHeader );
