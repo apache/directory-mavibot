@@ -41,7 +41,6 @@ public class BTreeFactory<K, V>
     //--------------------------------------------------------------------------------------------
     // Create persisted btrees
     //--------------------------------------------------------------------------------------------
-
     /**
      * Creates a new persisted B-tree, with no initialization.
      *
@@ -54,6 +53,31 @@ public class BTreeFactory<K, V>
         return btree;
     }
 
+
+    /**
+     * Creates a new persisted B-tree, with no initialization.
+     *
+     * @return a new B-tree instance
+     */
+    public static <K, V> BTree<K, V> createPersistedBTree( BTreeTypeEnum type )
+    {
+        BTree<K, V> btree = new PersistedBTree<K, V>();
+        ((AbstractBTree<K, V>)btree).setType( type );
+
+        return btree;
+    }
+
+
+    /**
+     * Sets the btreeHeader offset for a Persisted BTree
+     *
+     * @param btree The btree to update
+     * @param btreeHeaderOffset The offset
+     */
+    public static <K, V> void setBtreeHeaderOffset( PersistedBTree<K, V> btree, long btreeHeaderOffset )
+    {
+        btree.setBtreeHeaderOffset( btreeHeaderOffset );
+    }
 
     /**
      * Creates a new persisted B-tree using the BTreeConfiguration to initialize the
@@ -467,7 +491,7 @@ public class BTreeFactory<K, V>
      */
     /* no qualifier*/static <K, V> Page<K, V> createLeaf( BTree<K, V> btree, long revision, int nbElems )
     {
-        if ( btree.getType() == BTreeTypeEnum.PERSISTED )
+        if ( btree.getType() != BTreeTypeEnum.IN_MEMORY )
         {
             return new PersistedLeaf<K, V>( btree, revision, nbElems );
         }
@@ -488,7 +512,7 @@ public class BTreeFactory<K, V>
      */
     /* no qualifier*/static <K, V> Page<K, V> createNode( BTree<K, V> btree, long revision, int nbElems )
     {
-        if ( btree.getType() == BTreeTypeEnum.PERSISTED )
+        if ( btree.getType() != BTreeTypeEnum.IN_MEMORY )
         {
             return new PersistedNode<K, V>( btree, revision, nbElems );
         }
@@ -514,7 +538,7 @@ public class BTreeFactory<K, V>
     {
         KeyHolder<K> keyHolder;
 
-        if ( btree.getType() == BTreeTypeEnum.PERSISTED )
+        if ( btree.getType() != BTreeTypeEnum.IN_MEMORY )
         {
             keyHolder = new PersistedKeyHolder<K>( btree.getKeySerializer(), key );
         }
@@ -537,7 +561,7 @@ public class BTreeFactory<K, V>
      */
     /* no qualifier*/static <K, V> void setValue( BTree<K, V> btree, Page<K, V> page, int pos, ValueHolder<V> value )
     {
-        if ( btree.getType() == BTreeTypeEnum.PERSISTED )
+        if ( btree.getType() != BTreeTypeEnum.IN_MEMORY )
         {
             ( ( PersistedLeaf<K, V> ) page ).setValue( pos, value );
         }
@@ -558,7 +582,7 @@ public class BTreeFactory<K, V>
      */
     /* no qualifier*/static <K, V> void setPage( BTree<K, V> btree, Page<K, V> page, int pos, Page<K, V> child )
     {
-        if ( btree.getType() == BTreeTypeEnum.PERSISTED )
+        if ( btree.getType() != BTreeTypeEnum.IN_MEMORY )
         {
             ( ( PersistedNode<K, V> ) page ).setValue( pos, new PersistedPageHolder<K, V>( btree, child ) );
         }

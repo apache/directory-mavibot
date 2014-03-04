@@ -455,17 +455,19 @@ public class RecordManager
             previousCopiedPagesBtreeOffset = recordManagerHeader.getLong();
 
             // read the B-tree of B-trees
-            PageIO[] bobPageIos = readPageIOs( currentBtreeOfBtreesOffset, Long.MAX_VALUE );
+            PageIO[] bobHeaderPageIos = readPageIOs( currentBtreeOfBtreesOffset, Long.MAX_VALUE );
 
-            btreeOfBtrees = BTreeFactory.<NameRevision, Long> createPersistedBTree();
-            ( ( PersistedBTree<NameRevision, Long> ) btreeOfBtrees ).setBtreeHeaderOffset( currentBtreeOfBtreesOffset );
-            loadBtree( bobPageIos, btreeOfBtrees );
+            btreeOfBtrees = BTreeFactory.<NameRevision, Long> createPersistedBTree( BTreeTypeEnum.BTREE_OF_BTREES );
+            //BTreeFactory.<NameRevision, Long> setBtreeHeaderOffset( ( PersistedBTree<NameRevision, Long> )btreeOfBtrees, currentBtreeOfBtreesOffset );
+
+            loadBtree( bobHeaderPageIos, btreeOfBtrees );
 
             // read the copied page B-tree
             PageIO[] copiedPagesPageIos = readPageIOs( currentCopiedPagesBtreeOffset, Long.MAX_VALUE );
 
-            copiedPageBtree = BTreeFactory.<RevisionName, long[]> createPersistedBTree();
-            ( ( PersistedBTree<RevisionName, long[]> ) copiedPageBtree ).setBtreeHeaderOffset( currentCopiedPagesBtreeOffset );
+            copiedPageBtree = BTreeFactory.<RevisionName, long[]> createPersistedBTree( BTreeTypeEnum.COPIED_PAGES_BTREE );
+            //( ( PersistedBTree<RevisionName, long[]> ) copiedPageBtree ).setBtreeHeaderOffset( currentCopiedPagesBtreeOffset );
+
             loadBtree( copiedPagesPageIos, copiedPageBtree );
 
             // Now, read all the B-trees from the btree of btrees
@@ -482,7 +484,7 @@ public class RecordManager
                 long btreeOffset = btreeTuple.getValue();
                 long revision = nameRevision.getValue();
 
-                // Check if we already have prcoessed this B-tree
+                // Check if we already have processed this B-tree
                 Long loadedBtreeRevision = loadedBtrees.get( nameRevision.getName() );
 
                 if ( loadedBtreeRevision != null )
@@ -514,7 +516,7 @@ public class RecordManager
                 PageIO[] btreePageIos = readPageIOs( btreeOffset, Long.MAX_VALUE );
 
                 BTree<?, ?> btree = BTreeFactory.<NameRevision, Long> createPersistedBTree();
-                ( ( PersistedBTree<NameRevision, Long> ) btree ).setBtreeHeaderOffset( btreeOffset );
+                //( ( PersistedBTree<NameRevision, Long> ) btree ).setBtreeHeaderOffset( btreeOffset );
                 loadBtree( btreePageIos, btree );
 
                 // Add the btree into the map of managed B-trees
@@ -544,6 +546,13 @@ public class RecordManager
     public void commit()
     {
         lockHeldCounter--;
+
+        if ( !fileChannel.isOpen() )
+        {
+            // The file has been closed, nothing remains to commit, let's get out
+            transactionLock.unlock();
+            return;
+        }
 
         if ( lockHeldCounter == 0 )
         {
@@ -699,20 +708,26 @@ public class RecordManager
     {
         long dataPos = 0L;
 
-        // Process teh B-tree header
+        // Process the B-tree header
+        BTreeHeader<K, V> btreeHeader = new BTreeHeader<K, V>();
+        btreeHeader.setBtree( btree );
+
+        // The BtreeHeader offset
+        btreeHeader.setBTreeHeaderOffset( pageIos[0].getOffset() );
+
         // The B-tree current revision
         long revision = readLong( pageIos, dataPos );
-        BTreeFactory.setRevision( btree, revision );
+        btreeHeader.setRevision( revision );
         dataPos += LONG_SIZE;
 
         // The nb elems in the tree
         long nbElems = readLong( pageIos, dataPos );
-        BTreeFactory.setNbElems( btree, nbElems );
+        btreeHeader.setNbElems( nbElems );
         dataPos += LONG_SIZE;
 
         // The B-tree rootPage offset
         long rootPageOffset = readLong( pageIos, dataPos );
-        BTreeFactory.setRootPageOffset( btree, rootPageOffset );
+        btreeHeader.setRootPageOffset( rootPageOffset );
         dataPos += LONG_SIZE;
 
         // The B-tree information offset
@@ -720,6 +735,7 @@ public class RecordManager
 
         // Now, process the common informations
         PageIO[] infoPageIos = readPageIOs( btreeInfoOffset, Long.MAX_VALUE );
+        ((PersistedBTree<K, V>)btree).setBtreeInfoOffset( infoPageIos[0].getOffset() );
         dataPos = 0L;
 
         // The B-tree page size
@@ -764,10 +780,12 @@ public class RecordManager
         ( ( PersistedBTree<K, V> ) btree ).setAllowDuplicates( allowDuplicates != 0 );
         dataPos += INT_SIZE;
 
-        // Now, init the B-tree
-        //btree.init();
+        // Set the current revision to the one stored in the B-tree header
+        ((PersistedBTree<K, V>)btree).storeRevision( btreeHeader );
 
+        // Now, init the B-tree
         ( ( PersistedBTree<K, V> ) btree ).setRecordManager( this );
+        ( ( PersistedBTree<K, V> ) btree ).init();
 
         // Read the rootPage pages on disk
         PageIO[] rootPageIos = readPageIOs( rootPageOffset, Long.MAX_VALUE );
