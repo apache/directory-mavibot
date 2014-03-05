@@ -66,11 +66,14 @@ public class ReadTransaction<K, V>
      */
     public ReadTransaction( BTreeHeader<K, V> btreeHeader )
     {
-        this.revision = btreeHeader.getRevision();
-        this.creationDate = System.currentTimeMillis();
-        this.rootPage = btreeHeader.getRootPage();
-        this.btreeHeader = btreeHeader;
-        closed = false;
+        if ( btreeHeader != null )
+        {
+            this.revision = btreeHeader.getRevision();
+            this.creationDate = System.currentTimeMillis();
+            this.rootPage = btreeHeader.getRootPage();
+            this.btreeHeader = btreeHeader;
+            closed = false;
+        }
     }
 
 

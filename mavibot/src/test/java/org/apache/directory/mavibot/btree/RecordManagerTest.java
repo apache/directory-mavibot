@@ -454,10 +454,10 @@ public class RecordManagerTest
 
         // Check that we can read the revision again
         // revision 1
-        checkBTreeRevisionBrowse( btree, rev1, 3L );
+        checkBTreeRevisionBrowse( btree, rev1 );
 
         // Revision 2
-        checkBTreeRevisionBrowse( btree, rev2, 1L, 3L );
+        checkBTreeRevisionBrowse( btree, rev2 );
 
         // Revision 3
         checkBTreeRevisionBrowse( btree, rev3, 1L, 3L, 5L );

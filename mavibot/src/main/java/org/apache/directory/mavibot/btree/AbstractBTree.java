@@ -118,11 +118,20 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     protected ReadTransaction<K, V> beginReadTransaction( long revision )
     {
-        ReadTransaction<K, V> readTransaction = new ReadTransaction<K, V>( getBtreeHeader( revision ) );
+        BTreeHeader<K, V> btreeHeader = getBtreeHeader( revision );
 
-        readTransactions.add( readTransaction );
+        if ( btreeHeader != null )
+        {
+            ReadTransaction<K, V> readTransaction = new ReadTransaction<K, V>( btreeHeader );
 
-        return readTransaction;
+            readTransactions.add( readTransaction );
+
+            return readTransaction;
+        }
+        else
+        {
+            return null;
+        }
     }
 
 
@@ -151,12 +160,19 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     {
         ReadTransaction<K, V> transaction = beginReadTransaction( revision );
 
-        ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
+        if ( transaction == null )
+        {
+            return new EmptyTupleCursor<K, V>( revision );
+        }
+        else
+        {
+            ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
 
-        // And get the cursor
-        TupleCursor<K, V> cursor = transaction.getRootPage().browse( transaction, stack, 0 );
+            // And get the cursor
+            TupleCursor<K, V> cursor = transaction.getRootPage().browse( transaction, stack, 0 );
 
-        return cursor;
+            return cursor;
+        }
     }
 
 
