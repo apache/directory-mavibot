@@ -34,7 +34,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
  *
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class TupleCursor<K, V>
@@ -59,8 +59,15 @@ public class TupleCursor<K, V>
 
 
     /**
+     * Creates a new instance of Cursor.
+     */
+    protected TupleCursor()
+    {
+    }
+
+    /**
      * Creates a new instance of Cursor, starting on a page at a given position.
-     * 
+     *
      * @param transaction The transaction this operation is protected by
      * @param stack The stack of parent's from root to this page
      */
@@ -167,10 +174,10 @@ public class TupleCursor<K, V>
 
     /**
      * Tells if the cursor can return a next element
-     * 
+     *
      * @return true if there are some more elements
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
+     * @throws IOException
+     * @throws EndOfFileExceededException
      */
     public boolean hasNext() throws EndOfFileExceededException, IOException
     {
@@ -207,7 +214,7 @@ public class TupleCursor<K, V>
                 return true;
             }
 
-            // Ok, here, we have reached the last value in the leaf. We have to go up and 
+            // Ok, here, we have reached the last value in the leaf. We have to go up and
             // see if we have some remaining values
             int currentDepth = depth - 1;
 
@@ -234,10 +241,10 @@ public class TupleCursor<K, V>
 
     /**
      * Find the next key/value
-     * 
+     *
      * @return A Tuple containing the found key and value
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
+     * @throws IOException
+     * @throws EndOfFileExceededException
      */
     public Tuple<K, V> next() throws EndOfFileExceededException, IOException
     {
@@ -324,7 +331,7 @@ public class TupleCursor<K, V>
     /**
      * Get the next non-duplicate key.
      * If the BTree contains :
-     * 
+     *
      *  <ul>
      *    <li><1,0></li>
      *    <li><1,1></li>
@@ -332,9 +339,9 @@ public class TupleCursor<K, V>
      *    <li><2,0></li>
      *    <li><2,1></li>
      *  </ul>
-     *   
+     *
      *  and cursor is present at <1,1> then the returned tuple will be <2,0> (not <1,2>)
-     *  
+     *
      * @return A Tuple containing the found key and value
      * @throws EndOfFileExceededException
      * @throws IOException
@@ -402,10 +409,10 @@ public class TupleCursor<K, V>
 
     /**
      * Tells if the cursor can return a next key
-     * 
+     *
      * @return true if there are some more keys
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
+     * @throws IOException
+     * @throws EndOfFileExceededException
      */
     public boolean hasNextKey() throws EndOfFileExceededException, IOException
     {
@@ -439,10 +446,10 @@ public class TupleCursor<K, V>
 
     /**
      * Tells if the cursor can return a previous element
-     * 
+     *
      * @return true if there are some more elements
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
+     * @throws IOException
+     * @throws EndOfFileExceededException
      */
     public boolean hasPrev() throws EndOfFileExceededException, IOException
     {
@@ -480,7 +487,7 @@ public class TupleCursor<K, V>
                 return true;
             }
 
-            // Ok, here, we have reached the first value in the leaf. We have to go up and 
+            // Ok, here, we have reached the first value in the leaf. We have to go up and
             // see if we have some remaining values
             int currentDepth = depth - 1;
 
@@ -506,10 +513,10 @@ public class TupleCursor<K, V>
 
     /**
      * Find the previous key/value
-     * 
+     *
      * @return A Tuple containing the found key and value
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
+     * @throws IOException
+     * @throws EndOfFileExceededException
      */
     public Tuple<K, V> prev() throws EndOfFileExceededException, IOException
     {
@@ -597,7 +604,7 @@ public class TupleCursor<K, V>
     /**
      * Get the previous non-duplicate key.
      * If the BTree contains :
-     * 
+     *
      *  <ul>
      *    <li><1,0></li>
      *    <li><1,1></li>
@@ -605,9 +612,9 @@ public class TupleCursor<K, V>
      *    <li><2,0></li>
      *    <li><2,1></li>
      *  </ul>
-     *   
+     *
      *  and cursor is present at <2,1> then the returned tuple will be <1,0> (not <2,0>)
-     *  
+     *
      * @return A Tuple containing the found key and value
      * @throws EndOfFileExceededException
      * @throws IOException
@@ -653,7 +660,7 @@ public class TupleCursor<K, V>
             }
         }
 
-        // Update the Tuple 
+        // Update the Tuple
         AbstractPage<K, V> leaf = ( AbstractPage<K, V> ) ( parentPos.page );
 
         // The key
@@ -671,10 +678,10 @@ public class TupleCursor<K, V>
 
     /**
      * Tells if the cursor can return a previous key
-     * 
+     *
      * @return true if there are some more keys
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
+     * @throws IOException
+     * @throws EndOfFileExceededException
      */
     public boolean hasPrevKey() throws EndOfFileExceededException, IOException
     {
@@ -708,10 +715,10 @@ public class TupleCursor<K, V>
 
     /**
      * Tells if there is a next ParentPos
-     * 
+     *
      * @return the new ParentPos instance, or null if we have no following leaf
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
+     * @throws IOException
+     * @throws EndOfFileExceededException
      */
     private boolean hasNextParentPos() throws EndOfFileExceededException, IOException
     {
@@ -758,10 +765,10 @@ public class TupleCursor<K, V>
 
     /**
      * Find the leaf containing the following elements.
-     * 
+     *
      * @return the new ParentPos instance, or null if we have no following leaf
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
+     * @throws IOException
+     * @throws EndOfFileExceededException
      */
     private ParentPos<K, V> findNextParentPos() throws EndOfFileExceededException, IOException
     {
@@ -818,10 +825,10 @@ public class TupleCursor<K, V>
 
     /**
      * Find the leaf containing the previous elements.
-     * 
+     *
      * @return the new ParentPos instance, or null if we have no previous leaf
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
+     * @throws IOException
+     * @throws EndOfFileExceededException
      */
     private ParentPos<K, V> findPrevParentPos() throws EndOfFileExceededException, IOException
     {
@@ -880,10 +887,10 @@ public class TupleCursor<K, V>
 
     /**
      * Tells if there is a prev ParentPos
-     * 
+     *
      * @return the new ParentPos instance, or null if we have no previous leaf
-     * @throws IOException 
-     * @throws EndOfFileExceededException 
+     * @throws IOException
+     * @throws EndOfFileExceededException
      */
     private boolean hasPrevParentPos() throws EndOfFileExceededException, IOException
     {
@@ -949,7 +956,7 @@ public class TupleCursor<K, V>
 
     /**
      * Get the current revision
-     * 
+     *
      * @return The revision this cursor is based on
      */
     public long getRevision()
