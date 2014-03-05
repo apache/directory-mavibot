@@ -525,10 +525,10 @@ public class RecordManagerTest
 
         // Check that we can read the revision again
         // revision 1
-        checkBTreeRevisionBrowseFrom( btree, rev1, 3L, 3L );
+        checkBTreeRevisionBrowseFrom( btree, rev1, 3L );
 
         // Revision 2
-        checkBTreeRevisionBrowseFrom( btree, rev2, 3L, 3L );
+        checkBTreeRevisionBrowseFrom( btree, rev2, 3L );
 
         // Revision 3
         checkBTreeRevisionBrowseFrom( btree, rev3, 3L, 3L, 5L );

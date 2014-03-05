@@ -198,12 +198,19 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     {
         ReadTransaction<K, V> transaction = beginReadTransaction( revision );
 
-        ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
+        if ( transaction == null )
+        {
+            return new EmptyTupleCursor<K, V>( revision );
+        }
+        else
+        {
+            ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
 
-        // And get the cursor
-        TupleCursor<K, V> cursor = transaction.getRootPage().browse( key, transaction, stack, 0 );
+            // And get the cursor
+            TupleCursor<K, V> cursor = transaction.getRootPage().browse( key, transaction, stack, 0 );
 
-        return cursor;
+            return cursor;
+        }
     }
 
 
