@@ -273,58 +273,76 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
      */
     /* no qualifier */ Tuple<K, V> delete( K key, V value, long revision ) throws IOException
     {
+        // We have to start a new transaction, which will be committed or rollbacked
+        // locally. This will duplicate the current BtreeHeader during this phase.
+        if ( revision == -1L )
+        {
+            revision = currentRevision.get() + 1;
+        }
+
         recordManager.beginTransaction();
 
-        // Try to delete the entry starting from the root page. Here, the root
-        // page may be either a Node or a Leaf
-        DeleteResult<K, V> result = processDelete( key, value, revision );
-
-        // Check that we have found the element to delete
-        if ( result instanceof NotPresentResult )
+        try
         {
-            // We haven't found the element in the B-tree, just get out
-            recordManager.commit();
+            // Try to delete the entry starting from the root page. Here, the root
+            // page may be either a Node or a Leaf
+            DeleteResult<K, V> result = processDelete( key, value, revision );
 
-            return null;
+            // Check that we have found the element to delete
+            if ( result instanceof NotPresentResult )
+            {
+                // We haven't found the element in the B-tree, just get out
+                // without updating the recordManager
+                rollback();
+
+                return null;
+            }
+
+            // The element was found, and removed
+            AbstractDeleteResult<K, V> deleteResult = ( AbstractDeleteResult<K, V> ) result;
+
+            Tuple<K, V> tuple = deleteResult.getRemovedElement();
+//
+//            // Update the B-tree header, creating a new BtreeHeader page now
+//            long newBtreeHeaderOffset = recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) getRootPage() ).getOffset() );
+//
+//            // Update the B-tree of B-trees with this new offset, if we are not already doing so
+//            switch ( btreeType )
+//            {
+//                case PERSISTED :
+//                    // We have a new B-tree header to inject into the B-tree of btrees
+//                    recordManager.addInBtreeOfBtrees( getName(), revision, newBtreeHeaderOffset );
+//                    break;
+//
+//                case BTREE_OF_BTREES :
+//                case COPIED_PAGES_BTREE :
+//                    // The B-tree of B-trees or the copiedPages B-tree has been updated, update the RMheader parameters
+//                    getBtreeHeader().setBTreeHeaderOffset( newBtreeHeaderOffset );
+//
+//                    break;
+//
+//                default:
+//                    // Nothing to do for sub-btrees
+//                    break;
+//            }
+//
+//            // We can safely free the copied pages
+//            recordManager.freePages( this, revision, result.getCopiedPages() );
+
+            // If the B-tree is managed, we have to update the rootPage on disk
+            // Update the RecordManager header
+            commit();
+
+            // Return the value we have found if it was modified
+            return tuple;
         }
-
-        // The element was found, and removed
-        AbstractDeleteResult<K, V> deleteResult = ( AbstractDeleteResult<K, V> ) result;
-
-        Tuple<K, V> tuple = deleteResult.getRemovedElement();
-
-        // Update the B-tree header, creating a new BtreeHeader page now
-        long newBtreeHeaderOffset = recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) getRootPage() ).getOffset() );
-
-        // Update the B-tree of B-trees with this new offset, if we are not already doing so
-        switch ( btreeType )
+        catch ( IOException ioe )
         {
-            case PERSISTED :
-                // We have a new B-tree header to inject into the B-tree of btrees
-                recordManager.addInBtreeOfBtrees( getName(), revision, newBtreeHeaderOffset );
-                break;
+            // if we've got an error, we have to rollback
+            rollback();
 
-            case BTREE_OF_BTREES :
-            case COPIED_PAGES_BTREE :
-                // The B-tree of B-trees or the copiedPages B-tree has been updated, update the RMheader parameters
-                getBtreeHeader().setBTreeHeaderOffset( newBtreeHeaderOffset );
-
-                break;
-
-            default:
-                // Nothing to do for sub-btrees
-                break;
+            throw ioe;
         }
-
-        // We can safely free the copied pages
-        recordManager.freePages( this, revision, result.getCopiedPages() );
-
-        // If the B-tree is managed, we have to update the rootPage on disk
-        // Update the RecordManager header
-        recordManager.commit();
-
-        // Return the value we have found if it was modified
-        return tuple;
     }
 
 
@@ -333,9 +351,12 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
      */
     private DeleteResult<K, V> processDelete( K key, V value, long revision ) throws IOException
     {
+        // Get the current B-tree header, and delete the value from it
+        BTreeHeader<K, V> btreeHeader = getBtreeHeader();
+
         // Try to delete the entry starting from the root page. Here, the root
         // page may be either a Node or a Leaf
-        DeleteResult<K, V> result = getRootPage().delete( key, value, revision);
+        DeleteResult<K, V> result = btreeHeader.getRootPage().delete( key, value, revision);
 
         if ( result instanceof NotPresentResult )
         {
@@ -343,34 +364,92 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
             return result;
         }
 
+        // Create a new BTreeHeader
+        BTreeHeader<K, V> newBtreeHeader = btreeHeader.copy();
+
+        // Inject the old B-tree header into the pages to be freed
+        // if we are deleting an element from a management BTree
+        if ( ( btreeType == BTreeTypeEnum.BTREE_OF_BTREES ) || ( btreeType == BTreeTypeEnum.COPIED_PAGES_BTREE ) )
+        {
+            PageIO[] pageIos = recordManager.readPageIOs( btreeHeader.getBTreeHeaderOffset(), -1L );
+
+            for ( PageIO pageIo : pageIos )
+            {
+                recordManager.freedPages.add( pageIo );
+            }
+        }
+
         // The element was found, and removed
         AbstractDeleteResult<K, V> removeResult = ( AbstractDeleteResult<K, V> ) result;
 
-        Page<K, V> modifiedPage = removeResult.getModifiedPage();
+        // This is a new root
+        Page<K, V> newRootPage = removeResult.getModifiedPage();
 
         // Write the modified page on disk
         // Note that we don't use the holder, the new root page will
         // remain in memory.
-        PageHolder<K, V> holder = writePage( modifiedPage, revision );
+        PageHolder<K, V> holder = writePage( newRootPage, revision );
 
         // Store the offset on disk in the page in memory
-        ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( PersistedPageHolder<K, V> ) holder )
-            .getOffset() );
-
-        // Store the last offset on disk in the page in memory
-        ( ( AbstractPage<K, V> ) modifiedPage )
-            .setLastOffset( ( ( PersistedPageHolder<K, V> ) holder )
-                .getLastOffset() );
-
-        // This is a new root
-        //rootPage = modifiedPage;
+//        ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( PersistedPageHolder<K, V> ) holder )
+//            .getOffset() );
+//
+//        // Store the last offset on disk in the page in memory
+//        ( ( AbstractPage<K, V> ) modifiedPage )
+//            .setLastOffset( ( ( PersistedPageHolder<K, V> ) holder )
+//                .getLastOffset() );
 
         // Decrease the number of elements in the current tree
-        getBtreeHeader().decrementNbElems();
+        newBtreeHeader.decrementNbElems();
+        newBtreeHeader.setRootPage( newRootPage );
+        newBtreeHeader.setRevision( revision );
 
-        // We have to update the rootPage on disk
-        // Update the B-tree header now
-        recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) getBtreeHeader().getRootPage() ).getOffset() );
+        // Write down the data on disk
+        long newBtreeHeaderOffset = recordManager.writeBtreeHeader( this, newBtreeHeader );
+
+
+        // Update the B-tree of B-trees with this new offset, if we are not already doing so
+        switch ( btreeType )
+        {
+            case PERSISTED :
+                // We have a new B-tree header to inject into the B-tree of btrees
+                recordManager.addInBtreeOfBtrees( getName(), revision, newBtreeHeaderOffset );
+
+                recordManager.addInCopiedPagesBtree( getName(), revision, result.getCopiedPages() );
+
+                // Store the new revision
+                storeRevision( newBtreeHeader );
+
+                break;
+
+            case BTREE_OF_BTREES :
+                // The B-tree of B-trees or the copiedPages B-tree has been updated, update the RMheader parameters
+                recordManager.updateRecordManagerHeader( newBtreeHeaderOffset, -1L );
+
+                // We can free the copied pages
+                recordManager.freePages( this, revision, result.getCopiedPages() );
+
+                // Store the new revision
+                storeRevision( newBtreeHeader );
+
+                break;
+
+            case COPIED_PAGES_BTREE :
+                // The B-tree of B-trees or the copiedPages B-tree has been updated, update the RMheader parameters
+                recordManager.updateRecordManagerHeader( -1L, newBtreeHeaderOffset );
+
+                // We can free the copied pages
+                recordManager.freePages( this, revision, result.getCopiedPages() );
+
+                // Store the new revision
+                storeRevision( newBtreeHeader );
+
+                break;
+
+            default:
+                // Nothing to do for sub-btrees
+                break;
+        }
 
         // Return the value we have found if it was modified
         return result;

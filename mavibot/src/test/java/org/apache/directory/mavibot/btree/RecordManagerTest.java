@@ -615,20 +615,16 @@ public class RecordManagerTest
 
         // Check that we can get a value from each revision
         // revision 1
-        assertEquals( "V3", btree.get( rev1, 3L ) );
+        checkBTreeRevisionBrowse( btree, rev1 );
 
         // revision 2
-        assertEquals( "V1", btree.get( rev2, 1L ) );
-        assertEquals( "V3", btree.get( rev2, 3L ) );
+        checkBTreeRevisionBrowse( btree, rev2 );
 
         // revision 3
-        assertEquals( "V1", btree.get( rev3, 1L ) );
-        assertEquals( "V3", btree.get( rev3, 3L ) );
-        assertEquals( "V5", btree.get( rev3, 5L ) );
+        checkBTreeRevisionBrowse( btree, rev3 );
 
         // revision 4
-        assertEquals( "V1", btree.get( rev4, 1L ) );
-        assertEquals( "V5", btree.get( rev4, 5L ) );
+        checkBTreeRevisionBrowse( btree, rev4, 1L, 5L );
 
         try
         {

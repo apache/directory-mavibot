@@ -362,13 +362,20 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     {
         ReadTransaction<K, V> transaction = beginReadTransaction( revision );
 
-        try
+        if ( transaction == null )
         {
-            return transaction.getRootPage().get( key );
+            return null;
         }
-        finally
+        else
         {
-            transaction.close();
+            try
+            {
+                return transaction.getRootPage().get( key );
+            }
+            finally
+            {
+                transaction.close();
+            }
         }
     }
 
