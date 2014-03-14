@@ -142,14 +142,21 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     {
         ReadTransaction<K, V> transaction = beginReadTransaction();
 
-        ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
+        if ( transaction == null )
+        {
+            return new EmptyTupleCursor<K, V>( 0L );
+        }
+        else
+        {
+            ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
 
-        TupleCursor<K, V> cursor = transaction.getRootPage().browse( transaction, stack, 0 );
+            TupleCursor<K, V> cursor = transaction.getRootPage().browse( transaction, stack, 0 );
 
-        // Set the position before the first element
-        cursor.beforeFirst();
+            // Set the position before the first element
+            cursor.beforeFirst();
 
-        return cursor;
+            return cursor;
+        }
     }
 
 
@@ -221,13 +228,20 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     {
         ReadTransaction<K, V> transaction = beginReadTransaction();
 
-        try
+        if ( transaction == null )
         {
-            return transaction.getRootPage().contains( key, value );
+            return false;
         }
-        finally
+        else
         {
-            transaction.close();
+            try
+            {
+                return transaction.getRootPage().contains( key, value );
+            }
+            finally
+            {
+                transaction.close();
+            }
         }
     }
 
@@ -240,13 +254,20 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         // Fetch the root page for this revision
         ReadTransaction<K, V> transaction = beginReadTransaction( revision );
 
-        try
+        if ( transaction == null )
         {
-            return transaction.getRootPage().contains( key, value );
+            return false;
         }
-        finally
+        else
         {
-            transaction.close();
+            try
+            {
+                return transaction.getRootPage().contains( key, value );
+            }
+            finally
+            {
+                transaction.close();
+            }
         }
     }
 
@@ -344,13 +365,20 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     {
         ReadTransaction<K, V> transaction = beginReadTransaction();
 
-        try
+        if ( transaction == null )
         {
-            return transaction.getRootPage().get( key );
+            return null;
         }
-        finally
+        else
         {
-            transaction.close();
+            try
+            {
+                return transaction.getRootPage().get( key );
+            }
+            finally
+            {
+                transaction.close();
+            }
         }
     }
 
@@ -399,13 +427,20 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     {
         ReadTransaction<K, V> transaction = beginReadTransaction();
 
-        try
+        if ( transaction == null )
         {
-            return transaction.getRootPage().getValues( key );
+            return new EmptyValueCursor<V>( 0L );
         }
-        finally
+        else
         {
-            transaction.close();
+            try
+            {
+                return transaction.getRootPage().getValues( key );
+            }
+            finally
+            {
+                transaction.close();
+            }
         }
     }
 
@@ -422,13 +457,20 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
         ReadTransaction<K, V> transaction = beginReadTransaction();
 
-        try
+        if ( transaction == null )
         {
-            return transaction.getRootPage().hasKey( key );
+            return false;
         }
-        finally
+        else
         {
-            transaction.close();
+            try
+            {
+                return transaction.getRootPage().hasKey( key );
+            }
+            finally
+            {
+                transaction.close();
+            }
         }
     }
 
@@ -445,13 +487,20 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
         ReadTransaction<K, V> transaction = beginReadTransaction( revision );
 
-        try
+        if ( transaction == null )
         {
-            return transaction.getRootPage().hasKey( key );
+            return false;
         }
-        finally
+        else
         {
-            transaction.close();
+            try
+            {
+                return transaction.getRootPage().hasKey( key );
+            }
+            finally
+            {
+                transaction.close();
+            }
         }
     }
 
@@ -519,13 +568,20 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     {
         ReadTransaction<K, V> transaction = beginReadTransaction();
 
-        try
+        if ( transaction == null )
         {
-            return transaction.getRevision();
+            return -1L;
         }
-        finally
+        else
         {
-            transaction.close();
+            try
+            {
+                return transaction.getRevision();
+            }
+            finally
+            {
+                transaction.close();
+            }
         }
     }
 
@@ -580,13 +636,20 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     {
         ReadTransaction<K, V> transaction = beginReadTransaction();
 
-        try
+        if ( transaction == null )
         {
-            return transaction.getBtreeHeader().getNbElems();
+            return -1L;
         }
-        finally
+        else
         {
-            transaction.close();
+            try
+            {
+                return transaction.getBtreeHeader().getNbElems();
+            }
+            finally
+            {
+                transaction.close();
+            }
         }
     }
 

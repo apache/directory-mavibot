@@ -70,7 +70,7 @@ public class InMemoryBTreeTestOps
     {
         Random random = new Random( System.nanoTime() );
 
-        int nbElems = 500000;
+        int nbElems = 50000;
 
         // Create a BTree with 500 000 entries
         btree.setPageSize( 32 );

@@ -713,18 +713,18 @@ public class RecordManagerTest
         // Check that we can get a value from each revision
         // revision 1
         assertFalse( btree.contains( rev1, 1L, "V1" ) );
-        assertTrue( btree.contains( rev1, 3L, "V3" ) );
+        assertFalse( btree.contains( rev1, 3L, "V3" ) );
         assertFalse( btree.contains( rev1, 5L, "V5" ) );
 
         // revision 2
-        assertTrue( btree.contains( rev2, 1L, "V1" ) );
-        assertTrue( btree.contains( rev2, 3L, "V3" ) );
+        assertFalse( btree.contains( rev2, 1L, "V1" ) );
+        assertFalse( btree.contains( rev2, 3L, "V3" ) );
         assertFalse( btree.contains( rev2, 5L, "V5" ) );
 
         // revision 3
-        assertTrue( btree.contains( rev3, 1L, "V1" ) );
-        assertTrue( btree.contains( rev3, 3L, "V3" ) );
-        assertTrue( btree.contains( rev3, 5L, "V5" ) );
+        assertFalse( btree.contains( rev3, 1L, "V1" ) );
+        assertFalse( btree.contains( rev3, 3L, "V3" ) );
+        assertFalse( btree.contains( rev3, 5L, "V5" ) );
 
         // revision 4
         assertTrue( btree.contains( rev4, 1L, "V1" ) );
@@ -808,18 +808,18 @@ public class RecordManagerTest
         // Check that we can get a value from each revision
         // revision 1
         assertFalse( btree.hasKey( rev1, 1L ) );
-        assertTrue( btree.hasKey( rev1, 3L ) );
+        assertFalse( btree.hasKey( rev1, 3L ) );
         assertFalse( btree.hasKey( rev1, 5L ) );
 
         // revision 2
-        assertTrue( btree.hasKey( rev2, 1L ) );
-        assertTrue( btree.hasKey( rev2, 3L ) );
+        assertFalse( btree.hasKey( rev2, 1L ) );
+        assertFalse( btree.hasKey( rev2, 3L ) );
         assertFalse( btree.hasKey( rev2, 5L ) );
 
         // revision 3
-        assertTrue( btree.hasKey( rev3, 1L ) );
-        assertTrue( btree.hasKey( rev3, 3L ) );
-        assertTrue( btree.hasKey( rev3, 5L ) );
+        assertFalse( btree.hasKey( rev3, 1L ) );
+        assertFalse( btree.hasKey( rev3, 3L ) );
+        assertFalse( btree.hasKey( rev3, 5L ) );
 
         // revision 4
         assertTrue( btree.hasKey( rev4, 1L ) );
