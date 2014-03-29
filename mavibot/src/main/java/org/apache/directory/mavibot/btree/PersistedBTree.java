@@ -594,6 +594,19 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
 
                 break;
 
+            case PERSISTED_SUB :
+                // Sub-B-trees are only updating the CopiedPage B-tree
+                recordManager.addInCopiedPagesBtree( getName(), revision, result.getCopiedPages() );
+                
+                //btreeRevisions.clear();
+                
+                btreeRevisions.put( revision, newBtreeHeader );
+
+                currentRevision.set( revision );
+
+
+                break;
+
             case BTREE_OF_BTREES :
                 // The B-tree of B-trees or the copiedPages B-tree has been updated, update the RMheader parameters
                 recordManager.updateRecordManagerHeader( newBtreeHeaderOffset, -1L );

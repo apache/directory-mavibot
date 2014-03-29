@@ -701,15 +701,20 @@ public class TupleCursor<K, V>
             return false;
         }
 
-        if ( parentPos.pos == 0 )
+        switch ( parentPos.pos )
         {
-            // Beginning of the leaf. We have to go back into the stack up to the
-            // parent, and down to the leaf
-            return hasPrevParentPos();
-        }
-        else
-        {
-            return true;
+            case 0 :
+                // Beginning of the leaf. We have to go back into the stack up to the
+                // parent, and down to the leaf
+                return hasPrevParentPos();
+                
+            case -1 :
+                // no previous key
+                return false;
+                
+            default :
+                // we have a previous key
+                return true;
         }
     }
 

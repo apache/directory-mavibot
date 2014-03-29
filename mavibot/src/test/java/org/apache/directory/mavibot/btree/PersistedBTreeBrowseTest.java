@@ -38,6 +38,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -801,7 +802,7 @@ public class PersistedBTreeBrowseTest
             // Expected
         }
 
-        assertEquals( -1L, cursor.getRevision() );
+        assertEquals( 0L, cursor.getRevision() );
     }
 
 
@@ -978,6 +979,56 @@ public class PersistedBTreeBrowseTest
             }
         }
     }
+
+    
+    /**
+     * Test the TupleCursor.nextKey method on a btree containing nodes
+     * with duplicate values.
+     */
+   @Test
+   @Ignore
+   public void testNextKeyDups() throws IOException, BTreeAlreadyManagedException
+   {
+       // Inject some data
+       //for ( long i = 1; i < 3; i++ )
+       {
+           for ( long j = 1; j < 9; j++ )
+           {
+               btree.insert( 1L, Long.toString( j ) );
+           }
+       }
+
+       btree.insert( 1L, "10" );
+
+       // Create the cursor
+       TupleCursor<Long, String> cursor = btree.browse();
+
+       // Move forward
+       cursor.beforeFirst();
+
+       assertFalse( cursor.hasPrevKey() );
+       assertTrue( cursor.hasNextKey() );
+
+       Tuple<Long, String> tuple = cursor.nextKey();
+
+       checkTuple( tuple, 1L, "1" );
+       
+       cursor.beforeFirst();
+       long val = 1L;
+       
+       while ( cursor.hasNext() )
+       {
+           tuple = cursor.next();
+           
+           assertEquals( Long.valueOf( 1L ), tuple.getKey() );
+           assertEquals( Long.toString( val ), tuple.getValue() );
+           
+           val++;
+       }
+       
+       assertFalse( cursor.hasNextKey() );
+       assertFalse( cursor.hasPrevKey() );
+   }
 
 
     /**
