@@ -2748,7 +2748,7 @@ public class RecordManager
      */
     private PageIO fetchNewPage() throws IOException
     {
-        dumpFreePages( firstFreePage );
+        //dumpFreePages( firstFreePage );
 
         if ( firstFreePage == NO_PAGE )
         {
