@@ -140,7 +140,7 @@ public class RecordManagerFreePageTest
 
         for ( int i = 0; i < nbElems; i++ )
         {
-            System.out.println( i );
+            // System.out.println( i );
             Long key = ( long ) i;
             String value = Long.toString( key );
 
@@ -175,7 +175,7 @@ public class RecordManagerFreePageTest
             units = "KB";
         }
 
-        System.out.println( size + units );
+        // System.out.println( size + units );
 
         openRecordManagerAndBtree();
 
