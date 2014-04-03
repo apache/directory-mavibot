@@ -127,16 +127,17 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
 
         if ( btreeType == BTreeTypeEnum.PERSISTED_SUB )
         {
-            // The subBTree inherit its cache from its parent BTree
-            this.cache = ( ( PersistedBTree<K, V> ) configuration.getParentBTree() ).getCache();
-            readTransactions = new ConcurrentLinkedQueue<ReadTransaction<K, V>>();
+            // The subBTree inherits its cache and readTransactions from its parent BTree
+            init( ( PersistedBTree<K, V> ) configuration.getParentBTree() );
+        }
+        else
+        {
+            // We will create a new cache and a new readTransactions map 
+            init( null );
         }
 
         // Add the B-tree header into the revisions
         btreeRevisions.put( 0L, btreeHeader );
-
-        // Now, initialize the BTree
-        init();
     }
 
 
@@ -145,9 +146,9 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
      *
      * @throws IOException If we get some exception while initializing the BTree
      */
-    public void init()
+    public void init( BTree<K, V> parentBTree )
     {
-        if ( btreeType != BTreeTypeEnum.PERSISTED_SUB )
+        if ( parentBTree == null )
         {
             // This is not a subBtree, we have to initialize the cache
 
@@ -165,6 +166,11 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
 
             cache = new Cache( cacheConfiguration );
             cache.initialise();
+        }
+        else
+        {
+            this.cache = ((PersistedBTree<K, V>)parentBTree).getCache();
+            this.readTransactions = ((PersistedBTree<K, V>)parentBTree).getReadTransactions();
         }
 
         // Initialize the txnManager thread
@@ -215,7 +221,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
      */
     /* No qualifier*/long getBtreeOffset()
     {
-        return getBtreeHeader().getBTreeInfoOffset();
+        return getBtreeHeader().getBTreeHeaderOffset();
     }
 
 
@@ -302,32 +308,6 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
             AbstractDeleteResult<K, V> deleteResult = ( AbstractDeleteResult<K, V> ) result;
 
             Tuple<K, V> tuple = deleteResult.getRemovedElement();
-//
-//            // Update the B-tree header, creating a new BtreeHeader page now
-//            long newBtreeHeaderOffset = recordManager.updateBtreeHeader( this, ( ( AbstractPage<K, V> ) getRootPage() ).getOffset() );
-//
-//            // Update the B-tree of B-trees with this new offset, if we are not already doing so
-//            switch ( btreeType )
-//            {
-//                case PERSISTED :
-//                    // We have a new B-tree header to inject into the B-tree of btrees
-//                    recordManager.addInBtreeOfBtrees( getName(), revision, newBtreeHeaderOffset );
-//                    break;
-//
-//                case BTREE_OF_BTREES :
-//                case COPIED_PAGES_BTREE :
-//                    // The B-tree of B-trees or the copiedPages B-tree has been updated, update the RMheader parameters
-//                    getBtreeHeader().setBTreeHeaderOffset( newBtreeHeaderOffset );
-//
-//                    break;
-//
-//                default:
-//                    // Nothing to do for sub-btrees
-//                    break;
-//            }
-//
-//            // We can safely free the copied pages
-//            recordManager.freePages( this, revision, result.getCopiedPages() );
 
             // If the B-tree is managed, we have to update the rootPage on disk
             // Update the RecordManager header
@@ -389,15 +369,6 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
         // Note that we don't use the holder, the new root page will
         // remain in memory.
         PageHolder<K, V> holder = writePage( newRootPage, revision );
-
-        // Store the offset on disk in the page in memory
-//        ( ( AbstractPage<K, V> ) modifiedPage ).setOffset( ( ( PersistedPageHolder<K, V> ) holder )
-//            .getOffset() );
-//
-//        // Store the last offset on disk in the page in memory
-//        ( ( AbstractPage<K, V> ) modifiedPage )
-//            .setLastOffset( ( ( PersistedPageHolder<K, V> ) holder )
-//                .getLastOffset() );
 
         // Decrease the number of elements in the current tree
         newBtreeHeader.decrementNbElems();

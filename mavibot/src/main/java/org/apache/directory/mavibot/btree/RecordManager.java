@@ -32,9 +32,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+
+import net.sf.ehcache.Cache;
 
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.BTreeCreationException;
@@ -706,6 +709,26 @@ public class RecordManager
     private <K, V> void loadBtree( PageIO[] pageIos, BTree<K, V> btree ) throws EndOfFileExceededException,
         IOException, ClassNotFoundException, IllegalAccessException, InstantiationException, IllegalArgumentException, SecurityException, NoSuchFieldException
     {
+        loadBtree( pageIos, btree, null );
+    }
+
+
+    /**
+     * Read a B-tree from the disk. The meta-data are at the given position in the list of pages.
+     * We load a B-tree in two steps : first, we load the B-tree header, then the common informations
+     *
+     * @param pageIos The list of pages containing the meta-data
+     * @param btree The B-tree we have to initialize
+     * @throws InstantiationException
+     * @throws IllegalAccessException
+     * @throws ClassNotFoundException
+     * @throws NoSuchFieldException
+     * @throws SecurityException
+     * @throws IllegalArgumentException
+     */
+    private <K, V> void loadBtree( PageIO[] pageIos, BTree btree, BTree<K, V> parentBTree ) throws EndOfFileExceededException,
+        IOException, ClassNotFoundException, IllegalAccessException, InstantiationException, IllegalArgumentException, SecurityException, NoSuchFieldException
+    {
         long dataPos = 0L;
 
         // Process the B-tree header
@@ -785,7 +808,7 @@ public class RecordManager
 
         // Now, init the B-tree
         ( ( PersistedBTree<K, V> ) btree ).setRecordManager( this );
-        ( ( PersistedBTree<K, V> ) btree ).init();
+        ( ( PersistedBTree<K, V> ) btree ).init( parentBTree );
 
         // Read the rootPage pages on disk
         PageIO[] rootPageIos = readPageIOs( rootPageOffset, Long.MAX_VALUE );
@@ -3928,16 +3951,15 @@ public class RecordManager
      * @param offset the offset of the B-tree header
      * @return the deserialized B-tree
      */
-    /* No qualifier */<K, V> BTree<K, V> loadDupsBtree( long btreeHeaderOffset )
+    /* No qualifier */<K, V> BTree<V, V> loadDupsBtree( long btreeHeaderOffset, BTree<K, V> parentBtree )
     {
         try
         {
             PageIO[] pageIos = readPageIOs( btreeHeaderOffset, Long.MAX_VALUE );
 
-            BTree<K, V> subBtree = BTreeFactory.createPersistedBTree();
-            ( ( PersistedBTree<K, V> ) subBtree ).setBtreeHeaderOffset( btreeHeaderOffset );
-
-            loadBtree( pageIos, subBtree );
+            BTree<V, V> subBtree = BTreeFactory.<V, V> createPersistedBTree( BTreeTypeEnum.PERSISTED_SUB );
+            loadBtree( pageIos, subBtree, parentBtree );
+            
 
             return subBtree;
         }
