@@ -19,6 +19,12 @@
  */
 package org.apache.directory.mavibot.btree;
 
+import java.io.IOException;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+import org.apache.directory.mavibot.btree.exception.RecordManagerException;
+
 /**
  * An implementation of a TransactionManager for in-memory B-trees
  *
@@ -26,12 +32,33 @@ package org.apache.directory.mavibot.btree;
  */
 public class InMemoryTransactionManager extends AbstractTransactionManager
 {
+    /** A lock to protect the transaction handling */
+    private Lock transactionLock = new ReentrantLock();
+    
+    /** A ThreadLocalStorage used to store the current transaction */
+    private static final ThreadLocal<Integer> context = new ThreadLocal<Integer>();
+
     /**
      * {@inheritDoc}
      */
     @Override
     public void beginTransaction()
     {
+        // First, take the lock
+        transactionLock.lock();
+        
+        // Now, check the TLS state
+        Integer nbTxnLevel = context.get();
+        
+        if ( nbTxnLevel == null )
+        {
+            context.set( 1 );
+        }
+        else
+        {
+            // And increment the counter of inner txn.
+            context.set( nbTxnLevel + 1 );
+        }
     }
 
 
@@ -41,6 +68,24 @@ public class InMemoryTransactionManager extends AbstractTransactionManager
     @Override
     public void commit()
     {
+        int nbTxnStarted = context.get();
+        
+        if ( nbTxnStarted == 0 )
+        {
+            // The transaction was rollbacked, quit immediatelly
+            transactionLock.unlock();
+            
+            return;
+        }
+        else
+        {
+            
+            // And decrement the number of started transactions
+            context.set( nbTxnStarted - 1 );
+        }
+
+        // Finally, release the global lock
+        transactionLock.unlock();
     }
 
 
@@ -50,5 +95,10 @@ public class InMemoryTransactionManager extends AbstractTransactionManager
     @Override
     public void rollback()
     {
+        // Reset the counter
+        context.set( 0 );
+
+        // Finally, release the global lock
+        transactionLock.unlock();
     }
 }

@@ -210,7 +210,6 @@ public class MultiThreadedInMemoryBtreeTest
      * Test that we can use many threads inserting data in a BTree
      * @throws InterruptedException
      */
-    @Ignore
     @Test
     public void testInsertMultiThreads() throws InterruptedException, IOException
     {

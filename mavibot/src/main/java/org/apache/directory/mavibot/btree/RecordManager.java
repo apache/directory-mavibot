@@ -568,6 +568,8 @@ public class RecordManager extends AbstractTransactionManager
         {
             // The transaction was rollbacked, quit immediatelly
             transactionLock.unlock();
+            
+            return;
         }
         else
         {
