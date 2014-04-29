@@ -173,8 +173,9 @@ public interface BTree<K, V>
      * @param key The key we are looking at
      * @return true if the key is present, false otherwise
      * @throws IOException If we have an error while trying to access the page
+     * @throws KeyNotFoundException If the key is not found in the B-tree
      */
-    boolean hasKey( K key ) throws IOException;
+    boolean hasKey( K key ) throws IOException, KeyNotFoundException;
 
 
     /**
@@ -217,7 +218,7 @@ public interface BTree<K, V>
      * @return A cursor on the B-tree
      * @throws IOException
      */
-    TupleCursor<K, V> browse() throws IOException;
+    TupleCursor<K, V> browse() throws IOException, KeyNotFoundException;
 
 
     /**
@@ -368,22 +369,4 @@ public interface BTree<K, V>
      * @return the type
      */
     BTreeTypeEnum getType();
-
-
-    /**
-     * Starts a transaction
-     */
-    void beginTransaction();
-
-
-    /**
-     * Commits a transaction
-     */
-    void commit();
-
-
-    /**
-     * Rollback a transaction
-     */
-    void rollback();
 }

@@ -214,7 +214,6 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
-    @SuppressWarnings("unchecked")
     public DeleteResult<K, V> delete( K key, V value, long revision ) throws IOException
     {
         return delete( key, value, revision, null, -1 );

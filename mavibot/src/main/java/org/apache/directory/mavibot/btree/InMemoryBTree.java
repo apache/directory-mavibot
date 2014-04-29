@@ -29,8 +29,6 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.directory.mavibot.btree.exception.InitializationException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
@@ -49,7 +47,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier */class InMemoryBTree<K, V> extends AbstractBTree<K, V> implements TransactionManager, Closeable
+/* No qualifier */class InMemoryBTree<K, V> extends AbstractBTree<K, V> implements Closeable
 {
     /** The LoggerFactory used by this class */
     protected static final Logger LOG = LoggerFactory.getLogger( InMemoryBTree.class );
@@ -78,9 +76,6 @@ import org.slf4j.LoggerFactory;
 
     /** The Journal channel */
     private FileChannel journalChannel = null;
-
-    /** A lock to protect the transaction handling */
-    private ReadWriteLock transactionLock = new ReentrantReadWriteLock();
 
     /**
      * Creates a new BTree, with no initialization.
@@ -184,6 +179,9 @@ import org.slf4j.LoggerFactory;
 
         // Create the queue containing the pending read transactions
         readTransactions = new ConcurrentLinkedQueue<ReadTransaction<K, V>>();
+        
+        // Create the transaction manager
+        transactionManager = new InMemoryTransactionManager();
 
         // Check the files and create them if missing
         // Create the queue containing the modifications, if it's not a in-memory btree
@@ -224,6 +222,43 @@ import org.slf4j.LoggerFactory;
 
 
     /**
+     * {@inheritDoc}
+     */
+    protected ReadTransaction<K, V> beginReadTransaction()
+    {
+        BTreeHeader<K, V> btreeHeader = getBtreeHeader();
+
+        ReadTransaction<K, V> readTransaction = new ReadTransaction<K, V>( btreeHeader, readTransactions );
+
+        readTransactions.add( readTransaction );
+
+        return readTransaction;
+    }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    protected ReadTransaction<K, V> beginReadTransaction( long revision )
+    {
+        BTreeHeader<K, V> btreeHeader = getBtreeHeader( revision );
+
+        if ( btreeHeader != null )
+        {
+            ReadTransaction<K, V> readTransaction = new ReadTransaction<K, V>(  btreeHeader, readTransactions );
+
+            readTransactions.add( readTransaction );
+
+            return readTransaction;
+        }
+        else
+        {
+            return null;
+        }
+    }
+
+
+    /**
      * Close the BTree, cleaning up all the data structure
      */
     public void close() throws IOException
@@ -255,8 +290,6 @@ import org.slf4j.LoggerFactory;
      */
     protected Tuple<K, V> delete( K key, V value, long revision ) throws IOException
     {
-        beginTransaction( revision );
-
         if ( revision == -1L )
         {
             revision = currentRevision.get() + 1;
@@ -276,8 +309,6 @@ import org.slf4j.LoggerFactory;
         if ( result instanceof NotPresentResult )
         {
             // Key not found.
-            commit();
-
             return null;
         }
 
@@ -311,8 +342,6 @@ import org.slf4j.LoggerFactory;
         storeRevision( newBtreeHeader );
 
         // Return the value we have found if it was modified
-        commit();
-
         if ( oldBtreeHeader.getNbUsers() == 0 )
         {
             btreeRevisions.remove( oldBtreeHeader.getRevision() );
@@ -337,15 +366,8 @@ import org.slf4j.LoggerFactory;
      */
     /* no qualifier */InsertResult<K, V> insert( K key, V value, long revision ) throws IOException
     {
-        if ( key == null )
-        {
-            throw new IllegalArgumentException( "Key must not be null" );
-        }
-
         // We have to start a new transaction, which will be committed or rollbacked
         // locally. This will duplicate the current BtreeHeader during this phase.
-        beginTransaction( revision );
-
         if ( revision == -1L )
         {
             revision = currentRevision.get() + 1;
@@ -403,8 +425,6 @@ import org.slf4j.LoggerFactory;
         }
 
         storeRevision( newBtreeHeader );
-
-        commit();
 
         if ( oldBtreeHeader.getNbUsers() == 0 )
         {
@@ -488,44 +508,52 @@ import org.slf4j.LoggerFactory;
         // Create a buffer containing 200 4Kb pages (around 1Mb)
         ByteBuffer bb = ByteBuffer.allocateDirect( writeBufferSize );
 
-        TupleCursor<K, V> cursor = browse();
-
-        if ( keySerializer == null )
+        try
         {
-            throw new MissingSerializerException( "Cannot flush the btree without a Key serializer" );
+            TupleCursor<K, V> cursor = browse();
+    
+            if ( keySerializer == null )
+            {
+                throw new MissingSerializerException( "Cannot flush the btree without a Key serializer" );
+            }
+    
+            if ( valueSerializer == null )
+            {
+                throw new MissingSerializerException( "Cannot flush the btree without a Value serializer" );
+            }
+    
+            // Write the number of elements first
+            bb.putLong( getBtreeHeader().getNbElems() );
+    
+            while ( cursor.hasNext() )
+            {
+                Tuple<K, V> tuple = cursor.next();
+    
+                byte[] keyBuffer = keySerializer.serialize( tuple.getKey() );
+    
+                writeBuffer( ch, bb, keyBuffer );
+    
+                byte[] valueBuffer = valueSerializer.serialize( tuple.getValue() );
+    
+                writeBuffer( ch, bb, valueBuffer );
+            }
+    
+            // Write the buffer if needed
+            if ( bb.position() > 0 )
+            {
+                bb.flip();
+                ch.write( bb );
+            }
+    
+            // Flush to the disk for real
+            ch.force( true );
+            ch.close();
         }
-
-        if ( valueSerializer == null )
+        catch ( KeyNotFoundException knfe )
         {
-            throw new MissingSerializerException( "Cannot flush the btree without a Value serializer" );
+            knfe.printStackTrace();
+            throw new IOException( knfe.getMessage() );
         }
-
-        // Write the number of elements first
-        bb.putLong( getBtreeHeader().getNbElems() );
-
-        while ( cursor.hasNext() )
-        {
-            Tuple<K, V> tuple = cursor.next();
-
-            byte[] keyBuffer = keySerializer.serialize( tuple.getKey() );
-
-            writeBuffer( ch, bb, keyBuffer );
-
-            byte[] valueBuffer = valueSerializer.serialize( tuple.getValue() );
-
-            writeBuffer( ch, bb, valueBuffer );
-        }
-
-        // Write the buffer if needed
-        if ( bb.position() > 0 )
-        {
-            bb.flip();
-            ch.write( bb );
-        }
-
-        // Flush to the disk for real
-        ch.force( true );
-        ch.close();
 
         // Rename the current file to save a backup
         File backupFile = File.createTempFile( "mavibot", null, baseDirectory );
@@ -767,63 +795,6 @@ import org.slf4j.LoggerFactory;
 
 
     /**
-     * Starts a transaction
-     */
-    public void beginTransaction()
-    {
-        beginTransaction( getRevision() + 1 );
-    }
-
-
-    /**
-     * Starts a transaction
-     */
-    private void beginTransaction( long revision )
-    {
-        transactionLock.writeLock().lock();
-
-        /*
-        if ( transactionStarted.get() )
-        {
-            try
-            {
-                // A transaction has already been started, just wait on the write list
-                transactionLock.writeLock().lock();
-            }
-            finally
-            {
-                // Done, we can release the readLock
-                transactionLock.readLock().unlock();
-            }
-        }
-        else
-        {
-            // We have to start a transaction
-            // First let's release the read lock
-            transactionLock.readLock().unlock();
-
-            // Get the write lock now
-            transactionLock.writeLock().lock();
-
-            try
-            {
-                // Check the condition again
-                if ( !transactionStarted.get() )
-                {
-                    // Start a new transaction
-                    transactionStarted.set( true );
-                }
-            }
-            finally
-            {
-                transactionLock.readLock().unlock();
-            }
-        }
-        */
-    }
-
-
-    /**
      * Create a new B-tree header to be used for update operations
      * @param revision The reclaimed revision
      */
@@ -837,24 +808,6 @@ import org.slf4j.LoggerFactory;
         newBtreeHeader.setRootPage( btreeHeader.getRootPage() );
 
         return newBtreeHeader;
-    }
-
-
-    /**
-     * Commits a transaction
-     */
-    public void commit()
-    {
-        transactionLock.writeLock().unlock();
-    }
-
-
-    /**
-     * Rollback a transaction
-     */
-    public void rollback()
-    {
-        transactionLock.writeLock().unlock();
     }
 
 

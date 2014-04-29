@@ -911,7 +911,7 @@ public class InMemoryBTreeTest
      * Test the exist() method
      */
     @Test
-    public void testExist() throws IOException
+    public void testExist() throws IOException, KeyNotFoundException
     {
         // Create a BTree with pages containing 4 elements
         BTree<Integer, String> btree = createTwoLevelBTreeFullLeaves();
@@ -1193,7 +1193,7 @@ public class InMemoryBTreeTest
      * @param element The removed element
      * @param expected The expected set of elements
      */
-    private void checkRemoval( BTree<Integer, String> btree, int element, Set<Integer> expected ) throws IOException
+    private void checkRemoval( BTree<Integer, String> btree, int element, Set<Integer> expected ) throws IOException, KeyNotFoundException
     {
         Tuple<Integer, String> removed = btree.delete( element );
         assertEquals( element, removed.getKey().intValue() );
@@ -1213,7 +1213,7 @@ public class InMemoryBTreeTest
      * @param btree The tree to check
      * @param expected The set with the expected elements
      */
-    private void checkTree( BTree<Integer, String> btree, Set<Integer> expected )
+    private void checkTree( BTree<Integer, String> btree, Set<Integer> expected ) throws KeyNotFoundException
     {
         try
         {
@@ -1723,7 +1723,7 @@ public class InMemoryBTreeTest
      * Test the addition of elements with null values
      */
     @Test
-    public void testAdditionNullValues() throws IOException
+    public void testAdditionNullValues() throws IOException, KeyNotFoundException
     {
         BTree<Integer, String> btree = createMultiLevelBTreeLeavesHalfFull();
 

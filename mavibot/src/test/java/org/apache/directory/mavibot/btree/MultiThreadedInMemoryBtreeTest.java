@@ -33,6 +33,7 @@ import org.apache.directory.mavibot.btree.serializer.StringSerializer;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.Ignore;
 
 
 /**
@@ -110,7 +111,7 @@ public class MultiThreadedInMemoryBtreeTest
      * @return The number of read elements
      * @throws IOException If the browse failed
      */
-    private int testBrowse() throws IOException
+    private int testBrowse() throws IOException, KeyNotFoundException
     {
         TupleCursor<Long, String> cursor = btree.browse();
 
@@ -209,6 +210,7 @@ public class MultiThreadedInMemoryBtreeTest
      * Test that we can use many threads inserting data in a BTree
      * @throws InterruptedException
      */
+    @Ignore
     @Test
     public void testInsertMultiThreads() throws InterruptedException, IOException
     {

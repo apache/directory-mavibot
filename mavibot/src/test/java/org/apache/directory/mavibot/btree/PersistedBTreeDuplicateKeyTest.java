@@ -35,6 +35,7 @@ import java.util.UUID;
 import org.apache.commons.io.FileUtils;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.DuplicateValueNotAllowedException;
+import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
@@ -122,7 +123,7 @@ public class PersistedBTreeDuplicateKeyTest
 
 
     @Test
-    public void testInsertNullValue() throws IOException
+    public void testInsertNullValue() throws IOException, KeyNotFoundException
     {
         btree.insert( 1L, null );
 
@@ -141,7 +142,7 @@ public class PersistedBTreeDuplicateKeyTest
 
 
     @Test
-    public void testBrowseEmptyTree() throws IOException
+    public void testBrowseEmptyTree() throws IOException, KeyNotFoundException
     {
         IntSerializer serializer = IntSerializer.INSTANCE;
 
@@ -177,7 +178,7 @@ public class PersistedBTreeDuplicateKeyTest
 
 
     @Test
-    public void testDuplicateKey() throws IOException
+    public void testDuplicateKey() throws IOException, KeyNotFoundException
     {
         btree.insert( 1L, "1" );
         btree.insert( 1L, "2" );

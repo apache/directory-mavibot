@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.Comparator;
 
+import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 
@@ -243,6 +244,10 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             // TODO Auto-generated catch block
             e.printStackTrace();
             return false;
+        }
+        catch ( KeyNotFoundException knfe )
+        {
+            knfe.printStackTrace();return false;
         }
     }
 

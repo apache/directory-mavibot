@@ -33,6 +33,7 @@ import java.util.UUID;
 
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.DuplicateValueNotAllowedException;
+import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
@@ -47,7 +48,7 @@ import org.junit.Test;
 public class InMemoryBTreeDuplicateKeyTest
 {
     @Test
-    public void testInsertNullValue() throws IOException
+    public void testInsertNullValue() throws IOException, KeyNotFoundException
     {
         IntSerializer serializer = IntSerializer.INSTANCE;
 
@@ -69,7 +70,7 @@ public class InMemoryBTreeDuplicateKeyTest
 
 
     @Test
-    public void testBrowseEmptyTree() throws IOException
+    public void testBrowseEmptyTree() throws IOException, KeyNotFoundException
     {
         IntSerializer serializer = IntSerializer.INSTANCE;
 
@@ -105,7 +106,7 @@ public class InMemoryBTreeDuplicateKeyTest
 
 
     @Test
-    public void testDuplicateKey() throws IOException
+    public void testDuplicateKey() throws IOException, KeyNotFoundException
     {
         IntSerializer serializer = IntSerializer.INSTANCE;
 

@@ -27,6 +27,7 @@ import java.util.UUID;
 
 import org.apache.directory.mavibot.btree.exception.BTreeOperationException;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
+import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
 
 /**
@@ -201,6 +202,10 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
             {
                 throw new BTreeOperationException( e );
             }
+            catch ( KeyNotFoundException knfe )
+            {
+                throw new BTreeOperationException( knfe );
+            }
         }
 
         return returnedValue;
@@ -247,6 +252,12 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
             {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
+                return false;
+            }
+            catch ( KeyNotFoundException knfe )
+            {
+                // TODO Auto-generated catch block
+                knfe.printStackTrace();
                 return false;
             }
         }

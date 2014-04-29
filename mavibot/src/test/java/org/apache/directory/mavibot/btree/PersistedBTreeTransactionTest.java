@@ -130,9 +130,9 @@ public class PersistedBTreeTransactionTest
         for ( long i = 0L; i < 1000L; i++ )
         {
             System.out.println( i );
-            btreeWithTransactions.beginTransaction();
+            //btreeWithTransactions.beginTransaction();
             btreeWithTransactions.insert( i, Long.toString( i ) );
-            btreeWithTransactions.commit();
+            //btreeWithTransactions.commit();
         }
 
         long t1 = System.currentTimeMillis();

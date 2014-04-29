@@ -34,6 +34,7 @@ import java.util.UUID;
 import org.apache.commons.io.FileUtils;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
+import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
 import org.junit.After;
@@ -194,9 +195,10 @@ public class PersistedBTreeBrowseTest
     //----------------------------------------------------------------------------------------
     /**
      * Test the browse methods on an empty btree
+     * @throws KeyNotFoundException 
      */
     @Test
-    public void testBrowseEmptyBTree() throws IOException, BTreeAlreadyManagedException
+    public void testBrowseEmptyBTree() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
         TupleCursor<Long, String> cursor = btree.browse();
 
@@ -231,7 +233,7 @@ public class PersistedBTreeBrowseTest
      * Test the browse methods on a btree containing just a leaf
      */
     @Test
-    public void testBrowseBTreeLeafNext() throws IOException, BTreeAlreadyManagedException
+    public void testBrowseBTreeLeafNext() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
         // Inject some data
         btree.insert( 1L, "1" );
@@ -261,7 +263,7 @@ public class PersistedBTreeBrowseTest
      * Test the browse methods on a btree containing just a leaf
      */
     @Test
-    public void testBrowseBTreeLeafPrev() throws IOException, BTreeAlreadyManagedException
+    public void testBrowseBTreeLeafPrev() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
         // Inject some data
         btree.insert( 1L, "1" );
@@ -289,7 +291,7 @@ public class PersistedBTreeBrowseTest
      * move at the end or at the beginning
      */
     @Test
-    public void testBrowseBTreeLeafFirstLast() throws IOException, BTreeAlreadyManagedException
+    public void testBrowseBTreeLeafFirstLast() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
         // Inject some data
         btree.insert( 1L, "1" );
@@ -371,7 +373,7 @@ public class PersistedBTreeBrowseTest
      * move back and forth
      */
     @Test
-    public void testBrowseBTreeLeafNextPrev() throws IOException, BTreeAlreadyManagedException
+    public void testBrowseBTreeLeafNextPrev() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
         // Inject some data
         btree.insert( 1L, "1" );
@@ -423,7 +425,7 @@ public class PersistedBTreeBrowseTest
      * Test the browse methods on a btree containing many nodes
      */
     @Test
-    public void testBrowseBTreeNodesNext() throws IOException, BTreeAlreadyManagedException
+    public void testBrowseBTreeNodesNext() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
         // Inject some data
         for ( long i = 1; i < 1000L; i++ )
@@ -455,7 +457,7 @@ public class PersistedBTreeBrowseTest
      * Test the browse methods on a btree containing many nodes
      */
     @Test
-    public void testBrowseBTreeNodesPrev() throws IOException, BTreeAlreadyManagedException
+    public void testBrowseBTreeNodesPrev() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
         // Inject some data
         for ( long i = 1; i < 1000L; i++ )
@@ -487,7 +489,7 @@ public class PersistedBTreeBrowseTest
      * Test the browse methods on a btree containing just a leaf with duplicate values
      */
     @Test
-    public void testBrowseBTreeLeafNextDups1() throws IOException, BTreeAlreadyManagedException
+    public void testBrowseBTreeLeafNextDups1() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
         // Inject some duplicate data
         btree.insert( 1L, "1" );
@@ -517,7 +519,7 @@ public class PersistedBTreeBrowseTest
      * Test the browse methods on a btree containing just a leaf with duplicate values
      */
     @Test
-    public void testBrowseBTreeLeafNextDupsN() throws IOException, BTreeAlreadyManagedException
+    public void testBrowseBTreeLeafNextDupsN() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
         // Inject some duplicate data
         btree.insert( 1L, "1" );
@@ -551,7 +553,7 @@ public class PersistedBTreeBrowseTest
      * Test the browse methods on a btree containing just a leaf with duplicate values
      */
     @Test
-    public void testBrowseBTreeLeafPrevDups1() throws IOException, BTreeAlreadyManagedException
+    public void testBrowseBTreeLeafPrevDups1() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
         // Inject some duplicate data
         btree.insert( 1L, "1" );
@@ -581,7 +583,7 @@ public class PersistedBTreeBrowseTest
      * Test the browse methods on a btree containing just a leaf with duplicate values
      */
     @Test
-    public void testBrowseBTreeLeafPrevDupsN() throws IOException, BTreeAlreadyManagedException
+    public void testBrowseBTreeLeafPrevDupsN() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
         // Inject some duplicate data
         btree.insert( 1L, "1" );
@@ -615,7 +617,7 @@ public class PersistedBTreeBrowseTest
      * Test the browse methods on a btree containing nodes with duplicate values
      */
     @Test
-    public void testBrowseBTreeNodesNextDupsN() throws IOException, BTreeAlreadyManagedException
+    public void testBrowseBTreeNodesNextDupsN() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
         // Inject some data
         for ( long i = 1; i < 1000L; i++ )
@@ -661,7 +663,7 @@ public class PersistedBTreeBrowseTest
      * Test the browse methods on a btree containing nodes with duplicate values
      */
     @Test
-    public void testBrowseBTreeNodesPrevDupsN() throws IOException, BTreeAlreadyManagedException
+    public void testBrowseBTreeNodesPrevDupsN() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
         // Inject some data
         for ( long i = 1; i < 1000L; i++ )
@@ -708,7 +710,7 @@ public class PersistedBTreeBrowseTest
      * stored into a sub btree
      */
     @Test
-    public void testBrowseBTreeLeafNextDupsSubBTree1() throws IOException, BTreeAlreadyManagedException
+    public void testBrowseBTreeLeafNextDupsSubBTree1() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
         // Inject some duplicate data which will be stored into a sub btree
         for ( long i = 1L; i < 32L; i++ )
@@ -740,7 +742,7 @@ public class PersistedBTreeBrowseTest
      * Test the browse methods on a btree containing just a leaf with duplicate values
      */
     @Test
-    public void testBrowseBTreeLeafPrevDupsSubBTree1() throws IOException, BTreeAlreadyManagedException
+    public void testBrowseBTreeLeafPrevDupsSubBTree1() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
         // Inject some duplicate data which will be stored into a sub btree
         for ( long i = 1L; i < 32L; i++ )
@@ -937,7 +939,7 @@ public class PersistedBTreeBrowseTest
       * with duplicate values.
       */
     @Test
-    public void testNextKey() throws IOException, BTreeAlreadyManagedException
+    public void testNextKey() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
         // Inject some data
         for ( long i = 1; i < 1000L; i++ )
@@ -987,7 +989,7 @@ public class PersistedBTreeBrowseTest
      */
    @Test
    @Ignore
-   public void testNextKeyDups() throws IOException, BTreeAlreadyManagedException
+   public void testNextKeyDups() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
    {
        // Inject some data
        //for ( long i = 1; i < 3; i++ )
@@ -1036,7 +1038,7 @@ public class PersistedBTreeBrowseTest
      * with duplicate values.
      */
     @Test
-    public void testPrevKey() throws IOException, BTreeAlreadyManagedException
+    public void testPrevKey() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
         // Inject some data
         for ( long i = 1; i < 1000L; i++ )

@@ -28,6 +28,7 @@ import java.util.UUID;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyCreatedException;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.BTreeCreationException;
+import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
@@ -417,6 +418,12 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
+                return null;
+            }
+            catch ( KeyNotFoundException knfe )
+            {
+                // TODO Auto-generated catch block
+                knfe.printStackTrace();
                 return null;
             }
         }

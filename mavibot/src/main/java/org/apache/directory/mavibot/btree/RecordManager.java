@@ -31,13 +31,12 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
-import java.util.UUID;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-
-import net.sf.ehcache.Cache;
 
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.BTreeCreationException;
@@ -66,7 +65,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class RecordManager
+public class RecordManager extends AbstractTransactionManager
 {
     /** The LoggerFactory used by this class */
     protected static final Logger LOG = LoggerFactory.getLogger( RecordManager.class );
@@ -147,6 +146,9 @@ public class RecordManager
 
     /** The set of managed B-trees */
     private Map<String, BTree<Object, Object>> managedBtrees;
+    
+    /** The queue of recently closed transactions */
+    private Queue<RevisionName> closedTransactionsQueue = new LinkedBlockingQueue<RevisionName>();
 
     /** The default file name */
     private static final String DEFAULT_FILE_NAME = "mavibot.db";
@@ -183,9 +185,9 @@ public class RecordManager
 
     /** A lock to protect the transaction handling */
     private Lock transactionLock = new ReentrantLock();
-
-    /** A counter used to remember how many times a transaction has been started */
-    private int lockHeldCounter = 0;
+    
+    /** A ThreadLocalStorage used to store the current transaction */
+    private static final ThreadLocal<Integer> context = new ThreadLocal<Integer>();
 
     /** The list of PageIO that can be freed after a commit */
     List<PageIO> freedPages = new ArrayList<PageIO>();
@@ -408,7 +410,7 @@ public class RecordManager
      * @throws IllegalArgumentException
      */
     private void loadRecordManager() throws IOException, ClassNotFoundException, IllegalAccessException,
-        InstantiationException, IllegalArgumentException, SecurityException, NoSuchFieldException
+        InstantiationException, IllegalArgumentException, SecurityException, NoSuchFieldException, KeyNotFoundException
     {
         if ( fileChannel.size() != 0 )
         {
@@ -535,11 +537,23 @@ public class RecordManager
     /**
      * Starts a transaction
      */
-    /*No Qualifier*/void beginTransaction()
+    public void beginTransaction()
     {
+        // First, take the lock
         transactionLock.lock();
-
-        lockHeldCounter++;
+        
+        // Now, check the TLS state
+        Integer nbTxnLevel = context.get();
+        
+        if ( nbTxnLevel == null )
+        {
+            context.set( 1 );
+        }
+        else
+        {
+            // And increment the counter of inner txn.
+            context.set( nbTxnLevel + 1 );
+        }
     }
 
 
@@ -548,21 +562,26 @@ public class RecordManager
      */
     public void commit()
     {
-        lockHeldCounter--;
-
-        if ( !fileChannel.isOpen() )
+        int nbTxnStarted = context.get();
+        
+        if ( nbTxnStarted == 0 )
         {
-            // The file has been closed, nothing remains to commit, let's get out
+            // The transaction was rollbacked, quit immediatelly
             transactionLock.unlock();
-            return;
         }
-
-        if ( lockHeldCounter == 0 )
+        else
         {
+            if ( !fileChannel.isOpen() )
+            {
+                // The file has been closed, nothing remains to commit, let's get out
+                transactionLock.unlock();
+                return;
+            }
+    
             // We are done with the transaction
             // First update the RMHeader to be sure that we have a way to restore from a crash
             updateRecordManagerHeader();
-
+    
             // We can now free pages
             for ( PageIO pageIo : freedPages )
             {
@@ -575,16 +594,20 @@ public class RecordManager
                     throw new RecordManagerException( ioe.getMessage() );
                 }
             }
-
+    
             // Release the allocated and freed pages list
             freedPages.clear();
             allocatedPages.clear();
-
+    
             // And update the RMHeader again, removing the old references to BOB and CPB b-tree headers
             // here, we have to erase the old references to keep only the new ones.
             updateRecordManagerHeader();
+            
+            // And decrement the number of started transactions
+            context.set( nbTxnStarted - 1 );
         }
 
+        // Finally, release the global lock
         transactionLock.unlock();
     }
 
@@ -594,30 +617,28 @@ public class RecordManager
      */
     public void rollback()
     {
-        lockHeldCounter--;
+        // Reset the counter
+        context.set( 0 );
 
-        if ( lockHeldCounter == 0 )
+        // We can now free allocated pages, this is the end of the transaction
+        for ( PageIO pageIo : allocatedPages )
         {
-            // We can now free allocated pages, this is the end of the transaction
-            for ( PageIO pageIo : allocatedPages )
+            try
             {
-                try
-                {
-                    free( pageIo );
-                }
-                catch ( IOException ioe )
-                {
-                    throw new RecordManagerException( ioe.getMessage() );
-                }
+                free( pageIo );
             }
-
-            // Release the allocated and freed pages list
-            freedPages.clear();
-            allocatedPages.clear();
-
-            // And update the RMHeader
-            updateRecordManagerHeader();
+            catch ( IOException ioe )
+            {
+                throw new RecordManagerException( ioe.getMessage() );
+            }
         }
+
+        // Release the allocated and freed pages list
+        freedPages.clear();
+        allocatedPages.clear();
+
+        // And update the RMHeader
+        updateRecordManagerHeader();
 
         transactionLock.unlock();
     }
@@ -1835,7 +1856,7 @@ public class RecordManager
         btreeOfBtrees.insert( nameRevision, btreeHeaderOffset );
 
         // Update the B-tree of B-trees
-        currentBtreeOfBtreesOffset = ((AbstractBTree<K, V>)btreeOfBtrees).getBtreeHeader().getBTreeHeaderOffset();
+        currentBtreeOfBtreesOffset = ((AbstractBTree<NameRevision, Long>)btreeOfBtrees).getBtreeHeader().getBTreeHeaderOffset();
     }
 
 
@@ -1861,8 +1882,8 @@ public class RecordManager
 
         copiedPageBtree.insert( revisionName, pageOffsets );
 
-        // Update the B-tree of B-trees
-        currentCopiedPagesBtreeOffset = ((AbstractBTree<K, V>)copiedPageBtree).getBtreeHeader().getBTreeHeaderOffset();
+        // Update the CopiedPageBtree offset
+        currentCopiedPagesBtreeOffset = ((AbstractBTree<RevisionName, long[]>)copiedPageBtree).getBtreeHeader().getBTreeHeaderOffset();
     }
 
 
@@ -2221,7 +2242,6 @@ public class RecordManager
 
         for ( PageIO pageIo : pageIos )
         {
-            ByteBuffer data = pageIo.getData();
             pageIo.getData().rewind();
 
             if ( fileChannel.size() < ( pageIo.getOffset() + pageSize ) )
@@ -3515,6 +3535,17 @@ public class RecordManager
         return btree;
     }
 
+    
+    /**
+     * Add a newly closd transaction into the closed transaction queue
+     */
+    /* no qualifier */ void releaseTransaction( ReadTransaction readTransaction )
+    {
+        RevisionName revisionName = new RevisionName( 
+            readTransaction.getRevision(), 
+            readTransaction.getBtreeHeader().getBtree().getName() );
+        closedTransactionsQueue.add( revisionName );
+    }
 
     private void setCheckedPage( long[] checkedPages, long offset, int pageSize )
     {

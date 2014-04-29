@@ -43,15 +43,12 @@ import org.slf4j.LoggerFactory;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements TransactionManager, Closeable
+public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeable
 {
     /** The LoggerFactory used by this class */
     protected static final Logger LOG = LoggerFactory.getLogger( PersistedBTree.class );
 
     protected static final Logger LOG_PAGES = LoggerFactory.getLogger( "LOG_PAGES" );
-
-    /** The RecordManager if the B-tree is managed */
-    private RecordManager recordManager;
 
     /** The cache associated with this B-tree */
     protected Cache cache;
@@ -74,6 +71,9 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
 
     /** The BtreeInfo offset */
     private long btreeInfoOffset;
+    
+    /** The internal recordManager */
+    private RecordManager recordManager;
 
     /**
      * Creates a new BTree, with no initialization.
@@ -261,6 +261,8 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
      */
     /* No qualifier */void setRecordManager( RecordManager recordManager )
     {
+        // The RecordManager is also the TransactionManager
+        transactionManager = recordManager;
         this.recordManager = recordManager;
     }
 
@@ -286,8 +288,6 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
             revision = currentRevision.get() + 1;
         }
 
-        recordManager.beginTransaction();
-
         try
         {
             // Try to delete the entry starting from the root page. Here, the root
@@ -299,7 +299,6 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
             {
                 // We haven't found the element in the B-tree, just get out
                 // without updating the recordManager
-                rollback();
 
                 return null;
             }
@@ -311,7 +310,6 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
 
             // If the B-tree is managed, we have to update the rootPage on disk
             // Update the RecordManager header
-            commit();
 
             // Return the value we have found if it was modified
             return tuple;
@@ -319,8 +317,6 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
         catch ( IOException ioe )
         {
             // if we've got an error, we have to rollback
-            rollback();
-
             throw ioe;
         }
     }
@@ -442,19 +438,12 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
      */
     /* no qualifier */InsertResult<K, V> insert( K key, V value, long revision ) throws IOException
     {
-        if ( key == null )
-        {
-            throw new IllegalArgumentException( "Key must not be null" );
-        }
-
         // We have to start a new transaction, which will be committed or rollbacked
         // locally. This will duplicate the current BtreeHeader during this phase.
         if ( revision == -1L )
         {
             revision = currentRevision.get() + 1;
         }
-
-        recordManager.beginTransaction();
 
         try
         {
@@ -463,17 +452,11 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
             // a Node or a Leaf
             InsertResult<K, V> result = processInsert( key, value, revision );
 
-            // Done ! we can commit now
-            commit();
-
             // Return the value we have found if it was modified
             return result;
         }
         catch ( IOException ioe )
         {
-            // if we've got an error, we have to rollback
-            rollback();
-
             throw ioe;
         }
     }
@@ -713,39 +696,41 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Transac
 
 
     /**
-     * Starts a transaction
+     * {@inheritDoc}
      */
-    public void beginTransaction()
+    protected ReadTransaction<K, V> beginReadTransaction()
     {
-        beginTransaction( getRevision() + 1 );
+        BTreeHeader<K, V> btreeHeader = getBtreeHeader();
+
+        ReadTransaction<K, V> readTransaction = new ReadTransaction<K, V>( recordManager, btreeHeader, readTransactions );
+
+        readTransactions.add( readTransaction );
+
+        return readTransaction;
     }
-
-
+    
+    
     /**
-     * Starts a transaction
+     * {@inheritDoc}
      */
-    private void beginTransaction( long revision )
+    protected ReadTransaction<K, V> beginReadTransaction( long revision )
     {
+        BTreeHeader<K, V> btreeHeader = getBtreeHeader( revision );
+
+        if ( btreeHeader != null )
+        {
+            ReadTransaction<K, V> readTransaction = new ReadTransaction<K, V>(  recordManager, btreeHeader, readTransactions );
+
+            readTransactions.add( readTransaction );
+
+            return readTransaction;
+        }
+        else
+        {
+            return null;
+        }
     }
-
-
-    /**
-     * Commits a transaction
-     */
-    public void commit()
-    {
-        recordManager.commit();
-    }
-
-
-    /**
-     * Rollback a transaction
-     */
-    public void rollback()
-    {
-        recordManager.rollback();
-    }
-
+    
 
     /**
      * @see Object#toString()

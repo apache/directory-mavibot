@@ -19,36 +19,17 @@
  */
 package org.apache.directory.mavibot.btree;
 
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 /**
- * An implementation of a TransactionManager for in-memory B-trees
- *
+ * An abstract class implementing the TransactionManager interface.
+ * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class InMemoryTransactionManager extends AbstractTransactionManager
+public abstract class AbstractTransactionManager implements TransactionManager
 {
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void beginTransaction()
-    {
-    }
+    /** A lock to protect the transaction handling */
+    private ReadWriteLock transactionLock = new ReentrantReadWriteLock();
 
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void commit()
-    {
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void rollback()
-    {
-    }
 }

@@ -29,6 +29,7 @@ import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
+import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
 import org.junit.After;
@@ -123,7 +124,7 @@ public class RecordManagerFreePageTest
      * Test the creation of a RecordManager, and that we can read it back.
      */
     @Test
-    public void testRecordManager() throws IOException, BTreeAlreadyManagedException
+    public void testRecordManager() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
         assertEquals( 1, recordManager1.getNbManagedTrees() );
 

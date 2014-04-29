@@ -91,6 +91,9 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
     /** The current revision */
     protected AtomicLong currentRevision = new AtomicLong( 0L );
+    
+    /** The TransactionManager used for this BTree */
+    protected TransactionManager transactionManager;
 
     /**
      * Starts a Read Only transaction. If the transaction is not closed, it will be
@@ -98,16 +101,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      *
      * @return The created transaction
      */
-    protected ReadTransaction<K, V> beginReadTransaction()
-    {
-        BTreeHeader<K, V> btreeHeader = getBtreeHeader();
-
-        ReadTransaction<K, V> readTransaction = new ReadTransaction<K, V>( btreeHeader );
-
-        readTransactions.add( readTransaction );
-
-        return readTransaction;
-    }
+    protected abstract ReadTransaction<K, V> beginReadTransaction();
 
 
     /**
@@ -116,29 +110,13 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      *
      * @return The created transaction
      */
-    protected ReadTransaction<K, V> beginReadTransaction( long revision )
-    {
-        BTreeHeader<K, V> btreeHeader = getBtreeHeader( revision );
-
-        if ( btreeHeader != null )
-        {
-            ReadTransaction<K, V> readTransaction = new ReadTransaction<K, V>( btreeHeader );
-
-            readTransactions.add( readTransaction );
-
-            return readTransaction;
-        }
-        else
-        {
-            return null;
-        }
-    }
+    protected abstract ReadTransaction<K, V> beginReadTransaction( long revision );
 
 
     /**
      * {@inheritDoc}
      */
-    public TupleCursor<K, V> browse() throws IOException
+    public TupleCursor<K, V> browse() throws IOException, KeyNotFoundException
     {
         ReadTransaction<K, V> transaction = beginReadTransaction();
 
@@ -150,7 +128,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         {
             ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
 
-            TupleCursor<K, V> cursor = transaction.getRootPage().browse( transaction, stack, 0 );
+            TupleCursor<K, V> cursor = getRootPage().browse( transaction, stack, 0 );
 
             // Set the position before the first element
             cursor.beforeFirst();
@@ -176,7 +154,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
 
             // And get the cursor
-            TupleCursor<K, V> cursor = transaction.getRootPage().browse( transaction, stack, 0 );
+            TupleCursor<K, V> cursor = getRootPage( transaction.getRevision() ).browse( transaction, stack, 0 );
 
             return cursor;
         }
@@ -192,9 +170,17 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
         ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
 
-        TupleCursor<K, V> cursor = transaction.getRootPage().browse( key, transaction, stack, 0 );
-
-        return cursor;
+        TupleCursor<K, V> cursor;
+        try
+        {
+            cursor = getRootPage( transaction.getRevision() ).browse( key, transaction, stack, 0 );
+            
+            return cursor;
+        }
+        catch ( KeyNotFoundException e )
+        {
+            throw new IOException( e.getMessage() );
+        }
     }
 
 
@@ -214,7 +200,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
 
             // And get the cursor
-            TupleCursor<K, V> cursor = transaction.getRootPage().browse( key, transaction, stack, 0 );
+            TupleCursor<K, V> cursor = getRootPage( transaction.getRevision() ).browse( key, transaction, stack, 0 );
 
             return cursor;
         }
@@ -236,7 +222,11 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         {
             try
             {
-                return transaction.getRootPage().contains( key, value );
+                return getRootPage( transaction.getRevision() ).contains( key, value );
+            }
+            catch ( KeyNotFoundException knfe )
+            {
+                throw new IOException( knfe.getMessage() );
             }
             finally
             {
@@ -262,7 +252,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         {
             try
             {
-                return transaction.getRootPage().contains( key, value );
+                return getRootPage( transaction.getRevision() ).contains( key, value );
             }
             finally
             {
@@ -303,9 +293,22 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             throw new IllegalArgumentException( "Value must not be null" );
         }
 
-        Tuple<K, V> deleted = delete( key, value, currentRevision.get() + 1 );
+        transactionManager.beginTransaction();
 
-        return deleted;
+        try
+        {
+            Tuple<K, V> deleted = delete( key, value, currentRevision.get() + 1 );
+            
+            transactionManager.commit();
+    
+            return deleted;
+        }
+        catch ( IOException ioe )
+        {
+            transactionManager.rollback();
+            
+            throw ioe;
+        }
     }
 
 
@@ -332,14 +335,35 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     {
         V existingValue = null;
 
-        InsertResult<K, V> result = insert( key, value, -1L );
-
-        if ( result instanceof ModifyResult )
+        if ( key == null )
         {
-            existingValue = ( ( ModifyResult<K, V> ) result ).getModifiedValue();
+            throw new IllegalArgumentException( "Key must not be null" );
         }
 
-        return existingValue;
+        // Take the lock if it's not already taken by another thread
+        transactionManager.beginTransaction();
+        
+        try
+        {
+            InsertResult<K, V> result = insert( key, value, -1L );
+
+            if ( result instanceof ModifyResult )
+            {
+                existingValue = ( ( ModifyResult<K, V> ) result ).getModifiedValue();
+            }
+            
+            // Commit now
+            transactionManager.commit();
+    
+            return existingValue;
+        }
+        catch ( IOException ioe )
+        {
+            // We have had an exception, we must rollback the transaction
+            transactionManager.rollback();
+            
+            return null;
+        }
     }
 
 
@@ -373,7 +397,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         {
             try
             {
-                return transaction.getRootPage().get( key );
+                return getRootPage( transaction.getRevision() ).get( key );
             }
             finally
             {
@@ -398,7 +422,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         {
             try
             {
-                return transaction.getRootPage().get( key );
+                return getRootPage( transaction.getRevision() ).get( key );
             }
             finally
             {
@@ -435,7 +459,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         {
             try
             {
-                return transaction.getRootPage().getValues( key );
+                return getRootPage( transaction.getRevision() ).getValues( key );
             }
             finally
             {
@@ -448,7 +472,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     /**
      * {@inheritDoc}
      */
-    public boolean hasKey( K key ) throws IOException
+    public boolean hasKey( K key ) throws IOException, KeyNotFoundException
     {
         if ( key == null )
         {
@@ -465,7 +489,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         {
             try
             {
-                return transaction.getRootPage().hasKey( key );
+                return getRootPage( transaction.getRevision() ).hasKey( key );
             }
             finally
             {
@@ -495,7 +519,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         {
             try
             {
-                return transaction.getRootPage().hasKey( key );
+                return getRootPage( transaction.getRevision() ).hasKey( key );
             }
             finally
             {
