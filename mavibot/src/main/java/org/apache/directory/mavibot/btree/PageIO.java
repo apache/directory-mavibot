@@ -225,7 +225,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
     {
         StringBuilder sb = new StringBuilder();
 
-        sb.append( "PageIO[offset:" ).append( Long.toHexString( offset ) );
+        sb.append( "PageIO[offset:0x" ).append( Long.toHexString( offset ) );
 
         if ( size != -1 )
         {
@@ -234,7 +234,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
 
         if ( nextPage != -1L )
         {
-            sb.append( ", next:" ).append( nextPage );
+            sb.append( ", next:0x" ).append( Long.toHexString( nextPage ) );
         }
 
         sb.append( "]" );
