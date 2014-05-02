@@ -20,6 +20,7 @@
 package org.apache.directory.mavibot.btree;
 
 
+import java.lang.reflect.Field;
 import java.util.LinkedList;
 
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
@@ -613,7 +614,21 @@ public class BTreeFactory<K, V>
     {
         Class<?> keySerializer = Class.forName( keySerializerFqcn );
         @SuppressWarnings("unchecked")
-        ElementSerializer<K> instance = ( ElementSerializer<K> ) keySerializer.getDeclaredField( "INSTANCE" ).get( null );
+        ElementSerializer<K> instance = null;
+        try
+        {
+            instance = ( ElementSerializer<K> ) keySerializer.getDeclaredField( "INSTANCE" ).get( null );
+        }
+        catch( NoSuchFieldException e )
+        {
+            // ignore
+        }
+
+        if ( instance == null )
+        {
+            instance = ( ElementSerializer<K> ) keySerializer.newInstance();
+        }
+
         btree.setKeySerializer( instance );
     }
 
@@ -635,7 +650,21 @@ public class BTreeFactory<K, V>
     {
         Class<?> valueSerializer = Class.forName( valueSerializerFqcn );
         @SuppressWarnings("unchecked")
-        ElementSerializer<V> instance = ( ElementSerializer<V> ) valueSerializer.getDeclaredField( "INSTANCE" ).get( null );
+        ElementSerializer<V> instance = null;
+        try
+        {
+            instance = ( ElementSerializer<V> ) valueSerializer.getDeclaredField( "INSTANCE" ).get( null );
+        }
+        catch( NoSuchFieldException e )
+        {
+            // ignore
+        }
+        
+        if ( instance == null )
+        {
+            instance = ( ElementSerializer<V> ) valueSerializer.newInstance();
+        }
+        
         btree.setValueSerializer( instance );
     }
 
