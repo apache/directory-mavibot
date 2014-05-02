@@ -109,7 +109,7 @@ public class RecordManager extends AbstractTransactionManager
     private BTree<RevisionName, long[]> copiedPageBtree;
 
     /** A constant for an offset on a non existing page */
-    private static final long NO_PAGE = -1L;
+    public static final long NO_PAGE = -1L;
 
     /** The number of element we can store in a page */
     private static final int PAGE_SIZE = 4;
@@ -123,7 +123,7 @@ public class RecordManager extends AbstractTransactionManager
     private static final int LONG_SIZE = 8;
 
     /** The default page size */
-    private static final int DEFAULT_PAGE_SIZE = 512;
+    public static final int DEFAULT_PAGE_SIZE = 512;
 
     /** The minimal page size. Can't be below 64, as we have to store many thing sin the RMHeader */
     private static final int MIN_PAGE_SIZE = 64;
@@ -2996,8 +2996,7 @@ public class RecordManager extends AbstractTransactionManager
      */
     public void dump()
     {
-        LOG.debug( "/---------------------------- Dump ----------------------------\\" );
-//        System.out.println( "/---------------------------- Dump ----------------------------\\" );
+        System.out.println( "/---------------------------- Dump ----------------------------\\" );
 
         try
         {
@@ -3034,34 +3033,18 @@ public class RecordManager extends AbstractTransactionManager
             // The previous CopiedPages B-tree
             long previousCopiedPagesBtreePage = recordManagerHeader.getLong();
 
-            if ( LOG.isDebugEnabled() )
-            {
-                LOG.debug( "  RecordManager" );
-                LOG.debug( "  -------------" );
-                LOG.debug( "    Header " );
-                LOG.debug( "    Size = 0x{}", Long.toHexString( fileSize ) );
-                LOG.debug( "    NbPages = {}", nbPages );
-                LOG.debug( "      page size : {}", pageSize );
-                LOG.debug( "      nbTree : {}", nbBtree );
-                LOG.debug( "      firstFreePage : {}", Long.toHexString( firstFreePage ) );
-                LOG.debug( "      current BOB : {}", Long.toHexString( currentBtreeOfBtreesPage ) );
-                LOG.debug( "      previous BOB : {}", Long.toHexString( previousBtreeOfBtreesPage ) );
-                LOG.debug( "      current CopiedPages : {}", Long.toHexString( currentCopiedPagesBtreePage ) );
-                LOG.debug( "      previous CopiedPages : {}", Long.toHexString( previousCopiedPagesBtreePage ) );
-            }
-
-//            System.out.println( "  RecordManager" );
-//            System.out.println( "  -------------" );
-//            System.out.println( "  Size = 0x" + Long.toHexString( fileSize ) );
-//            System.out.println( "  NbPages = " + nbPages );
-//            System.out.println( "    Header " );
-//            System.out.println( "      page size : " + pageSize );
-//            System.out.println( "      nbTree : " + nbBtree );
-//            System.out.println( "      firstFreePage : 0x" + Long.toHexString( firstFreePage ) );
-//            System.out.println( "      current BOB : 0x" + Long.toHexString( currentBtreeOfBtreesPage ) );
-//            System.out.println( "      previous BOB : 0x" + Long.toHexString( previousBtreeOfBtreesPage ) );
-//            System.out.println( "      current CopiedPages : 0x" + Long.toHexString( currentCopiedPagesBtreePage ) );
-//            System.out.println( "      previous CopiedPages : 0x" + Long.toHexString( previousCopiedPagesBtreePage ) );
+            System.out.println( "  RecordManager" );
+            System.out.println( "  -------------" );
+            System.out.println( "  Size = 0x" + Long.toHexString( fileSize ) );
+            System.out.println( "  NbPages = " + nbPages );
+            System.out.println( "    Header " );
+            System.out.println( "      page size : " + pageSize );
+            System.out.println( "      nbTree : " + nbBtree );
+            System.out.println( "      firstFreePage : 0x" + Long.toHexString( firstFreePage ) );
+            System.out.println( "      current BOB : 0x" + Long.toHexString( currentBtreeOfBtreesPage ) );
+            System.out.println( "      previous BOB : 0x" + Long.toHexString( previousBtreeOfBtreesPage ) );
+            System.out.println( "      current CopiedPages : 0x" + Long.toHexString( currentCopiedPagesBtreePage ) );
+            System.out.println( "      previous CopiedPages : 0x" + Long.toHexString( previousCopiedPagesBtreePage ) );
 
             long position = RECORD_MANAGER_HEADER_SIZE;
 
@@ -3089,8 +3072,7 @@ public class RecordManager extends AbstractTransactionManager
 
             // Dump all the user's B-tree
             randomFile.close();
-            LOG.debug( "\\---------------------------- Dump ----------------------------/" );
-//            System.out.println( "\\---------------------------- Dump ----------------------------/" );
+            System.out.println( "\\---------------------------- Dump ----------------------------/" );
         }
         catch ( IOException ioe )
         {
@@ -3104,16 +3086,14 @@ public class RecordManager extends AbstractTransactionManager
      */
     private void dumpFreePages( long freePageOffset ) throws EndOfFileExceededException, IOException
     {
-//        System.out.println( "\n  FreePages : " );
-        LOG.debug( "\n  FreePages : " );
+        System.out.println( "\n  FreePages : " );
         int pageNb = 1;
 
         while ( freePageOffset != NO_PAGE )
         {
             PageIO pageIo = fetchPage( freePageOffset );
 
-            LOG.debug( "    freePage[{}] : 0x{}", pageNb, Long.toHexString( pageIo.getOffset() ) );
-//            System.out.println( "    freePage[" + pageNb + "] : 0x" + Long.toHexString( pageIo.getOffset() ) );
+            System.out.println( "    freePage[" + pageNb + "] : 0x" + Long.toHexString( pageIo.getOffset() ) );
 
             freePageOffset = pageIo.getNextPage();
             pageNb++;
@@ -3551,17 +3531,19 @@ public class RecordManager extends AbstractTransactionManager
 
     private void setCheckedPage( long[] checkedPages, long offset, int pageSize )
     {
-        long pageOffset = ( offset - RECORD_MANAGER_HEADER_SIZE ) / pageSize;
-        int index = ( int ) ( pageOffset / 64L );
-        long mask = ( 1L << ( pageOffset % 64L ) );
-        long bits = checkedPages[index];
-
-        if ( ( bits & mask ) == 1 )
+        int pageNumber = ( int ) offset / pageSize;
+        int nbBitsPage = ( LONG_SIZE << 3 );
+        long pageMask = checkedPages[ pageNumber / nbBitsPage ];
+        long mask = 1L << pageNumber % nbBitsPage;
+        
+        if ( ( pageMask & mask ) != 0 )
         {
-            throw new RecordManagerException( "The page at : " + offset + " has already been checked" );
+            throw new InvalidBTreeException( "The page " + offset + " has already been referenced" );
         }
 
-        checkedPages[index] |= mask;
+        pageMask |= mask;
+        
+        checkedPages[ pageNumber / nbBitsPage ] |= pageMask;
     }
 
 
@@ -3587,7 +3569,8 @@ public class RecordManager extends AbstractTransactionManager
         {
             if ( currentOffset > fileSize )
             {
-                throw new FreePageException( "Wrong free page offset, above file size : " + currentOffset );
+                System.out.println( "Wrong free page offset, above file size : " + currentOffset );
+                return;
             }
 
             try
@@ -3596,8 +3579,9 @@ public class RecordManager extends AbstractTransactionManager
 
                 if ( currentOffset != pageIo.getOffset() )
                 {
-                    throw new InvalidBTreeException( "PageIO offset is incorrect : " + currentOffset + "-"
+                    System.out.println( "PageIO offset is incorrect : " + currentOffset + "-"
                         + pageIo.getOffset() );
+                    return;
                 }
 
                 setCheckedPage( checkedPages, currentOffset, pageSize );
@@ -3610,6 +3594,39 @@ public class RecordManager extends AbstractTransactionManager
                 throw new InvalidBTreeException( "Cannot fetch page at : " + currentOffset );
             }
         }
+        
+        StringBuilder sb = new StringBuilder();
+        int i = -1;
+       
+        for ( long checkedPage : checkedPages )
+        {
+            if ( i == -1 )
+            {
+                i = 0;
+            }
+            else
+            {
+                i++;
+                sb.append( " " );
+            }
+           
+            sb.append( "[" ).append( i ).append(  "] " );
+ 
+           
+            for ( int j = 0; j < 64; j++ )
+            {
+                if ( ( checkedPage & ( 1L << j ) )  == 0 )
+                {
+                    sb.append( "0" );
+                }
+                else
+                {
+                    sb.append( "1" );
+                }
+            }
+        }
+       
+        System.out.println( sb.toString() );
     }
 
 
@@ -3903,7 +3920,7 @@ public class RecordManager extends AbstractTransactionManager
     /**
      * Check the whole file
      */
-    private void check()
+    /* no qualifier */ void check()
     {
         try
         {
@@ -4007,12 +4024,13 @@ public class RecordManager extends AbstractTransactionManager
     /**
      * Check the free pages list
      */
-    private void checkFreePages()
+    /* no qualifier */ void checkFreePages()
     {
         try
         {
             if ( firstFreePage == NO_PAGE )
             {
+                System.out.println("No Free pages exist.");
                 return;
             }
 
@@ -4020,6 +4038,8 @@ public class RecordManager extends AbstractTransactionManager
             Set<Long> seenOffset = new HashSet<Long>();
             seenOffset.add( currentFreePage );
 
+            long count = 0;
+            
             while ( currentFreePage != NO_PAGE )
             {
                 PageIO pageIo = fetchPage( currentFreePage );
@@ -4030,12 +4050,15 @@ public class RecordManager extends AbstractTransactionManager
 
                 if ( seenOffset.contains( currentFreePage ) )
                 {
-                    System.out.println( "ERROR !!! The FreePage lists is broken" );
+                    System.out.println( "ERROR !!! The FreePage list is broken, the offset " + currentFreePage + " is linked twice" );
                     dumpFreePages( firstFreePage );
+                    return;
                 }
+                
+                count++;
             }
 
-            return;
+            System.out.println( "Free page list is valid. There are " + count + " free pages." );
         }
         catch ( Exception e )
         {
