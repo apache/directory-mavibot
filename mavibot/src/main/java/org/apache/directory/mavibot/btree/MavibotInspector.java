@@ -225,16 +225,7 @@ public class MavibotInspector
             // and its value must be a modulo of pageSize
             long firstFreePage = recordManagerHeader.getLong();
 
-            if ( firstFreePage > fileSize )
-            {
-                throw new InvalidBTreeException( "First free page pointing after the end of the file : "
-                    + firstFreePage );
-            }
-
-            if ( ( firstFreePage != RecordManager.NO_PAGE ) && ( ( ( firstFreePage - RecordManager.RECORD_MANAGER_HEADER_SIZE ) % pageSize ) != 0 ) )
-            {
-                throw new InvalidBTreeException( "First free page not pointing to a correct offset : " + firstFreePage );
-            }
+            checkOffset( recordManager, firstFreePage, pageSize );
 
             int nbPageBits = ( int ) ( nbPages / RecordManager.INT_SIZE );
 
@@ -246,6 +237,32 @@ public class MavibotInspector
             // Then the free files
             checkFreePages( recordManager, checkedPages, pageSize, firstFreePage );
 
+            // The B-trees offsets
+            long currentBtreeOfBtreesOffset = recordManagerHeader.getLong();
+            long previousBtreeOfBtreesOffset = recordManagerHeader.getLong();
+            long currentCopiedPagesBtreeOffset = recordManagerHeader.getLong();
+            long previousCopiedPagesBtreeOffset = recordManagerHeader.getLong();
+
+            // Check that the previous BOB offset is not pointing to something
+            if ( previousBtreeOfBtreesOffset != RecordManager.NO_PAGE )
+            {
+                throw new InvalidBTreeException( "The previous Btree of Btrees offset is not valid : "
+                    + previousBtreeOfBtreesOffset );
+            }
+
+            // Check that the previous CPB offset is not pointing to something
+            if ( previousCopiedPagesBtreeOffset != RecordManager.NO_PAGE )
+            {
+                throw new InvalidBTreeException( "The previous Copied Pages Btree offset is not valid : "
+                    + previousCopiedPagesBtreeOffset );
+            }
+
+            // Check that the current BOB offset is valid
+            checkOffset( recordManager, currentBtreeOfBtreesOffset, pageSize );
+
+            // Check that the current CPB offset is valid
+            checkOffset( recordManager, currentCopiedPagesBtreeOffset, pageSize );
+
             // The B-trees
             checkBtrees( recordManager, checkedPages, pageSize, nbBtrees );
         }
@@ -255,6 +272,28 @@ public class MavibotInspector
             // put a breakpoint here
             e.printStackTrace();
             throw new InvalidBTreeException( "Error : " + e.getMessage() );
+        }
+    }
+
+
+    /**
+     * Check the offset to be sure it's a valid one :
+     * <ul>
+     * <li>It's >= 0</li>
+     * <li>It's below the end of the file</li>
+     * <li>It's a multiple of the pageSize
+     * </ul>
+     * @param offset The offset to check
+     * @param pageSize the page size
+     * @throws InvalidOffsetException If the offset is not valid
+     */
+    private static void checkOffset( RecordManager recordManager, long offset, int pageSize ) throws IOException
+    {
+        if ( ( offset == RecordManager.NO_PAGE ) ||
+             ( ( ( offset - RecordManager.RECORD_MANAGER_HEADER_SIZE ) % pageSize ) != 0 ) ||
+             ( offset > recordManager.fileChannel.size() ) )
+        {
+            throw new InvalidBTreeException( "Invalid Offset : " + offset );
         }
     }
 
