@@ -298,12 +298,14 @@ public class MavibotInspector
 
         RecordManager rm = new RecordManager( f.getAbsolutePath() );
         String name = "corpus";
+        
         if ( !rm.getManagedTrees().contains( name ) )
         {
             rm.addBTree( name, StringSerializer.INSTANCE, StringSerializer.INSTANCE, true );
         }
 
         BTree btree = rm.getManagedTree( name );
+        
         for ( int i = 0; i < 10; i++ )
         {
             btree.insert( "" + i, "" + i );

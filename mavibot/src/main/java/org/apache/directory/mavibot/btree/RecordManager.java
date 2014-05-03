@@ -3529,10 +3529,10 @@ public class RecordManager extends AbstractTransactionManager
         closedTransactionsQueue.add( revisionName );
     }
 
-    private void setCheckedPage( long[] checkedPages, long offset, int pageSize )
+    private void setCheckedPage( int[] checkedPages, long offset, int pageSize )
     {
         int pageNumber = ( int ) offset / pageSize;
-        int nbBitsPage = ( LONG_SIZE << 3 );
+        int nbBitsPage = ( INT_SIZE << 3 );
         long pageMask = checkedPages[ pageNumber / nbBitsPage ];
         long mask = 1L << pageNumber % nbBitsPage;
         
@@ -3553,7 +3553,7 @@ public class RecordManager extends AbstractTransactionManager
      * @param checkedPages
      * @throws IOException
      */
-    private void checkFreePages( long[] checkedPages, int pageSize, long firstFreePage )
+    private void checkFreePages( int[] checkedPages, int pageSize, long firstFreePage )
         throws IOException
     {
         if ( firstFreePage == NO_PAGE )
@@ -3595,10 +3595,24 @@ public class RecordManager extends AbstractTransactionManager
             }
         }
         
+        dumpCheckedPages( checkedPages );
+    }
+    
+    
+    /**
+     * Output the pages that has been seen ('1') and those which has not been seen ('0'). The '.' represent non-pages
+     * at the end of the file.
+     */
+    private void dumpCheckedPages( int[] checkedPages ) throws IOException
+    {
         StringBuilder sb = new StringBuilder();
         int i = -1;
-       
-        for ( long checkedPage : checkedPages )
+        int nbPagesChecked = 0;
+        long fileSize = fileChannel.size();
+        long nbPages = ( fileSize - RECORD_MANAGER_HEADER_SIZE ) / pageSize;
+
+
+        for ( int checkedPage : checkedPages )
         {
             if ( i == -1 )
             {
@@ -3609,23 +3623,32 @@ public class RecordManager extends AbstractTransactionManager
                 i++;
                 sb.append( " " );
             }
-           
+
             sb.append( "[" ).append( i ).append(  "] " );
- 
-           
-            for ( int j = 0; j < 64; j++ )
+
+
+            for ( int j = 0; j < 32; j++ )
             {
-                if ( ( checkedPage & ( 1L << j ) )  == 0 )
+                if ( nbPagesChecked >= nbPages )
                 {
-                    sb.append( "0" );
+                    sb.append( "." );
                 }
                 else
                 {
-                    sb.append( "1" );
+                    if ( ( checkedPage & ( 1 << j ) )  == 0 )
+                    {
+                        sb.append( "0" );
+                    }
+                    else
+                    {
+                        sb.append( "1" );
+                    }
                 }
+
+                nbPagesChecked++;
             }
         }
-       
+
         System.out.println( sb.toString() );
     }
 
@@ -3635,7 +3658,7 @@ public class RecordManager extends AbstractTransactionManager
      * @throws IOException
      * @throws EndOfFileExceededException
      */
-    private void checkRoot( long[] checkedPages, long offset, int pageSize, long nbBtreeElems,
+    private void checkRoot( int[] checkedPages, long offset, int pageSize, long nbBtreeElems,
         ElementSerializer keySerializer, ElementSerializer valueSerializer, boolean allowDuplicates )
         throws EndOfFileExceededException, IOException
     {
@@ -3748,7 +3771,7 @@ public class RecordManager extends AbstractTransactionManager
      * @throws InstantiationException
      * @throws ClassNotFoundException
      */
-    private long checkBtree( long[] checkedPages, PageIO[] pageIos, int pageSize, boolean isLast )
+    private long checkBtree( int[] checkedPages, PageIO[] pageIos, int pageSize, boolean isLast )
         throws EndOfFileExceededException, IOException, InstantiationException, IllegalAccessException,
         ClassNotFoundException
     {
@@ -3859,7 +3882,7 @@ public class RecordManager extends AbstractTransactionManager
      * @throws IllegalAccessException
      * @throws InstantiationException
      */
-    private void checkBtrees( long[] checkedPages, int pageSize, int nbBtrees ) throws EndOfFileExceededException,
+    private void checkBtrees( int[] checkedPages, int pageSize, int nbBtrees ) throws EndOfFileExceededException,
         IOException, InstantiationException, IllegalAccessException, ClassNotFoundException
     {
         // Iterate on each B-tree until we have exhausted all of them. The number
@@ -3971,12 +3994,12 @@ public class RecordManager extends AbstractTransactionManager
                 throw new InvalidBTreeException( "First free page not pointing to a correct offset : " + firstFreePage );
             }
 
-            int nbPageBits = ( int ) ( nbPages / 64 );
+            int nbPageBits = ( int ) ( nbPages / 32 );
 
             // Create an array of pages to be checked
             // We use one bit per page. It's 0 when the page
             // hasn't been checked, 1 otherwise.
-            long[] checkedPages = new long[nbPageBits + 1];
+            int[] checkedPages = new int[nbPageBits + 1];
 
             // Then the free files
             checkFreePages( checkedPages, pageSize, firstFreePage );
