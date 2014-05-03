@@ -25,10 +25,14 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Set;
 
+import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
+import org.apache.directory.mavibot.btree.exception.InvalidBTreeException;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
+import org.apache.directory.mavibot.btree.util.Strings;
 
 
 /**
@@ -176,6 +180,382 @@ public class MavibotInspector
 
         return true;
     }
+    
+    
+    /**
+     * Check the whole file
+     */
+    /* no qualifier */ static void check( RecordManager recordManager )
+    {
+        try
+        {
+            // First check the RMheader
+            ByteBuffer recordManagerHeader = ByteBuffer.allocate( RecordManager.RECORD_MANAGER_HEADER_SIZE );
+            long fileSize = recordManager.fileChannel.size();
+
+            if ( fileSize < RecordManager.RECORD_MANAGER_HEADER_SIZE )
+            {
+                throw new InvalidBTreeException( "File size too small : " + fileSize );
+            }
+
+            // Read the RMHeader
+            recordManager.fileChannel.read( recordManagerHeader, 0L );
+            recordManagerHeader.flip();
+
+            // The page size. It must be a power of 2, and above 16.
+            int pageSize = recordManagerHeader.getInt();
+
+            if ( ( pageSize < 0 ) || ( pageSize < 32 ) || ( ( pageSize & ( ~pageSize + 1 ) ) != pageSize ) )
+            {
+                throw new InvalidBTreeException( "Wrong page size : " + pageSize );
+            }
+
+            // Compute the number of pages in this file
+            long nbPages = ( fileSize - RecordManager.RECORD_MANAGER_HEADER_SIZE ) / pageSize;
+
+            // The number of trees. It must be at least 2 and > 0
+            int nbBtrees = recordManagerHeader.getInt();
+
+            if ( nbBtrees < 0 )
+            {
+                throw new InvalidBTreeException( "Wrong nb trees : " + nbBtrees );
+            }
+
+            // The first free page offset. It must be either -1 or below file size
+            // and its value must be a modulo of pageSize
+            long firstFreePage = recordManagerHeader.getLong();
+
+            if ( firstFreePage > fileSize )
+            {
+                throw new InvalidBTreeException( "First free page pointing after the end of the file : "
+                    + firstFreePage );
+            }
+
+            if ( ( firstFreePage != RecordManager.NO_PAGE ) && ( ( ( firstFreePage - RecordManager.RECORD_MANAGER_HEADER_SIZE ) % pageSize ) != 0 ) )
+            {
+                throw new InvalidBTreeException( "First free page not pointing to a correct offset : " + firstFreePage );
+            }
+
+            int nbPageBits = ( int ) ( nbPages / RecordManager.INT_SIZE );
+
+            // Create an array of pages to be checked
+            // We use one bit per page. It's 0 when the page
+            // hasn't been checked, 1 otherwise.
+            int[] checkedPages = new int[nbPageBits + 1];
+
+            // Then the free files
+            checkFreePages( recordManager, checkedPages, pageSize, firstFreePage );
+
+            // The B-trees
+            checkBtrees( recordManager, checkedPages, pageSize, nbBtrees );
+        }
+        catch ( Exception e )
+        {
+            // We catch the exception and rethrow it immediately to be able to
+            // put a breakpoint here
+            e.printStackTrace();
+            throw new InvalidBTreeException( "Error : " + e.getMessage() );
+        }
+    }
+
+
+    /**
+     * Check each B-tree we manage
+     * @throws IOException
+     * @throws EndOfFileExceededException
+     * @throws ClassNotFoundException
+     * @throws IllegalAccessException
+     * @throws InstantiationException
+     */
+    private static void checkBtrees( RecordManager recordManager, int[] checkedPages, int pageSize, int nbBtrees ) throws EndOfFileExceededException,
+        IOException, InstantiationException, IllegalAccessException, ClassNotFoundException
+    {
+        // Iterate on each B-tree until we have exhausted all of them. The number
+        // of btrees is just used to check that we have the correct number
+        // of stored B-trees, as they are all linked.
+        long position = RecordManager.RECORD_MANAGER_HEADER_SIZE;
+
+        for ( int i = 0; i < nbBtrees; i++ )
+        {
+            // Load the pageIOs containing the B-tree
+            PageIO[] pageIos = recordManager.readPageIOs( position, Long.MAX_VALUE );
+
+            // Check that they are correctly linked and not already used
+            int pageNb = 0;
+
+            for ( PageIO currentPageIo : pageIos )
+            {
+                //
+                long nextPageOffset = currentPageIo.getNextPage();
+
+                if ( pageNb == pageIos.length - 1 )
+                {
+                    if ( nextPageOffset != RecordManager.NO_PAGE )
+                    {
+                        throw new InvalidBTreeException( "The pointer to the next page is not valid, expected NO_PAGE" );
+                    }
+                }
+                else
+                {
+                    if ( nextPageOffset == RecordManager.NO_PAGE )
+                    {
+                        throw new InvalidBTreeException( "The pointer to the next page is not valid, NO_PAGE" );
+                    }
+                }
+
+                if ( ( nextPageOffset != RecordManager.NO_PAGE ) && ( ( nextPageOffset - RecordManager.RECORD_MANAGER_HEADER_SIZE ) % pageSize != 0 ) )
+                {
+                    throw new InvalidBTreeException( "The pointer to the next page is not valid" );
+                }
+
+                // Update the array of processed pages
+                setCheckedPage( recordManager, checkedPages, currentPageIo.getOffset(), pageSize );
+            }
+
+            // Now check the B-tree
+            long nextBtree = checkBtree( recordManager, checkedPages, pageIos, pageSize, i == nbBtrees - 1 );
+
+            if ( ( nextBtree == RecordManager.NO_PAGE ) && ( i < nbBtrees - 1 ) )
+            {
+                throw new InvalidBTreeException( "The pointer to the next B-tree is incorrect" );
+            }
+
+            position = nextBtree;
+        }
+    }
+
+
+    /**
+     * Check a B-tree
+     * @throws IllegalAccessException
+     * @throws InstantiationException
+     * @throws ClassNotFoundException
+     */
+    private static long checkBtree( RecordManager recordManager, int[] checkedPages, PageIO[] pageIos, int pageSize, boolean isLast )
+        throws EndOfFileExceededException, IOException, InstantiationException, IllegalAccessException,
+        ClassNotFoundException
+    {
+        long dataPos = 0L;
+
+        // The B-tree current revision
+        long revision = recordManager.readLong( pageIos, dataPos );
+        dataPos += RecordManager.LONG_SIZE;
+
+        // The nb elems in the tree
+        long nbElems = recordManager.readLong( pageIos, dataPos );
+        dataPos += RecordManager.LONG_SIZE;
+
+        // The B-tree rootPage offset
+        long rootPageOffset = recordManager.readLong( pageIos, dataPos );
+
+        if ( ( rootPageOffset < 0 ) || ( rootPageOffset > recordManager.fileChannel.size() ) )
+        {
+            throw new InvalidBTreeException( "The rootpage is incorrect : " + rootPageOffset );
+        }
+
+        dataPos += RecordManager.LONG_SIZE;
+
+        // The next B-tree offset
+        long nextBtreeOffset = recordManager.readLong( pageIos, dataPos );
+
+        if ( ( ( rootPageOffset < 0 ) && ( !isLast ) ) || ( nextBtreeOffset > recordManager.fileChannel.size() ) )
+        {
+            throw new InvalidBTreeException( "The rootpage is incorrect : " + rootPageOffset );
+        }
+
+        dataPos += RecordManager.LONG_SIZE;
+
+        // The B-tree page size
+        int btreePageSize = recordManager.readInt( pageIos, dataPos );
+
+        if ( ( btreePageSize < 2 ) || ( ( btreePageSize & ( ~btreePageSize + 1 ) ) != btreePageSize ) )
+        {
+            throw new InvalidBTreeException( "The B-tree page size is not a power of 2 : " + btreePageSize );
+        }
+
+        dataPos += RecordManager.INT_SIZE;
+
+        // The tree name
+        ByteBuffer btreeNameBytes = recordManager.readBytes( pageIos, dataPos );
+        dataPos += RecordManager.INT_SIZE;
+
+        dataPos += btreeNameBytes.limit();
+        String btreeName = Strings.utf8ToString( btreeNameBytes );
+
+        // The keySerializer FQCN
+        ByteBuffer keySerializerBytes = recordManager.readBytes( pageIos, dataPos );
+
+        String keySerializerFqcn = null;
+        dataPos += RecordManager.INT_SIZE;
+
+        if ( keySerializerBytes != null )
+        {
+            dataPos += keySerializerBytes.limit();
+            keySerializerFqcn = Strings.utf8ToString( keySerializerBytes );
+        }
+        else
+        {
+            keySerializerFqcn = "";
+        }
+
+        // The valueSerialier FQCN
+        ByteBuffer valueSerializerBytes = recordManager.readBytes( pageIos, dataPos );
+
+        String valueSerializerFqcn = null;
+        dataPos += RecordManager.INT_SIZE;
+
+        if ( valueSerializerBytes != null )
+        {
+            dataPos += valueSerializerBytes.limit();
+            valueSerializerFqcn = Strings.utf8ToString( valueSerializerBytes );
+        }
+        else
+        {
+            valueSerializerFqcn = "";
+        }
+
+        // The B-tree allowDuplicates flag
+        int allowDuplicates = recordManager.readInt( pageIos, dataPos );
+        dataPos += RecordManager.INT_SIZE;
+
+        // Now, check the rootPage, which can be a Leaf or a Node, depending
+        // on the number of elements in the tree : if it's above the pageSize,
+        // it's a Node, otherwise it's a Leaf
+        Class<?> valueSerializer = Class.forName( valueSerializerFqcn );
+        Class<?> keySerializer = Class.forName( keySerializerFqcn );
+
+        /*
+        checkRoot( checkedPages, rootPageOffset, pageSize, nbElems,
+            ( ElementSerializer<?> ) keySerializer.newInstance(),
+            ( ElementSerializer<?> ) valueSerializer.newInstance(), allowDuplicates != 0 );
+        */
+
+        return nextBtreeOffset;
+    }
+
+
+    /**
+     * Check the free pages
+     *
+     * @param checkedPages
+     * @throws IOException
+     */
+    private static void checkFreePages( RecordManager recordManager, int[] checkedPages, int pageSize, long firstFreePage )
+        throws IOException
+    {
+        if ( firstFreePage == RecordManager.NO_PAGE )
+        {
+            return;
+        }
+
+        // Now, read all the free pages
+        long currentOffset = firstFreePage;
+        long fileSize = recordManager.fileChannel.size();
+
+        while ( currentOffset != RecordManager.NO_PAGE )
+        {
+            if ( currentOffset > fileSize )
+            {
+                System.out.println( "Wrong free page offset, above file size : " + currentOffset );
+                return;
+            }
+
+            try
+            {
+                PageIO pageIo = recordManager.fetchPage( currentOffset );
+
+                if ( currentOffset != pageIo.getOffset() )
+                {
+                    System.out.println( "PageIO offset is incorrect : " + currentOffset + "-"
+                        + pageIo.getOffset() );
+                    return;
+                }
+
+                setCheckedPage( recordManager, checkedPages, currentOffset, pageSize );
+
+                long newOffset = pageIo.getNextPage();
+                currentOffset = newOffset;
+            }
+            catch ( IOException ioe )
+            {
+                throw new InvalidBTreeException( "Cannot fetch page at : " + currentOffset );
+            }
+        }
+        
+        dumpCheckedPages( recordManager, checkedPages );
+    }
+
+    
+    private static void setCheckedPage( RecordManager recordManager, int[] checkedPages, long offset, int pageSize )
+    {
+        int pageNumber = ( int ) offset / pageSize;
+        int nbBitsPage = ( RecordManager.INT_SIZE << 3 );
+        long pageMask = checkedPages[ pageNumber / nbBitsPage ];
+        long mask = 1L << pageNumber % nbBitsPage;
+        
+        if ( ( pageMask & mask ) != 0 )
+        {
+            throw new InvalidBTreeException( "The page " + offset + " has already been referenced" );
+        }
+
+        pageMask |= mask;
+        
+        checkedPages[ pageNumber / nbBitsPage ] |= pageMask;
+    }
+
+
+    /**
+     * Output the pages that has been seen ('1') and those which has not been seen ('0'). The '.' represent non-pages
+     * at the end of the file.
+     */
+    private static void dumpCheckedPages( RecordManager recordManager, int[] checkedPages ) throws IOException
+    {
+        StringBuilder sb = new StringBuilder();
+        int i = -1;
+        int nbPagesChecked = 0;
+        long fileSize = recordManager.fileChannel.size();
+        long nbPages = ( fileSize - RecordManager.RECORD_MANAGER_HEADER_SIZE ) / recordManager.pageSize;
+
+
+        for ( int checkedPage : checkedPages )
+        {
+            if ( i == -1 )
+            {
+                i = 0;
+            }
+            else
+            {
+                i++;
+                sb.append( " " );
+            }
+
+            sb.append( "[" ).append( i ).append(  "] " );
+
+
+            for ( int j = 0; j < 32; j++ )
+            {
+                if ( nbPagesChecked >= nbPages )
+                {
+                    sb.append( "." );
+                }
+                else
+                {
+                    if ( ( checkedPage & ( 1 << j ) )  == 0 )
+                    {
+                        sb.append( "0" );
+                    }
+                    else
+                    {
+                        sb.append( "1" );
+                    }
+                }
+
+                nbPagesChecked++;
+            }
+        }
+
+        System.out.println( sb.toString() );
+    }
 
 
     public void start() throws Exception
@@ -221,7 +601,14 @@ public class MavibotInspector
                     break;
 
                 case '4':
-                    rm.checkFreePages();
+                    int pageSize = rm.getPageSize();
+                    long fileSize = rm.fileChannel.size();
+                    long nbPages = fileSize / pageSize;
+                    int nbPageBits = ( int ) ( nbPages / RecordManager.INT_SIZE );
+                    int[] checkedPages = new int[nbPageBits + 1];
+                    long firstFreePage = rm.firstFreePage;
+
+                    checkFreePages( rm, checkedPages, pageSize, firstFreePage );
                     break;
 
                 case '5':
@@ -229,7 +616,7 @@ public class MavibotInspector
                     break;
 
                 case '6':
-                    rm.check();
+                    check( rm );
                     break;
 
                 case '7':
