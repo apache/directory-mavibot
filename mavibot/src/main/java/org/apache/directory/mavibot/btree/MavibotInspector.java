@@ -302,7 +302,7 @@ public class MavibotInspector
         // update the checkedPages
         updateCheckedPages( checkedPages, recordManager.pageSize, bobHeaderPageIos );
 
-        checkBtree( recordManager, checkedPages, bobHeaderPageIos, btree );
+        checkBtree( recordManager, checkedPages, bobHeaderPageIos );
     }
 
     
@@ -322,10 +322,11 @@ public class MavibotInspector
         // update the checkedPages
         updateCheckedPages( checkedPages, recordManager.pageSize, cpbHeaderPageIos );
 
-        //checkBtree( recordManager, checkedPages, pageSize, bobHeaderPageIos, btree );
+        //checkBtree( recordManager, checkedPages, pageSize, bobHeaderPageIos );
     }
+    
 
-    private static <K, V> void checkBtree( RecordManager recordManager, int[] checkedPages, PageIO[] pageIos, BTree<K, V> btree ) throws IOException
+    private static <K, V> void checkBtree( RecordManager recordManager, int[] checkedPages, PageIO[] pageIos ) throws IOException
     {
         long dataPos = 0L;
 
@@ -349,29 +350,15 @@ public class MavibotInspector
 
         checkOffset( recordManager, btreeInfoOffset );
 
-        checkBtreeInfo( recordManager, checkedPages, btreeInfoOffset, btree );
+        checkBtreeInfo( recordManager, checkedPages, btreeInfoOffset );
 
         // Check the elements in the btree itself
         // We will read every single page
-        checkPage( recordManager, checkedPages, rootPageOffset, btree );
-
-        //Page<K, V> btreeRoot = readPage( btree, rootPageIos );
-
-
-//        if ( btreeRoot.isLeaf() )
-//        {
-//            // This is a Leaf : we hust have to check that the offsets are correct
-//            long pageOffset = ((PersistedLeaf<K, V>)btreeRoot).offset;
-//        }
-//        else
-//        {
-//            // This is a Node : We will have to recursively go down the BTree
-//            long pageOffset = ((PersistedNode<K, V>)btreeRoot).offset;
-//        }
+        checkPage( recordManager, checkedPages, rootPageOffset );
     }
     
     
-    private static <K, V> void checkBtreeInfo( RecordManager recordManager, int[] checkedPages, long btreeInfoOffset, BTree<K, V> btree ) throws IOException
+    private static <K, V> void checkBtreeInfo( RecordManager recordManager, int[] checkedPages, long btreeInfoOffset ) throws IOException
     {
         PageIO[] btreeInfoPagesIos = recordManager.readPageIOs( btreeInfoOffset, Long.MAX_VALUE );
 
@@ -383,14 +370,13 @@ public class MavibotInspector
 
         // The B-tree page size
         int btreePageSize = recordManager.readInt( btreeInfoPagesIos, dataPos );
-        BTreeFactory.setPageSize( btree, btreePageSize );
         dataPos += RecordManager.INT_SIZE;
 
         // The tree name
         ByteBuffer btreeNameBytes = recordManager.readBytes( btreeInfoPagesIos, dataPos );
         dataPos += RecordManager.INT_SIZE + btreeNameBytes.limit();
         String btreeName = Strings.utf8ToString( btreeNameBytes );
-        BTreeFactory.setName( btree, btreeName );
+        //BTreeFactory.setName( btree, btreeName );
 
         // The keySerializer FQCN
         ByteBuffer keySerializerBytes = recordManager.readBytes( btreeInfoPagesIos, dataPos );
@@ -403,8 +389,6 @@ public class MavibotInspector
             keySerializerFqcn = Strings.utf8ToString( keySerializerBytes );
         }
 
-        //BTreeFactory.setKeySerializer( btree, keySerializerFqcn );
-
         // The valueSerialier FQCN
         ByteBuffer valueSerializerBytes = recordManager.readBytes( btreeInfoPagesIos, dataPos );
 
@@ -416,16 +400,13 @@ public class MavibotInspector
             valueSerializerFqcn = Strings.utf8ToString( valueSerializerBytes );
         }
 
-        //BTreeFactory.setValueSerializer( btree, valueSerializerFqcn );
-
         // The B-tree allowDuplicates flag
         int allowDuplicates = recordManager.readInt( btreeInfoPagesIos, dataPos );
-        ( ( InMemoryBTree<K, V> ) btree ).setAllowDuplicates( allowDuplicates != 0 );
         dataPos += RecordManager.INT_SIZE;
     }
 
     
-    private static <K, V> void checkPage( RecordManager recordManager, int[] checkedPages, long pageOffset, BTree<K, V> btree ) throws EndOfFileExceededException, IOException
+    private static <K, V> void checkPage( RecordManager recordManager, int[] checkedPages, long pageOffset ) throws EndOfFileExceededException, IOException
     {
         PageIO[] pageIos = recordManager.readPageIOs( pageOffset, Long.MAX_VALUE );
 
@@ -455,23 +436,23 @@ public class MavibotInspector
         if ( nbElems >= 0 )
         {
             // It's a leaf, process it as we may have sub-btrees
-            checkLeafKeysAndValues( recordManager, checkedPages, btree, nbElems, revision, byteBuffer, pageIos );
+            checkLeafKeysAndValues( recordManager, checkedPages, nbElems, revision, byteBuffer, pageIos );
         }
         else
         {
             // It's a node
-            long[] children = checkNodeKeysAndValues( recordManager, checkedPages, btree, -nbElems, revision, byteBuffer, pageIos );
+            long[] children = checkNodeKeysAndValues( recordManager, checkedPages, -nbElems, revision, byteBuffer, pageIos );
 
             for ( int pos = 0; pos < nbElems; pos++ )
             {
                 // Recursively check the children
-                checkPage( recordManager, checkedPages, children[pos], btree );
+                checkPage( recordManager, checkedPages, children[pos] );
             }
         }
     }
     
     
-    private static <K, V> void checkLeafKeysAndValues( RecordManager recordManager, int[] checkedPages, BTree<K, V> btree, int nbElems, long revision, ByteBuffer byteBuffer, PageIO[] pageIos )
+    private static <K, V> void checkLeafKeysAndValues( RecordManager recordManager, int[] checkedPages, int nbElems, long revision, ByteBuffer byteBuffer, PageIO[] pageIos )
     {
         // Read each key and value
         for ( int i = 0; i < nbElems; i++ )
@@ -493,7 +474,7 @@ public class MavibotInspector
     /**
      * Deserialize a Node from some PageIos
      */
-    private static <K, V> long[] checkNodeKeysAndValues( RecordManager recordManager, int[] checkedPages, BTree<K, V> btree, int nbElems, long revision,
+    private static <K, V> long[] checkNodeKeysAndValues( RecordManager recordManager, int[] checkedPages, int nbElems, long revision,
         ByteBuffer byteBuffer, PageIO[] pageIos ) throws IOException
     {
         long[] children = new long[nbElems + 1];
@@ -511,9 +492,6 @@ public class MavibotInspector
             int keyLength = byteBuffer.getInt();
 
             int currentPosition = byteBuffer.position();
-
-            // and the key value
-            K key = btree.getKeySerializer().deserialize( byteBuffer );
 
             // Set the new position now
             byteBuffer.position( currentPosition + keyLength );
@@ -573,181 +551,6 @@ public class MavibotInspector
         {
             throw new InvalidBTreeException( "Invalid Offset : " + offset );
         }
-    }
-
-
-    /**
-     * Check each B-tree we manage
-     * @throws IOException
-     * @throws EndOfFileExceededException
-     * @throws ClassNotFoundException
-     * @throws IllegalAccessException
-     * @throws InstantiationException
-     */
-    private static void checkBtrees( RecordManager recordManager, int[] checkedPages, int pageSize, int nbBtrees ) throws EndOfFileExceededException,
-        IOException, InstantiationException, IllegalAccessException, ClassNotFoundException
-    {
-        // Iterate on each B-tree until we have exhausted all of them. The number
-        // of btrees is just used to check that we have the correct number
-        // of stored B-trees, as they are all linked.
-        long position = RecordManager.RECORD_MANAGER_HEADER_SIZE;
-
-        for ( int i = 0; i < nbBtrees; i++ )
-        {
-            // Load the pageIOs containing the B-tree
-            PageIO[] pageIos = recordManager.readPageIOs( position, Long.MAX_VALUE );
-
-            // Check that they are correctly linked and not already used
-            int pageNb = 0;
-
-            for ( PageIO currentPageIo : pageIos )
-            {
-                //
-                long nextPageOffset = currentPageIo.getNextPage();
-
-                if ( pageNb == pageIos.length - 1 )
-                {
-                    if ( nextPageOffset != RecordManager.NO_PAGE )
-                    {
-                        throw new InvalidBTreeException( "The pointer to the next page is not valid, expected NO_PAGE" );
-                    }
-                }
-                else
-                {
-                    if ( nextPageOffset == RecordManager.NO_PAGE )
-                    {
-                        throw new InvalidBTreeException( "The pointer to the next page is not valid, NO_PAGE" );
-                    }
-                }
-
-                if ( ( nextPageOffset != RecordManager.NO_PAGE ) && ( ( nextPageOffset - RecordManager.RECORD_MANAGER_HEADER_SIZE ) % pageSize != 0 ) )
-                {
-                    throw new InvalidBTreeException( "The pointer to the next page is not valid" );
-                }
-
-                // Update the array of processed pages
-                setCheckedPage( recordManager, checkedPages, currentPageIo.getOffset() );
-            }
-
-            // Now check the B-tree
-            long nextBtree = checkBtree( recordManager, checkedPages, pageIos, i == nbBtrees - 1 );
-
-            if ( ( nextBtree == RecordManager.NO_PAGE ) && ( i < nbBtrees - 1 ) )
-            {
-                throw new InvalidBTreeException( "The pointer to the next B-tree is incorrect" );
-            }
-
-            position = nextBtree;
-        }
-    }
-
-
-    /**
-     * Check a B-tree
-     * @throws IllegalAccessException
-     * @throws InstantiationException
-     * @throws ClassNotFoundException
-     */
-    private static long checkBtree( RecordManager recordManager, int[] checkedPages, PageIO[] pageIos, boolean isLast )
-        throws EndOfFileExceededException, IOException, InstantiationException, IllegalAccessException,
-        ClassNotFoundException
-    {
-        long dataPos = 0L;
-
-        // The B-tree current revision
-        long revision = recordManager.readLong( pageIos, dataPos );
-        dataPos += RecordManager.LONG_SIZE;
-
-        // The nb elems in the tree
-        long nbElems = recordManager.readLong( pageIos, dataPos );
-        dataPos += RecordManager.LONG_SIZE;
-
-        // The B-tree rootPage offset
-        long rootPageOffset = recordManager.readLong( pageIos, dataPos );
-
-        if ( ( rootPageOffset < 0 ) || ( rootPageOffset > recordManager.fileChannel.size() ) )
-        {
-            throw new InvalidBTreeException( "The rootpage is incorrect : " + rootPageOffset );
-        }
-
-        dataPos += RecordManager.LONG_SIZE;
-
-        // The next B-tree offset
-        long nextBtreeOffset = recordManager.readLong( pageIos, dataPos );
-
-        if ( ( ( rootPageOffset < 0 ) && ( !isLast ) ) || ( nextBtreeOffset > recordManager.fileChannel.size() ) )
-        {
-            throw new InvalidBTreeException( "The rootpage is incorrect : " + rootPageOffset );
-        }
-
-        dataPos += RecordManager.LONG_SIZE;
-
-        // The B-tree page size
-        int btreePageSize = recordManager.readInt( pageIos, dataPos );
-
-        if ( ( btreePageSize < 2 ) || ( ( btreePageSize & ( ~btreePageSize + 1 ) ) != btreePageSize ) )
-        {
-            throw new InvalidBTreeException( "The B-tree page size is not a power of 2 : " + btreePageSize );
-        }
-
-        dataPos += RecordManager.INT_SIZE;
-
-        // The tree name
-        ByteBuffer btreeNameBytes = recordManager.readBytes( pageIos, dataPos );
-        dataPos += RecordManager.INT_SIZE;
-
-        dataPos += btreeNameBytes.limit();
-        String btreeName = Strings.utf8ToString( btreeNameBytes );
-
-        // The keySerializer FQCN
-        ByteBuffer keySerializerBytes = recordManager.readBytes( pageIos, dataPos );
-
-        String keySerializerFqcn = null;
-        dataPos += RecordManager.INT_SIZE;
-
-        if ( keySerializerBytes != null )
-        {
-            dataPos += keySerializerBytes.limit();
-            keySerializerFqcn = Strings.utf8ToString( keySerializerBytes );
-        }
-        else
-        {
-            keySerializerFqcn = "";
-        }
-
-        // The valueSerialier FQCN
-        ByteBuffer valueSerializerBytes = recordManager.readBytes( pageIos, dataPos );
-
-        String valueSerializerFqcn = null;
-        dataPos += RecordManager.INT_SIZE;
-
-        if ( valueSerializerBytes != null )
-        {
-            dataPos += valueSerializerBytes.limit();
-            valueSerializerFqcn = Strings.utf8ToString( valueSerializerBytes );
-        }
-        else
-        {
-            valueSerializerFqcn = "";
-        }
-
-        // The B-tree allowDuplicates flag
-        int allowDuplicates = recordManager.readInt( pageIos, dataPos );
-        dataPos += RecordManager.INT_SIZE;
-
-        // Now, check the rootPage, which can be a Leaf or a Node, depending
-        // on the number of elements in the tree : if it's above the pageSize,
-        // it's a Node, otherwise it's a Leaf
-        Class<?> valueSerializer = Class.forName( valueSerializerFqcn );
-        Class<?> keySerializer = Class.forName( keySerializerFqcn );
-
-        /*
-        checkRoot( checkedPages, rootPageOffset, pageSize, nbElems,
-            ( ElementSerializer<?> ) keySerializer.newInstance(),
-            ( ElementSerializer<?> ) valueSerializer.newInstance(), allowDuplicates != 0 );
-        */
-
-        return nextBtreeOffset;
     }
 
 
