@@ -172,13 +172,13 @@ public class RecordManager extends AbstractTransactionManager
     private static final String COPIED_PAGE_BTREE_NAME = "_copiedPageBtree_";
 
     /** The current B-tree of B-trees header offset */
-    private long currentBtreeOfBtreesOffset;
+    /* no qualifier */ long currentBtreeOfBtreesOffset;
 
     /** The previous B-tree of B-trees header offset */
     private long previousBtreeOfBtreesOffset = NO_PAGE;
 
     /** The offset on the current copied pages B-tree */
-    private long currentCopiedPagesBtreeOffset = NO_PAGE;
+    /* no qualifier */ long currentCopiedPagesBtreeOffset = NO_PAGE;
 
     /** The offset on the previous copied pages B-tree */
     private long previousCopiedPagesBtreeOffset = NO_PAGE;

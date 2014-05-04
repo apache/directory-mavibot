@@ -227,7 +227,7 @@ public class MavibotInspector
 
             checkOffset( recordManager, firstFreePage, pageSize );
 
-            int nbPageBits = ( int ) ( nbPages / RecordManager.INT_SIZE );
+            int nbPageBits = ( int ) ( nbPages / 32 );
 
             // Create an array of pages to be checked
             // We use one bit per page. It's 0 when the page
@@ -263,8 +263,17 @@ public class MavibotInspector
             // Check that the current CPB offset is valid
             checkOffset( recordManager, currentCopiedPagesBtreeOffset, pageSize );
 
+            // Now, check the BTree of Btrees
+            BTree<NameRevision, Long> btreeOfBtrees = BTreeFactory.<NameRevision, Long> createInMemoryBTree();
+            checkBtreeOfBtrees( recordManager, checkedPages, pageSize, btreeOfBtrees );
+
+            // And the Copied Pages BTree
+            checkCopiedPagesBtree( recordManager, checkedPages, pageSize );
+
             // The B-trees
-            checkBtrees( recordManager, checkedPages, pageSize, nbBtrees );
+            //checkBtrees( recordManager, checkedPages, pageSize, nbBtrees );
+            
+            dumpCheckedPages( recordManager, checkedPages );
         }
         catch ( Exception e )
         {
@@ -272,6 +281,82 @@ public class MavibotInspector
             // put a breakpoint here
             e.printStackTrace();
             throw new InvalidBTreeException( "Error : " + e.getMessage() );
+        }
+    }
+
+    
+    /**
+     * Check the Btree of Btrees
+     *
+     * @param checkedPages
+     * @param pageSize
+     * @throws IOException
+     * @throws EndOfFileExceededException
+     * @throws NoSuchFieldException
+     * @throws SecurityException
+     * @throws IllegalArgumentException
+     * @throws InstantiationException
+     * @throws IllegalAccessException
+     * @throws ClassNotFoundException
+     */
+    private static <K, V> void checkBtreeOfBtrees( RecordManager recordManager, int[] checkedPages, int pageSize, BTree<K, V> btree ) throws EndOfFileExceededException, IOException, ClassNotFoundException, IllegalAccessException, InstantiationException, IllegalArgumentException, SecurityException, NoSuchFieldException
+    {
+        // Read the BOB header
+        PageIO[] bobHeaderPageIos = recordManager.readPageIOs( recordManager.currentBtreeOfBtreesOffset, Long.MAX_VALUE );
+
+        // update the checkedPages
+        updateCheckedPages( checkedPages, pageSize, bobHeaderPageIos );
+
+        //checkBtree( checkedPages, pageSize, bobHeaderPageIos, btree );
+    }
+
+    
+    /**
+     * Check the Copied pages Btree
+     *
+     * @param checkedPages
+     * @param pageSize
+     * @throws IOException 
+     * @throws EndOfFileExceededException 
+     */
+    private static void checkCopiedPagesBtree( RecordManager recordManager, int[] checkedPages, int pageSize ) throws EndOfFileExceededException, IOException
+    {
+        // Read the CPB header
+        PageIO[] cpbHeaderPageIos = recordManager.readPageIOs( recordManager.currentCopiedPagesBtreeOffset, Long.MAX_VALUE );
+
+        // update the checkedPages
+        updateCheckedPages( checkedPages, pageSize, cpbHeaderPageIos );
+
+        //checkBtree( checkedPages, pageSize, bobHeaderPageIos, btree );
+    }
+
+
+    /**
+     * Update the array of seen pages.
+     */
+    private static void updateCheckedPages( int[] checkedPages, int pageSize, PageIO... pageIos )
+    {
+        for ( PageIO pageIO : pageIos )
+        {
+            long offset = pageIO.getOffset();
+
+            if ( ( offset % pageSize ) != 0 )
+            {
+                throw new InvalidBTreeException( "Offset invalid : " + offset );
+            }
+
+            int pageNumber = (int)(offset / pageSize);
+            int nbBitsPage = ( RecordManager.INT_SIZE << 3 );
+            int pageMask = checkedPages[ pageNumber / nbBitsPage ];
+            int mask = 1 << pageNumber % nbBitsPage;
+
+            if ( ( pageMask & mask ) != 0 )
+            {
+                throw new InvalidBTreeException( "The page " + offset + " has already been referenced" );
+            }
+
+            pageMask |= mask;
+            checkedPages[ pageNumber / nbBitsPage ] = pageMask;
         }
     }
 
