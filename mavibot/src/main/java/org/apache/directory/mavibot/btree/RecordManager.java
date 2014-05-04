@@ -83,7 +83,7 @@ public class RecordManager extends AbstractTransactionManager
     /* no qualifier */ FileChannel fileChannel;
 
     /** The number of managed B-trees */
-    private int nbBtree;
+    /* no qualifier */ int nbBtree;
 
     /** The first and last free page */
     /* no qualifier */ long firstFreePage;

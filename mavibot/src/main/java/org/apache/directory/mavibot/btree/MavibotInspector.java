@@ -206,7 +206,7 @@ public class MavibotInspector
             // The page size. It must be a power of 2, and above 16.
             int pageSize = recordManagerHeader.getInt();
 
-            if ( ( pageSize < 0 ) || ( pageSize < 32 ) || ( ( pageSize & ( ~pageSize + 1 ) ) != pageSize ) )
+            if ( ( pageSize != recordManager.pageSize ) || ( pageSize < 32 ) || ( ( pageSize & ( ~pageSize + 1 ) ) != pageSize ) )
             {
                 throw new InvalidBTreeException( "Wrong page size : " + pageSize );
             }
@@ -217,7 +217,7 @@ public class MavibotInspector
             // The number of trees. It must be at least 2 and > 0
             int nbBtrees = recordManagerHeader.getInt();
 
-            if ( nbBtrees < 0 )
+            if ( ( nbBtrees < 0 ) || ( nbBtrees != recordManager.nbBtree ) )
             {
                 throw new InvalidBTreeException( "Wrong nb trees : " + nbBtrees );
             }
