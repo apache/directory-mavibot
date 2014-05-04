@@ -247,15 +247,17 @@ public class MavibotInspector
             // Check that the previous BOB offset is not pointing to something
             if ( previousBtreeOfBtreesOffset != RecordManager.NO_PAGE )
             {
-                throw new InvalidBTreeException( "The previous Btree of Btrees offset is not valid : "
+                System.out.println( "The previous Btree of Btrees offset is not valid : "
                     + previousBtreeOfBtreesOffset );
+                return;
             }
 
             // Check that the previous CPB offset is not pointing to something
             if ( previousCopiedPagesBtreeOffset != RecordManager.NO_PAGE )
             {
-                throw new InvalidBTreeException( "The previous Copied Pages Btree offset is not valid : "
+                System.out.println( "The previous Copied Pages Btree offset is not valid : "
                     + previousCopiedPagesBtreeOffset );
+                return;
             }
 
             // Check that the current BOB offset is valid
@@ -426,7 +428,7 @@ public class MavibotInspector
 
         // The size of the data containing the keys and values
         // Reads the bytes containing all the keys and values, if we have some
-        // We read  big blog of data into  ByteBuffer, then we will process
+        // We read  big blob of data into  ByteBuffer, then we will process
         // this ByteBuffer
         ByteBuffer byteBuffer = recordManager.readBytes( pageIos, position );
 
