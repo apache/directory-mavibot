@@ -749,7 +749,7 @@ public class RecordManager extends AbstractTransactionManager
      * @throws SecurityException
      * @throws IllegalArgumentException
      */
-    private <K, V> void loadBtree( PageIO[] pageIos, BTree btree, BTree<K, V> parentBTree ) throws EndOfFileExceededException,
+    /* no qualifier */ <K, V> void loadBtree( PageIO[] pageIos, BTree btree, BTree<K, V> parentBTree ) throws EndOfFileExceededException,
         IOException, ClassNotFoundException, IllegalAccessException, InstantiationException, IllegalArgumentException, SecurityException, NoSuchFieldException
     {
         long dataPos = 0L;
@@ -859,9 +859,6 @@ public class RecordManager extends AbstractTransactionManager
 
         Page<K, V> page = readPage( btree, rootPageIos );
 
-        ( ( AbstractPage<K, V> ) page ).setOffset( rootPageIos[0].getOffset() );
-        ( ( AbstractPage<K, V> ) page ).setLastOffset( rootPageIos[rootPageIos.length - 1].getOffset() );
-
         return page;
     }
 
@@ -906,6 +903,12 @@ public class RecordManager extends AbstractTransactionManager
         {
             // It's a node
             page = readNodeKeysAndValues( btree, -nbElems, revision, byteBuffer, pageIos );
+        }
+
+        ( ( AbstractPage<K, V> ) page ).setOffset( pageIos[0].getOffset() );
+        if ( pageIos.length > 1 )
+        {
+            ( ( AbstractPage<K, V> ) page ).setLastOffset( pageIos[pageIos.length - 1].getOffset() );
         }
 
         return page;
