@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
+import org.junit.Ignore;
 import org.junit.Test;
 
 
@@ -36,6 +37,7 @@ import org.junit.Test;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
+@Ignore( "until ApacheDS works with mavibot" )
 public class PersistedBTreeBuilderTest
 {
 

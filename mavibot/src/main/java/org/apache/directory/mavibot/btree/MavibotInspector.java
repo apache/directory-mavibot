@@ -27,6 +27,8 @@ import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
@@ -267,14 +269,59 @@ public class MavibotInspector
             checkOffset( recordManager, currentCopiedPagesBtreeOffset );
 
             // Now, check the BTree of Btrees
-            BTree<NameRevision, Long> btreeOfBtrees = BTreeFactory.<NameRevision, Long> createInMemoryBTree();
+            BTree<NameRevision, Long> btreeOfBtrees = BTreeFactory.<NameRevision, Long> createPersistedBTree();
             checkBtreeOfBtrees( recordManager, checkedPages, btreeOfBtrees );
 
             // And the Copied Pages BTree
             checkCopiedPagesBtree( recordManager, checkedPages );
 
             // The B-trees
-            //checkBtrees( recordManager, checkedPages, pageSize, nbBtrees );
+            ///////////////////////
+            // Now, read all the B-trees from the btree of btrees
+            TupleCursor<NameRevision, Long> btreeCursor = btreeOfBtrees.browse();
+            Map<String, Long> loadedBtrees = new HashMap<String, Long>();
+
+            // loop on all the btrees we have, and keep only the latest revision
+            long currentRevision = -1L;
+
+            while ( btreeCursor.hasNext() )
+            {
+                Tuple<NameRevision, Long> btreeTuple = btreeCursor.next();
+                NameRevision nameRevision = btreeTuple.getKey();
+                long btreeOffset = btreeTuple.getValue();
+                long revision = nameRevision.getValue();
+
+                // Check if we already have processed this B-tree
+                Long loadedBtreeRevision = loadedBtrees.get( nameRevision.getName() );
+
+                if ( loadedBtreeRevision != null )
+                {
+                    // The btree has already been loaded. The revision is necessarily higher
+                    if ( revision > currentRevision )
+                    {
+                        // We have a newer revision : switch to the new revision (we keep the offset atm)
+                        loadedBtrees.put( nameRevision.getName(), btreeOffset );
+                        currentRevision = revision;
+                    }
+                }
+                else
+                {
+                    // This is a new B-tree
+                    loadedBtrees.put( nameRevision.getName(), btreeOffset );
+                    currentRevision = nameRevision.getRevision();
+                }
+            }
+
+            // check the btrees
+            for ( String btreeName : loadedBtrees.keySet() )
+            {
+                long btreeOffset = loadedBtrees.get( btreeName );
+
+                PageIO[] btreePageIos = recordManager.readPageIOs( btreeOffset, Long.MAX_VALUE );
+                checkBtree( recordManager, checkedPages, btreePageIos );
+            }
+
+            //////////////////////
             
             dumpCheckedPages( recordManager, checkedPages );
         }
@@ -296,11 +343,13 @@ public class MavibotInspector
      * @throws IOException 
      * @throws EndOfFileExceededException 
      */
-    private static <K, V> void checkBtreeOfBtrees( RecordManager recordManager, int[] checkedPages, BTree<K, V> btree ) throws EndOfFileExceededException, IOException
+    private static <K, V> void checkBtreeOfBtrees( RecordManager recordManager, int[] checkedPages, BTree<K, V> btree ) throws Exception
     {
         // Read the BOB header
         PageIO[] bobHeaderPageIos = recordManager.readPageIOs( recordManager.currentBtreeOfBtreesOffset, Long.MAX_VALUE );
 
+        recordManager.loadBtree( bobHeaderPageIos, btree, null );
+        
         // update the checkedPages
         updateCheckedPages( checkedPages, recordManager.pageSize, bobHeaderPageIos );
 
