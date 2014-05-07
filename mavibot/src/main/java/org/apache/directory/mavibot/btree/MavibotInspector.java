@@ -28,7 +28,9 @@ import java.io.RandomAccessFile;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.text.MessageFormat;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -54,7 +56,21 @@ public class MavibotInspector
 
     private BufferedReader br = new BufferedReader( new InputStreamReader( System.in ) );
 
+    // The name of the two page arrays for the global file and teh free pages
+    private static final String GLOBAL_PAGES_NAME = "__global__";
+    private static final String FREE_PAGES_NAME = "__free-pages__";
 
+    // The set of page array we already know about
+    private static Set<String> knownPagesArrays =  new HashSet<String>();
+    
+    static
+    {
+        knownPagesArrays.add( GLOBAL_PAGES_NAME );
+        knownPagesArrays.add( FREE_PAGES_NAME );
+        knownPagesArrays.add( RecordManager.BTREE_OF_BTREES_NAME );
+        knownPagesArrays.add( RecordManager.COPIED_PAGE_BTREE_NAME );
+    }
+    
     /**
      * Create an instance of MavibotInspector
      * @param dbFile The file to read
@@ -176,9 +192,9 @@ public class MavibotInspector
             return;
         }
 
-        System.out.println( "\nBTree offset: " + pb.getBtreeOffset() );
-        System.out.println( "BTree _info_ offset: " + pb.getBtreeInfoOffset() );
-        System.out.println( "BTree root page offset: " + pb.getRootPageOffset() );
+        System.out.println( "\nBTree offset: " + String.format( "0x%1$08x", pb.getBtreeOffset() ) );
+        System.out.println( "BTree _info_ offset: " + String.format( "0x%1$08x", pb.getBtreeInfoOffset() ) );
+        System.out.println( "BTree root page offset: " + String.format( "0x%1$08x", pb.getRootPageOffset() ) );
         System.out.println( "Number of elements present: " + pb.getNbElems() );
         System.out.println( "BTree Page size: " + pb.getPageSize() );
         System.out.println( "BTree revision: " + pb.getRevision() );
@@ -261,12 +277,25 @@ public class MavibotInspector
 
             int nbPageBits = ( int ) ( nbPages / 32 );
 
-            // Create an array of pages to be checked
+            // Create an array of pages to be checked for each B-tree, plus
+            // two others for the free pages and the global one
             // We use one bit per page. It's 0 when the page
             // hasn't been checked, 1 otherwise.
-            int[] checkedPages = new int[nbPageBits + 1];
+            Map<String, int[]> checkedPages = new HashMap<String, int[]>(nbBtrees + 4);
 
-            // Then the free files
+            // The global page array
+            checkedPages.put( GLOBAL_PAGES_NAME, new int[nbPageBits + 1] );
+
+            // The freePages array
+            checkedPages.put( FREE_PAGES_NAME, new int[nbPageBits + 1] );
+            
+            // The B-tree of B-trees array
+            checkedPages.put( RecordManager.BTREE_OF_BTREES_NAME, new int[nbPageBits + 1] );
+            
+            // Last, the Copied Pages B-tree array
+            checkedPages.put( RecordManager.COPIED_PAGE_BTREE_NAME, new int[nbPageBits + 1] );
+
+            // Check the free files
             checkFreePages( recordManager, checkedPages );
 
             // The B-trees offsets
@@ -368,13 +397,14 @@ public class MavibotInspector
     /**
      * Check the Btree of Btrees
      */
-    private static <K, V> void checkBtreeOfBtrees( RecordManager recordManager, int[] checkedPages ) throws Exception
+    private static <K, V> void checkBtreeOfBtrees( RecordManager recordManager, Map<String, int[]> checkedPages ) throws Exception
     {
         // Read the BOB header
         PageIO[] bobHeaderPageIos = recordManager.readPageIOs( recordManager.currentBtreeOfBtreesOffset, Long.MAX_VALUE );
 
         // update the checkedPages
-        updateCheckedPages( checkedPages, recordManager.pageSize, bobHeaderPageIos );
+        updateCheckedPages( checkedPages.get( RecordManager.BTREE_OF_BTREES_NAME), recordManager.pageSize, bobHeaderPageIos );
+        updateCheckedPages( checkedPages.get( GLOBAL_PAGES_NAME ), recordManager.pageSize, bobHeaderPageIos );
 
         long dataPos = 0L;
 
@@ -398,7 +428,7 @@ public class MavibotInspector
 
         checkOffset( recordManager, btreeInfoOffset );
 
-        checkBtreeInfo( recordManager, checkedPages, btreeInfoOffset );
+        checkBtreeInfo( recordManager, checkedPages, btreeInfoOffset, -1L );
 
         // Check the elements in the btree itself
         // We will read every single page
@@ -409,18 +439,15 @@ public class MavibotInspector
     /**
      * Check a user's B-tree
      */
-    private static <K, V> void checkBtree( RecordManager recordManager, long btreeOffset, int[] checkedPages ) throws Exception
+    private static <K, V> void checkBtree( RecordManager recordManager, long btreeOffset, Map<String, int[]> checkedPages ) throws Exception
     {
         // Read the B-tree header
         PageIO[] btreeHeaderPageIos = recordManager.readPageIOs( btreeOffset, Long.MAX_VALUE );
 
-        // update the checkedPages
-        updateCheckedPages( checkedPages, recordManager.pageSize, btreeHeaderPageIos );
-
         long dataPos = 0L;
 
         // The B-tree current revision
-        recordManager.readLong( btreeHeaderPageIos, dataPos );
+        long btreeRevision = recordManager.readLong( btreeHeaderPageIos, dataPos );
         dataPos += RecordManager.LONG_SIZE;
 
         // The nb elems in the tree
@@ -439,7 +466,11 @@ public class MavibotInspector
 
         checkOffset( recordManager, btreeInfoOffset );
 
-        checkBtreeInfo( recordManager, checkedPages, btreeInfoOffset );
+        String btreeName = checkBtreeInfo( recordManager, checkedPages, btreeInfoOffset, btreeRevision );
+
+        // Update the checked pages
+        updateCheckedPages( checkedPages.get( btreeName ), recordManager.pageSize, btreeHeaderPageIos );
+        updateCheckedPages( checkedPages.get( GLOBAL_PAGES_NAME ), recordManager.pageSize, btreeHeaderPageIos );
 
         // Check the elements in the btree itself
         // We will read every single page
@@ -464,8 +495,8 @@ public class MavibotInspector
 
     /**
      * Check a B-tree
-     */
-    private static <K, V> void checkBtree( RecordManager recordManager, int[] checkedPages, PageIO[] pageIos ) throws Exception
+     *
+    private static <K, V> void checkBtree1( RecordManager recordManager, Map<String, int[]> checkedPages, PageIO[] pageIos ) throws Exception
     {
         long dataPos = 0L;
 
@@ -500,14 +531,10 @@ public class MavibotInspector
     /**
      * Check the Btree info page
      */
-    private static <K, V> void checkBtreeInfo( RecordManager recordManager, int[] checkedPages, long btreeInfoOffset ) throws IOException
+    private static <K, V> String checkBtreeInfo( RecordManager recordManager, Map<String, int[]> checkedPages, long btreeInfoOffset, long btreeRevision ) throws IOException
     {
         PageIO[] btreeInfoPagesIos = recordManager.readPageIOs( btreeInfoOffset, Long.MAX_VALUE );
 
-        // update the checkedPages
-        updateCheckedPages( checkedPages, recordManager.pageSize, btreeInfoPagesIos );
-
-        //((InMemoryBTree<K, V>)btree).setBtreeInfoOffset( btreeInfoPagesIos[0].getOffset() );
         long dataPos = 0L;
 
         // The B-tree page size
@@ -517,7 +544,7 @@ public class MavibotInspector
         // The tree name
         ByteBuffer btreeNameBytes = recordManager.readBytes( btreeInfoPagesIos, dataPos );
         dataPos += RecordManager.INT_SIZE + btreeNameBytes.limit();
-        Strings.utf8ToString( btreeNameBytes );
+        String btreeName = Strings.utf8ToString( btreeNameBytes );
 
         // The keySerializer FQCN
         ByteBuffer keySerializerBytes = recordManager.readBytes( btreeInfoPagesIos, dataPos );
@@ -531,18 +558,32 @@ public class MavibotInspector
         // The B-tree allowDuplicates flag
         recordManager.readInt( btreeInfoPagesIos, dataPos );
         dataPos += RecordManager.INT_SIZE;
+
+        // update the checkedPages
+        
+        if ( btreeRevision != -1L )
+        {
+            btreeName = btreeName + "<" + btreeRevision + ">";
+        }
+        
+        int[] checkedPagesArray = checkedPages.get( btreeName );
+        updateCheckedPages( checkedPagesArray, recordManager.pageSize, btreeInfoPagesIos );
+        updateCheckedPages( checkedPages.get( GLOBAL_PAGES_NAME ), recordManager.pageSize, btreeInfoPagesIos );
+        
+        return btreeName;
     }
 
     
     /**
      * Check the Btree of Btrees rootPage
      */
-    private static <K, V> void checkBtreeOfBtreesPage( RecordManager recordManager, int[] checkedPages, long pageOffset ) throws Exception
+    private static <K, V> void checkBtreeOfBtreesPage( RecordManager recordManager, Map<String, int[]> checkedPages, long pageOffset ) throws Exception
     {
         PageIO[] pageIos = recordManager.readPageIOs( pageOffset, Long.MAX_VALUE );
 
         // Update the checkedPages array
-        updateCheckedPages( checkedPages, recordManager.pageSize, pageIos );
+        updateCheckedPages( checkedPages.get( RecordManager.BTREE_OF_BTREES_NAME), recordManager.pageSize, pageIos );
+        updateCheckedPages( checkedPages.get( GLOBAL_PAGES_NAME ), recordManager.pageSize, pageIos );
 
         // Deserialize the page now
         long position = 0L;
@@ -586,7 +627,7 @@ public class MavibotInspector
     /**
      * Check a Btree of Btrees leaf. It contains <revision, name> -> offset.
      */
-    private static <K, V> void checkBtreeOfBtreesLeaf( RecordManager recordManager, int[] checkedPages, int nbElems, long revision, ByteBuffer byteBuffer, PageIO[] pageIos ) throws Exception
+    private static <K, V> void checkBtreeOfBtreesLeaf( RecordManager recordManager, Map<String, int[]> checkedPages, int nbElems, long revision, ByteBuffer byteBuffer, PageIO[] pageIos ) throws Exception
     {
         // Read each key and value
         for ( int i = 0; i < nbElems; i++ )
@@ -650,6 +691,10 @@ public class MavibotInspector
                 byteBuffer.get( bytes );
                 String btreeName = Strings.utf8ToString( bytes );
                 
+                // Add the new name in the checkedPage name if it's not already there
+                int[] btreePagesArray = createPageArray( recordManager );
+                checkedPages.put( btreeName + "<" + btreeRevision + ">", btreePagesArray );
+                
                 // Now, we can check the Btree we just found
                 checkBtree( recordManager, btreeOffset, checkedPages );
                 
@@ -663,10 +708,20 @@ public class MavibotInspector
     }
     
     
+    private static int[] createPageArray( RecordManager recordManager ) throws IOException
+    {
+        long fileSize = recordManager.fileChannel.size();
+        int pageSize = recordManager.pageSize;
+        long nbPages = ( fileSize - RecordManager.RECORD_MANAGER_HEADER_SIZE ) / pageSize;
+        int nbPageBits = ( int ) ( nbPages / 32 );
+        
+        return new int[nbPageBits + 1];
+    }
+    
     /**
      * Check a Btree of Btrees Node
      */
-    private static <K, V> long[] checkBtreeOfBtreesNode( RecordManager recordManager, int[] checkedPages, int nbElems, long revision,
+    private static <K, V> long[] checkBtreeOfBtreesNode( RecordManager recordManager, Map<String, int[]> checkedPages, int nbElems, long revision,
         ByteBuffer byteBuffer, PageIO[] pageIos ) throws IOException
     {
         long[] children = new long[nbElems + 1];
@@ -784,7 +839,7 @@ public class MavibotInspector
     /**
      * Check the free pages
      */
-    private static void checkFreePages( RecordManager recordManager, int[] checkedPages )
+    private static void checkFreePages( RecordManager recordManager, Map<String, int[]> checkedPages )
         throws IOException
     {
         if ( recordManager.firstFreePage == RecordManager.NO_PAGE )
@@ -815,7 +870,8 @@ public class MavibotInspector
                     return;
                 }
 
-                setCheckedPage( recordManager, checkedPages, currentOffset );
+                setCheckedPage( recordManager, checkedPages.get( GLOBAL_PAGES_NAME ), currentOffset );
+                setCheckedPage( recordManager, checkedPages.get( FREE_PAGES_NAME ), currentOffset );
 
                 long newOffset = pageIo.getNextPage();
                 currentOffset = newOffset;
@@ -853,7 +909,58 @@ public class MavibotInspector
      * Output the pages that has been seen ('1') and those which has not been seen ('0'). The '.' represent non-pages
      * at the end of the file.
      */
-    private static void dumpCheckedPages( RecordManager recordManager, int[] checkedPages ) throws IOException
+    private static void dumpCheckedPages( RecordManager recordManager, Map<String, int[]> checkedPages ) throws IOException
+    {
+        // First dump the global array
+        int[] globalArray = checkedPages.get( GLOBAL_PAGES_NAME );
+        String result = dumpPageArray( recordManager, globalArray );
+        
+        String dump = String.format( "%1$-18s : %2$s", GLOBAL_PAGES_NAME, result );
+        System.out.println( dump );
+        
+        // The free pages array
+        int[] freePagesArray = checkedPages.get( FREE_PAGES_NAME );
+        result = dumpPageArray( recordManager, freePagesArray );
+        
+        dump = String.format( "%1$-18s : %2$s", FREE_PAGES_NAME, result );
+        System.out.println( dump );
+        
+        // The B-tree of B-trees pages array
+        int[] btreeOfBtreesArray = checkedPages.get( RecordManager.BTREE_OF_BTREES_NAME );
+        result = dumpPageArray( recordManager, btreeOfBtreesArray );
+        
+        dump = String.format( "%1$-18s : %2$s", RecordManager.BTREE_OF_BTREES_NAME, result );
+        System.out.println( dump );
+        
+        // The Copied page B-tree pages array
+        int[] copiedPagesArray = checkedPages.get( RecordManager.COPIED_PAGE_BTREE_NAME );
+        result = dumpPageArray( recordManager, copiedPagesArray );
+        
+        dump = String.format( "%1$-18s : %2$s", RecordManager.COPIED_PAGE_BTREE_NAME, result );
+        System.out.println( dump );
+        
+        // And now, all the other btree arrays
+        for ( String btreeName : checkedPages.keySet() )
+        {
+            // Don't do the array we have already processed
+            if ( knownPagesArrays.contains( btreeName ) )
+            {
+                continue;
+            }
+
+            int[] btreePagesArray = checkedPages.get( btreeName );
+            result = dumpPageArray( recordManager, btreePagesArray );
+            
+            dump = String.format( "%1$-18s : %2$s", btreeName, result );
+            System.out.println( dump );
+        }
+    }
+
+    
+    /**
+     * Process a page array
+     */
+    private static String dumpPageArray( RecordManager recordManager, int[] checkedPages ) throws IOException
     {
         StringBuilder sb = new StringBuilder();
         int i = -1;
@@ -898,9 +1005,9 @@ public class MavibotInspector
             }
         }
 
-        System.out.println( sb.toString() );
+        return sb.toString();
     }
-
+    
 
     /**
      * The entry point method
@@ -951,7 +1058,14 @@ public class MavibotInspector
                     long fileSize = rm.fileChannel.size();
                     long nbPages = fileSize / rm.pageSize;
                     int nbPageBits = ( int ) ( nbPages / RecordManager.INT_SIZE );
-                    int[] checkedPages = new int[nbPageBits + 1];
+
+                    Map<String, int[]> checkedPages = new HashMap<String, int[]>(2);
+
+                    // The global page array
+                    checkedPages.put( GLOBAL_PAGES_NAME, new int[nbPageBits + 1] );
+
+                    // The freePages array
+                    checkedPages.put( FREE_PAGES_NAME, new int[nbPageBits + 1] );
 
                     checkFreePages( rm, checkedPages );
                     break;
