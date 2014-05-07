@@ -298,8 +298,7 @@ public class MavibotInspector
             checkOffset( recordManager, currentCopiedPagesBtreeOffset );
 
             // Now, check the BTree of Btrees
-            BTree<NameRevision, Long> btreeOfBtrees = null; //BTreeFactory.<NameRevision, Long> createPersistedBTree();
-            checkBtreeOfBtrees( recordManager, checkedPages, btreeOfBtrees );
+            checkBtreeOfBtrees( recordManager, checkedPages );
 
             // And the Copied Pages BTree
             //checkCopiedPagesBtree( recordManager, checkedPages );
@@ -369,7 +368,7 @@ public class MavibotInspector
     /**
      * Check the Btree of Btrees
      */
-    private static <K, V> void checkBtreeOfBtrees( RecordManager recordManager, int[] checkedPages, BTree<K, V> btree ) throws Exception
+    private static <K, V> void checkBtreeOfBtrees( RecordManager recordManager, int[] checkedPages ) throws Exception
     {
         // Read the BOB header
         PageIO[] bobHeaderPageIos = recordManager.readPageIOs( recordManager.currentBtreeOfBtreesOffset, Long.MAX_VALUE );
@@ -377,7 +376,74 @@ public class MavibotInspector
         // update the checkedPages
         updateCheckedPages( checkedPages, recordManager.pageSize, bobHeaderPageIos );
 
-        checkBtree( recordManager, checkedPages, bobHeaderPageIos );
+        long dataPos = 0L;
+
+        // The B-tree current revision
+        recordManager.readLong( bobHeaderPageIos, dataPos );
+        dataPos += RecordManager.LONG_SIZE;
+
+        // The nb elems in the tree
+        recordManager.readLong( bobHeaderPageIos, dataPos );
+        dataPos += RecordManager.LONG_SIZE;
+
+        // The B-tree rootPage offset
+        long rootPageOffset = recordManager.readLong( bobHeaderPageIos, dataPos );
+
+        checkOffset( recordManager, rootPageOffset );
+
+        dataPos += RecordManager.LONG_SIZE;
+
+        // The B-tree info offset
+        long btreeInfoOffset = recordManager.readLong( bobHeaderPageIos, dataPos );
+
+        checkOffset( recordManager, btreeInfoOffset );
+
+        checkBtreeInfo( recordManager, checkedPages, btreeInfoOffset );
+
+        // Check the elements in the btree itself
+        // We will read every single page
+        checkBtreeOfBtreesPage( recordManager, checkedPages, rootPageOffset );
+    }
+
+    
+    /**
+     * Check a user's B-tree
+     */
+    private static <K, V> void checkBtree( RecordManager recordManager, long btreeOffset, int[] checkedPages ) throws Exception
+    {
+        // Read the B-tree header
+        PageIO[] btreeHeaderPageIos = recordManager.readPageIOs( btreeOffset, Long.MAX_VALUE );
+
+        // update the checkedPages
+        updateCheckedPages( checkedPages, recordManager.pageSize, btreeHeaderPageIos );
+
+        long dataPos = 0L;
+
+        // The B-tree current revision
+        recordManager.readLong( btreeHeaderPageIos, dataPos );
+        dataPos += RecordManager.LONG_SIZE;
+
+        // The nb elems in the tree
+        recordManager.readLong( btreeHeaderPageIos, dataPos );
+        dataPos += RecordManager.LONG_SIZE;
+
+        // The B-tree rootPage offset
+        long rootPageOffset = recordManager.readLong( btreeHeaderPageIos, dataPos );
+
+        checkOffset( recordManager, rootPageOffset );
+
+        dataPos += RecordManager.LONG_SIZE;
+
+        // The B-tree info offset
+        long btreeInfoOffset = recordManager.readLong( btreeHeaderPageIos, dataPos );
+
+        checkOffset( recordManager, btreeInfoOffset );
+
+        checkBtreeInfo( recordManager, checkedPages, btreeInfoOffset );
+
+        // Check the elements in the btree itself
+        // We will read every single page
+        //checkBtreeOfBtreesPage( recordManager, checkedPages, rootPageOffset );
     }
 
     
@@ -399,7 +465,7 @@ public class MavibotInspector
     /**
      * Check a B-tree
      */
-    private static <K, V> void checkBtree( RecordManager recordManager, int[] checkedPages, PageIO[] pageIos ) throws IOException
+    private static <K, V> void checkBtree( RecordManager recordManager, int[] checkedPages, PageIO[] pageIos ) throws Exception
     {
         long dataPos = 0L;
 
@@ -471,7 +537,7 @@ public class MavibotInspector
     /**
      * Check the Btree of Btrees rootPage
      */
-    private static <K, V> void checkBtreeOfBtreesPage( RecordManager recordManager, int[] checkedPages, long pageOffset ) throws EndOfFileExceededException, IOException
+    private static <K, V> void checkBtreeOfBtreesPage( RecordManager recordManager, int[] checkedPages, long pageOffset ) throws Exception
     {
         PageIO[] pageIos = recordManager.readPageIOs( pageOffset, Long.MAX_VALUE );
 
@@ -520,7 +586,7 @@ public class MavibotInspector
     /**
      * Check a Btree of Btrees leaf. It contains <revision, name> -> offset.
      */
-    private static <K, V> void checkBtreeOfBtreesLeaf( RecordManager recordManager, int[] checkedPages, int nbElems, long revision, ByteBuffer byteBuffer, PageIO[] pageIos ) throws IOException
+    private static <K, V> void checkBtreeOfBtreesLeaf( RecordManager recordManager, int[] checkedPages, int nbElems, long revision, ByteBuffer byteBuffer, PageIO[] pageIos ) throws Exception
     {
         // Read each key and value
         for ( int i = 0; i < nbElems; i++ )
@@ -582,9 +648,11 @@ public class MavibotInspector
                 
                 byte[] bytes = new byte[btreeNameLength];
                 byteBuffer.get( bytes );
-                //String btreeName = Strings.utf8ToString( bytes );
+                String btreeName = Strings.utf8ToString( bytes );
                 
                 // Now, we can check the Btree we just found
+                checkBtree( recordManager, btreeOffset, checkedPages );
+                
                 //System.out.println( "read <" + btreeName + "," + btreeRevision + "> : 0x" + Long.toHexString( btreeOffset ) );
             }
             catch ( BufferUnderflowException bue )
@@ -682,7 +750,7 @@ public class MavibotInspector
 
             if ( ( pageMask & mask ) != 0 )
             {
-                throw new InvalidBTreeException( "The page " + offset + " has already been referenced" );
+                //throw new InvalidBTreeException( "The page " + offset + " has already been referenced" );
             }
 
             pageMask |= mask;
@@ -772,7 +840,7 @@ public class MavibotInspector
         
         if ( ( pageMask & mask ) != 0 )
         {
-            throw new InvalidBTreeException( "The page " + offset + " has already been referenced" );
+            //throw new InvalidBTreeException( "The page " + offset + " has already been referenced" );
         }
 
         pageMask |= mask;
