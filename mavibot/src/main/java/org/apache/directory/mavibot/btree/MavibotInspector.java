@@ -28,7 +28,6 @@ import java.io.RandomAccessFile;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -36,6 +35,7 @@ import java.util.Set;
 
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.InvalidBTreeException;
+import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
 import org.apache.directory.mavibot.btree.util.Strings;
@@ -71,6 +71,17 @@ public class MavibotInspector
         knownPagesArrays.add( RecordManager.COPIED_PAGE_BTREE_NAME );
     }
     
+    /**
+     * A private class to store a few informations about a btree
+     *
+    
+    private static BtreeInfo btreeInfo;
+    
+    static
+    {
+        btreeInfo = new BtreeInfo();
+    }
+
     /**
      * Create an instance of MavibotInspector
      * @param dbFile The file to read
@@ -466,15 +477,64 @@ public class MavibotInspector
 
         checkOffset( recordManager, btreeInfoOffset );
 
-        String btreeName = checkBtreeInfo( recordManager, checkedPages, btreeInfoOffset, btreeRevision );
+        BtreeInfo<K, V> btreeInfo = checkBtreeInfo( recordManager, checkedPages, btreeInfoOffset, btreeRevision );
 
         // Update the checked pages
-        updateCheckedPages( checkedPages.get( btreeName ), recordManager.pageSize, btreeHeaderPageIos );
+        updateCheckedPages( checkedPages.get( btreeInfo.btreeName ), recordManager.pageSize, btreeHeaderPageIos );
         updateCheckedPages( checkedPages.get( GLOBAL_PAGES_NAME ), recordManager.pageSize, btreeHeaderPageIos );
+        
+        // And now, process the rootPage
+        checkBtreePage( recordManager, btreeInfo, checkedPages, rootPageOffset );
+    }
 
-        // Check the elements in the btree itself
-        // We will read every single page
-        //checkBtreeOfBtreesPage( recordManager, checkedPages, rootPageOffset );
+    
+    /**
+     * Check the Btree of Btrees rootPage
+     */
+    private static <K, V> void checkBtreePage( RecordManager recordManager, BtreeInfo<K, V> btreeInfo, Map<String, int[]> checkedPages, long pageOffset ) throws Exception
+    {
+        PageIO[] pageIos = recordManager.readPageIOs( pageOffset, Long.MAX_VALUE );
+
+        // Update the checkedPages array
+        updateCheckedPages( checkedPages.get( btreeInfo.btreeName ), recordManager.pageSize, pageIos );
+        updateCheckedPages( checkedPages.get( GLOBAL_PAGES_NAME ), recordManager.pageSize, pageIos );
+
+        // Deserialize the page now
+        long position = 0L;
+
+        // The revision
+        long revision = recordManager.readLong( pageIos, position );
+        position += RecordManager.LONG_SIZE;
+
+        // The number of elements in the page
+        int nbElems = recordManager.readInt( pageIos, position );
+        position += RecordManager.INT_SIZE;
+
+        // The size of the data containing the keys and values
+        // Reads the bytes containing all the keys and values, if we have some
+        // We read  big blob of data into  ByteBuffer, then we will process
+        // this ByteBuffer
+        ByteBuffer byteBuffer = recordManager.readBytes( pageIos, position );
+
+        // Now, deserialize the data block. If the number of elements
+        // is positive, it's a Leaf, otherwise it's a Node
+        // Note that only a leaf can have 0 elements, and it's the root page then.
+        if ( nbElems >= 0 )
+        {
+            // It's a leaf, process it as we may have sub-btrees
+            checkBtreeLeaf( recordManager, btreeInfo, checkedPages, nbElems, revision, byteBuffer, pageIos );
+        }
+        else
+        {
+            // It's a node
+            long[] children = checkBtreeNode( recordManager, btreeInfo, checkedPages, -nbElems, revision, byteBuffer, pageIos );
+
+            for ( int pos = 0; pos <= -nbElems; pos++ )
+            {
+                // Recursively check the children
+                checkBtreePage( recordManager, btreeInfo, checkedPages, children[pos] );
+            }
+        }
     }
 
     
@@ -494,45 +554,13 @@ public class MavibotInspector
     
 
     /**
-     * Check a B-tree
-     *
-    private static <K, V> void checkBtree1( RecordManager recordManager, Map<String, int[]> checkedPages, PageIO[] pageIos ) throws Exception
-    {
-        long dataPos = 0L;
-
-        // The B-tree current revision
-        recordManager.readLong( pageIos, dataPos );
-        dataPos += RecordManager.LONG_SIZE;
-
-        // The nb elems in the tree
-        recordManager.readLong( pageIos, dataPos );
-        dataPos += RecordManager.LONG_SIZE;
-
-        // The B-tree rootPage offset
-        long rootPageOffset = recordManager.readLong( pageIos, dataPos );
-
-        checkOffset( recordManager, rootPageOffset );
-
-        dataPos += RecordManager.LONG_SIZE;
-
-        // The B-tree info offset
-        long btreeInfoOffset = recordManager.readLong( pageIos, dataPos );
-
-        checkOffset( recordManager, btreeInfoOffset );
-
-        checkBtreeInfo( recordManager, checkedPages, btreeInfoOffset );
-
-        // Check the elements in the btree itself
-        // We will read every single page
-        checkBtreeOfBtreesPage( recordManager, checkedPages, rootPageOffset );
-    }
-    
-    
-    /**
      * Check the Btree info page
+     * @throws ClassNotFoundException 
      */
-    private static <K, V> String checkBtreeInfo( RecordManager recordManager, Map<String, int[]> checkedPages, long btreeInfoOffset, long btreeRevision ) throws IOException
+    private static <K, V> BtreeInfo<K, V> checkBtreeInfo( RecordManager recordManager, Map<String, int[]> checkedPages, long btreeInfoOffset, long btreeRevision ) throws IOException
     {
+        BtreeInfo<K, V> btreeInfo = new BtreeInfo<K, V>();
+        
         PageIO[] btreeInfoPagesIos = recordManager.readPageIOs( btreeInfoOffset, Long.MAX_VALUE );
 
         long dataPos = 0L;
@@ -548,10 +576,25 @@ public class MavibotInspector
 
         // The keySerializer FQCN
         ByteBuffer keySerializerBytes = recordManager.readBytes( btreeInfoPagesIos, dataPos );
+
+        if ( keySerializerBytes != null )
+        {
+            String keySerializerFqcn = Strings.utf8ToString( keySerializerBytes );
+            
+            btreeInfo.keySerializer = getSerializer(  keySerializerFqcn );
+        }
+
         dataPos += RecordManager.INT_SIZE + keySerializerBytes.limit();
 
         // The valueSerialier FQCN
         ByteBuffer valueSerializerBytes = recordManager.readBytes( btreeInfoPagesIos, dataPos );
+
+        if ( valueSerializerBytes != null )
+        {
+            String valueSerializerFqcn = Strings.utf8ToString( valueSerializerBytes );
+            
+            btreeInfo.valueSerializer = getSerializer( valueSerializerFqcn );
+        }
 
         dataPos += RecordManager.INT_SIZE + valueSerializerBytes.limit();
 
@@ -560,17 +603,53 @@ public class MavibotInspector
         dataPos += RecordManager.INT_SIZE;
 
         // update the checkedPages
-        
         if ( btreeRevision != -1L )
         {
             btreeName = btreeName + "<" + btreeRevision + ">";
         }
+
+        btreeInfo.btreeName = btreeName;
         
+        // Update the checkedPages
         int[] checkedPagesArray = checkedPages.get( btreeName );
         updateCheckedPages( checkedPagesArray, recordManager.pageSize, btreeInfoPagesIos );
         updateCheckedPages( checkedPages.get( GLOBAL_PAGES_NAME ), recordManager.pageSize, btreeInfoPagesIos );
         
-        return btreeName;
+        return btreeInfo;
+    }
+    
+
+    /**
+     * Get back the serializer instance
+     */
+    @SuppressWarnings("unchecked")
+    private static <T> ElementSerializer<T> getSerializer( String serializerFqcn )
+    {
+        try
+        {
+            Class<?> serializerClass = Class.forName( serializerFqcn );
+            ElementSerializer<T> serializer = null;
+            
+            try
+            {
+                serializer = ( ElementSerializer<T> ) serializerClass.getDeclaredField( "INSTANCE" ).get( null );
+            }
+            catch( NoSuchFieldException e )
+            {
+                // ignore
+            }
+    
+            if ( serializer == null )
+            {
+                serializer = ( ElementSerializer<T> ) serializerClass.newInstance();
+            }
+    
+            return serializer;
+        }
+        catch ( Exception e )
+        {
+            throw new InvalidBTreeException( "Error : " + e.getMessage() );
+        }
     }
 
     
@@ -708,14 +787,36 @@ public class MavibotInspector
     }
     
     
-    private static int[] createPageArray( RecordManager recordManager ) throws IOException
+    /**
+     * Check a Btree leaf.
+     */
+    private static <K, V> void checkBtreeLeaf( RecordManager recordManager, BtreeInfo<K, V> btreeInfo, Map<String, int[]> checkedPages, int nbElems, long revision, ByteBuffer byteBuffer, PageIO[] pageIos ) throws Exception
     {
-        long fileSize = recordManager.fileChannel.size();
-        int pageSize = recordManager.pageSize;
-        long nbPages = ( fileSize - RecordManager.RECORD_MANAGER_HEADER_SIZE ) / pageSize;
-        int nbPageBits = ( int ) ( nbPages / 32 );
-        
-        return new int[nbPageBits + 1];
+        // Read each key and value
+        for ( int i = 0; i < nbElems; i++ )
+        {
+            try
+            {
+                // Read the number of values
+                int nbValues = byteBuffer.getInt();
+    
+                if ( nbValues < 0 )
+                {
+                    // process the sub-btree
+                    
+                    // Now, process the key
+                    btreeInfo.keySerializer.deserialize( byteBuffer );
+                }
+                else
+                {
+                    // Nothing to do...
+                }
+            }
+            catch ( BufferUnderflowException bue )
+            {
+                throw new InvalidBTreeException( "The BOB leaf byte buffer is too short : " + bue.getMessage() );
+            }
+        }
     }
     
     /**
@@ -782,6 +883,69 @@ public class MavibotInspector
         // and read the last value, as it's a node
         return children;
     }
+    
+    
+    /**
+     * Check a Btree node.
+     */
+    private static <K, V> long[] checkBtreeNode( RecordManager recordManager, BtreeInfo<K, V> btreeInfo, Map<String, int[]> checkedPages, int nbElems, long revision, ByteBuffer byteBuffer, PageIO[] pageIos ) throws Exception
+    {
+        long[] children = new long[nbElems + 1];
+
+        // Read each key and value
+        for ( int i = 0; i < nbElems; i++ )
+        {
+            try
+            {
+                // The offsets of the child
+                long firstOffset = LongSerializer.INSTANCE.deserialize( byteBuffer );
+                
+                checkOffset( recordManager, firstOffset );
+                
+                long lastOffset = LongSerializer.INSTANCE.deserialize( byteBuffer );
+
+                checkOffset( recordManager, lastOffset );
+                
+                children[i] = firstOffset;
+                
+                // Now, read the key
+                btreeInfo.keySerializer.deserialize( byteBuffer );
+
+            }
+            catch ( BufferUnderflowException bue )
+            {
+                throw new InvalidBTreeException( "The BOB leaf byte buffer is too short : " + bue.getMessage() );
+            }
+        }
+        
+        // The last child
+        // The offsets of the child
+        long firstOffset = LongSerializer.INSTANCE.deserialize( byteBuffer );
+        
+        checkOffset( recordManager, firstOffset );
+        
+        long lastOffset = LongSerializer.INSTANCE.deserialize( byteBuffer );
+
+        checkOffset( recordManager, lastOffset );
+        
+        children[nbElems] = firstOffset;
+        
+        return children;
+    }
+    
+    
+    /**
+     * Create an array of bits for pages 
+     */
+    private static int[] createPageArray( RecordManager recordManager ) throws IOException
+    {
+        long fileSize = recordManager.fileChannel.size();
+        int pageSize = recordManager.pageSize;
+        long nbPages = ( fileSize - RecordManager.RECORD_MANAGER_HEADER_SIZE ) / pageSize;
+        int nbPageBits = ( int ) ( nbPages / 32 );
+        
+        return new int[nbPageBits + 1];
+    }
 
 
     /**
@@ -821,9 +985,6 @@ public class MavibotInspector
      * <li>It's below the end of the file</li>
      * <li>It's a multiple of the pageSize
      * </ul>
-     * @param offset The offset to check
-     * @param pageSize the page size
-     * @throws InvalidOffsetException If the offset is not valid
      */
     private static void checkOffset( RecordManager recordManager, long offset ) throws IOException
     {
@@ -1171,5 +1332,33 @@ public class MavibotInspector
         
         MavibotInspector mi = new MavibotInspector( f );
         mi.start();
+    }
+}
+
+
+/**
+ * A class used to store some information about the Btree 
+ */
+final class BtreeInfo<K, V>
+{
+    // The btree name
+    /* no qualifier */ String btreeName;
+    
+    // The key serializer
+    /* no qualifier */ElementSerializer<K> keySerializer;
+    
+    // The value serializer
+    /* no qualifier */ElementSerializer<V> valueSerializer;
+    
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+        
+        sb.append( "B-tree Info : \n" );
+        sb.append( "    name              : " ).append( btreeName );
+        sb.append( "    key serializer    : " ).append( keySerializer.getClass().getName() );
+        sb.append( "    value serializer  : " ).append( valueSerializer.getClass().getName() );
+        
+        return sb.toString();
     }
 }

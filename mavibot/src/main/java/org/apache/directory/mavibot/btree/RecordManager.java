@@ -42,7 +42,6 @@ import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException
 import org.apache.directory.mavibot.btree.exception.BTreeCreationException;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.FileException;
-import org.apache.directory.mavibot.btree.exception.FreePageException;
 import org.apache.directory.mavibot.btree.exception.InvalidBTreeException;
 import org.apache.directory.mavibot.btree.exception.InvalidOffsetException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
@@ -166,10 +165,10 @@ public class RecordManager extends AbstractTransactionManager
     private BTree<NameRevision, Long> btreeOfBtrees;
 
     /** The B-tree of B-trees management btree name */
-    private static final String BTREE_OF_BTREES_NAME = "_btree_of_btrees_";
+    /* no qualifier */ static final String BTREE_OF_BTREES_NAME = "_btree_of_btrees_";
 
     /** The CopiedPages management btree name */
-    private static final String COPIED_PAGE_BTREE_NAME = "_copiedPageBtree_";
+    /* no qualifier */ static final String COPIED_PAGE_BTREE_NAME = "_copiedPageBtree_";
 
     /** The current B-tree of B-trees header offset */
     /* no qualifier */ long currentBtreeOfBtreesOffset;
