@@ -129,8 +129,9 @@ public class LongArraySerializer extends AbstractElementSerializer<long[]>
 
             default:
                 long[] longs = new long[len];
+                in = bufferHandler.read( len * 8 );
 
-                int pos = 4;
+                int pos = 0;
 
                 for ( int i = 0; i < len; i++ )
                 {
