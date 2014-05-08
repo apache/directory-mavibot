@@ -341,7 +341,7 @@ public class MavibotInspector
             checkBtreeOfBtrees( recordManager, checkedPages );
 
             // And the Copied Pages BTree
-            checkBtree( recordManager, currentCopiedPagesBtreeOffset, checkedPages );
+            //checkBtree( recordManager, currentCopiedPagesBtreeOffset, checkedPages );
 
             // We can now dump the checked pages
             dumpCheckedPages( recordManager, checkedPages );
@@ -548,6 +548,14 @@ public class MavibotInspector
         
         // Update the checkedPages
         int[] checkedPagesArray = checkedPages.get( btreeName );
+        
+        if ( checkedPagesArray == null )
+        {
+            // Add the new name in the checkedPage name if it's not already there
+            checkedPagesArray = createPageArray( recordManager );
+            checkedPages.put( btreeName, checkedPagesArray );
+        }
+        
         updateCheckedPages( checkedPagesArray, recordManager.pageSize, btreeInfoPagesIos );
         updateCheckedPages( checkedPages.get( GLOBAL_PAGES_NAME ), recordManager.pageSize, btreeInfoPagesIos );
         
@@ -738,14 +746,30 @@ public class MavibotInspector
     
                 if ( nbValues < 0 )
                 {
-                    // process the sub-btree
+                    // This is a sub-btree. Read the offset
+                    long subBtreeOffset = byteBuffer.getLong();
+                    
+                    // And process the sub-btree
+                    checkBtree( recordManager, subBtreeOffset, checkedPages );
                     
                     // Now, process the key
+                    // The key length
+                    byteBuffer.getInt();
+                    
+                    // The key itself
                     btreeInfo.keySerializer.deserialize( byteBuffer );
                 }
                 else
                 {
-                    // Nothing to do...
+                    // just deserialize the keys and values
+                    // The value
+                    int valueLength = byteBuffer.getInt();
+                    btreeInfo.valueSerializer.deserialize( byteBuffer );
+                    
+                    // the key
+                    int keyLength = byteBuffer.getInt();
+                    
+                    btreeInfo.keySerializer.deserialize( byteBuffer );
                 }
             }
             catch ( BufferUnderflowException bue )
@@ -1016,28 +1040,28 @@ public class MavibotInspector
         int[] globalArray = checkedPages.get( GLOBAL_PAGES_NAME );
         String result = dumpPageArray( recordManager, globalArray );
         
-        String dump = String.format( "%1$-18s : %2$s", GLOBAL_PAGES_NAME, result );
+        String dump = String.format( "%1$-40s : %2$s", GLOBAL_PAGES_NAME, result );
         System.out.println( dump );
         
         // The free pages array
         int[] freePagesArray = checkedPages.get( FREE_PAGES_NAME );
         result = dumpPageArray( recordManager, freePagesArray );
         
-        dump = String.format( "%1$-18s : %2$s", FREE_PAGES_NAME, result );
+        dump = String.format( "%1$-40s : %2$s", FREE_PAGES_NAME, result );
         System.out.println( dump );
         
         // The B-tree of B-trees pages array
         int[] btreeOfBtreesArray = checkedPages.get( RecordManager.BTREE_OF_BTREES_NAME );
         result = dumpPageArray( recordManager, btreeOfBtreesArray );
         
-        dump = String.format( "%1$-18s : %2$s", RecordManager.BTREE_OF_BTREES_NAME, result );
+        dump = String.format( "%1$-40s : %2$s", RecordManager.BTREE_OF_BTREES_NAME, result );
         System.out.println( dump );
         
         // The Copied page B-tree pages array
         int[] copiedPagesArray = checkedPages.get( RecordManager.COPIED_PAGE_BTREE_NAME );
         result = dumpPageArray( recordManager, copiedPagesArray );
         
-        dump = String.format( "%1$-18s : %2$s", RecordManager.COPIED_PAGE_BTREE_NAME, result );
+        dump = String.format( "%1$-40s : %2$s", RecordManager.COPIED_PAGE_BTREE_NAME, result );
         System.out.println( dump );
         
         // And now, all the other btree arrays
@@ -1052,7 +1076,7 @@ public class MavibotInspector
             int[] btreePagesArray = checkedPages.get( btreeName );
             result = dumpPageArray( recordManager, btreePagesArray );
             
-            dump = String.format( "%1$-18s : %2$s", btreeName, result );
+            dump = String.format( "%1$-40s : %2$s", btreeName, result );
             System.out.println( dump );
         }
     }
@@ -1253,19 +1277,38 @@ public class MavibotInspector
         File f = new File( "/tmp/mavibotispector.db" );
 
         RecordManager rm = new RecordManager( f.getAbsolutePath() );
-        String name = "corpus";
-        
-        if ( !rm.getManagedTrees().contains( name ) )
+        String name1 = "corpus";
+        String name2 = "multiValues";
+        /*
+        if ( !rm.getManagedTrees().contains( name1 ) )
         {
-            rm.addBTree( name, StringSerializer.INSTANCE, StringSerializer.INSTANCE, true );
+            rm.addBTree( name1, StringSerializer.INSTANCE, StringSerializer.INSTANCE, true );
+        }
+        */
+        if ( !rm.getManagedTrees().contains( name2 ) )
+        {
+            rm.addBTree( name2, StringSerializer.INSTANCE, StringSerializer.INSTANCE, true );
         }
 
-        
-        BTree<String, String> btree = rm.getManagedTree( name );
+        /*
+        // Load some elements in the single value btree
+        BTree<String, String> btree1 = rm.getManagedTree( name1 );
         
         for ( int i = 0; i < 10; i++ )
         {
-            btree.insert( "" + i, "" + i );
+            btree1.insert( Integer.toString( i ), Integer.toString( i ) );
+        }
+        */
+
+        // Load some elements in the multi value btree
+        BTree<String, String> btree2 = rm.getManagedTree( name2 );
+        
+        for ( int i = 0; i < 1; i++ )
+        {
+            for ( int j = 0; j < 10; j++)
+            {
+                btree2.insert( Integer.toString( i ), Integer.toString( j ) );
+            }
         }
 
         rm.close();
