@@ -42,7 +42,6 @@ import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException
 import org.apache.directory.mavibot.btree.exception.BTreeCreationException;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.FileException;
-import org.apache.directory.mavibot.btree.exception.InvalidBTreeException;
 import org.apache.directory.mavibot.btree.exception.InvalidOffsetException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.exception.RecordManagerException;
@@ -3523,126 +3522,14 @@ public class RecordManager extends AbstractTransactionManager
     /**
      * Add a newly closd transaction into the closed transaction queue
      */
-    /* no qualifier */ void releaseTransaction( ReadTransaction readTransaction )
+    /* no qualifier */ <K, V> void releaseTransaction( ReadTransaction<K, V> readTransaction )
     {
         RevisionName revisionName = new RevisionName( 
             readTransaction.getRevision(), 
             readTransaction.getBtreeHeader().getBtree().getName() );
         closedTransactionsQueue.add( revisionName );
     }
-
     
-    /**
-     * Check the root page for a given B-tree
-     * @throws IOException
-     * @throws EndOfFileExceededException
-     */
-    private void checkRoot( int[] checkedPages, long offset, int pageSize, long nbBtreeElems,
-        ElementSerializer keySerializer, ElementSerializer valueSerializer, boolean allowDuplicates )
-        throws EndOfFileExceededException, IOException
-    {
-        // Read the rootPage pages on disk
-        PageIO[] rootPageIos = readPageIOs( offset, Long.MAX_VALUE );
-
-        // Deserialize the rootPage now
-        long position = 0L;
-
-        // The revision
-        long revision = readLong( rootPageIos, position );
-        position += LONG_SIZE;
-
-        // The number of elements in the page
-        int nbElems = readInt( rootPageIos, position );
-        position += INT_SIZE;
-
-        // The size of the data containing the keys and values
-        ByteBuffer byteBuffer = null;
-
-        // Reads the bytes containing all the keys and values, if we have some
-        ByteBuffer data = readBytes( rootPageIos, position );
-
-        if ( nbElems >= 0 )
-        {
-            // Its a leaf
-
-            // Check the page offset
-            long pageOffset = rootPageIos[0].getOffset();
-
-            if ( ( pageOffset < 0 ) || ( pageOffset > fileChannel.size() ) )
-            {
-                throw new InvalidBTreeException( "The page offset is incorrect : " + pageOffset );
-            }
-
-            // Check the page last offset
-            long pageLastOffset = rootPageIos[rootPageIos.length - 1].getOffset();
-
-            if ( ( pageLastOffset <= 0 ) || ( pageLastOffset > fileChannel.size() ) )
-            {
-                throw new InvalidBTreeException( "The page last offset is incorrect : " + pageLastOffset );
-            }
-
-            // Read each value and key
-            for ( int i = 0; i < nbElems; i++ )
-            {
-                // Just deserialize all the keys and values
-                if ( allowDuplicates )
-                {
-                    /*
-                    long value = OFFSET_SERIALIZER.deserialize( byteBuffer );
-
-                    rootPageIos = readPageIOs( value, Long.MAX_VALUE );
-
-                    BTree dupValueContainer = BTreeFactory.createBTree();
-                    dupValueContainer.setBtreeOffset( value );
-
-                    try
-                    {
-                        loadBTree( pageIos, dupValueContainer );
-                    }
-                    catch ( Exception e )
-                    {
-                        // should not happen
-                        throw new InvalidBTreeException( e );
-                    }
-                    */
-                }
-                else
-                {
-                    valueSerializer.deserialize( byteBuffer );
-                }
-
-                keySerializer.deserialize( byteBuffer );
-            }
-        }
-        else
-        {
-            /*
-            // It's a node
-            int nodeNbElems = -nbElems;
-
-            // Read each value and key
-            for ( int i = 0; i < nodeNbElems; i++ )
-            {
-                // This is an Offset
-                long offset = OFFSET_SERIALIZER.deserialize( byteBuffer );
-                long lastOffset = OFFSET_SERIALIZER.deserialize( byteBuffer );
-
-                ElementHolder valueHolder = new ReferenceHolder( btree, null, offset, lastOffset );
-                ( ( Node ) page ).setValue( i, valueHolder );
-
-                Object key = btree.getKeySerializer().deserialize( byteBuffer );
-                BTreeFactory.setKey( page, i, key );
-            }
-
-            // and read the last value, as it's a node
-            long offset = OFFSET_SERIALIZER.deserialize( byteBuffer );
-            long lastOffset = OFFSET_SERIALIZER.deserialize( byteBuffer );
-
-            ElementHolder valueHolder = new ReferenceHolder( btree, null, offset, lastOffset );
-            ( ( Node ) page ).setValue( nodeNbElems, valueHolder );*/
-        }
-    }
-
     
     /**
      * Loads a B-tree holding the values of a duplicate key
@@ -3667,52 +3554,6 @@ public class RecordManager extends AbstractTransactionManager
         {
             // should not happen
             throw new BTreeCreationException( e );
-        }
-    }
-
-
-    /**
-     * Check the free pages list
-     */
-    /* no qualifier  void checkFreePages()
-    {
-        try
-        {
-            if ( firstFreePage == NO_PAGE )
-            {
-                System.out.println("No Free pages exist.");
-                return;
-            }
-
-            long currentFreePage = firstFreePage;
-            Set<Long> seenOffset = new HashSet<Long>();
-            seenOffset.add( currentFreePage );
-
-            long count = 0;
-            
-            while ( currentFreePage != NO_PAGE )
-            {
-                PageIO pageIo = fetchPage( currentFreePage );
-
-    //            System.out.println( "    freePage[" + pageNb + "] : 0x" + Long.toHexString( pageIo.getOffset() ) );
-
-                currentFreePage = pageIo.getNextPage();
-
-                if ( seenOffset.contains( currentFreePage ) )
-                {
-                    System.out.println( "ERROR !!! The FreePage list is broken, the offset " + currentFreePage + " is linked twice" );
-                    dumpFreePages( firstFreePage );
-                    return;
-                }
-                
-                count++;
-            }
-
-            System.out.println( "Free page list is valid. There are " + count + " free pages." );
-        }
-        catch ( Exception e )
-        {
-            System.out.println( "Error : " + e.getMessage() );
         }
     }
 
