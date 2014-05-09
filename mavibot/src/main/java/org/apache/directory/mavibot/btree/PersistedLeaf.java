@@ -519,7 +519,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
         else
         {
-            throw KEY_NOT_FOUND_EXCEPTION;
+            throw KeyNotFoundException.INSTANCE;
         }
     }
 
@@ -561,7 +561,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
         else
         {
-            throw KEY_NOT_FOUND_EXCEPTION;
+            throw KeyNotFoundException.INSTANCE;
         }
     }
 

@@ -27,7 +27,6 @@ import org.apache.directory.mavibot.btree.exception.DuplicateValueNotAllowedExce
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
-
 /**
  * A MVCC Leaf. It stores the keys and values. It does not have any children.
  *
@@ -486,7 +485,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
         else
         {
-            throw KEY_NOT_FOUND_EXCEPTION;
+            throw KeyNotFoundException.INSTANCE;
         }
     }
 
@@ -512,7 +511,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
         else
         {
-            throw KEY_NOT_FOUND_EXCEPTION;
+            throw KeyNotFoundException.INSTANCE;
         }
     }
 

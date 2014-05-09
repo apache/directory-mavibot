@@ -59,11 +59,6 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /** The last {@link PageIO} storing the serialized Page on disk */
     protected long lastOffset = -1L;
 
-    /** A static Exception used to avoid creating a new one every time */
-    protected KeyNotFoundException KEY_NOT_FOUND_EXCEPTION = new KeyNotFoundException(
-        "Cannot find an entry associated with this key" );
-
-
     /**
      * Creates a default empty AbstractPage
      *
