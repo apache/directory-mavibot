@@ -83,7 +83,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
     /**
      * Creates a new instance of a ValueHolder, containing Values. This constructor is called
-     * whe we need to create a new ValueHolder with deserialized values.
+     * when we need to create a new ValueHolder with deserialized values.
      *
      * @param parentBtree The parent BTree
      * @param values The Values stored in the ValueHolder
