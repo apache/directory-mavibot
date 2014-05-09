@@ -341,7 +341,7 @@ public class MavibotInspector
             checkBtreeOfBtrees( recordManager, checkedPages );
 
             // And the Copied Pages BTree
-            //checkBtree( recordManager, currentCopiedPagesBtreeOffset, checkedPages );
+            checkBtree( recordManager, currentCopiedPagesBtreeOffset, checkedPages );
 
             // We can now dump the checked pages
             dumpCheckedPages( recordManager, checkedPages );
@@ -874,7 +874,6 @@ public class MavibotInspector
                 
                 // The key itself
                 btreeInfo.keySerializer.deserialize( byteBuffer );
-
             }
             catch ( BufferUnderflowException bue )
             {
