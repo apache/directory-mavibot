@@ -892,6 +892,27 @@ public class PersistedBTreeBrowseTest
 
 
     /**
+     * Test the browseFrom method on a btree with a non existing key
+     */
+    @Test
+    public void testBrowseFromBTreeNodesNotExistingKey() throws IOException, BTreeAlreadyManagedException
+    {
+        // Inject some data
+        for ( long i = 0; i <= 1000L; i += 2 )
+        {
+            btree.insert( i, Long.toString( i ) );
+        }
+
+        // Create the cursor
+        TupleCursor<Long, String> cursor = btree.browseFrom( 1500L );
+        
+        assertFalse( cursor.hasNext() );
+        assertTrue( cursor.hasPrev() );
+        assertEquals( 1000L, cursor.prev().getKey().longValue() );
+    }
+
+
+    /**
      * Test the browseFrom method on a btree containing nodes with duplicate values
      */
     @Test
