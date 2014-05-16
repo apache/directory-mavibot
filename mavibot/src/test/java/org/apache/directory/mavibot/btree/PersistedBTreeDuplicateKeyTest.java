@@ -142,11 +142,14 @@ public class PersistedBTreeDuplicateKeyTest
 
 
     @Test
-    public void testBrowseEmptyTree() throws IOException, KeyNotFoundException
+    public void testBrowseEmptyTree() throws IOException, KeyNotFoundException, BTreeAlreadyManagedException
     {
         IntSerializer serializer = IntSerializer.INSTANCE;
 
         BTree<Integer, Integer> btree = BTreeFactory.createPersistedBTree( "master", serializer, serializer );
+        
+        // Inject the newly created BTree into teh recordManager
+        recordManager1.manage( btree );
 
         TupleCursor<Integer, Integer> cursor = btree.browse();
         assertFalse( cursor.hasNext() );

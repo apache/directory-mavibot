@@ -19,11 +19,12 @@
  */
 package org.apache.directory.mavibot.btree;
 
-import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
-
-import org.apache.directory.mavibot.btree.exception.RecordManagerException;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * An implementation of a TransactionManager for in-memory B-trees
@@ -37,6 +38,15 @@ public class InMemoryTransactionManager extends AbstractTransactionManager
     
     /** A ThreadLocalStorage used to store the current transaction */
     private static final ThreadLocal<Integer> context = new ThreadLocal<Integer>();
+    
+    /** A Map keeping the latest revisions for each managed BTree */
+    private Map<String, BTreeHeader<?, ?>> currentBTreeHeaders = new HashMap<String, BTreeHeader<?, ?>>();
+
+    /** A Map storing the new revisions when some change have been made in some BTrees */
+    private Map<String, BTreeHeader<?, ?>> newBTreeHeaders = new HashMap<String, BTreeHeader<?, ?>>();
+    
+    /** A lock to protect the BtreeHeader maps */
+    private ReadWriteLock btreeHeadersLock = new ReentrantReadWriteLock();
 
     /**
      * {@inheritDoc}
@@ -100,5 +110,34 @@ public class InMemoryTransactionManager extends AbstractTransactionManager
 
         // Finally, release the global lock
         transactionLock.unlock();
+    }
+    
+    
+    /**
+     * Get the current BTreeHeader for a given Btree. It might not exist
+     */
+    public BTreeHeader getBTreeHeader( String name )
+    {
+        // Get a lock
+        btreeHeadersLock.readLock().lock();
+        
+        // get the current BTree Header for this BTree and revision
+        BTreeHeader<?, ?> btreeHeader = currentBTreeHeaders.get( name );
+        
+        // And unlock 
+        btreeHeadersLock.readLock().unlock();
+
+        return btreeHeader;
+    }
+
+
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    public void updateNewBTreeHeaders( BTreeHeader btreeHeader )
+    {
+        newBTreeHeaders.put( btreeHeader.getBtree().getName(), btreeHeader );
     }
 }

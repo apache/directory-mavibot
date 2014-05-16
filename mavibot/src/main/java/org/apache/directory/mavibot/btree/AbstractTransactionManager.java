@@ -31,5 +31,4 @@ public abstract class AbstractTransactionManager implements TransactionManager
 {
     /** A lock to protect the transaction handling */
     private ReadWriteLock transactionLock = new ReentrantReadWriteLock();
-
 }

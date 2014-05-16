@@ -20,7 +20,6 @@
 package org.apache.directory.mavibot.btree;
 
 
-import java.lang.reflect.Field;
 import java.util.LinkedList;
 
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;

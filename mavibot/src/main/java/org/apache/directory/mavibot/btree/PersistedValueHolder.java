@@ -255,6 +255,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
             try
             {
+                // The sub-btree will not be added into the BOB.
                 parentBtree.getRecordManager().manage( valueBtree, RecordManager.INTERNAL_BTREE );
                 raw = null;
             }

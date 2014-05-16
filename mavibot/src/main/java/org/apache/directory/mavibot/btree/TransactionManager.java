@@ -43,4 +43,21 @@ public interface TransactionManager
      * Rollback a transaction
      */
     void rollback();
+    
+    
+    /**
+     * Gets the current BtreeHeader for a given BTree.
+     * 
+     * @param btreeName The Btree name we are looking the BtreeHeader for
+     * @return the current BTreeHeader
+     */
+    BTreeHeader<?, ?> getBTreeHeader( String btreeName );
+    
+    
+    /**
+     * Updates the map of new BTreeHeaders
+     * 
+     * @param btreeHeader The new BtreeHeader
+     */
+    void updateNewBTreeHeaders( BTreeHeader<?, ?> btreeHeader );
 }

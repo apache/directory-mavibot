@@ -138,6 +138,7 @@ import org.slf4j.LoggerFactory;
         newBtreeHeader.setRootPageOffset( 0L );
 
         btreeRevisions.put( 0L,  newBtreeHeader );
+        currentBtreeHeader = newBtreeHeader;
 
         // Now, initialize the BTree
         try
@@ -212,6 +213,7 @@ import org.slf4j.LoggerFactory;
             // This is a new Btree, we have to store the BtreeHeader
             BTreeHeader<K, V> btreeHeader = new BTreeHeader<K, V>();
             btreeHeader.setRootPage( new InMemoryLeaf<K, V>( this ) );
+            btreeHeader.setBtree( this );
             storeRevision( btreeHeader );
         }
 
@@ -297,6 +299,7 @@ import org.slf4j.LoggerFactory;
 
         BTreeHeader<K, V> oldBtreeHeader = getBtreeHeader();
         BTreeHeader<K, V> newBtreeHeader = createNewBtreeHeader( oldBtreeHeader, revision );
+        newBtreeHeader.setBtree( this );
 
         // If the key exists, the existing value will be replaced. We store it
         // to return it to the caller.
@@ -375,6 +378,7 @@ import org.slf4j.LoggerFactory;
 
         BTreeHeader<K, V> oldBtreeHeader = getBtreeHeader();
         BTreeHeader<K, V> newBtreeHeader = createNewBtreeHeader( oldBtreeHeader, revision );
+        newBtreeHeader.setBtree( this );
 
         // If the key exists, the existing value will be replaced. We store it
         // to return it to the caller.

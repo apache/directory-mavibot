@@ -36,7 +36,9 @@ import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.BTreeCreationException;
@@ -192,7 +194,16 @@ public class RecordManager extends AbstractTransactionManager
 
     /** The list of PageIO that can be freed after a roolback */
     private List<PageIO> allocatedPages = new ArrayList<PageIO>();
+    
+    /** A Map keeping the latest revisions for each managed BTree */
+    private Map<String, BTreeHeader<?, ?>> currentBTreeHeaders = new HashMap<String, BTreeHeader<?, ?>>();
 
+    /** A Map storing the new revisions when some change have been made in some BTrees */
+    private Map<String, BTreeHeader<?, ?>> newBTreeHeaders = new HashMap<String, BTreeHeader<?, ?>>();
+    
+    /** A lock to protect the BtreeHeader maps */
+    private ReadWriteLock btreeHeadersLock = new ReentrantReadWriteLock();
+    
     /**
      * Create a Record manager which will either create the underlying file
      * or load an existing one. If a folder is provided, then we will create
@@ -351,12 +362,20 @@ public class RecordManager extends AbstractTransactionManager
 
             currentBtreeOfBtreesOffset = ((PersistedBTree<NameRevision, Long>)btreeOfBtrees).getBtreeHeader().getBTreeHeaderOffset();
             updateRecordManagerHeader();
+            
+            // Inject the BtreeOfBtrees into the currentBtreeHeaders map
+            currentBTreeHeaders.put( BTREE_OF_BTREES_NAME,  ((PersistedBTree<NameRevision, Long>)btreeOfBtrees).getBtreeHeader() );
+            newBTreeHeaders.put( BTREE_OF_BTREES_NAME,  ((PersistedBTree<NameRevision, Long>)btreeOfBtrees).getBtreeHeader() );
 
             // The FreePage B-tree
             manage( copiedPageBtree, INTERNAL_BTREE );
 
             currentCopiedPagesBtreeOffset = ((PersistedBTree<RevisionName, long[]>)copiedPageBtree).getBtreeHeader().getBTreeHeaderOffset();
             updateRecordManagerHeader();
+            
+            // Inject the CopiedPagesBTree into the currentBtreeHeaders map
+            currentBTreeHeaders.put( COPIED_PAGE_BTREE_NAME, ((PersistedBTree<RevisionName, long[]>)copiedPageBtree).getBtreeHeader() );
+            newBTreeHeaders.put( COPIED_PAGE_BTREE_NAME, ((PersistedBTree<RevisionName, long[]>)copiedPageBtree).getBtreeHeader() );
         }
         catch ( BTreeAlreadyManagedException btame )
         {
@@ -560,55 +579,96 @@ public class RecordManager extends AbstractTransactionManager
      */
     public void commit()
     {
-        int nbTxnStarted = context.get();
-        
-        if ( nbTxnStarted == 0 )
+        if ( !fileChannel.isOpen() )
         {
-            // The transaction was rollbacked, quit immediatelly
+            // The file has been closed, nothing remains to commit, let's get out
             transactionLock.unlock();
-            
             return;
         }
-        else
+
+        int nbTxnStarted = context.get();
+        
+        switch ( nbTxnStarted )
         {
-            if ( !fileChannel.isOpen() )
-            {
-                // The file has been closed, nothing remains to commit, let's get out
+            case 0 :
+                // The transaction was rollbacked, quit immediatelly
+                transactionLock.unlock();
+                
+                return;
+            
+            case 1 :
+                // We are done with the transaction, we can update the RMHeader and swap the BTreeHeaders
+                // First update the RMHeader to be sure that we have a way to restore from a crash
+                updateRecordManagerHeader();
+                
+                // Swap the BtreeHeaders maps
+                swapCurrentBtreeHeaders();
+        
+                // We can now free pages
+                for ( PageIO pageIo : freedPages )
+                {
+                    try
+                    {
+                        free( pageIo );
+                    }
+                    catch ( IOException ioe )
+                    {
+                        throw new RecordManagerException( ioe.getMessage() );
+                    }
+                }
+        
+                // Release the allocated and freed pages list
+                freedPages.clear();
+                allocatedPages.clear();
+        
+                // And update the RMHeader again, removing the old references to BOB and CPB b-tree headers
+                // here, we have to erase the old references to keep only the new ones.
+                updateRecordManagerHeader();
+                
+                // And decrement the number of started transactions
+                context.set( nbTxnStarted - 1 );
+
+                // Finally, release the global lock
+                transactionLock.unlock();
+                
+                return;
+                
+            default :
+                // We are inner an existing transaction. Just update the necessary elements
+                // Update the RMHeader to be sure that we have a way to restore from a crash
+                updateRecordManagerHeader();
+                
+                // Swap the BtreeHeaders maps
+                swapCurrentBtreeHeaders();
+        
+                // We can now free pages
+                for ( PageIO pageIo : freedPages )
+                {
+                    try
+                    {
+                        free( pageIo );
+                    }
+                    catch ( IOException ioe )
+                    {
+                        throw new RecordManagerException( ioe.getMessage() );
+                    }
+                }
+        
+                // Release the allocated and freed pages list
+                freedPages.clear();
+                allocatedPages.clear();
+        
+                // And update the RMHeader again, removing the old references to BOB and CPB b-tree headers
+                // here, we have to erase the old references to keep only the new ones.
+                updateRecordManagerHeader();
+                
+                // And decrement the number of started transactions
+                context.set( nbTxnStarted - 1 );
+
+                // Finally, release the global lock
                 transactionLock.unlock();
                 return;
-            }
-    
-            // We are done with the transaction
-            // First update the RMHeader to be sure that we have a way to restore from a crash
-            updateRecordManagerHeader();
-    
-            // We can now free pages
-            for ( PageIO pageIo : freedPages )
-            {
-                try
-                {
-                    free( pageIo );
-                }
-                catch ( IOException ioe )
-                {
-                    throw new RecordManagerException( ioe.getMessage() );
-                }
-            }
-    
-            // Release the allocated and freed pages list
-            freedPages.clear();
-            allocatedPages.clear();
-    
-            // And update the RMHeader again, removing the old references to BOB and CPB b-tree headers
-            // here, we have to erase the old references to keep only the new ones.
-            updateRecordManagerHeader();
-            
-            // And decrement the number of started transactions
-            context.set( nbTxnStarted - 1 );
         }
-
-        // Finally, release the global lock
-        transactionLock.unlock();
     }
 
 
@@ -639,6 +699,9 @@ public class RecordManager extends AbstractTransactionManager
 
         // And update the RMHeader
         updateRecordManagerHeader();
+        
+        // And restore the BTreeHeaders new Map to the current state
+        revertBtreeHeaders();
 
         transactionLock.unlock();
     }
@@ -824,12 +887,20 @@ public class RecordManager extends AbstractTransactionManager
         ( ( PersistedBTree<K, V> ) btree ).setAllowDuplicates( allowDuplicates != 0 );
         dataPos += INT_SIZE;
 
+        // Set the recordManager in the btree
+        ( ( PersistedBTree<K, V> ) btree ).setRecordManager( this );
+
         // Set the current revision to the one stored in the B-tree header
-        ((PersistedBTree<K, V>)btree).storeRevision( btreeHeader );
+        // Here, we have to tell the BTree to keep this revision in the
+        // btreeRevisions Map, thus the 'true' parameter at the end.
+        ((PersistedBTree<K, V>)btree).storeRevision( btreeHeader, true );
 
         // Now, init the B-tree
-        ( ( PersistedBTree<K, V> ) btree ).setRecordManager( this );
         ( ( PersistedBTree<K, V> ) btree ).init( parentBTree );
+        
+        // Update the BtreeHeaders Maps
+        currentBTreeHeaders.put( btree.getName(), ( ( PersistedBTree<K, V> ) btree ).getBtreeHeader() );
+        newBTreeHeaders.put( btree.getName(), ( ( PersistedBTree<K, V> ) btree ).getBtreeHeader() );
 
         // Read the rootPage pages on disk
         PageIO[] rootPageIos = readPageIOs( rootPageOffset, Long.MAX_VALUE );
@@ -1341,6 +1412,10 @@ public class RecordManager extends AbstractTransactionManager
         {
             // Add the btree into the map of managed B-trees
             managedBtrees.put( name, ( BTree<Object, Object> ) btree );
+            
+            // And in the Map of currentBtreeHeaders and newBtreeHeaders
+            currentBTreeHeaders.put( name, btreeHeader );
+            newBTreeHeaders.put( name, btreeHeader );
 
             // We can safely increment the number of managed B-trees
             nbBtree++;
@@ -1859,7 +1934,7 @@ public class RecordManager extends AbstractTransactionManager
         btreeOfBtrees.insert( nameRevision, btreeHeaderOffset );
 
         // Update the B-tree of B-trees
-        currentBtreeOfBtreesOffset = ((AbstractBTree<NameRevision, Long>)btreeOfBtrees).getBtreeHeader().getBTreeHeaderOffset();
+        currentBtreeOfBtreesOffset = getBTreeHeader( BTREE_OF_BTREES_NAME ).getBTreeHeaderOffset();
     }
 
 
@@ -3527,9 +3602,77 @@ public class RecordManager extends AbstractTransactionManager
         RevisionName revisionName = new RevisionName( 
             readTransaction.getRevision(), 
             readTransaction.getBtreeHeader().getBtree().getName() );
-        closedTransactionsQueue.add( revisionName );
+        //closedTransactionsQueue.add( revisionName );
     }
     
+    
+    /**
+     * Get the current BTreeHeader for a given Btree. It might not exist
+     */
+    public BTreeHeader getBTreeHeader( String name )
+    {
+        // Get a lock
+        btreeHeadersLock.readLock().lock();
+        
+        // get the current BTree Header for this BTree and revision
+        BTreeHeader<?, ?> btreeHeader = currentBTreeHeaders.get( name );
+        
+        // And unlock 
+        btreeHeadersLock.readLock().unlock();
+
+        return btreeHeader;
+    }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    public void updateNewBTreeHeaders( BTreeHeader btreeHeader )
+    {
+        newBTreeHeaders.put( btreeHeader.getBtree().getName(), btreeHeader );
+    }
+    
+    
+    /**
+     * Swap the current BtreeHeader map with the new one. This method will only
+     * be called in a single trhead, when the current transaction will be committed.
+     */
+    private void swapCurrentBtreeHeaders()
+    {
+        // Copy the reference to the current BtreeHeader Map
+        Map<String, BTreeHeader<?, ?>> tmp = currentBTreeHeaders;
+        
+        // Get a write lock
+        btreeHeadersLock.writeLock().lock();
+
+        // Swap the new BTreeHeader Map
+        currentBTreeHeaders = newBTreeHeaders;
+        
+        // And unlock 
+        btreeHeadersLock.writeLock().unlock();
+
+        // Last, not least, clear the Map and reinject the latest revision in it
+        tmp.clear();
+        tmp.putAll( currentBTreeHeaders );
+
+        // And update the new BTreeHeader map
+        newBTreeHeaders = tmp;
+    }
+    
+    
+    /**
+     * revert the new BTreeHeaders Map to the current BTreeHeader Map. This method
+     * is called when we have to rollback a transaction.
+     */
+    private void revertBtreeHeaders()
+    {
+        // Clean up teh new BTreeHeaders Map
+        newBTreeHeaders.clear();
+        
+        // Reinject the latest revision in it
+        newBTreeHeaders.putAll( currentBTreeHeaders );
+    }
+
     
     /**
      * Loads a B-tree holding the values of a duplicate key
