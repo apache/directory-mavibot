@@ -3122,8 +3122,6 @@ public class RecordManager extends AbstractTransactionManager
             System.out.println( "      current CopiedPages : 0x" + Long.toHexString( currentCopiedPagesBtreePage ) );
             System.out.println( "      previous CopiedPages : 0x" + Long.toHexString( previousCopiedPagesBtreePage ) );
 
-            long position = RECORD_MANAGER_HEADER_SIZE;
-
             // Dump the Free pages list
             dumpFreePages( firstFreePage );
 
