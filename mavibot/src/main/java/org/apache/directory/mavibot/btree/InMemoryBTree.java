@@ -831,6 +831,10 @@ import org.slf4j.LoggerFactory;
             case BACKED_ON_DISK:
                 sb.append( "Persistent " );
                 break;
+                
+            default :
+                sb.append( "Wrong type... " );
+                break;
         }
 
         sb.append( "BTree" );

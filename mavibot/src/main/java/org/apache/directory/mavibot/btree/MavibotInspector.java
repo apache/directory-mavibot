@@ -33,7 +33,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.InvalidBTreeException;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
@@ -763,11 +762,11 @@ public class MavibotInspector
                 {
                     // just deserialize the keys and values
                     // The value
-                    int valueLength = byteBuffer.getInt();
+                    byteBuffer.getInt();
                     btreeInfo.valueSerializer.deserialize( byteBuffer );
                     
                     // the key
-                    int keyLength = byteBuffer.getInt();
+                    byteBuffer.getInt();
                     
                     btreeInfo.keySerializer.deserialize( byteBuffer );
                 }
