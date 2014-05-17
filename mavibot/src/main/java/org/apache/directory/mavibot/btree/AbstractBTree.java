@@ -150,6 +150,12 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public TupleCursor<K, V> browse( long revision ) throws IOException, KeyNotFoundException
     {
+        // Check that we have a TransactionManager
+        if ( transactionManager == null )
+        {
+            throw new BTreeCreationException( "We don't have a transactionLManager" );
+        }
+
         ReadTransaction<K, V> transaction = beginReadTransaction( revision );
 
         if ( transaction == null )
@@ -173,6 +179,12 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public TupleCursor<K, V> browseFrom( K key ) throws IOException
     {
+        // Check that we have a TransactionManager
+        if ( transactionManager == null )
+        {
+            throw new BTreeCreationException( "We don't have a transactionLManager" );
+        }
+
         ReadTransaction<K, V> transaction = beginReadTransaction();
 
         ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
@@ -196,6 +208,12 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public TupleCursor<K, V> browseFrom( long revision, K key ) throws IOException, KeyNotFoundException
     {
+        // Check that we have a TransactionManager
+        if ( transactionManager == null )
+        {
+            throw new BTreeCreationException( "We don't have a transactionLManager" );
+        }
+
         ReadTransaction<K, V> transaction = beginReadTransaction( revision );
 
         if ( transaction == null )
@@ -219,6 +237,12 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public boolean contains( K key, V value ) throws IOException
     {
+        // Check that we have a TransactionManager
+        if ( transactionManager == null )
+        {
+            throw new BTreeCreationException( "We don't have a transactionLManager" );
+        }
+
         ReadTransaction<K, V> transaction = beginReadTransaction();
 
         if ( transaction == null )
@@ -248,6 +272,12 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public boolean contains( long revision, K key, V value ) throws IOException, KeyNotFoundException
     {
+        // Check that we have a TransactionManager
+        if ( transactionManager == null )
+        {
+            throw new BTreeCreationException( "We don't have a transactionLManager" );
+        }
+
         // Fetch the root page for this revision
         ReadTransaction<K, V> transaction = beginReadTransaction( revision );
 
@@ -274,6 +304,12 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public Tuple<K, V> delete( K key ) throws IOException
     {
+        // Check that we have a TransactionManager
+        if ( transactionManager == null )
+        {
+            throw new BTreeCreationException( "We don't have a transactionLManager" );
+        }
+
         if ( key == null )
         {
             throw new IllegalArgumentException( "Key must not be null" );
@@ -306,6 +342,12 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public Tuple<K, V> delete( K key, V value ) throws IOException
     {
+        // Check that we have a TransactionManager
+        if ( transactionManager == null )
+        {
+            throw new BTreeCreationException( "We don't have a transactionLManager" );
+        }
+
         if ( key == null )
         {
             throw new IllegalArgumentException( "Key must not be null" );
@@ -356,6 +398,12 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public V insert( K key, V value ) throws IOException
     {
+        // Check that we have a TransactionManager
+        if ( transactionManager == null )
+        {
+            throw new BTreeCreationException( "We don't have a transactionLManager" );
+        }
+
         V existingValue = null;
 
         if ( key == null )
@@ -421,6 +469,12 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public V get( K key ) throws IOException, KeyNotFoundException
     {
+        // Check that we have a TransactionManager
+        if ( transactionManager == null )
+        {
+            throw new BTreeCreationException( "We don't have a transactionLManager" );
+        }
+
         ReadTransaction<K, V> transaction = beginReadTransaction();
 
         if ( transaction == null )
@@ -446,6 +500,12 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public V get( long revision, K key ) throws IOException, KeyNotFoundException
     {
+        // Check that we have a TransactionManager
+        if ( transactionManager == null )
+        {
+            throw new BTreeCreationException( "We don't have a transactionLManager" );
+        }
+
         ReadTransaction<K, V> transaction = beginReadTransaction( revision );
 
         if ( transaction == null )
@@ -483,6 +543,12 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public ValueCursor<V> getValues( K key ) throws IOException, KeyNotFoundException
     {
+        // Check that we have a TransactionManager
+        if ( transactionManager == null )
+        {
+            throw new BTreeCreationException( "We don't have a transactionLManager" );
+        }
+
         ReadTransaction<K, V> transaction = beginReadTransaction();
 
         if ( transaction == null )
@@ -508,6 +574,12 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public boolean hasKey( K key ) throws IOException, KeyNotFoundException
     {
+        // Check that we have a TransactionManager
+        if ( transactionManager == null )
+        {
+            throw new BTreeCreationException( "We don't have a transactionLManager" );
+        }
+
         if ( key == null )
         {
             return false;
@@ -538,6 +610,12 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public boolean hasKey( long revision, K key ) throws IOException, KeyNotFoundException
     {
+        // Check that we have a TransactionManager
+        if ( transactionManager == null )
+        {
+            throw new BTreeCreationException( "We don't have a transactionLManager" );
+        }
+
         if ( key == null )
         {
             return false;
@@ -624,6 +702,12 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public long getRevision()
     {
+        // Check that we have a TransactionManager
+        if ( transactionManager == null )
+        {
+            throw new BTreeCreationException( "We don't have a transactionLManager" );
+        }
+
         ReadTransaction<K, V> transaction = beginReadTransaction();
 
         if ( transaction == null )
@@ -725,6 +809,12 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     public long getNbElems()
     {
+        // Check that we have a TransactionManager
+        if ( transactionManager == null )
+        {
+            throw new BTreeCreationException( "We don't have a transactionLManager" );
+        }
+
         ReadTransaction<K, V> transaction = beginReadTransaction();
 
         if ( transaction == null )
