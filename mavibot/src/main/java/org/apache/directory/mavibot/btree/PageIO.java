@@ -34,25 +34,25 @@ import org.apache.directory.mavibot.btree.util.Strings;
  * Here is the logical structure of a PageIO :
  * <pre>
  * For a first page :
- * 
+ *
  * +----------+------+----------------------+
  * | nextPage | size | XXXXXXXXXXXXXXXXXXXX |
  * +----------+------+----------------------+
- * 
+ *
  * for any page but the first :
- * 
+ *
  * +----------+-----------------------------+
  * | nextPage | XXXXXXXXXXXXXXXXXXXXXXXXXXX |
  * +----------+-----------------------------+
- * 
+ *
  * for the last page :
  * +----------+-----------------------------+
  * |    -1    | XXXXXXXXXXXXXXXXXXXXXXXXXXX |
  * +----------+-----------------------------+
- * 
+ *
  * In any case, the page length is always PageSize.
  * </pre>
- *  
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 /* No qualifier*/class PageIO
@@ -70,7 +70,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
     private long offset;
 
 
-    /** 
+    /**
      * A default constructor for a PageIO
      */
     /* no qualifier */PageIO()
@@ -81,7 +81,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
     }
 
 
-    /** 
+    /**
      * A constructor for a PageIO when we know the offset of this page on disk
      */
     /* no qualifier */PageIO( long offset )
@@ -179,6 +179,45 @@ import org.apache.directory.mavibot.btree.util.Strings;
     }
 
 
+    /* no qualifier */PageIO copy( PageIO copy )
+    {
+        // The data
+        if ( data.isDirect() )
+        {
+            copy.data = ByteBuffer.allocateDirect( data.capacity() );
+        }
+        else
+        {
+            copy.data = ByteBuffer.allocate( data.capacity() );
+        }
+
+        // Save the original buffer position and limit
+        int start = data.position();
+        int limit = data.limit();
+
+        // The data is extended to get all the bytes in it
+        data.position( 0 );
+        data.limit( data.capacity() );
+
+        // Copy the data
+        copy.data.put( data );
+
+        // Restore the original buffer to the initial position and limit
+        data.position( start );
+        data.limit( limit );
+
+        // Set those position and limit in the copied buffer
+        copy.data.position( start );
+        copy.data.limit( limit );
+
+        // The size
+        copy.size = size;
+
+        // The offset and next page pointers are not copied.
+        return copy;
+    }
+
+
     /**
      * @see Object#toString()
      */
@@ -186,7 +225,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
     {
         StringBuilder sb = new StringBuilder();
 
-        sb.append( "PageIO[offset:" ).append( offset );
+        sb.append( "PageIO[offset:0x" ).append( Long.toHexString( offset ) );
 
         if ( size != -1 )
         {
@@ -195,7 +234,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
 
         if ( nextPage != -1L )
         {
-            sb.append( ", next:" ).append( nextPage );
+            sb.append( ", next:0x" ).append( Long.toHexString( nextPage ) );
         }
 
         sb.append( "]" );

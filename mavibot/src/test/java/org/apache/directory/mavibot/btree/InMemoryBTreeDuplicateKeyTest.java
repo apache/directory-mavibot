@@ -33,6 +33,7 @@ import java.util.UUID;
 
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.DuplicateValueNotAllowedException;
+import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
@@ -47,9 +48,9 @@ import org.junit.Test;
 public class InMemoryBTreeDuplicateKeyTest
 {
     @Test
-    public void testInsertNullValue() throws IOException
+    public void testInsertNullValue() throws IOException, KeyNotFoundException
     {
-        IntSerializer serializer = new IntSerializer();
+        IntSerializer serializer = IntSerializer.INSTANCE;
 
         BTree<Integer, Integer> btree = BTreeFactory.createInMemoryBTree( "master", serializer, serializer );
 
@@ -69,9 +70,9 @@ public class InMemoryBTreeDuplicateKeyTest
 
 
     @Test
-    public void testBrowseEmptyTree() throws IOException
+    public void testBrowseEmptyTree() throws IOException, KeyNotFoundException
     {
-        IntSerializer serializer = new IntSerializer();
+        IntSerializer serializer = IntSerializer.INSTANCE;
 
         BTree<Integer, Integer> btree = BTreeFactory.createInMemoryBTree( "master", serializer, serializer );
 
@@ -105,9 +106,9 @@ public class InMemoryBTreeDuplicateKeyTest
 
 
     @Test
-    public void testDuplicateKey() throws IOException
+    public void testDuplicateKey() throws IOException, KeyNotFoundException
     {
-        IntSerializer serializer = new IntSerializer();
+        IntSerializer serializer = IntSerializer.INSTANCE;
 
         InMemoryBTreeConfiguration<Integer, Integer> config = new InMemoryBTreeConfiguration<Integer, Integer>();
         config.setAllowDuplicates( true );
@@ -163,7 +164,7 @@ public class InMemoryBTreeDuplicateKeyTest
     @Test
     public void testGetDuplicateKey() throws Exception
     {
-        IntSerializer serializer = new IntSerializer();
+        IntSerializer serializer = IntSerializer.INSTANCE;
 
         InMemoryBTreeConfiguration<Integer, Integer> config = new InMemoryBTreeConfiguration<Integer, Integer>();
         config.setAllowDuplicates( true );
@@ -199,7 +200,7 @@ public class InMemoryBTreeDuplicateKeyTest
     @Test
     public void testRemoveDuplicateKey() throws Exception
     {
-        IntSerializer serializer = new IntSerializer();
+        IntSerializer serializer = IntSerializer.INSTANCE;
 
         InMemoryBTreeConfiguration<Integer, Integer> config = new InMemoryBTreeConfiguration<Integer, Integer>();
         config.setAllowDuplicates( true );
@@ -235,7 +236,7 @@ public class InMemoryBTreeDuplicateKeyTest
     @Test
     public void testFullPage() throws Exception
     {
-        StringSerializer serializer = new StringSerializer();
+        StringSerializer serializer = StringSerializer.INSTANCE;
 
         InMemoryBTreeConfiguration<String, String> config = new InMemoryBTreeConfiguration<String, String>();
         config.setAllowDuplicates( true );
@@ -298,7 +299,7 @@ public class InMemoryBTreeDuplicateKeyTest
     @Test
     public void testMoveFirst() throws Exception
     {
-        StringSerializer serializer = new StringSerializer();
+        StringSerializer serializer = StringSerializer.INSTANCE;
 
         InMemoryBTreeConfiguration<String, String> config = new InMemoryBTreeConfiguration<String, String>();
         config.setAllowDuplicates( true );
@@ -387,7 +388,7 @@ public class InMemoryBTreeDuplicateKeyTest
     @Test(expected = NoSuchElementException.class)
     public void testMoveLast() throws Exception
     {
-        StringSerializer serializer = new StringSerializer();
+        StringSerializer serializer = StringSerializer.INSTANCE;
 
         InMemoryBTreeConfiguration<String, String> config = new InMemoryBTreeConfiguration<String, String>();
         config.setAllowDuplicates( true );
@@ -433,7 +434,7 @@ public class InMemoryBTreeDuplicateKeyTest
     @Test(expected = NoSuchElementException.class)
     public void testNextPrevKey() throws Exception
     {
-        StringSerializer serializer = new StringSerializer();
+        StringSerializer serializer = StringSerializer.INSTANCE;
 
         InMemoryBTreeConfiguration<String, String> config = new InMemoryBTreeConfiguration<String, String>();
         config.setAllowDuplicates( true );
@@ -546,7 +547,7 @@ public class InMemoryBTreeDuplicateKeyTest
     @Test
     public void testMoveToNextAndPrevWithPageBoundaries() throws Exception
     {
-        IntSerializer serializer = new IntSerializer();
+        IntSerializer serializer = IntSerializer.INSTANCE;
 
         InMemoryBTreeConfiguration<Integer, Integer> config = new InMemoryBTreeConfiguration<Integer, Integer>();
         config.setAllowDuplicates( true );
@@ -621,7 +622,7 @@ public class InMemoryBTreeDuplicateKeyTest
     @Test
     public void testNextAfterPrev() throws Exception
     {
-        IntSerializer serializer = new IntSerializer();
+        IntSerializer serializer = IntSerializer.INSTANCE;
 
         InMemoryBTreeConfiguration<Integer, Integer> config = new InMemoryBTreeConfiguration<Integer, Integer>();
         config.setAllowDuplicates( true );
@@ -667,7 +668,7 @@ public class InMemoryBTreeDuplicateKeyTest
     @Test
     public void testMoveToNextAndTraverseBackward() throws Exception
     {
-        IntSerializer serializer = new IntSerializer();
+        IntSerializer serializer = IntSerializer.INSTANCE;
 
         InMemoryBTreeConfiguration<Integer, Integer> config = new InMemoryBTreeConfiguration<Integer, Integer>();
         config.setAllowDuplicates( true );
@@ -706,7 +707,7 @@ public class InMemoryBTreeDuplicateKeyTest
     @Test
     public void testMoveToPrevAndTraverseForward() throws Exception
     {
-        IntSerializer serializer = new IntSerializer();
+        IntSerializer serializer = IntSerializer.INSTANCE;
 
         InMemoryBTreeConfiguration<Integer, Integer> config = new InMemoryBTreeConfiguration<Integer, Integer>();
         config.setAllowDuplicates( true );
@@ -744,8 +745,8 @@ public class InMemoryBTreeDuplicateKeyTest
     @Test(expected = DuplicateValueNotAllowedException.class)
     public void testBTreeForbidDups() throws IOException, BTreeAlreadyManagedException
     {
-        BTree<Long, String> singleValueBtree = BTreeFactory.createInMemoryBTree( "test2", new LongSerializer(),
-            new StringSerializer(), BTree.FORBID_DUPLICATES );
+        BTree<Long, String> singleValueBtree = BTreeFactory.createInMemoryBTree( "test2", LongSerializer.INSTANCE,
+            StringSerializer.INSTANCE, BTree.FORBID_DUPLICATES );
 
         for ( long i = 0; i < 64; i++ )
         {

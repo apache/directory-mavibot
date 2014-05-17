@@ -27,7 +27,7 @@ import org.junit.Test;
 
 /**
  * Test the BooleanArrayComparator class
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class BooleanArrayComparatorTest
@@ -35,7 +35,7 @@ public class BooleanArrayComparatorTest
     @Test
     public void testBooleanArrayComparator()
     {
-        BooleanArrayComparator comparator = new BooleanArrayComparator();
+        BooleanArrayComparator comparator = BooleanArrayComparator.INSTANCE;
 
         assertEquals( 0, comparator.compare( null, null ) );
 

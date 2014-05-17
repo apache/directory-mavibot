@@ -34,12 +34,15 @@ import org.apache.directory.mavibot.btree.exception.SerializerCreationException;
  */
 public class LongSerializer extends AbstractElementSerializer<Long>
 {
+    /** A static instance of a LongSerializer */
+    public final static LongSerializer INSTANCE = new LongSerializer();
+
     /**
      * Create a new instance of LongSerializer
      */
-    public LongSerializer()
+    private LongSerializer()
     {
-        super( new LongComparator() );
+        super( LongComparator.INSTANCE );
     }
 
 

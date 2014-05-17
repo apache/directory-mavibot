@@ -34,12 +34,15 @@ import org.apache.directory.mavibot.btree.exception.SerializerCreationException;
  */
 public class CharSerializer extends AbstractElementSerializer<Character>
 {
+    /** A static instance of a CharSerializer */
+    public static final CharSerializer INSTANCE = new CharSerializer();
+
     /**
      * Create a new instance of CharSerializer
      */
-    public CharSerializer()
+    private CharSerializer()
     {
-        super( new CharComparator() );
+        super( CharComparator.INSTANCE );
     }
 
 

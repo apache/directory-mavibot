@@ -71,7 +71,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
-    public InsertResult<K, V> insert( long revision, K key, V value ) throws IOException
+    public InsertResult<K, V> insert( K key, V value, long revision ) throws IOException
     {
         // Find the key into this leaf
         int pos = findPos( key );
@@ -116,7 +116,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * {@inheritDoc}
      */
     @SuppressWarnings("unchecked")
-    public DeleteResult<K, V> delete( long revision, K key, V value, Page<K, V> parent, int parentPos )
+    /* no qualifier */ DeleteResult<K, V> delete( K key, V value, long revision, Page<K, V> parent, int parentPos )
         throws IOException
     {
         // Check that the leaf is not empty
@@ -519,7 +519,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
         else
         {
-            throw KEY_NOT_FOUND_EXCEPTION;
+            throw KeyNotFoundException.INSTANCE;
         }
     }
 
@@ -561,7 +561,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
         else
         {
-            throw KEY_NOT_FOUND_EXCEPTION;
+            throw KeyNotFoundException.INSTANCE;
         }
     }
 

@@ -21,24 +21,35 @@ package org.apache.directory.mavibot.btree;
 
 
 /**
- * An enum to describe the BTree type. We have three possible type :
+ * An enum to describe the B-tree type. We have three possible type :
  * <ul>
- * <li>IN_MEMORY : the BTree will remain in memory, and won't be persisted on disk</li>
- * <li>PERSISTENT : the BTree is in memory, but will be persisted on disk</li>
- * <li>MANAGED : the BTree is managed by a RecordManager, and some pages may
+ * <li>IN_MEMORY : the B-tree will remain in memory, and won't be persisted on disk</li>
+ * <li>BACKED_ON_DISK : the B-tree is in memory, but will be persisted on disk</li>
+ * <li>PERSISTED : the B-tree is managed by a RecordManager, and some pages may
  * be swapped out from memory on demand</li>
+ * <li>PERSISTED_SUB : The B-tree is a Persisted B-tree, but a Sub B-tree one</li>
+ * <li>PERSISTED_MANAGEMENT : This is a Persisted B-tree used to manage the other B-trees</li>
  * </ul>
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public enum BTreeTypeEnum
 {
-    /** Pure in-memory BTree, not persisted on disk */
+    /** Pure in-memory B-tree, not persisted on disk */
     IN_MEMORY,
 
-    /** Persisted BTree */
+    /** Persisted B-tree */
     PERSISTED,
 
-    /** In-memory BTree but saved on disk */
+    /** Persisted sub B-tree */
+    PERSISTED_SUB,
+
+    /** Persisted Management B-tree */
+    BTREE_OF_BTREES,
+
+    /** Persisted Management B-tree */
+    COPIED_PAGES_BTREE,
+
+    /** In-memory B-tree but saved on disk */
     BACKED_ON_DISK
 }

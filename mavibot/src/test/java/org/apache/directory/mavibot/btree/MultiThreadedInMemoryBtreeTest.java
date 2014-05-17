@@ -21,26 +21,24 @@ package org.apache.directory.mavibot.btree;
 
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.Tuple;
-import org.apache.directory.mavibot.btree.TupleCursor;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.Ignore;
 
 
 /**
  * A class to test multi-threaded operations on the btree
- *  
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class MultiThreadedInMemoryBtreeTest
@@ -56,7 +54,7 @@ public class MultiThreadedInMemoryBtreeTest
     @BeforeClass
     public static void setup() throws IOException
     {
-        btree = BTreeFactory.createInMemoryBTree( "test", new LongSerializer(), new StringSerializer() );
+        btree = BTreeFactory.createInMemoryBTree( "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE );
     }
 
 
@@ -110,10 +108,10 @@ public class MultiThreadedInMemoryBtreeTest
 
     /**
      * Browse the btree in its current revision, reading all of its elements
-     * @return The number of read elements 
+     * @return The number of read elements
      * @throws IOException If the browse failed
      */
-    private int testBrowse() throws IOException
+    private int testBrowse() throws IOException, KeyNotFoundException
     {
         TupleCursor<Long, String> cursor = btree.browse();
 
@@ -140,7 +138,7 @@ public class MultiThreadedInMemoryBtreeTest
     /**
      * Check that we can read the btree while it is being modified. We will start
      * 100 readers for one writer.
-     * 
+     *
      * @throws InterruptedException If the btree access failed.
      */
     @Test
@@ -217,42 +215,62 @@ public class MultiThreadedInMemoryBtreeTest
     {
         int nbThreads = 100;
         final CountDownLatch latch = new CountDownLatch( nbThreads );
+        final AtomicBoolean error = new AtomicBoolean(false);
 
         //Thread.sleep( 60000L );
 
         long t0 = System.currentTimeMillis();
 
+        class MyThread extends Thread
+        {
+            private int prefix = 0;
+
+            public void run()
+            {
+                try
+                {
+                    // Inject 1000 elements
+                    for ( int j = 0; j < 1000; j++ )
+                    {
+                        long value = prefix * 1000 + j;
+                        String valStr = Long.toString( value );
+                        //System.out.println( "---------------------------Inserting " + valStr + " for Thread " + Thread.currentThread().getName() );
+                        btree.insert( value, valStr );
+
+                        if ( j % 100 == 0 )
+                        {
+                            //System.out.println( "---------------------------Inserting " + valStr + " for Thread " + Thread.currentThread().getName() );
+//                            long res = checkBtree( prefix, 1000, j );
+//
+//                            if ( res != -1L )
+//                            {
+//                                //retry
+//                                System.out.println( "Failure to retrieve " + j );
+//                                latch.countDown();
+//                                error.set( true );
+//                                return;
+//                            }
+                        }
+                    }
+
+                    latch.countDown();
+                }
+                catch ( Exception e )
+                {
+                    e.printStackTrace();
+                    System.out.println( e.getMessage() );
+                }
+            }
+
+            public MyThread( int prefix )
+            {
+                this.prefix = prefix;
+            }
+        }
+
         for ( int i = 0; i < nbThreads; i++ )
         {
-            final long prefix = i;
-            Thread test = new Thread()
-            {
-                public void run()
-                {
-                    try
-                    {
-                        // Inject 1000 elements
-                        for ( int j = 0; j < 1000; j++ )
-                        {
-                            long value = prefix * 1000 + j;
-                            btree.insert( value, Long.toString( value ) );
-
-                            /*
-                            if ( j % 10000 == 0 )
-                            {
-                                System.out.println( "Thread " + Thread.currentThread().getName() + " flushed " + j
-                                    + " elements" );
-                            }
-                            */
-                        }
-
-                        latch.countDown();
-                    }
-                    catch ( Exception e )
-                    {
-                    }
-                }
-            };
+            MyThread test = new MyThread( i );
 
             // Start each reader
             test.start();
@@ -261,22 +279,65 @@ public class MultiThreadedInMemoryBtreeTest
         // Wait for all the readers to be done
         latch.await();
 
+        if ( error.get() )
+        {
+            System.out.println( "ERROR -----------------" );
+            return;
+        }
+
         long t1 = System.currentTimeMillis();
 
         // Check that the tree contains all the values
+        assertEquals( -1L, checkBtree( 1000, nbThreads ) );
+
+        System.out.println( " Time to create 1M entries : "
+            + ( ( t1 - t0 ) ) + " milliseconds" );
+    }
+
+
+    private long checkBtree( int prefix, int nbElems, int currentElem ) throws IOException
+    {
+        long i = 0L;
+
         try
         {
-            for ( long i = 0L; i < 10000L; i++ )
+            for ( i = 0L; i < currentElem; i++ )
             {
-                assertEquals( Long.toString( i ), btree.get( i ) );
+                long key = prefix * nbElems + i;
+                assertEquals( Long.toString( key ), btree.get( key ) );
             }
+
+            return -1L;
         }
         catch ( KeyNotFoundException knfe )
         {
-            fail();
+            System.out.println( "cannot find " + ( prefix * nbElems + i ) );
+            return i;
         }
+    }
 
-        System.out.println( " Time to create 1M entries : "
-            + ( ( t1 - t0 ) / 1000 ) + " seconds" );
+
+    private long checkBtree( int nbElems, int nbThreads ) throws IOException
+    {
+        long i = 0L;
+
+        try
+        {
+            for ( long j = 0; j < nbThreads; j++ )
+            {
+                for ( i = 0L; i < nbElems; i++ )
+                {
+                    long key = j * nbElems + i;
+                    assertEquals( Long.toString( key ), btree.get( key ) );
+                }
+            }
+
+            return -1L;
+        }
+        catch ( KeyNotFoundException knfe )
+        {
+            System.out.println( "cannot find " + i );
+            return i;
+        }
     }
 }

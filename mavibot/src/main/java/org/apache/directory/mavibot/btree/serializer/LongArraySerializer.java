@@ -28,17 +28,20 @@ import org.apache.directory.mavibot.btree.comparator.LongArrayComparator;
 
 /**
  * A serializer for a Long[].
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class LongArraySerializer extends AbstractElementSerializer<long[]>
 {
+    /** A static instance of a LongArraySerializer */
+    public static final LongArraySerializer INSTANCE = new LongArraySerializer();
+
     /**
      * Create a new instance of LongSerializer
      */
-    public LongArraySerializer()
+    private LongArraySerializer()
     {
-        super( new LongArrayComparator() );
+        super( LongArrayComparator.INSTANCE );
     }
 
 
@@ -55,32 +58,35 @@ public class LongArraySerializer extends AbstractElementSerializer<long[]>
         }
 
         byte[] bytes = null;
+        int pos = 0;
 
         switch ( len )
         {
             case 0:
                 bytes = new byte[4];
 
-                bytes[0] = 0x00;
-                bytes[1] = 0x00;
-                bytes[2] = 0x00;
-                bytes[3] = 0x00;
+                // The number of Long. Here, 0
+                bytes[pos++] = 0x00;
+                bytes[pos++] = 0x00;
+                bytes[pos++] = 0x00;
+                bytes[pos++] = 0x00;
 
                 break;
 
             case -1:
                 bytes = new byte[4];
 
-                bytes[0] = ( byte ) 0xFF;
-                bytes[1] = ( byte ) 0xFF;
-                bytes[2] = ( byte ) 0xFF;
-                bytes[3] = ( byte ) 0xFF;
+                // The number of Long. Here, null
+                bytes[pos++] = ( byte ) 0xFF;
+                bytes[pos++] = ( byte ) 0xFF;
+                bytes[pos++] = ( byte ) 0xFF;
+                bytes[pos++] = ( byte ) 0xFF;
 
                 break;
 
             default:
-                bytes = new byte[len * 8 + 4];
-                int pos = 0;
+                int dataLen = len * 8 + 4;
+                bytes = new byte[dataLen];
 
                 // The number of longs
                 bytes[pos++] = ( byte ) ( len >>> 24 );
@@ -111,11 +117,17 @@ public class LongArraySerializer extends AbstractElementSerializer<long[]>
      */
     public long[] deserialize( BufferHandler bufferHandler ) throws IOException
     {
+        // Read the DataLength first. Note that we don't use it here.
         byte[] in = bufferHandler.read( 4 );
 
-        int len = IntSerializer.deserialize( in );
+        IntSerializer.deserialize( in );
 
-        switch ( len )
+        // Now, read the number of Longs
+        in = bufferHandler.read( 4 );
+
+        int nbLongs = IntSerializer.deserialize( in );
+
+        switch ( nbLongs )
         {
             case 0:
                 return new long[]
@@ -125,11 +137,12 @@ public class LongArraySerializer extends AbstractElementSerializer<long[]>
                 return null;
 
             default:
-                long[] longs = new long[len];
+                long[] longs = new long[nbLongs];
+                in = bufferHandler.read( nbLongs * 8 );
 
-                int pos = 4;
+                int pos = 0;
 
-                for ( int i = 0; i < len; i++ )
+                for ( int i = 0; i < nbLongs; i++ )
                 {
                     longs[i] = ( ( long ) in[pos++] << 56 ) +
                         ( ( in[pos++] & 0xFFL ) << 48 ) +
@@ -151,9 +164,13 @@ public class LongArraySerializer extends AbstractElementSerializer<long[]>
      */
     public long[] deserialize( ByteBuffer buffer ) throws IOException
     {
-        int len = buffer.getInt();
+        // Read the dataLength. Note that we don't use it here.
+        buffer.getInt();
+        
+        // The number of longs
+        int nbLongs = buffer.getInt();
 
-        switch ( len )
+        switch ( nbLongs )
         {
             case 0:
                 return new long[]
@@ -163,9 +180,9 @@ public class LongArraySerializer extends AbstractElementSerializer<long[]>
                 return null;
 
             default:
-                long[] longs = new long[len];
+                long[] longs = new long[nbLongs];
 
-                for ( int i = 0; i < len; i++ )
+                for ( int i = 0; i < nbLongs; i++ )
                 {
                     longs[i] = buffer.getLong();
                 }

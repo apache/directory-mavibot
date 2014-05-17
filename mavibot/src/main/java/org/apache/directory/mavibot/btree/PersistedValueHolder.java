@@ -28,6 +28,7 @@ import java.util.UUID;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyCreatedException;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.BTreeCreationException;
+import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
@@ -82,7 +83,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
     /**
      * Creates a new instance of a ValueHolder, containing Values. This constructor is called
-     * whe we need to create a new ValueHolder with deserialized values.
+     * when we need to create a new ValueHolder with deserialized values.
      *
      * @param parentBtree The parent BTree
      * @param values The Values stored in the ValueHolder
@@ -248,12 +249,13 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             configuration.setName( UUID.randomUUID().toString() );
             configuration.setValueSerializer( valueSerializer );
             configuration.setParentBTree( parentBtree );
-            configuration.setSubBtree( true );
+            configuration.setBtreeType( BTreeTypeEnum.PERSISTED_SUB );
 
             valueBtree = BTreeFactory.createPersistedBTree( configuration );
 
             try
             {
+                // The sub-btree will not be added into the BOB.
                 parentBtree.getRecordManager().manage( valueBtree, RecordManager.INTERNAL_BTREE );
                 raw = null;
             }
@@ -417,6 +419,12 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
+                return null;
+            }
+            catch ( KeyNotFoundException knfe )
+            {
+                // TODO Auto-generated catch block
+                knfe.printStackTrace();
                 return null;
             }
         }
@@ -655,7 +663,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         long offset = LongSerializer.deserialize( raw );
 
         // and reload the sub btree
-        valueBtree = parentBtree.getRecordManager().loadDupsBTree( offset );
+        valueBtree = parentBtree.getRecordManager().loadDupsBtree( offset, parentBtree );
     }
 
 

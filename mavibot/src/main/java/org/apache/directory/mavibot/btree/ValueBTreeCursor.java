@@ -23,6 +23,7 @@ package org.apache.directory.mavibot.btree;
 import java.io.IOException;
 
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
+import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.BTree;
 
 
@@ -59,6 +60,11 @@ import org.apache.directory.mavibot.btree.BTree;
         {
             // TODO Auto-generated catch block
             e.printStackTrace();
+        }
+        catch ( KeyNotFoundException knfe )
+        {
+            // TODO Auto-generated catch block
+            knfe.printStackTrace();
         }
     }
 

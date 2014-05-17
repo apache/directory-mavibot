@@ -35,6 +35,7 @@ import java.util.UUID;
 import org.apache.commons.io.FileUtils;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.DuplicateValueNotAllowedException;
+import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
@@ -72,7 +73,7 @@ public class PersistedBTreeDuplicateKeyTest
         try
         {
             // Create a new BTree
-            btree = recordManager1.addBTree( "test", new LongSerializer(), new StringSerializer(),
+            btree = recordManager1.addBTree( "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE,
                 BTree.ALLOW_DUPLICATES );
         }
         catch ( Exception e )
@@ -122,7 +123,7 @@ public class PersistedBTreeDuplicateKeyTest
 
 
     @Test
-    public void testInsertNullValue() throws IOException
+    public void testInsertNullValue() throws IOException, KeyNotFoundException
     {
         btree.insert( 1L, null );
 
@@ -141,11 +142,14 @@ public class PersistedBTreeDuplicateKeyTest
 
 
     @Test
-    public void testBrowseEmptyTree() throws IOException
+    public void testBrowseEmptyTree() throws IOException, KeyNotFoundException, BTreeAlreadyManagedException
     {
-        IntSerializer serializer = new IntSerializer();
+        IntSerializer serializer = IntSerializer.INSTANCE;
 
         BTree<Integer, Integer> btree = BTreeFactory.createPersistedBTree( "master", serializer, serializer );
+        
+        // Inject the newly created BTree into teh recordManager
+        recordManager1.manage( btree );
 
         TupleCursor<Integer, Integer> cursor = btree.browse();
         assertFalse( cursor.hasNext() );
@@ -177,7 +181,7 @@ public class PersistedBTreeDuplicateKeyTest
 
 
     @Test
-    public void testDuplicateKey() throws IOException
+    public void testDuplicateKey() throws IOException, KeyNotFoundException
     {
         btree.insert( 1L, "1" );
         btree.insert( 1L, "2" );
@@ -792,8 +796,8 @@ public class PersistedBTreeDuplicateKeyTest
     @Test(expected = DuplicateValueNotAllowedException.class)
     public void testBTreeForbidDups() throws IOException, BTreeAlreadyManagedException
     {
-        BTree<Long, String> singleValueBtree = recordManager1.addBTree( "test2", new LongSerializer(),
-            new StringSerializer(), BTree.FORBID_DUPLICATES );
+        BTree<Long, String> singleValueBtree = recordManager1.addBTree( "test2", LongSerializer.INSTANCE,
+            StringSerializer.INSTANCE, BTree.FORBID_DUPLICATES );
 
         for ( long i = 0; i < 64; i++ )
         {

@@ -27,7 +27,7 @@ import org.junit.Test;
 
 /**
  * Test the CharArrayComparator class
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class CharArrayComparatorTest
@@ -35,7 +35,7 @@ public class CharArrayComparatorTest
     @Test
     public void testCharArrayComparator()
     {
-        CharArrayComparator comparator = new CharArrayComparator();
+        CharArrayComparator comparator = CharArrayComparator.INSTANCE;
 
         // Check equality
         assertEquals( 0, comparator.compare( null, null ) );

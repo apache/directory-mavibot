@@ -30,8 +30,6 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.RecordManager;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
@@ -45,7 +43,7 @@ import org.junit.rules.TemporaryFolder;
 
 /**
  * test the RecordManager whith duplicate values
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class RecordManagerWithDuplicatesTest
@@ -70,7 +68,7 @@ public class RecordManagerWithDuplicatesTest
         try
         {
             // Create a new BTree which allows duplicate values
-            btree = recordManager.addBTree( "test", new LongSerializer(), new StringSerializer(), true );
+            btree = recordManager.addBTree( "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE, true );
         }
         catch ( Exception e )
         {
@@ -114,7 +112,7 @@ public class RecordManagerWithDuplicatesTest
 
 
     /**
-     * Test the creation of a RecordManager, and that we can read it back.  
+     * Test the creation of a RecordManager, and that we can read it back.
      */
     @Test
     public void testRecordManager() throws IOException, BTreeAlreadyManagedException

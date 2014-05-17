@@ -26,8 +26,6 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 
-import org.apache.directory.mavibot.btree.RevisionName;
-import org.apache.directory.mavibot.btree.RevisionNameSerializer;
 import org.apache.directory.mavibot.btree.serializer.BufferHandler;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
@@ -36,12 +34,12 @@ import org.junit.Test;
 
 /**
  * Test the RevisionNameSerializer class
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class RevisionNameSerializerTest
 {
-    private static RevisionNameSerializer serializer = new RevisionNameSerializer();
+    private static RevisionNameSerializer serializer = RevisionNameSerializer.INSTANCE;
 
 
     @Test

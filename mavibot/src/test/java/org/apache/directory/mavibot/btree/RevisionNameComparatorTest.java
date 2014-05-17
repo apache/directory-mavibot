@@ -22,14 +22,12 @@ package org.apache.directory.mavibot.btree;
 
 import static org.junit.Assert.assertEquals;
 
-import org.apache.directory.mavibot.btree.RevisionName;
-import org.apache.directory.mavibot.btree.RevisionNameComparator;
 import org.junit.Test;
 
 
 /**
  * Test the RevisionNameComparator class
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class RevisionNameComparatorTest
@@ -37,7 +35,7 @@ public class RevisionNameComparatorTest
     @Test
     public void testRevisionNameComparator()
     {
-        RevisionNameComparator comparator = new RevisionNameComparator();
+        RevisionNameComparator comparator = RevisionNameComparator.INSTANCE;
 
         assertEquals( 0, comparator.compare( null, null ) );
         assertEquals( 0, comparator.compare( new RevisionName( 0L, "test" ), new RevisionName( 0L, "test" ) ) );

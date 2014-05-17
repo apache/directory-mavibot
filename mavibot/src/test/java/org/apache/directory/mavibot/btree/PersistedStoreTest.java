@@ -325,15 +325,15 @@ public class PersistedStoreTest
         storeMethod.setAccessible( true );
 
         // Allocate some Pages
-        PageIO[] pageIos = new PageIO[4];
+        PageIO[] pageIos = new PageIO[3];
         pageIos[0] = new PageIO();
         pageIos[0].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
         pageIos[1] = new PageIO();
         pageIos[1].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
         pageIos[2] = new PageIO();
         pageIos[2].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
-        pageIos[3] = new PageIO();
-        pageIos[3].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+//        pageIos[3] = new PageIO();
+//        pageIos[3].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
 
         // We start with 4 bytes
         byte[] bytes = new byte[]
@@ -396,10 +396,10 @@ public class PersistedStoreTest
         }
 
         // Write the bytes over 2 pages
-        position = ( Long ) storeMethod.invoke( recordManager, 15L, bytes, pageIos );
+        position = ( Long ) storeMethod.invoke( recordManager, 47L, bytes, pageIos );
 
-        assertEquals( 35, position );
-        pos = 27;
+        assertEquals( 67, position );
+        pos = 59;
         // The byte length
         assertEquals( 0x00, pageIos[0].getData().get( pos++ ) );
         assertEquals( 0x00, pageIos[0].getData().get( pos++ ) );
@@ -418,25 +418,25 @@ public class PersistedStoreTest
         }
 
         // Write the bytes over 4 pages
-        bytes = new byte[80];
+        bytes = new byte[112];
 
-        for ( int i = 0; i < 80; i++ )
+        for ( int i = 0; i < 112; i++ )
         {
             bytes[i] = ( byte ) ( i + 1 );
         }
 
         position = ( Long ) storeMethod.invoke( recordManager, 2L, bytes, pageIos );
 
-        assertEquals( 86, position );
+        assertEquals( 118, position );
         pos = 14;
         // The byte length
         assertEquals( 0x00, pageIos[0].getData().get( pos++ ) );
         assertEquals( 0x00, pageIos[0].getData().get( pos++ ) );
         assertEquals( 0x00, pageIos[0].getData().get( pos++ ) );
-        assertEquals( 0x50, pageIos[0].getData().get( pos++ ) );
+        assertEquals( 0x70, pageIos[0].getData().get( pos++ ) );
 
         // The data in the first page
-        for ( int i = 0; i < 14; i++ )
+        for ( int i = 0; i < 46; i++ )
         {
             assertEquals( ( byte ) ( i + 1 ), pageIos[0].getData().get( pos++ ) );
         }
@@ -444,7 +444,7 @@ public class PersistedStoreTest
         // The data in the second page
         pos = 8;
 
-        for ( int i = 14; i < 38; i++ )
+        for ( int i = 46; i < 102; i++ )
         {
             assertEquals( ( byte ) ( i + 1 ), pageIos[1].getData().get( pos++ ) );
         }
@@ -452,17 +452,9 @@ public class PersistedStoreTest
         // The data in the third page
         pos = 8;
 
-        for ( int i = 38; i < 62; i++ )
+        for ( int i = 102; i < 112; i++ )
         {
             assertEquals( ( byte ) ( i + 1 ), pageIos[2].getData().get( pos++ ) );
-        }
-
-        // The data in the forth page
-        pos = 8;
-
-        for ( int i = 62; i < 80; i++ )
-        {
-            assertEquals( ( byte ) ( i + 1 ), pageIos[3].getData().get( pos++ ) );
         }
 
         recordManager.close();

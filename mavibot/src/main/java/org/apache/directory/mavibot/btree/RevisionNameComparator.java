@@ -30,6 +30,17 @@ import java.util.Comparator;
  */
 /* no qualifier*/class RevisionNameComparator implements Comparator<RevisionName>
 {
+    /** A static instance of a RevisionNameComparator */
+    public static final RevisionNameComparator INSTANCE = new RevisionNameComparator();
+
+    /**
+     * A private constructor of the RevisionNameComparator class
+     */
+    private RevisionNameComparator()
+    {
+    }
+
+
     /**
      * {@inheritDoc}
      */

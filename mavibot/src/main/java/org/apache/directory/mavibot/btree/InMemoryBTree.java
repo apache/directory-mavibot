@@ -29,7 +29,6 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.directory.mavibot.btree.exception.InitializationException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
@@ -72,10 +71,11 @@ import org.slf4j.LoggerFactory;
     /** The associated journal. If null, this is an in-memory btree  */
     private File journal;
 
+    /** The directory where the journal will be stored */
     private File envDir;
 
+    /** The Journal channel */
     private FileChannel journalChannel = null;
-
 
     /**
      * Creates a new BTree, with no initialization.
@@ -83,7 +83,6 @@ import org.slf4j.LoggerFactory;
     /* no qualifier */InMemoryBTree()
     {
         super();
-        btreeHeader = new BTreeHeader();
         setType( BTreeTypeEnum.IN_MEMORY );
     }
 
@@ -97,9 +96,9 @@ import org.slf4j.LoggerFactory;
     /* no qualifier */InMemoryBTree( InMemoryBTreeConfiguration<K, V> configuration )
     {
         super();
-        String name = configuration.getName();
+        String btreeName = configuration.getName();
 
-        if ( name == null )
+        if ( btreeName == null )
         {
             throw new IllegalArgumentException( "BTree name cannot be null" );
         }
@@ -111,29 +110,35 @@ import org.slf4j.LoggerFactory;
             envDir = new File( filePath );
         }
 
-        btreeHeader = new BTreeHeader();
-        btreeHeader.setName( name );
-        btreeHeader.setPageSize( configuration.getPageSize() );
-
-        keySerializer = configuration.getKeySerializer();
-        btreeHeader.setKeySerializerFQCN( keySerializer.getClass().getName() );
-
-        valueSerializer = configuration.getValueSerializer();
-        btreeHeader.setValueSerializerFQCN( valueSerializer.getClass().getName() );
+        // Store the configuration in the B-tree
+        setName( btreeName );
+        setPageSize( configuration.getPageSize() );
+        setKeySerializer( configuration.getKeySerializer() );
+        setValueSerializer( configuration.getValueSerializer() );
+        setAllowDuplicates( configuration.isAllowDuplicates() );
+        setType( configuration.getType() );
 
         readTimeOut = configuration.getReadTimeOut();
         writeBufferSize = configuration.getWriteBufferSize();
-        btreeHeader.setAllowDuplicates( configuration.isAllowDuplicates() );
-        setType( configuration.getType() );
 
         if ( keySerializer.getComparator() == null )
         {
             throw new IllegalArgumentException( "Comparator should not be null" );
         }
 
+        // Create the B-tree header
+        BTreeHeader<K, V> newBtreeHeader = new BTreeHeader<K, V>();
+
         // Create the first root page, with revision 0L. It will be empty
         // and increment the revision at the same time
-        rootPage = new InMemoryLeaf<K, V>( this );
+        newBtreeHeader.setBTreeHeaderOffset( 0L );
+        newBtreeHeader.setRevision( 0L );
+        newBtreeHeader.setNbElems( 0L );
+        newBtreeHeader.setRootPage( new InMemoryLeaf<K, V>( this ) );
+        newBtreeHeader.setRootPageOffset( 0L );
+
+        btreeRevisions.put( 0L,  newBtreeHeader );
+        currentBtreeHeader = newBtreeHeader;
 
         // Now, initialize the BTree
         try
@@ -152,7 +157,7 @@ import org.slf4j.LoggerFactory;
      *
      * @throws IOException If we get some exception while initializing the BTree
      */
-    public void init() throws IOException
+    private void init() throws IOException
     {
         // if not in-memory then default to persist mode instead of managed
         if ( envDir != null )
@@ -160,13 +165,14 @@ import org.slf4j.LoggerFactory;
             if ( !envDir.exists() )
             {
                 boolean created = envDir.mkdirs();
+
                 if ( !created )
                 {
                     throw new IllegalStateException( "Could not create the directory " + envDir + " for storing data" );
                 }
             }
 
-            this.file = new File( envDir, btreeHeader.getName() + DATA_SUFFIX );
+            this.file = new File( envDir, getName() + DATA_SUFFIX );
 
             this.journal = new File( envDir, file.getName() + JOURNAL_SUFFIX );
             setType( BTreeTypeEnum.BACKED_ON_DISK );
@@ -174,8 +180,9 @@ import org.slf4j.LoggerFactory;
 
         // Create the queue containing the pending read transactions
         readTransactions = new ConcurrentLinkedQueue<ReadTransaction<K, V>>();
-
-        writeLock = new ReentrantLock();
+        
+        // Create the transaction manager
+        transactionManager = new InMemoryTransactionManager();
 
         // Check the files and create them if missing
         // Create the queue containing the modifications, if it's not a in-memory btree
@@ -202,11 +209,54 @@ import org.slf4j.LoggerFactory;
         else
         {
             setType( BTreeTypeEnum.IN_MEMORY );
+
+            // This is a new Btree, we have to store the BtreeHeader
+            BTreeHeader<K, V> btreeHeader = new BTreeHeader<K, V>();
+            btreeHeader.setRootPage( new InMemoryLeaf<K, V>( this ) );
+            btreeHeader.setBtree( this );
+            storeRevision( btreeHeader );
         }
 
         // Initialize the txnManager thread
         //FIXME we should NOT create a new transaction manager thread for each BTree
         //createTransactionManager();
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    protected ReadTransaction<K, V> beginReadTransaction()
+    {
+        BTreeHeader<K, V> btreeHeader = getBtreeHeader();
+
+        ReadTransaction<K, V> readTransaction = new ReadTransaction<K, V>( btreeHeader, readTransactions );
+
+        readTransactions.add( readTransaction );
+
+        return readTransaction;
+    }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    protected ReadTransaction<K, V> beginReadTransaction( long revision )
+    {
+        BTreeHeader<K, V> btreeHeader = getBtreeHeader( revision );
+
+        if ( btreeHeader != null )
+        {
+            ReadTransaction<K, V> readTransaction = new ReadTransaction<K, V>(  btreeHeader, readTransactions );
+
+            readTransactions.add( readTransaction );
+
+            return readTransaction;
+        }
+        else
+        {
+            return null;
+        }
     }
 
 
@@ -225,8 +275,6 @@ import org.slf4j.LoggerFactory;
             flush();
             journalChannel.close();
         }
-
-        rootPage = null;
     }
 
 
@@ -244,59 +292,65 @@ import org.slf4j.LoggerFactory;
      */
     protected Tuple<K, V> delete( K key, V value, long revision ) throws IOException
     {
-        writeLock.lock();
-
-        try
+        if ( revision == -1L )
         {
-            // If the key exists, the existing value will be replaced. We store it
-            // to return it to the caller.
-            Tuple<K, V> tuple = null;
-
-            // Try to delete the entry starting from the root page. Here, the root
-            // page may be either a Node or a Leaf
-            DeleteResult<K, V> result = rootPage.delete( revision, key, value, null, -1 );
-
-            if ( result instanceof NotPresentResult )
-            {
-                // Key not found.
-                return null;
-            }
-
-            // Keep the oldRootPage so that we can later access it
-            Page<K, V> oldRootPage = rootPage;
-
-            if ( result instanceof RemoveResult )
-            {
-                // The element was found, and removed
-                RemoveResult<K, V> removeResult = ( RemoveResult<K, V> ) result;
-
-                Page<K, V> modifiedPage = removeResult.getModifiedPage();
-
-                // This is a new root
-                rootPage = modifiedPage;
-                tuple = removeResult.getRemovedElement();
-            }
-
-            if ( withJournal )
-            {
-                // Inject the modification into the modification queue
-                writeToJournal( new Deletion<K, V>( key ) );
-            }
-
-            // Decrease the number of elements in the current tree if the deletion is successful
-            if ( tuple != null )
-            {
-                btreeHeader.decrementNbElems();
-            }
-
-            // Return the value we have found if it was modified
-            return tuple;
+            revision = currentRevision.get() + 1;
         }
-        finally
+
+        BTreeHeader<K, V> oldBtreeHeader = getBtreeHeader();
+        BTreeHeader<K, V> newBtreeHeader = createNewBtreeHeader( oldBtreeHeader, revision );
+        newBtreeHeader.setBtree( this );
+
+        // If the key exists, the existing value will be replaced. We store it
+        // to return it to the caller.
+        Tuple<K, V> tuple = null;
+
+        // Try to delete the entry starting from the root page. Here, the root
+        // page may be either a Node or a Leaf
+        DeleteResult<K, V> result = getRootPage().delete( key, value, revision );
+
+        if ( result instanceof NotPresentResult )
         {
-            // See above
-            writeLock.unlock();
+            // Key not found.
+            return null;
         }
+
+        // Keep the oldRootPage so that we can later access it
+        //Page<K, V> oldRootPage = rootPage;
+
+        if ( result instanceof RemoveResult )
+        {
+            // The element was found, and removed
+            RemoveResult<K, V> removeResult = ( RemoveResult<K, V> ) result;
+
+            Page<K, V> modifiedPage = removeResult.getModifiedPage();
+
+            // This is a new root
+            newBtreeHeader.setRootPage( modifiedPage );
+            tuple = removeResult.getRemovedElement();
+        }
+
+        if ( withJournal )
+        {
+            // Inject the modification into the modification queue
+            writeToJournal( new Deletion<K, V>( key ) );
+        }
+
+        // Decrease the number of elements in the current tree if the deletion is successful
+        if ( tuple != null )
+        {
+            newBtreeHeader.decrementNbElems();
+        }
+
+        storeRevision( newBtreeHeader );
+
+        // Return the value we have found if it was modified
+        if ( oldBtreeHeader.getNbUsers() == 0 )
+        {
+            btreeRevisions.remove( oldBtreeHeader.getRevision() );
+        }
+
+        return tuple;
     }
 
 
@@ -315,10 +369,16 @@ import org.slf4j.LoggerFactory;
      */
     /* no qualifier */InsertResult<K, V> insert( K key, V value, long revision ) throws IOException
     {
-        if ( key == null )
+        // We have to start a new transaction, which will be committed or rollbacked
+        // locally. This will duplicate the current BtreeHeader during this phase.
+        if ( revision == -1L )
         {
-            throw new IllegalArgumentException( "Key must not be null" );
+            revision = currentRevision.get() + 1;
         }
+
+        BTreeHeader<K, V> oldBtreeHeader = getBtreeHeader();
+        BTreeHeader<K, V> newBtreeHeader = createNewBtreeHeader( oldBtreeHeader, revision );
+        newBtreeHeader.setBtree( this );
 
         // If the key exists, the existing value will be replaced. We store it
         // to return it to the caller.
@@ -327,7 +387,7 @@ import org.slf4j.LoggerFactory;
         // Try to insert the new value in the tree at the right place,
         // starting from the root page. Here, the root page may be either
         // a Node or a Leaf
-        InsertResult<K, V> result = rootPage.insert( revision, key, value );
+        InsertResult<K, V> result = newBtreeHeader.getRootPage().insert( key, value, revision );
 
         if ( result instanceof ModifyResult )
         {
@@ -337,7 +397,7 @@ import org.slf4j.LoggerFactory;
 
             // The root has just been modified, we haven't split it
             // Get it and make it the current root page
-            rootPage = modifiedPage;
+            newBtreeHeader.setRootPage( modifiedPage );
 
             modifiedValue = modifyResult.getModifiedValue();
         }
@@ -350,12 +410,9 @@ import org.slf4j.LoggerFactory;
             K pivot = splitResult.getPivot();
             Page<K, V> leftPage = splitResult.getLeftPage();
             Page<K, V> rightPage = splitResult.getRightPage();
-            Page<K, V> newRootPage = null;
 
             // Create the new rootPage
-            newRootPage = new InMemoryNode<K, V>( this, revision, pivot, leftPage, rightPage );
-
-            rootPage = newRootPage;
+            newBtreeHeader.setRootPage( new InMemoryNode<K, V>( this, revision, pivot, leftPage, rightPage ) );
         }
 
         // Inject the modification into the modification queue
@@ -368,7 +425,19 @@ import org.slf4j.LoggerFactory;
         // and does not replace an element
         if ( modifiedValue == null )
         {
-            btreeHeader.incrementNbElems();
+            newBtreeHeader.incrementNbElems();
+        }
+
+        storeRevision( newBtreeHeader );
+
+        if ( oldBtreeHeader.getNbUsers() == 0 )
+        {
+            long oldRevision = oldBtreeHeader.getRevision();
+
+            if ( oldRevision < newBtreeHeader.getRevision() )
+            {
+                btreeRevisions.remove( oldBtreeHeader.getRevision() );
+            }
         }
 
         // Return the value we have found if it was modified
@@ -443,44 +512,52 @@ import org.slf4j.LoggerFactory;
         // Create a buffer containing 200 4Kb pages (around 1Mb)
         ByteBuffer bb = ByteBuffer.allocateDirect( writeBufferSize );
 
-        TupleCursor<K, V> cursor = browse();
-
-        if ( keySerializer == null )
+        try
         {
-            throw new MissingSerializerException( "Cannot flush the btree without a Key serializer" );
+            TupleCursor<K, V> cursor = browse();
+    
+            if ( keySerializer == null )
+            {
+                throw new MissingSerializerException( "Cannot flush the btree without a Key serializer" );
+            }
+    
+            if ( valueSerializer == null )
+            {
+                throw new MissingSerializerException( "Cannot flush the btree without a Value serializer" );
+            }
+    
+            // Write the number of elements first
+            bb.putLong( getBtreeHeader().getNbElems() );
+    
+            while ( cursor.hasNext() )
+            {
+                Tuple<K, V> tuple = cursor.next();
+    
+                byte[] keyBuffer = keySerializer.serialize( tuple.getKey() );
+    
+                writeBuffer( ch, bb, keyBuffer );
+    
+                byte[] valueBuffer = valueSerializer.serialize( tuple.getValue() );
+    
+                writeBuffer( ch, bb, valueBuffer );
+            }
+    
+            // Write the buffer if needed
+            if ( bb.position() > 0 )
+            {
+                bb.flip();
+                ch.write( bb );
+            }
+    
+            // Flush to the disk for real
+            ch.force( true );
+            ch.close();
         }
-
-        if ( valueSerializer == null )
+        catch ( KeyNotFoundException knfe )
         {
-            throw new MissingSerializerException( "Cannot flush the btree without a Value serializer" );
+            knfe.printStackTrace();
+            throw new IOException( knfe.getMessage() );
         }
-
-        // Write the number of elements first
-        bb.putLong( btreeHeader.getNbElems() );
-
-        while ( cursor.hasNext() )
-        {
-            Tuple<K, V> tuple = cursor.next();
-
-            byte[] keyBuffer = keySerializer.serialize( tuple.getKey() );
-
-            writeBuffer( ch, bb, keyBuffer );
-
-            byte[] valueBuffer = valueSerializer.serialize( tuple.getValue() );
-
-            writeBuffer( ch, bb, valueBuffer );
-        }
-
-        // Write the buffer if needed
-        if ( bb.position() > 0 )
-        {
-            bb.flip();
-            ch.write( bb );
-        }
-
-        // Flush to the disk for real
-        ch.force( true );
-        ch.close();
 
         // Rename the current file to save a backup
         File backupFile = File.createTempFile( "mavibot", null, baseDirectory );
@@ -501,8 +578,6 @@ import org.slf4j.LoggerFactory;
      */
     private void applyJournal() throws IOException
     {
-        long revision = generateRevision();
-
         if ( !journal.exists() )
         {
             throw new IOException( "The journal does not exist" );
@@ -535,7 +610,7 @@ import org.slf4j.LoggerFactory;
                     //values.add( value );
 
                     // Inject the data in the tree. (to be replaced by a bulk load)
-                    insert( key, value, revision );
+                    insert( key, value, getBtreeHeader().getRevision() );
                 }
                 else
                 {
@@ -543,7 +618,7 @@ import org.slf4j.LoggerFactory;
                     K key = keySerializer.deserialize( bufferHandler );
 
                     // Remove the key from the tree
-                    delete( key, revision );
+                    delete( key, getBtreeHeader().getRevision() );
                 }
             }
         }
@@ -565,8 +640,6 @@ import org.slf4j.LoggerFactory;
      */
     public void load( File file ) throws IOException
     {
-        long revision = generateRevision();
-
         if ( !file.exists() )
         {
             throw new IOException( "The file does not exist" );
@@ -579,11 +652,6 @@ import org.slf4j.LoggerFactory;
         BufferHandler bufferHandler = new BufferHandler( channel, buffer );
 
         long nbElems = LongSerializer.deserialize( bufferHandler.read( 8 ) );
-        btreeHeader.setNbElems( nbElems );
-
-        // Prepare a list of keys and values read from the disk
-        //List<K> keys = new ArrayList<K>();
-        //List<V> values = new ArrayList<V>();
 
         // desactivate the journal while we load the file
         boolean isJournalActivated = withJournal;
@@ -596,15 +664,11 @@ import org.slf4j.LoggerFactory;
             // Read the key
             K key = keySerializer.deserialize( bufferHandler );
 
-            //keys.add( key );
-
             // Read the value
             V value = valueSerializer.deserialize( bufferHandler );
 
-            //values.add( value );
-
             // Inject the data in the tree. (to be replaced by a bulk load)
-            insert( key, value, revision );
+            insert( key, value, getBtreeHeader().getRevision() );
         }
 
         // Restore the withJournal value
@@ -616,7 +680,7 @@ import org.slf4j.LoggerFactory;
 
 
     /**
-     * Get the rootPzge associated to a give revision.
+     * Get the rootPage associated to a give revision.
      *
      * @param revision The revision we are looking for
      * @return The rootPage associated to this revision
@@ -626,7 +690,24 @@ import org.slf4j.LoggerFactory;
     public Page<K, V> getRootPage( long revision ) throws IOException, KeyNotFoundException
     {
         // Atm, the in-memory BTree does not support searches in many revisions
-        return rootPage;
+        return getBtreeHeader().getRootPage();
+    }
+
+
+    /**
+     * Get the current rootPage
+     *
+     * @return The rootPage
+     */
+    public Page<K, V> getRootPage()
+    {
+        return getBtreeHeader().getRootPage();
+    }
+
+
+    /* no qualifier */void setRootPage( Page<K, V> root )
+    {
+        getBtreeHeader().setRootPage( root );
     }
 
 
@@ -718,29 +799,19 @@ import org.slf4j.LoggerFactory;
 
 
     /**
-     * Starts a transaction
+     * Create a new B-tree header to be used for update operations
+     * @param revision The reclaimed revision
      */
-    public void beginTransaction()
+    private BTreeHeader<K, V> createNewBtreeHeader( BTreeHeader<K, V> btreeHeader, long revision )
     {
-        // Does nothing...
-    }
+        BTreeHeader<K, V> newBtreeHeader = new BTreeHeader<K, V>();
 
+        newBtreeHeader.setBTreeHeaderOffset( btreeHeader.getBTreeHeaderOffset() );
+        newBtreeHeader.setRevision( revision );
+        newBtreeHeader.setNbElems( btreeHeader.getNbElems() );
+        newBtreeHeader.setRootPage( btreeHeader.getRootPage() );
 
-    /**
-     * Commits a transaction
-     */
-    public void commit()
-    {
-        // Does nothing...
-    }
-
-
-    /**
-     * Rollback a transaction
-     */
-    public void rollback()
-    {
-        // Does nothing...
+        return newBtreeHeader;
     }
 
 
@@ -760,16 +831,19 @@ import org.slf4j.LoggerFactory;
             case BACKED_ON_DISK:
                 sb.append( "Persistent " );
                 break;
-
+                
+            default :
+                sb.append( "Wrong type... " );
+                break;
         }
 
         sb.append( "BTree" );
-        sb.append( "[" ).append( btreeHeader.getName() ).append( "]" );
-        sb.append( "( pageSize:" ).append( btreeHeader.getPageSize() );
+        sb.append( "[" ).append( getName() ).append( "]" );
+        sb.append( "( pageSize:" ).append( getPageSize() );
 
-        if ( rootPage != null )
+        if ( getBtreeHeader().getRootPage() != null )
         {
-            sb.append( ", nbEntries:" ).append( btreeHeader.getNbElems() );
+            sb.append( ", nbEntries:" ).append( getBtreeHeader().getNbElems() );
         }
         else
         {
@@ -787,7 +861,7 @@ import org.slf4j.LoggerFactory;
             sb.append( keySerializer.getComparator().getClass().getSimpleName() );
         }
 
-        sb.append( ", DuplicatesAllowed: " ).append( btreeHeader.isAllowDuplicates() );
+        sb.append( ", DuplicatesAllowed: " ).append( isAllowDuplicates() );
 
         if ( getType() == BTreeTypeEnum.BACKED_ON_DISK )
         {
@@ -822,7 +896,7 @@ import org.slf4j.LoggerFactory;
         }
 
         sb.append( ") : \n" );
-        sb.append( rootPage.dumpPage( "" ) );
+        sb.append( getRootPage().dumpPage( "" ) );
 
         return sb.toString();
     }

@@ -29,12 +29,12 @@ import org.junit.Test;
 
 /**
  * Test the ByteSerializer class
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class ByteSerializerTest
 {
-    private static ByteSerializer serializer = new ByteSerializer();
+    private static ByteSerializer serializer = ByteSerializer.INSTANCE;
 
 
     @Test

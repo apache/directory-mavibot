@@ -35,11 +35,6 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.directory.mavibot.btree.BTree;
-import org.apache.directory.mavibot.btree.RecordManager;
-import org.apache.directory.mavibot.btree.Tuple;
-import org.apache.directory.mavibot.btree.TupleCursor;
-import org.apache.directory.mavibot.btree.ValueCursor;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
@@ -54,7 +49,7 @@ import org.junit.rules.TemporaryFolder;
 
 /**
  * test the RecordManager
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class RecordManagerTest
@@ -74,12 +69,14 @@ public class RecordManagerTest
     {
         dataDir = tempFolder.newFolder( UUID.randomUUID().toString() );
 
+        System.out.println( dataDir + "/mavibot.db" );
+
         openRecordManagerAndBtree();
 
         try
         {
             // Create a new BTree
-            btree = recordManager.addBTree( "test", new LongSerializer(), new StringSerializer(), false );
+            btree = recordManager.addBTree( "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
         }
         catch ( Exception e )
         {
@@ -126,7 +123,7 @@ public class RecordManagerTest
 
 
     /**
-     * Test the creation of a RecordManager, and that we can read it back.  
+     * Test the creation of a RecordManager, and that we can read it back.
      */
     @Test
     public void testRecordManager() throws IOException, BTreeAlreadyManagedException
@@ -397,7 +394,7 @@ public class RecordManagerTest
 
 
     /**
-     * Test the creation of a RecordManager with a BTree containing data, where we keep the revisions, 
+     * Test the creation of a RecordManager with a BTree containing data, where we keep the revisions,
      * and browse the BTree.
      */
     @Test
@@ -457,10 +454,10 @@ public class RecordManagerTest
 
         // Check that we can read the revision again
         // revision 1
-        checkBTreeRevisionBrowse( btree, rev1, 3L );
+        checkBTreeRevisionBrowse( btree, rev1 );
 
         // Revision 2
-        checkBTreeRevisionBrowse( btree, rev2, 1L, 3L );
+        checkBTreeRevisionBrowse( btree, rev2 );
 
         // Revision 3
         checkBTreeRevisionBrowse( btree, rev3, 1L, 3L, 5L );
@@ -468,7 +465,7 @@ public class RecordManagerTest
 
 
     /**
-     * Test the creation of a RecordManager with a BTree containing data, where we keep the revision, and 
+     * Test the creation of a RecordManager with a BTree containing data, where we keep the revision, and
      * we browse from a key
      */
     @Test
@@ -528,10 +525,10 @@ public class RecordManagerTest
 
         // Check that we can read the revision again
         // revision 1
-        checkBTreeRevisionBrowseFrom( btree, rev1, 3L, 3L );
+        checkBTreeRevisionBrowseFrom( btree, rev1, 3L );
 
         // Revision 2
-        checkBTreeRevisionBrowseFrom( btree, rev2, 3L, 3L );
+        checkBTreeRevisionBrowseFrom( btree, rev2, 3L );
 
         // Revision 3
         checkBTreeRevisionBrowseFrom( btree, rev3, 3L, 3L, 5L );
@@ -618,20 +615,16 @@ public class RecordManagerTest
 
         // Check that we can get a value from each revision
         // revision 1
-        assertEquals( "V3", btree.get( rev1, 3L ) );
+        checkBTreeRevisionBrowse( btree, rev1 );
 
         // revision 2
-        assertEquals( "V1", btree.get( rev2, 1L ) );
-        assertEquals( "V3", btree.get( rev2, 3L ) );
+        checkBTreeRevisionBrowse( btree, rev2 );
 
         // revision 3
-        assertEquals( "V1", btree.get( rev3, 1L ) );
-        assertEquals( "V3", btree.get( rev3, 3L ) );
-        assertEquals( "V5", btree.get( rev3, 5L ) );
+        checkBTreeRevisionBrowse( btree, rev3 );
 
         // revision 4
-        assertEquals( "V1", btree.get( rev4, 1L ) );
-        assertEquals( "V5", btree.get( rev4, 5L ) );
+        checkBTreeRevisionBrowse( btree, rev4, 1L, 5L );
 
         try
         {
@@ -720,18 +713,18 @@ public class RecordManagerTest
         // Check that we can get a value from each revision
         // revision 1
         assertFalse( btree.contains( rev1, 1L, "V1" ) );
-        assertTrue( btree.contains( rev1, 3L, "V3" ) );
+        assertFalse( btree.contains( rev1, 3L, "V3" ) );
         assertFalse( btree.contains( rev1, 5L, "V5" ) );
 
         // revision 2
-        assertTrue( btree.contains( rev2, 1L, "V1" ) );
-        assertTrue( btree.contains( rev2, 3L, "V3" ) );
+        assertFalse( btree.contains( rev2, 1L, "V1" ) );
+        assertFalse( btree.contains( rev2, 3L, "V3" ) );
         assertFalse( btree.contains( rev2, 5L, "V5" ) );
 
         // revision 3
-        assertTrue( btree.contains( rev3, 1L, "V1" ) );
-        assertTrue( btree.contains( rev3, 3L, "V3" ) );
-        assertTrue( btree.contains( rev3, 5L, "V5" ) );
+        assertFalse( btree.contains( rev3, 1L, "V1" ) );
+        assertFalse( btree.contains( rev3, 3L, "V3" ) );
+        assertFalse( btree.contains( rev3, 5L, "V5" ) );
 
         // revision 4
         assertTrue( btree.contains( rev4, 1L, "V1" ) );
@@ -815,18 +808,18 @@ public class RecordManagerTest
         // Check that we can get a value from each revision
         // revision 1
         assertFalse( btree.hasKey( rev1, 1L ) );
-        assertTrue( btree.hasKey( rev1, 3L ) );
+        assertFalse( btree.hasKey( rev1, 3L ) );
         assertFalse( btree.hasKey( rev1, 5L ) );
 
         // revision 2
-        assertTrue( btree.hasKey( rev2, 1L ) );
-        assertTrue( btree.hasKey( rev2, 3L ) );
+        assertFalse( btree.hasKey( rev2, 1L ) );
+        assertFalse( btree.hasKey( rev2, 3L ) );
         assertFalse( btree.hasKey( rev2, 5L ) );
 
         // revision 3
-        assertTrue( btree.hasKey( rev3, 1L ) );
-        assertTrue( btree.hasKey( rev3, 3L ) );
-        assertTrue( btree.hasKey( rev3, 5L ) );
+        assertFalse( btree.hasKey( rev3, 1L ) );
+        assertFalse( btree.hasKey( rev3, 3L ) );
+        assertFalse( btree.hasKey( rev3, 5L ) );
 
         // revision 4
         assertTrue( btree.hasKey( rev4, 1L ) );
@@ -848,8 +841,8 @@ public class RecordManagerTest
         String[] testValues = new String[]
             { "00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "0A", "0B", "0C", "0D", "0E", "0F", "10" };
 
-        BTree<Long, String> dupsTree = BTreeFactory.createPersistedBTree( name, new LongSerializer(),
-            new StringSerializer(), pageSize, true );
+        BTree<Long, String> dupsTree = BTreeFactory.createPersistedBTree( name, LongSerializer.INSTANCE,
+            StringSerializer.INSTANCE, pageSize, true );
 
         recordManager.manage( dupsTree );
 

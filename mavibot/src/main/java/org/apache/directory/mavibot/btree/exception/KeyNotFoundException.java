@@ -29,6 +29,10 @@ public class KeyNotFoundException extends Exception
 {
     /** The serial version UUID */
     private static final long serialVersionUID = 1L;
+    
+    /** A static Exception used to avoid creating a new one every time */
+    public static final KeyNotFoundException INSTANCE = new KeyNotFoundException(
+        "Cannot find an entry associated with this key" );
 
 
     /**

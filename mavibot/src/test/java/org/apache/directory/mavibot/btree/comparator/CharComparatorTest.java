@@ -27,7 +27,7 @@ import org.junit.Test;
 
 /**
  * Test the CharComparator class
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class CharComparatorTest
@@ -35,7 +35,7 @@ public class CharComparatorTest
     @Test
     public void testCharComparator()
     {
-        CharComparator comparator = new CharComparator();
+        CharComparator comparator = CharComparator.INSTANCE;
 
         assertEquals( 0, comparator.compare( null, null ) );
         assertEquals( 0, comparator.compare( 'a', 'a' ) );

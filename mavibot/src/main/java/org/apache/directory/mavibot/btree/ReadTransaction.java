@@ -21,6 +21,7 @@ package org.apache.directory.mavibot.btree;
 
 
 import java.util.Date;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 
 /**
@@ -35,7 +36,7 @@ import java.util.Date;
  * A Transaction can be hold for quite a long time, for instance while doing
  * a browse against a big BTree. At some point, transactions which are pending
  * for too long will be closed by the transaction manager.
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  *
  * @param <K> The type for the Key
@@ -49,26 +50,54 @@ public class ReadTransaction<K, V>
     /** The date of creation */
     private long creationDate;
 
-    /** The revision on which we are having a transaction */
-    private volatile Page<K, V> root;
+    /** The associated B-tree header */
+    private BTreeHeader<K, V> btreeHeader;
 
     /** A flag used to tell if a transaction is closed or not */
     private volatile boolean closed;
+    
+    /** The list of read transactions being executed */
+    private ConcurrentLinkedQueue<ReadTransaction<K, V>> readTransactions;
 
-
+    /** The reference to the recordManager, if any */
+    private RecordManager recordManager;
+    
     /**
      * Creates a new transaction instance
-     * 
-     * @param root The associated root
-     * @param revision The revision this transaction is using
-     * @param creationDate The creation date for this transaction
+     *
+     * @param btreeHeader The BtreeHeader we will use for this read transaction
      */
-    public ReadTransaction( Page<K, V> root, long revision, long creationDate )
+    public ReadTransaction( RecordManager recordManager, BTreeHeader<K, V> btreeHeader, ConcurrentLinkedQueue<ReadTransaction<K, V>> readTransactions )
     {
-        this.revision = revision;
-        this.creationDate = creationDate;
-        this.root = root;
-        closed = false;
+        if ( btreeHeader != null )
+        {
+            this.revision = btreeHeader.getRevision();
+            this.creationDate = System.currentTimeMillis();
+            this.btreeHeader = btreeHeader;
+            this.recordManager = recordManager;
+            closed = false;
+        }
+        
+        this.readTransactions = readTransactions;
+    }
+    
+    
+    /**
+     * Creates a new transaction instance
+     *
+     * @param btreeHeader The BtreeHeader we will use for this read transaction
+     */
+    public ReadTransaction( BTreeHeader<K, V> btreeHeader, ConcurrentLinkedQueue<ReadTransaction<K, V>> readTransactions )
+    {
+        if ( btreeHeader != null )
+        {
+            this.revision = btreeHeader.getRevision();
+            this.creationDate = System.currentTimeMillis();
+            this.btreeHeader = btreeHeader;
+            closed = false;
+        }
+        
+        this.readTransactions = readTransactions;
     }
 
 
@@ -82,15 +111,6 @@ public class ReadTransaction<K, V>
 
 
     /**
-     * @return the associated root
-     */
-    public Page<K, V> getRoot()
-    {
-        return root;
-    }
-
-
-    /**
      * @return the creationDate
      */
     public long getCreationDate()
@@ -100,12 +120,31 @@ public class ReadTransaction<K, V>
 
 
     /**
+     * @return the btreeHeader
+     */
+    public BTreeHeader<K, V> getBtreeHeader()
+    {
+        return btreeHeader;
+    }
+
+
+    /**
      * Close the transaction, releasing the revision it was using.
      */
     public void close()
     {
-        root = null;
         closed = true;
+        
+        // Remove the transaction from the list of opened transactions
+        readTransactions.remove( this );
+        
+        // and push the 
+        if ( recordManager != null )
+        {
+            recordManager.releaseTransaction( this );
+        }
+        
+        // Now, get back the copied pages
     }
 
 

@@ -32,7 +32,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 
 /**
- * A BTree builder that builds a tree from the bottom.
+ * A B-tree builder that builds a tree from the bottom.
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
@@ -138,7 +138,7 @@ public class PersistedBTreeBuilder<K, V>
 
         rm.updateBtreeHeader( btree, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
 
-        rm.addFreePages( btree, Arrays.asList( btree.getRootPage() ) );
+        rm.freePages( btree, btree.getRootPage().getRevision(), Arrays.asList( btree.getRootPage() ) );
 
         ( ( AbstractBTree<K, V> ) btree ).setRootPage( rootPage );
 

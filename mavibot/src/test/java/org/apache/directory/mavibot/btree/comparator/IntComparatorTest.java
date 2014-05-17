@@ -27,7 +27,7 @@ import org.junit.Test;
 
 /**
  * Test the IntComparator class
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class IntComparatorTest
@@ -35,7 +35,7 @@ public class IntComparatorTest
     @Test
     public void testIntComparator()
     {
-        IntComparator comparator = new IntComparator();
+        IntComparator comparator = IntComparator.INSTANCE;
 
         assertEquals( 0, comparator.compare( null, null ) );
         assertEquals( 0, comparator.compare( 1, 1 ) );

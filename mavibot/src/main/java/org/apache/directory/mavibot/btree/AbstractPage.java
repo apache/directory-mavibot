@@ -23,8 +23,6 @@ package org.apache.directory.mavibot.btree;
 import java.io.IOException;
 import java.lang.reflect.Array;
 
-import org.apache.directory.mavibot.btree.KeyHolder;
-import org.apache.directory.mavibot.btree.Page;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
@@ -32,7 +30,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 /**
  * A MVCC abstract Page. It stores the field and the methods shared by the Node and Leaf
  * classes.
- * 
+ *
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
  *
@@ -61,14 +59,9 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /** The last {@link PageIO} storing the serialized Page on disk */
     protected long lastOffset = -1L;
 
-    /** A static Exception used to avoid creating a new one every time */
-    protected KeyNotFoundException KEY_NOT_FOUND_EXCEPTION = new KeyNotFoundException(
-        "Cannot find an entry associated with this key" );
-
-
     /**
      * Creates a default empty AbstractPage
-     * 
+     *
      * @param btree The associated BTree
      */
     protected AbstractPage( BTree<K, V> btree )
@@ -216,6 +209,30 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * {@inheritDoc}
      */
+    public DeleteResult<K, V> delete( K key, V value, long revision ) throws IOException
+    {
+        return delete( key, value, revision, null, -1 );
+    }
+
+
+    /**
+     * The real delete implementation. It can be used for internal deletion in the B-tree.
+     *
+     * @param key The key to delete
+     * @param value The value to delete
+     * @param revision The revision for which we want to delete a tuple
+     * @param parent The parent page
+     * @param parentPos The position of this page in the parent page
+     * @return The result
+     * @throws IOException If we had an issue while processing the deletion
+     */
+    /* no qualifier */abstract DeleteResult<K, V> delete( K key, V value, long revision, Page<K, V> parent, int parentPos )
+        throws IOException;
+
+
+    /**
+     * {@inheritDoc}
+     */
     public V get( K key ) throws IOException, KeyNotFoundException
     {
         int pos = findPos( key );
@@ -299,7 +316,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /**
      * Selects the sibling (the previous or next page with the same parent) which has
      * the more element assuming it's above N/2
-     * 
+     *
      * @param parent The parent of the current page
      * @param The position of the current page reference in its parent
      * @return The position of the sibling, or -1 if we have'nt found any sibling
@@ -403,7 +420,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
     /**
      * Sets the key at a give position
-     * 
+     *
      * @param pos The position in the keys array
      * @param key the key to inject
      */
@@ -452,7 +469,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
     /**
      * Compares two keys
-     * 
+     *
      * @param key1 The first key
      * @param key2 The second key
      * @return -1 if the first key is above the second one, 1 if it's below, and 0
@@ -510,8 +527,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * <li>'h' will return -4</li>
      * <li>'i' will return 4</li>
      * </ul>
-     * 
-     * 
+     *
+     *
      * @param key The key to find
      * @return The position in the page.
      */

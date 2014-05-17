@@ -34,12 +34,15 @@ import org.apache.directory.mavibot.btree.exception.SerializerCreationException;
  */
 public class BooleanSerializer extends AbstractElementSerializer<Boolean>
 {
+    /** A static instance of a BooleanSerializer */
+    public static final BooleanSerializer INSTANCE = new BooleanSerializer();
+
     /**
      * Create a new instance of BooleanSerializer
      */
-    public BooleanSerializer()
+    private BooleanSerializer()
     {
-        super( new BooleanComparator() );
+        super( BooleanComparator.INSTANCE );
     }
 
 

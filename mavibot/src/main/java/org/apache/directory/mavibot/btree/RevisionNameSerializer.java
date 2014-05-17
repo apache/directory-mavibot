@@ -41,12 +41,15 @@ import org.apache.directory.mavibot.btree.util.Strings;
  */
 /* no qualifier*/class RevisionNameSerializer extends AbstractElementSerializer<RevisionName>
 {
+    /** A static instance of a RevisionNameSerializer */
+    /*No qualifier*/ final static RevisionNameSerializer INSTANCE = new RevisionNameSerializer();
+
     /**
      * Create a new instance of a RevisionNameSerializer
      */
-    /* no qualifier*/RevisionNameSerializer()
+    private RevisionNameSerializer()
     {
-        super( new RevisionNameComparator() );
+        super( RevisionNameComparator.INSTANCE );
     }
 
 

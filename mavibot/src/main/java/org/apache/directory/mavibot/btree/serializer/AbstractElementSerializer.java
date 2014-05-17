@@ -29,7 +29,7 @@ import java.util.Comparator;
 
 /**
  * An abstract ElementSerializer that implements comon methods
- * 
+ *
  * @param <T> The type for the element to serialize and compare
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>

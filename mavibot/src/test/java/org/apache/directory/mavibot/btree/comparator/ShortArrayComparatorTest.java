@@ -27,7 +27,7 @@ import org.junit.Test;
 
 /**
  * Test the ShortArrayComparator class
- * 
+ *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class ShortArrayComparatorTest
@@ -35,7 +35,7 @@ public class ShortArrayComparatorTest
     @Test
     public void testShortArrayComparator()
     {
-        ShortArrayComparator comparator = new ShortArrayComparator();
+        ShortArrayComparator comparator = ShortArrayComparator.INSTANCE;
 
         // Check equality
         assertEquals( 0, comparator.compare( null, null ) );
