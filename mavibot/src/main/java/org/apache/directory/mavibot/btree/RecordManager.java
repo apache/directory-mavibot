@@ -396,6 +396,7 @@ public class RecordManager extends AbstractTransactionManager
         configuration.setName( BTREE_OF_BTREES_NAME );
         configuration.setValueSerializer( LongSerializer.INSTANCE );
         configuration.setBtreeType( BTreeTypeEnum.BTREE_OF_BTREES );
+        configuration.setCacheSize( PersistedBTree.DEFAULT_CACHE_SIZE );
 
         btreeOfBtrees = BTreeFactory.createPersistedBTree( configuration );
     }
@@ -411,6 +412,7 @@ public class RecordManager extends AbstractTransactionManager
         configuration.setName( COPIED_PAGE_BTREE_NAME );
         configuration.setValueSerializer( LongArraySerializer.INSTANCE );
         configuration.setBtreeType( BTreeTypeEnum.COPIED_PAGES_BTREE );
+        configuration.setCacheSize( PersistedBTree.DEFAULT_CACHE_SIZE );
 
         copiedPageBtree = BTreeFactory.createPersistedBTree( configuration );
     }
@@ -1933,7 +1935,7 @@ public class RecordManager extends AbstractTransactionManager
 
         btreeOfBtrees.insert( nameRevision, btreeHeaderOffset );
 
-        // Update the B-tree of B-trees
+        // Update the B-tree of B-trees offset
         currentBtreeOfBtreesOffset = getBTreeHeader( BTREE_OF_BTREES_NAME ).getBTreeHeaderOffset();
     }
 

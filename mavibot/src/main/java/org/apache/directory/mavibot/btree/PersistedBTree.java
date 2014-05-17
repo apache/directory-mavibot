@@ -54,7 +54,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
     protected Cache cache;
 
     /** The default number of pages to keep in memory */
-    static final int DEFAULT_CACHE_SIZE = 1000;
+    public static final int DEFAULT_CACHE_SIZE = 1000;
 
     /** The cache size, default to 1000 elements */
     protected int cacheSize = DEFAULT_CACHE_SIZE;
