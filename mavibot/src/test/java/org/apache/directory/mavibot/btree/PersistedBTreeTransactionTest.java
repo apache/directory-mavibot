@@ -19,12 +19,16 @@
  */
 package org.apache.directory.mavibot.btree;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.UUID;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -66,6 +70,30 @@ public class PersistedBTreeTransactionTest
         {
             throw new RuntimeException( e );
         }
+    }
+
+
+    @After
+    public void cleanup() throws IOException
+    {
+        btreeNoTransactions.close();
+        btreeWithTransactions.close();
+
+        if ( dataDirNoTxn.exists() )
+        {
+            FileUtils.deleteDirectory( dataDirNoTxn );
+        }
+
+        if ( dataDirWithTxn.exists() )
+        {
+            FileUtils.deleteDirectory( dataDirWithTxn );
+        }
+        
+        recordManagerNoTxn.close();
+        recordManagerTxn.close();
+        
+        assertTrue( recordManagerNoTxn.isContextOk() );
+        assertTrue( recordManagerTxn.isContextOk() );
     }
 
 

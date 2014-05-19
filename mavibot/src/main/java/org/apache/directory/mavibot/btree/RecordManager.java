@@ -562,17 +562,7 @@ public class RecordManager extends AbstractTransactionManager
         transactionLock.lock();
         
         // Now, check the TLS state
-        Integer nbTxnLevel = context.get();
-        
-        if ( nbTxnLevel == null )
-        {
-            context.set( 1 );
-        }
-        else
-        {
-            // And increment the counter of inner txn.
-            context.set( nbTxnLevel + 1 );
-        }
+        incrementTxnLevel();
     }
 
 
@@ -585,6 +575,10 @@ public class RecordManager extends AbstractTransactionManager
         {
             // The file has been closed, nothing remains to commit, let's get out
             transactionLock.unlock();
+            
+            // Still we have to decrement the TransactionLevel
+            decrementTxnLevel();
+            
             return;
         }
 
@@ -628,7 +622,7 @@ public class RecordManager extends AbstractTransactionManager
                 updateRecordManagerHeader();
                 
                 // And decrement the number of started transactions
-                context.set( nbTxnStarted - 1 );
+                decrementTxnLevel();
 
                 // Finally, release the global lock
                 transactionLock.unlock();
@@ -641,7 +635,7 @@ public class RecordManager extends AbstractTransactionManager
                 updateRecordManagerHeader();
                 
                 // Swap the BtreeHeaders maps
-                swapCurrentBtreeHeaders();
+                //swapCurrentBtreeHeaders();
         
                 // We can now free pages
                 for ( PageIO pageIo : freedPages )
@@ -665,12 +659,58 @@ public class RecordManager extends AbstractTransactionManager
                 updateRecordManagerHeader();
                 
                 // And decrement the number of started transactions
-                context.set( nbTxnStarted - 1 );
+                decrementTxnLevel();
 
                 // Finally, release the global lock
                 transactionLock.unlock();
                 return;
         }
+    }
+    
+    
+    public boolean isContextOk()
+    {
+        return ( context == null ? true : ( context.get() == 0 ) );
+    }
+    
+    /**
+     * Increment the transactionLevel
+     */
+    private void incrementTxnLevel()
+    {
+        Integer nbTxnLevel = context.get();
+        
+        if ( nbTxnLevel == null )
+        {
+            context.set( 1 );
+        }
+        else
+        {
+            // And increment the counter of inner txn.
+            context.set( nbTxnLevel + 1 );
+        }
+        
+        /*
+        System.out.println( "Incrementing : " + context.get() );
+        
+        if ( context.get() == 0 )
+        {
+            System.out.println( "-------------" );
+        }
+        */
+    }
+    
+    
+    /**
+     * Decrement the transactionLevel
+     */
+    private void decrementTxnLevel()
+    {
+        int nbTxnStarted = context.get();
+
+        context.set(  nbTxnStarted - 1 );
+        
+        //System.out.println( "Incrementing : " + context.get() );
     }
 
 
@@ -1936,7 +1976,7 @@ public class RecordManager extends AbstractTransactionManager
         btreeOfBtrees.insert( nameRevision, btreeHeaderOffset );
 
         // Update the B-tree of B-trees offset
-        currentBtreeOfBtreesOffset = getBTreeHeader( BTREE_OF_BTREES_NAME ).getBTreeHeaderOffset();
+        currentBtreeOfBtreesOffset = getNewBTreeHeader( BTREE_OF_BTREES_NAME ).getBTreeHeaderOffset();
     }
 
 
@@ -3619,6 +3659,18 @@ public class RecordManager extends AbstractTransactionManager
         
         // And unlock 
         btreeHeadersLock.readLock().unlock();
+
+        return btreeHeader;
+    }
+    
+    
+    /**
+     * Get the new BTreeHeader for a given Btree. It might not exist
+     */
+    public BTreeHeader getNewBTreeHeader( String name )
+    {
+        // get the current BTree Header for this BTree and revision
+        BTreeHeader<?, ?> btreeHeader = newBTreeHeaders.get( name );
 
         return btreeHeader;
     }

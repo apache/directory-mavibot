@@ -86,6 +86,9 @@ public class RecordManagerWithDuplicatesTest
         {
             FileUtils.deleteDirectory( dataDir );
         }
+        
+        recordManager.close();
+        assertTrue( recordManager.isContextOk() );
     }
 
 

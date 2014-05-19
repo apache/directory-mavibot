@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.directory.mavibot.btree.exception.BTreeCreationException;
+import org.apache.directory.mavibot.btree.exception.DuplicateValueNotAllowedException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
@@ -445,6 +446,17 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             }
             
             return null;
+        }
+        catch ( DuplicateValueNotAllowedException e )
+        {
+            // We have had an exception, we must rollback the transaction
+            // if it's not a sub-btree
+            if ( btreeType != BTreeTypeEnum.PERSISTED_SUB )
+            {
+                transactionManager.rollback();
+            }
+
+            throw e;
         }
     }
 

@@ -95,6 +95,9 @@ public class PersistedBTreeBrowseTest
         {
             FileUtils.deleteDirectory( dataDir );
         }
+        
+        recordManager1.close();
+        assertTrue( recordManager1.isContextOk() );
     }
 
 

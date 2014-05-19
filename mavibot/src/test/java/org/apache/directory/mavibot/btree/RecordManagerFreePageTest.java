@@ -90,6 +90,8 @@ public class RecordManagerFreePageTest
         }
 
         recordManager1.close();
+        
+        assertTrue( recordManager1.isContextOk() );
     }
 
 

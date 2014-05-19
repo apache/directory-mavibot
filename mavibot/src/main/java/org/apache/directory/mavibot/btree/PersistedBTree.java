@@ -484,16 +484,36 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
     
     private BTreeHeader<K, V> getBTreeHeader( String name )
     {
+        switch ( btreeType )
+        {
+            case PERSISTED_SUB : 
+                return getBtreeHeader();
+                
+            case BTREE_OF_BTREES : 
+                return recordManager.getNewBTreeHeader( RecordManager.BTREE_OF_BTREES_NAME );
+                    
+            case COPIED_PAGES_BTREE : 
+                return recordManager.getNewBTreeHeader( RecordManager.COPIED_PAGE_BTREE_NAME );
+                
+            default : 
+                return recordManager.getBTreeHeader( getName() );
+        }
+    }
+
+    
+    private BTreeHeader<K, V> getNewBTreeHeader( String name )
+    {
         if ( btreeType == BTreeTypeEnum.PERSISTED_SUB )
         {
             return getBtreeHeader();
         }
         
-        BTreeHeader<K, V> btreeHeader = recordManager.getBTreeHeader( getName() );
+        BTreeHeader<K, V> btreeHeader = recordManager.getNewBTreeHeader( getName() );
 
         return btreeHeader;
     }
 
+    
     /**
      * Insert the tuple into the B-tree rootPage, get back the new rootPage
      */
@@ -584,8 +604,6 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
                 // Sub-B-trees are only updating the CopiedPage B-tree
                 recordManager.addInCopiedPagesBtree( getName(), revision, result.getCopiedPages() );
                 
-                //btreeRevisions.put( revision, newBtreeHeader );
-
                 // Store the new revision
                 storeRevision( newBtreeHeader, recordManager.isKeepRevisions() );
 
