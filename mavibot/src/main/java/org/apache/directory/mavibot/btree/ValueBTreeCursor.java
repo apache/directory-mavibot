@@ -35,7 +35,7 @@ import org.apache.directory.mavibot.btree.BTree;
 /* No qualifier */class ValueBTreeCursor<V> implements ValueCursor<V>
 {
     /** Store the current position in the array or in the BTree */
-    private TupleCursor<V, V> cursor;
+    private KeyCursor<V> cursor;
 
     /** The Value sub-btree */
     private BTree<V, V> valueBtree;
@@ -53,7 +53,7 @@ import org.apache.directory.mavibot.btree.BTree;
         {
             if ( valueBtree != null )
             {
-                cursor = valueBtree.browse();
+                cursor = valueBtree.browseKeys();
             }
         }
         catch ( IOException e )
@@ -106,7 +106,7 @@ import org.apache.directory.mavibot.btree.BTree;
     {
         try
         {
-            return cursor.next().getKey();
+            return cursor.next();
         }
         catch ( EndOfFileExceededException e )
         {
@@ -198,7 +198,7 @@ import org.apache.directory.mavibot.btree.BTree;
     {
         try
         {
-            return cursor.prev().getKey();
+            return cursor.prev();
         }
         catch ( EndOfFileExceededException e )
         {

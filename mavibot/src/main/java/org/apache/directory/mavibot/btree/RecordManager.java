@@ -1042,36 +1042,41 @@ public class RecordManager extends AbstractTransactionManager
         int[] keyLengths = new int[nbElems];
         int[] valueLengths = new int[nbElems];
 
+        boolean isNotSubTree = ( btree.getType() != BTreeTypeEnum.PERSISTED_SUB );
+        
         // Read each key and value
         for ( int i = 0; i < nbElems; i++ )
         {
-            // Read the number of values
-            int nbValues = byteBuffer.getInt();
-            PersistedValueHolder<V> valueHolder = null;
-
-            if ( nbValues < 0 )
+            if ( isNotSubTree )
             {
-                // This is a sub-btree
-                byte[] btreeOffsetBytes = new byte[LONG_SIZE];
-                byteBuffer.get( btreeOffsetBytes );
-
-                // Create the valueHolder. As the number of values is negative, we have to switch
-                // to a positive value but as we start at -1 for 0 value, add 1.
-                valueHolder = new PersistedValueHolder<V>( btree, 1 - nbValues, btreeOffsetBytes );
+                // Read the number of values
+                int nbValues = byteBuffer.getInt();
+                PersistedValueHolder<V> valueHolder = null;
+                
+                if ( nbValues < 0 )
+                {
+                    // This is a sub-btree
+                    byte[] btreeOffsetBytes = new byte[LONG_SIZE];
+                    byteBuffer.get( btreeOffsetBytes );
+                    
+                    // Create the valueHolder. As the number of values is negative, we have to switch
+                    // to a positive value but as we start at -1 for 0 value, add 1.
+                    valueHolder = new PersistedValueHolder<V>( btree, 1 - nbValues, btreeOffsetBytes );
+                }
+                else
+                {
+                    // This is an array
+                    // Read the value's array length
+                    valueLengths[i] = byteBuffer.getInt();
+                    
+                    // This is an Array of values, read the byte[] associated with it
+                    byte[] arrayBytes = new byte[valueLengths[i]];
+                    byteBuffer.get( arrayBytes );
+                    valueHolder = new PersistedValueHolder<V>( btree, nbValues, arrayBytes );
+                }
+                
+                BTreeFactory.setValue( btree, leaf, i, valueHolder );
             }
-            else
-            {
-                // This is an array
-                // Read the value's array length
-                valueLengths[i] = byteBuffer.getInt();
-
-                // This is an Array of values, read the byte[] associated with it
-                byte[] arrayBytes = new byte[valueLengths[i]];
-                byteBuffer.get( arrayBytes );
-                valueHolder = new PersistedValueHolder<V>( btree, nbValues, arrayBytes );
-            }
-
-            BTreeFactory.setValue( btree, leaf, i, valueHolder );
 
             keyLengths[i] = byteBuffer.getInt();
             byte[] data = new byte[keyLengths[i]];
@@ -1498,6 +1503,8 @@ public class RecordManager extends AbstractTransactionManager
     {
         int nbElems = page.getNbElems();
 
+        boolean isNotSubTree = ( btree.getType() != BTreeTypeEnum.PERSISTED_SUB );
+        
         if ( nbElems == 0 )
         {
             return serializeRootPage( revision );
@@ -1549,7 +1556,11 @@ public class RecordManager extends AbstractTransactionManager
                 }
                 else
                 {
-                    dataSize += serializeLeafValue( ( PersistedLeaf<K, V> ) page, pos, serializedData );
+                    if ( isNotSubTree )
+                    {
+                        dataSize += serializeLeafValue( ( PersistedLeaf<K, V> ) page, pos, serializedData );
+                    }
+                    
                     dataSize += serializeLeafKey( ( PersistedLeaf<K, V> ) page, pos, serializedData );
                 }
             }

@@ -140,7 +140,11 @@ import java.util.List;
 
         // Ok, now, we have injected the <K, V> tuple down the tree. Let's check
         // the result to see if we have to split the current page
-        if ( result instanceof ModifyResult )
+        if ( result instanceof ExistsResult )
+        {
+            return result;
+        }
+        else if ( result instanceof ModifyResult )
         {
             // The child has been modified.
             return replaceChild( revision, ( ModifyResult<K, V> ) result, pos );

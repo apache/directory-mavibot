@@ -681,6 +681,35 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
 
     /**
+     * {@inheritDoc}
+     */
+    public KeyCursor<K> browseKeys( ReadTransaction<K, K> transaction, ParentPos<K, K>[] stack, int depth )
+    {
+        int pos = 0;
+        KeyCursor<K> cursor = null;
+
+        if ( nbElems == 0 )
+        {
+            // The tree is empty, it's the root, we have nothing to return
+            stack[depth] = new ParentPos<K, K>( null, -1 );
+
+            return new KeyCursor<K>( transaction, stack, depth );
+        }
+        else
+        {
+            // Start at the beginning of the page
+            ParentPos<K, K> parentPos = new ParentPos( this, pos );
+
+            stack[depth] = parentPos;
+
+            cursor = new KeyCursor<K>( transaction, stack, depth );
+        }
+
+        return cursor;
+    }
+
+    
+    /**
      * Copy the current page and all of the keys, values and children, if it's not a leaf.
      *
      * @param revision The new revision

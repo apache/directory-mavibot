@@ -523,6 +523,11 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
         BTreeHeader<K, V> btreeHeader = getBTreeHeader( getName() );
         InsertResult<K, V> result = btreeHeader.getRootPage().insert( key, value, revision );
 
+        if ( result instanceof ExistsResult )
+        {
+            return result;
+        }
+
         // Create a new BTreeHeader
         BTreeHeader<K, V> newBtreeHeader = btreeHeader.copy();
 

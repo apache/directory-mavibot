@@ -423,7 +423,11 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         {
             InsertResult<K, V> result = insert( key, value, -1L );
 
-            if ( result instanceof ModifyResult )
+            if ( result instanceof ExistsResult )
+            {
+                existingValue = value;
+            }
+            else if ( result instanceof ModifyResult )
             {
                 existingValue = ( ( ModifyResult<K, V> ) result ).getModifiedValue();
             }
@@ -431,6 +435,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             // Commit now if it's not a sub-btree
             if ( btreeType != BTreeTypeEnum.PERSISTED_SUB )
             {
+                //FIXME when result type is ExistsResult then we should avoid writing the headers
                 transactionManager.commit();
             }
     
@@ -997,6 +1002,37 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     }
 
 
+    /**
+     * {@inheritDoc}
+     */
+    public KeyCursor<K> browseKeys() throws IOException, KeyNotFoundException
+    {
+        // Check that we have a TransactionManager
+        if ( transactionManager == null )
+        {
+            throw new BTreeCreationException( "We don't have a Transaction Manager" );
+        }
+        
+        ReadTransaction transaction = beginReadTransaction();
+
+        if ( transaction == null )
+        {
+            return new KeyCursor<K>();
+        }
+        else
+        {
+            ParentPos<K, K>[] stack = (ParentPos<K, K>[]) Array.newInstance( ParentPos.class, 32 );
+
+            KeyCursor<K> cursor = getRootPage().browseKeys( transaction, stack, 0 );
+
+            // Set the position before the first element
+            cursor.beforeFirst();
+
+            return cursor;
+        }
+    }
+
+    
     /**
      * Create a thread that is responsible of cleaning the transactions when
      * they hit the timeout

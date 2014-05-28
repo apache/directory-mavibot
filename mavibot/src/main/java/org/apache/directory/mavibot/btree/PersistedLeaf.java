@@ -26,7 +26,7 @@ import java.lang.reflect.Array;
 import org.apache.directory.mavibot.btree.exception.DuplicateValueNotAllowedException;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
-
+import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
 
 /**
  * A MVCC Leaf. It stores the keys and values. It does not have any children.
@@ -64,7 +64,10 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     PersistedLeaf( BTree<K, V> btree, long revision, int nbElems )
     {
         super( btree, revision, nbElems );
-        values = ( ValueHolder<V>[] ) Array.newInstance( PersistedValueHolder.class, nbElems );
+        if( btree.getType() != BTreeTypeEnum.PERSISTED_SUB )
+        {
+            values = ( ValueHolder<V>[] ) Array.newInstance( PersistedValueHolder.class, nbElems );
+        }
     }
 
 
@@ -76,12 +79,19 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         // Find the key into this leaf
         int pos = findPos( key );
 
+        boolean isSubTree = ( btree.getType() == PERSISTED_SUB );
+
         if ( pos < 0 )
         {
             // We already have the key in the page : replace the value
             // into a copy of this page, unless the page has already be copied
             int index = -( pos + 1 );
 
+            if( isSubTree )
+            {
+                return ExistsResult.EXISTS;
+            }
+            
             // Replace the existing value in a copy of the current page
             InsertResult<K, V> result = replaceElement( revision, key, value, index );
 
@@ -93,7 +103,16 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         {
             // The current page is not full, it can contain the added element.
             // We insert it into a copied page and return the result
-            Page<K, V> modifiedPage = addElement( revision, key, value, pos );
+            Page<K, V> modifiedPage = null;
+            
+            if ( isSubTree )
+            {
+                modifiedPage = addSubTreeElement( revision, key, pos );
+            }
+            else
+            {
+                modifiedPage = addElement( revision, key, value, pos );
+            }
 
             InsertResult<K, V> result = new ModifyResult<K, V>( modifiedPage, null );
             result.addCopiedPage( this );
@@ -104,7 +123,17 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         {
             // The Page is already full : we split it and return the overflow element,
             // after having created two pages.
-            InsertResult<K, V> result = addAndSplit( revision, key, value, pos );
+            InsertResult<K, V> result = null;
+            
+            if( isSubTree )
+            {
+                result = addAndSplitSubTree( revision, key, pos );
+            }
+            else
+            {
+                result = addAndSplit( revision, key, value, pos );
+            }
+            
             result.addCopiedPage( this );
 
             return result;
@@ -143,7 +172,18 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         int index = -( pos + 1 );
 
-        ValueHolder<V> valueHolder = values[index];
+        boolean isNotSubTree = ( btree.getType() != PERSISTED_SUB );
+
+        ValueHolder<V> valueHolder = null;
+        
+        if( isNotSubTree )
+        {
+            valueHolder = values[index];
+        }
+        else // set value to null, just incase if a non-null value passed while deleting a key from from sub-btree
+        {
+            value = null;
+        }
 
         if ( value == null )
         {
@@ -265,8 +305,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             }
             catch ( CloneNotSupportedException e )
             {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+                throw new RuntimeException( e );
             }
 
             // The current page is added in the copied page list
@@ -292,6 +331,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         boolean isLeft, int pos )
         throws EndOfFileExceededException, IOException
     {
+        boolean isNotSubTree = ( btree.getType() != PERSISTED_SUB );
+        
         // Create the new page. It will contain N - 1 elements (the maximum number)
         // as we merge two pages that contain N/2 elements minus the one we remove
         PersistedLeaf<K, V> newLeaf = new PersistedLeaf<K, V>( btree, revision, btree.getPageSize() - 1 );
@@ -301,30 +342,48 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             // The sibling is on the left
             // Copy all the elements from the sibling first
             System.arraycopy( sibling.keys, 0, newLeaf.keys, 0, sibling.nbElems );
-            System.arraycopy( sibling.values, 0, newLeaf.values, 0, sibling.nbElems );
+            if ( isNotSubTree )
+            {
+                System.arraycopy( sibling.values, 0, newLeaf.values, 0, sibling.nbElems );
+            }
 
             // Copy all the elements from the page up to the deletion position
             System.arraycopy( keys, 0, newLeaf.keys, sibling.nbElems, pos );
-            System.arraycopy( values, 0, newLeaf.values, sibling.nbElems, pos );
+            if ( isNotSubTree )
+            {
+                System.arraycopy( values, 0, newLeaf.values, sibling.nbElems, pos );
+            }
 
             // And copy the remaining elements after the deletion point
             System.arraycopy( keys, pos + 1, newLeaf.keys, sibling.nbElems + pos, nbElems - pos - 1 );
-            System.arraycopy( values, pos + 1, newLeaf.values, sibling.nbElems + pos, nbElems - pos - 1 );
+            if ( isNotSubTree )
+            {
+                System.arraycopy( values, pos + 1, newLeaf.values, sibling.nbElems + pos, nbElems - pos - 1 );
+            }
         }
         else
         {
             // The sibling is on the right
             // Copy all the elements from the page up to the deletion position
             System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
-            System.arraycopy( values, 0, newLeaf.values, 0, pos );
+            if ( isNotSubTree )
+            {
+                System.arraycopy( values, 0, newLeaf.values, 0, pos );
+            }
 
             // Then copy the remaining elements after the deletion point
             System.arraycopy( keys, pos + 1, newLeaf.keys, pos, nbElems - pos - 1 );
-            System.arraycopy( values, pos + 1, newLeaf.values, pos, nbElems - pos - 1 );
+            if ( isNotSubTree )
+            {
+                System.arraycopy( values, pos + 1, newLeaf.values, pos, nbElems - pos - 1 );
+            }
 
             // And copy all the elements from the sibling
             System.arraycopy( sibling.keys, 0, newLeaf.keys, nbElems - 1, sibling.nbElems );
-            System.arraycopy( sibling.values, 0, newLeaf.values, nbElems - 1, sibling.nbElems );
+            if ( isNotSubTree )
+            {
+                System.arraycopy( sibling.values, 0, newLeaf.values, nbElems - 1, sibling.nbElems );
+            }
         }
 
         // And create the result
@@ -352,9 +411,15 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         int pos )
         throws IOException
     {
+        boolean isNotSubTree = ( btree.getType() != PERSISTED_SUB );
+        
         // The sibling is on the left, borrow the rightmost element
         K siblingKey = sibling.keys[sibling.getNbElems() - 1].getKey();
-        ValueHolder<V> siblingValue = sibling.values[sibling.getNbElems() - 1];
+        ValueHolder<V> siblingValue = null;
+        if ( isNotSubTree )
+        {
+            siblingValue = sibling.values[sibling.getNbElems() - 1];
+        }
 
         // Create the new sibling, with one less element at the end
         PersistedLeaf<K, V> newSibling = ( PersistedLeaf<K, V> ) sibling.copy( revision, sibling.getNbElems() - 1 );
@@ -365,15 +430,24 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         // Insert the borrowed element
         newLeaf.keys[0] = new PersistedKeyHolder<K>( btree.getKeySerializer(), siblingKey );
-        newLeaf.values[0] = siblingValue;
+        if ( isNotSubTree )
+        {
+            newLeaf.values[0] = siblingValue;
+        }
 
         // Copy the keys and the values up to the insertion position,
         System.arraycopy( keys, 0, newLeaf.keys, 1, pos );
-        System.arraycopy( values, 0, newLeaf.values, 1, pos );
+        if ( isNotSubTree )
+        {
+            System.arraycopy( values, 0, newLeaf.values, 1, pos );
+        }
 
         // And copy the remaining elements
         System.arraycopy( keys, pos + 1, newLeaf.keys, pos + 1, keys.length - pos - 1 );
-        System.arraycopy( values, pos + 1, newLeaf.values, pos + 1, values.length - pos - 1 );
+        if( isNotSubTree )
+        {
+            System.arraycopy( values, pos + 1, newLeaf.values, pos + 1, values.length - pos - 1 );
+        }
 
         DeleteResult<K, V> result = new BorrowedFromLeftResult<K, V>( newLeaf, newSibling, removedElement );
 
@@ -400,33 +474,51 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         int pos )
         throws IOException
     {
+        boolean isNotSubTree = ( btree.getType() != PERSISTED_SUB );
+        
         // The sibling is on the left, borrow the rightmost element
         K siblingKey = sibling.keys[0].getKey();
-        ValueHolder<V> siblingHolder = sibling.values[0];
+        ValueHolder<V> siblingHolder = null;
+        if ( isNotSubTree )
+        {
+            siblingHolder = sibling.values[0];
+        }
 
         // Create the new sibling
         PersistedLeaf<K, V> newSibling = new PersistedLeaf<K, V>( btree, revision, sibling.getNbElems() - 1 );
 
         // Copy the keys and the values from 1 to N in the new sibling
         System.arraycopy( sibling.keys, 1, newSibling.keys, 0, sibling.nbElems - 1 );
-        System.arraycopy( sibling.values, 1, newSibling.values, 0, sibling.nbElems - 1 );
-
+        if ( isNotSubTree )
+        {
+            System.arraycopy( sibling.values, 1, newSibling.values, 0, sibling.nbElems - 1 );
+        }
+        
         // Create the new page and add the new element at the end
         // First copy the current page, with the same size
         PersistedLeaf<K, V> newLeaf = new PersistedLeaf<K, V>( btree, revision, nbElems );
 
         // Insert the borrowed element at the end
         newLeaf.keys[nbElems - 1] = new PersistedKeyHolder<K>( btree.getKeySerializer(), siblingKey );
-        newLeaf.values[nbElems - 1] = siblingHolder;
-
+        if ( isNotSubTree )
+        {
+            newLeaf.values[nbElems - 1] = siblingHolder;
+        }
+        
         // Copy the keys and the values up to the deletion position,
         System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
-        System.arraycopy( values, 0, newLeaf.values, 0, pos );
-
+        if ( isNotSubTree )
+        {
+            System.arraycopy( values, 0, newLeaf.values, 0, pos );
+        }
+        
         // And copy the remaining elements
         System.arraycopy( keys, pos + 1, newLeaf.keys, pos, keys.length - pos - 1 );
-        System.arraycopy( values, pos + 1, newLeaf.values, pos, values.length - pos - 1 );
-
+        if ( isNotSubTree )
+        {
+            System.arraycopy( values, pos + 1, newLeaf.values, pos, values.length - pos - 1 );
+        }
+        
         DeleteResult<K, V> result = new BorrowedFromRightResult<K, V>( newLeaf, newSibling, removedElement );
 
         // Add the copied pages to the list
@@ -448,6 +540,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     private void copyAfterRemovingElement( boolean keyRemoved, V removedValue, PersistedLeaf<K, V> newLeaf, int pos )
         throws IOException
     {
+        boolean isNotSubTree = ( btree.getType() != PERSISTED_SUB );
+        
         if ( keyRemoved )
         {
             // Deal with the special case of a page with only one element by skipping
@@ -459,11 +553,17 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
             // Copy the keys and the values up to the insertion position
             System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
-            System.arraycopy( values, 0, newLeaf.values, 0, pos );
+            if ( isNotSubTree )
+            {
+                System.arraycopy( values, 0, newLeaf.values, 0, pos );
+            }
 
             // And copy the elements after the position
             System.arraycopy( keys, pos + 1, newLeaf.keys, pos, keys.length - pos - 1 );
-            System.arraycopy( values, pos + 1, newLeaf.values, pos, values.length - pos - 1 );
+            if ( isNotSubTree )
+            {
+                System.arraycopy( values, pos + 1, newLeaf.values, pos, values.length - pos - 1 );
+            }
         }
         else
         // one of the many values of the same key was removed, no change in the number of keys
@@ -797,6 +897,11 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             throw new DuplicateValueNotAllowedException( "Duplicate values are not allowed" );
         }
 
+        if ( valueExists )
+        {
+            return ExistsResult.EXISTS;
+        }
+        
         if ( this.revision != revision )
         {
             // The page hasn't been modified yet, we need to copy it first
@@ -814,11 +919,12 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         }
         else
         {
+            // this block should be deleted after fixing MAVIBOT-39
             // As strange as it sounds, we need to remove the value to reinject it.
             // There are cases where the value retrieval just use one part of the
             // value only (typically for LDAP Entries, where we use the DN)
-            replacedValue = valueHolder.remove( value );
-            valueHolder.add( value );
+            //replacedValue = valueHolder.remove( value );
+            //valueHolder.add( value );
         }
 
         // Create the result
@@ -967,6 +1073,11 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      */
     public K getLeftMostKey()
     {
+        if( keys.length == 0 )
+        {
+            System.out.println("");
+        }
+        
         return keys[0].getKey();
     }
 
@@ -1090,6 +1201,134 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     }
 
 
+    /**
+     * same as {@link #addElement(long, Object, Object, int)} except the values are not copied.
+     * This method is only used while inserting an element into a sub-BTree.
+     */
+    private Page<K, V> addSubTreeElement( long revision, K key, int pos )
+    {
+        // First copy the current page, but add one element in the copied page
+        PersistedLeaf<K, V> newLeaf = new PersistedLeaf<K, V>( btree, revision, nbElems + 1 );
+
+        // Deal with the special case of an empty page
+        if ( nbElems == 0 )
+        {
+            newLeaf.keys[0] = new PersistedKeyHolder<K>( btree.getKeySerializer(), key );
+        }
+        else
+        {
+            // Copy the keys and the values up to the insertion position
+            System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
+
+            // Add the new element
+            newLeaf.keys[pos] = new PersistedKeyHolder<K>( btree.getKeySerializer(), key );
+
+            // And copy the remaining elements
+            System.arraycopy( keys, pos, newLeaf.keys, pos + 1, keys.length - pos );
+        }
+
+        return newLeaf;
+    }
+
+    
+    /**
+     * same as {@link #addAndSplit(long, Object, Object, int)} except the values are not copied.
+     * This method is only used while inserting an element into a sub-BTree.
+     */
+    private InsertResult<K, V> addAndSplitSubTree( long revision, K key, int pos )
+    {
+        int middle = btree.getPageSize() >> 1;
+        PersistedLeaf<K, V> leftLeaf = null;
+        PersistedLeaf<K, V> rightLeaf = null;
+
+        // Determinate where to store the new value
+        if ( pos <= middle )
+        {
+            // The left page will contain the new value
+            leftLeaf = new PersistedLeaf<K, V>( btree, revision, middle + 1 );
+
+            // Copy the keys and the values up to the insertion position
+            System.arraycopy( keys, 0, leftLeaf.keys, 0, pos );
+
+            // Add the new element
+            leftLeaf.keys[pos] = new PersistedKeyHolder<K>( btree.getKeySerializer(), key );
+
+            // And copy the remaining elements
+            System.arraycopy( keys, pos, leftLeaf.keys, pos + 1, middle - pos );
+
+            // Now, create the right page
+            rightLeaf = new PersistedLeaf<K, V>( btree, revision, middle );
+
+            // Copy the keys and the values in the right page
+            System.arraycopy( keys, middle, rightLeaf.keys, 0, middle );
+        }
+        else
+        {
+            // Create the left page
+            leftLeaf = new PersistedLeaf<K, V>( btree, revision, middle );
+
+            // Copy all the element into the left page
+            System.arraycopy( keys, 0, leftLeaf.keys, 0, middle );
+
+            // Now, create the right page
+            rightLeaf = new PersistedLeaf<K, V>( btree, revision, middle + 1 );
+
+            int rightPos = pos - middle;
+
+            // Copy the keys and the values up to the insertion position
+            System.arraycopy( keys, middle, rightLeaf.keys, 0, rightPos );
+
+            // Add the new element
+            rightLeaf.keys[rightPos] = new PersistedKeyHolder<K>( btree.getKeySerializer(), key );
+
+            // And copy the remaining elements
+            System.arraycopy( keys, pos, rightLeaf.keys, rightPos + 1, nbElems - pos );
+        }
+
+        // Get the pivot
+        K pivot = rightLeaf.keys[0].getKey();
+
+        if ( pivot == null )
+        {
+            pivot = rightLeaf.keys[0].getKey();
+        }
+
+        // Create the result
+        InsertResult<K, V> result = new SplitResult<K, V>( pivot, leftLeaf, rightLeaf );
+
+        return result;
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public KeyCursor<K> browseKeys( ReadTransaction<K, K> transaction, ParentPos<K, K>[] stack, int depth )
+    {
+        int pos = 0;
+        KeyCursor<K> cursor = null;
+
+        if ( nbElems == 0 )
+        {
+            // The tree is empty, it's the root, we have nothing to return
+            stack[depth] = new ParentPos<K, K>( null, -1 );
+
+            return new KeyCursor<K>( transaction, stack, depth );
+        }
+        else
+        {
+            // Start at the beginning of the page
+            ParentPos<K, K> parentPos = new ParentPos( this, pos );
+
+            stack[depth] = parentPos;
+
+            cursor = new KeyCursor<K>( transaction, stack, depth );
+        }
+
+        return cursor;
+    }
+
+    
     /**
      * {@inheritDoc}
      */

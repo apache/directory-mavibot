@@ -257,6 +257,15 @@ public interface BTree<K, V>
 
 
     /**
+     * Creates a cursor starting at the beginning of the tree
+     *
+     * @return A cursor on the B-tree keys
+     * @throws IOException
+     */
+    KeyCursor<K> browseKeys() throws IOException, KeyNotFoundException;
+
+    
+    /**
      * @return the comparator
      */
     Comparator<K> getComparator();

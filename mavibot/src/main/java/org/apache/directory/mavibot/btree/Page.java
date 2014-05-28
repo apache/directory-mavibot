@@ -149,6 +149,18 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
 
     /**
+     * Browses the keys of whole tree, and creates a Cursor on top of it.
+     *
+     * @param transaction The started transaction for this operation
+     * @param stack The stack of parents we go through to get to this page
+     * @return A Cursor to browse the keys
+     * @throws IOException If we have an error while trying to access the page
+     */
+    KeyCursor<K> browseKeys( ReadTransaction<K, K> transaction, ParentPos<K, K>[] stack, int depth )
+        throws EndOfFileExceededException, IOException;
+
+    
+    /**
      * @return the revision
      */
     long getRevision();

@@ -314,6 +314,20 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
 
     /**
+     * {@inheritDoc}
+     */
+    public KeyCursor<K> browseKeys( ReadTransaction<K, K> transaction, ParentPos<K, K>[] stack, int depth )
+        throws IOException
+    {
+        stack[depth++] = new ParentPos( this, 0 );
+
+        Page<K, V> page = children[0].getValue();
+
+        return page.browseKeys( transaction, stack, depth );
+    }
+
+    
+    /**
      * Selects the sibling (the previous or next page with the same parent) which has
      * the more element assuming it's above N/2
      *
