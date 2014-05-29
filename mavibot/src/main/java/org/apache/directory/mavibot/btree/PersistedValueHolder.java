@@ -22,7 +22,10 @@ package org.apache.directory.mavibot.btree;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
 
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyCreatedException;
@@ -31,7 +34,7 @@ import org.apache.directory.mavibot.btree.exception.BTreeCreationException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
-
+import static org.apache.directory.mavibot.btree.BTreeFactory.*;
 
 /**
  * A holder to store the Values
@@ -119,17 +122,25 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
                 // Use a sub btree, now that we have reached the threshold
                 createSubTree();
 
-                // Now inject all the values into it
-                for ( V value : values )
+//             // Now inject all the values into it
+//                for ( V value : values )
+//                {
+//                    try
+//                    {
+//                        valueBtree.insert( value, value );
+//                    }
+//                    catch ( IOException e )
+//                    {
+//                        e.printStackTrace();
+//                    }
+//                }
+                try
                 {
-                    try
-                    {
-                        valueBtree.insert( value, value );
-                    }
-                    catch ( IOException e )
-                    {
-                        e.printStackTrace();
-                    }
+                    build( ( PersistedBTree<V, V> ) valueBtree, values );
+                }
+                catch( Exception e )
+                {
+                    throw new RuntimeException( e );
                 }
             }
         }
@@ -683,6 +694,182 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
     }
 
 
+    /**
+     * Constructs the sub-BTree using bulkload instead of performing sequential inserts.
+     * 
+     * @param btree the sub-BTtree to be constructed
+     * @param dupKeyValues the array of values to be inserted as keys
+     * @return
+     * @throws Exception
+     */
+    private BTree build( PersistedBTree<V, V> btree, V[] dupKeyValues ) throws Exception
+    {
+        long newRevision = btree.getRevision() + 1;
+        
+        int numKeysInNode = btree.getPageSize();
+        
+        RecordManager rm = btree.getRecordManager();
+        
+        List<Page<V, V>> lstLeaves = new ArrayList<Page<V, V>>();
+
+        int totalTupleCount = 0;
+
+        Page<V, V> leaf1 = BTreeFactory.createLeaf( btree, newRevision, numKeysInNode );
+        lstLeaves.add( leaf1 );
+
+        int leafIndex = 0;
+
+        for ( V v : dupKeyValues )
+        {
+            setKey( btree, leaf1, leafIndex, v );
+
+            leafIndex++;
+            totalTupleCount++;
+            if ( ( totalTupleCount % numKeysInNode ) == 0 )
+            {
+                leafIndex = 0;
+
+                PageHolder<V, V> pageHolder = ( PageHolder ) rm.writePage( btree, leaf1, newRevision );
+
+                leaf1 = createLeaf( btree, newRevision, numKeysInNode );
+                lstLeaves.add( leaf1 );
+            }
+
+            //TODO build the whole tree in chunks rather than processing *all* leaves at first
+        }
+
+        if ( lstLeaves.isEmpty() )
+        {
+            return btree;
+        }
+
+        // remove null keys and values from the last leaf and resize
+        PersistedLeaf lastLeaf = ( PersistedLeaf ) lstLeaves.get( lstLeaves.size() - 1 );
+        for ( int i = 0; i < lastLeaf.nbElems; i++ )
+        {
+            if ( lastLeaf.keys[i] == null )
+            {
+                int n = i;
+                lastLeaf.nbElems = n;
+                KeyHolder[] keys = lastLeaf.keys;
+
+                lastLeaf.keys = ( KeyHolder[] ) Array.newInstance( KeyHolder.class, n );
+                System.arraycopy( keys, 0, lastLeaf.keys, 0, n );
+
+                PageHolder pageHolder = ( PageHolder ) rm.writePage( btree, lastLeaf, newRevision );
+
+                break;
+            }
+        }
+
+        if( lastLeaf.keys.length == 0 )
+        {
+            lstLeaves.remove( lastLeaf );
+        }
+
+        // make sure either one of the root pages is reclaimed, cause when we call rm.manage()
+        // there is already a root page created
+        Page rootPage = attachNodes( lstLeaves, btree, numKeysInNode, rm );
+
+        Page oldRoot = btree.getRootPage();
+        
+        long newRootPageOffset = ( ( AbstractPage ) rootPage ).getOffset();
+        System.out.println( "replacing old offset " + btree.getRootPageOffset() + " of the BTree " + btree.getName() + " with " + newRootPageOffset );
+        
+        BTreeHeader header = btree.getBtreeHeader();
+        
+        header.setRootPage( rootPage );
+        header.setRevision( newRevision );
+        header.setNbElems( totalTupleCount );
+        
+        long newBtreeHeaderOffset = rm.writeBtreeHeader( btree, header );
+        
+        header.setBTreeHeaderOffset( newBtreeHeaderOffset );
+        
+        rm.freePages( ( BTree ) btree, btree.getRevision(), ( List ) Arrays.asList( oldRoot ) );
+
+        return btree;
+    }
+
+    
+    /**
+     * Attaches the Nodes together
+     * 
+     * @param children the leaves
+     * @param btree the sub-BTree
+     * @param numKeysInNode number of keys per each node
+     * @param rm the RecordManager
+     * @return the new root page of the sub-BTree after attaching all the nodes
+     * @throws IOException
+     */
+    private Page attachNodes( List<Page<V, V>> children, BTree btree, int numKeysInNode, RecordManager rm ) throws IOException
+    {
+        if ( children.size() == 1 )
+        {
+            return children.get( 0 );
+        }
+
+        List<Page<V, V>> lstNodes = new ArrayList<Page<V, V>>();
+
+        int numChildren = numKeysInNode + 1;
+
+        PersistedNode node = ( PersistedNode ) createNode( btree, btree.getRevision(), numKeysInNode );
+        lstNodes.add( node );
+        int i = 0;
+        int totalNodes = 0;
+
+        for ( Page p : children )
+        {
+            if ( i != 0 )
+            {
+                setKey( btree, node, i - 1, p.getLeftMostKey() );
+            }
+
+            node.children[i] = new PersistedPageHolder( btree, p );
+
+            i++;
+            totalNodes++;
+
+            if ( ( totalNodes % numChildren ) == 0 )
+            {
+                i = 0;
+
+                PageHolder pageHolder = ( PageHolder ) rm.writePage( btree, node, 1 );
+
+                node = ( PersistedNode ) createNode( btree, btree.getRevision(), numKeysInNode );
+                lstNodes.add( node );
+            }
+        }
+
+        // remove null keys and values from the last node and resize
+        AbstractPage lastNode = ( AbstractPage ) lstNodes.get( lstNodes.size() - 1 );
+
+        for ( int j = 0; j < lastNode.nbElems; j++ )
+        {
+            if ( lastNode.keys[j] == null )
+            {
+                int n = j;
+                lastNode.nbElems = n;
+                KeyHolder[] keys = lastNode.keys;
+
+                lastNode.keys = ( KeyHolder[] ) Array.newInstance( KeyHolder.class, n );
+                System.arraycopy( keys, 0, lastNode.keys, 0, n );
+
+                PageHolder pageHolder = ( PageHolder ) rm.writePage( btree, lastNode, 1 );
+
+                break;
+            }
+        }
+
+        if( lastNode.keys.length == 0 )
+        {
+            lstNodes.remove( lastNode );
+        }
+
+        return attachNodes( lstNodes, btree, numKeysInNode, rm );
+    }
+    
+    
     /**
      * @see Object#toString()
      */
