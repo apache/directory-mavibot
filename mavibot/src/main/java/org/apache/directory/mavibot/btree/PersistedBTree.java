@@ -48,7 +48,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
     /** The LoggerFactory used by this class */
     protected static final Logger LOG = LoggerFactory.getLogger( PersistedBTree.class );
 
-    protected static final Logger LOG_PAGES = LoggerFactory.getLogger( "LOG_PAGES" );
+    protected static final Logger LOG_PAGES = LoggerFactory.getLogger( "org.apache.directory.mavibot.LOG_PAGES" );
 
     /** The cache associated with this B-tree */
     protected Cache cache;

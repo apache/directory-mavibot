@@ -71,10 +71,10 @@ public class RecordManager extends AbstractTransactionManager
     protected static final Logger LOG = LoggerFactory.getLogger( RecordManager.class );
 
     /** The LoggerFactory used by this class */
-    protected static final Logger LOG_PAGES = LoggerFactory.getLogger( "LOG_PAGES" );
+    protected static final Logger LOG_PAGES = LoggerFactory.getLogger( "org.apache.directory.mavibot.LOG_PAGES" );
 
     /** A dedicated logger for the check */
-    protected static final Logger LOG_CHECK = LoggerFactory.getLogger( "LOG_CHECK" );
+    protected static final Logger LOG_CHECK = LoggerFactory.getLogger( "org.apache.directory.mavibot.LOG_CHECK" );
 
     /** The associated file */
     private File file;
@@ -132,10 +132,10 @@ public class RecordManager extends AbstractTransactionManager
     /* no qualifier */ static int RECORD_MANAGER_HEADER_SIZE = DEFAULT_PAGE_SIZE;
 
     /** A global buffer used to store the RecordManager header */
-    private static ByteBuffer RECORD_MANAGER_HEADER_BUFFER;
+    private ByteBuffer RECORD_MANAGER_HEADER_BUFFER;
 
     /** A static buffer used to store the RecordManager header */
-    private static byte[] RECORD_MANAGER_HEADER_BYTES;
+    private byte[] RECORD_MANAGER_HEADER_BYTES;
 
     /** The length of an Offset, as a negative value */
     private static byte[] LONG_LENGTH = new byte[]
