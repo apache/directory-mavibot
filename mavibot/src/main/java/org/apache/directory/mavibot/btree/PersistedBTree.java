@@ -30,6 +30,7 @@ import net.sf.ehcache.Cache;
 import net.sf.ehcache.Status;
 import net.sf.ehcache.config.CacheConfiguration;
 
+import org.apache.commons.collections.map.LRUMap;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,7 +52,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
     protected static final Logger LOG_PAGES = LoggerFactory.getLogger( "org.apache.directory.mavibot.LOG_PAGES" );
 
     /** The cache associated with this B-tree */
-    protected Cache cache;
+    protected LRUMap cache;
 
     /** The default number of pages to keep in memory */
     public static final int DEFAULT_CACHE_SIZE = 1000;
@@ -173,8 +174,12 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
             cacheConfiguration.setMaxElementsInMemory( cacheSize );
             cacheConfiguration.setMemoryStoreEvictionPolicy( "LRU" );
 
-            cache = new Cache( cacheConfiguration );
-            cache.initialise();
+            if ( cacheSize < 1 )
+            {
+                cacheSize = 1;
+            }
+            
+            cache = new LRUMap( cacheSize );
         }
         else
         {
@@ -191,7 +196,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
     /**
      * Return the cache we use in this BTree
      */
-    /* No qualifier */Cache getCache()
+    /* No qualifier */LRUMap getCache()
     {
         return cache;
     }
@@ -216,12 +221,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
         // readTransactions.clear();
 
         // Clean the cache
-        if ( cache.getStatus() == Status.STATUS_ALIVE )
-        {
-            cache.removeAll();
-        }
-
-        cache.dispose();
+        cache.clear();
     }
 
 

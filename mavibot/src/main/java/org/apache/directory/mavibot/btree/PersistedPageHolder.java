@@ -22,9 +22,9 @@ package org.apache.directory.mavibot.btree;
 
 import java.io.IOException;
 
-import net.sf.ehcache.Cache;
 import net.sf.ehcache.Element;
 
+import org.apache.commons.collections.map.LRUMap;
 import org.apache.directory.mavibot.btree.exception.BTreeOperationException;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
@@ -46,7 +46,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
     private RecordManager recordManager;
 
     /** The cache */
-    private Cache cache;
+    private LRUMap cache;
 
     /** The offset of the first {@link PageIO} storing the page on disk */
     private long offset;
@@ -62,7 +62,8 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
      */
     public PersistedPageHolder( BTree<K, V> btree, Page<K, V> page )
     {
-        super( btree, page );
+        // DO NOT keep the reference to Page, it will be fetched from cache when needed 
+        super( btree, null );
         cache = ( ( PersistedBTree<K, V> ) btree ).getCache();
         recordManager = ( ( PersistedBTree<K, V> ) btree ).getRecordManager();
         offset = ( ( AbstractPage<K, V> ) page ).getOffset();
@@ -71,7 +72,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
         ( ( AbstractPage<K, V> ) page ).setOffset( offset );
         ( ( AbstractPage<K, V> ) page ).setLastOffset( lastOffset );
 
-        cache.put( new Element( offset, page ) );
+        cache.put( offset, page );
     }
 
 
@@ -82,7 +83,8 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
      */
     public PersistedPageHolder( BTree<K, V> btree, Page<K, V> page, long offset, long lastOffset )
     {
-        super( btree, page );
+        // DO NOT keep the reference to Page, it will be fetched from cache when needed
+        super( btree, null );
         cache = ( ( PersistedBTree<K, V> ) btree ).getCache();
         recordManager = ( ( PersistedBTree<K, V> ) btree ).getRecordManager();
         this.offset = offset;
@@ -94,7 +96,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
             ( ( AbstractPage<K, V> ) page ).setLastOffset( lastOffset );
         }
 
-        cache.put( new Element( offset, page ) );
+        cache.put( offset, page );
     }
 
 
@@ -105,20 +107,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
      */
     public Page<K, V> getValue()
     {
-        Element element = cache.get( offset );
-
-        if ( element == null )
-        {
-            // We haven't found the element in the cache, reload it
-            // We have to fetch the element from disk, using the offset now
-            Page<K, V> page = fetchElement();
-
-            cache.put( new Element( offset, page ) );
-
-            return page;
-        }
-
-        Page<K, V> page = ( Page<K, V> ) element.getObjectValue();
+        Page<K, V> page = ( Page<K, V> ) cache.get( offset );
 
         if ( page == null )
         {
@@ -128,7 +117,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
             ( ( AbstractPage<K, V> ) page ).setOffset( offset );
             ( ( AbstractPage<K, V> ) page ).setLastOffset( lastOffset );
 
-            cache.put( new Element( offset, page ) );
+            cache.put( offset, page );
         }
 
         return page;
