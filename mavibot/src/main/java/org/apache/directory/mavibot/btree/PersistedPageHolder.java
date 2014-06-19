@@ -22,8 +22,6 @@ package org.apache.directory.mavibot.btree;
 
 import java.io.IOException;
 
-import net.sf.ehcache.Element;
-
 import org.apache.commons.collections.map.LRUMap;
 import org.apache.directory.mavibot.btree.exception.BTreeOperationException;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;

@@ -26,10 +26,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import net.sf.ehcache.Cache;
-import net.sf.ehcache.Status;
-import net.sf.ehcache.config.CacheConfiguration;
-
 import org.apache.commons.collections.map.LRUMap;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.slf4j.Logger;
@@ -164,15 +160,6 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
             // Create the queue containing the pending read transactions
             readTransactions = new ConcurrentLinkedQueue<ReadTransaction<K, V>>();
-
-            // Initialize the caches
-            CacheConfiguration cacheConfiguration = new CacheConfiguration();
-            cacheConfiguration.setName( "pages" );
-            cacheConfiguration.setEternal( true );
-            cacheConfiguration.setOverflowToDisk( false );
-            cacheConfiguration.setCacheLoaderTimeoutMillis( 0 );
-            cacheConfiguration.setMaxElementsInMemory( cacheSize );
-            cacheConfiguration.setMemoryStoreEvictionPolicy( "LRU" );
 
             if ( cacheSize < 1 )
             {
