@@ -1330,6 +1330,16 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
 
     
     /**
+     * sets the values to null
+     * WARNING: only used by the internal API (especially during the bulk loading)
+     */
+    /* no qualifier */ void _clearValues_()
+    {
+        values = null;
+    }
+
+    
+    /**
      * {@inheritDoc}
      */
     public String dumpPage( String tabs )
