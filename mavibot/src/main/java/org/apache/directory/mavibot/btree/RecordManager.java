@@ -138,7 +138,7 @@ public class RecordManager extends AbstractTransactionManager
     private byte[] RECORD_MANAGER_HEADER_BYTES;
 
     /** The length of an Offset, as a negative value */
-    private static byte[] LONG_LENGTH = new byte[]
+    private  byte[] LONG_LENGTH = new byte[]
         { ( byte ) 0xFF, ( byte ) 0xFF, ( byte ) 0xFF, ( byte ) 0xF8 };
 
     /** The RecordManager underlying page size. */
@@ -203,6 +203,9 @@ public class RecordManager extends AbstractTransactionManager
     
     /** A lock to protect the BtreeHeader maps */
     private ReadWriteLock btreeHeadersLock = new ReentrantReadWriteLock();
+    
+    /** A value stored into the transaction context for rollbacked transactions */
+    private static final int ROLLBACKED_TXN = 0;
     
     /**
      * Create a Record manager which will either create the underlying file
@@ -382,7 +385,12 @@ public class RecordManager extends AbstractTransactionManager
             // Can't happen here.
         }
 
-        // We are all set !
+        // We are all set ! Verify the file
+        if ( LOG_CHECK.isDebugEnabled() )
+        {
+            MavibotInspector.check( this );
+        }
+
     }
 
 
@@ -586,7 +594,7 @@ public class RecordManager extends AbstractTransactionManager
         
         switch ( nbTxnStarted )
         {
-            case 0 :
+            case ROLLBACKED_TXN :
                 // The transaction was rollbacked, quit immediatelly
                 transactionLock.unlock();
                 
@@ -720,7 +728,7 @@ public class RecordManager extends AbstractTransactionManager
     public void rollback()
     {
         // Reset the counter
-        context.set( 0 );
+        context.set( ROLLBACKED_TXN );
 
         // We can now free allocated pages, this is the end of the transaction
         for ( PageIO pageIo : allocatedPages )
@@ -1472,11 +1480,6 @@ public class RecordManager extends AbstractTransactionManager
 
             // Inject it into the B-tree of B-tree
             btreeOfBtrees.insert( nameRevision, btreeHeaderOffset );
-        }
-
-        if ( LOG_CHECK.isDebugEnabled() )
-        {
-            MavibotInspector.check( this );
         }
     }
 
@@ -2774,11 +2777,6 @@ public class RecordManager extends AbstractTransactionManager
         PersistedPageHolder<K, V> pageHolder = new PersistedPageHolder<K, V>( btree, newPage, offset,
             lastOffset );
 
-        if ( LOG_CHECK.isDebugEnabled() )
-        {
-            MavibotInspector.check( this );
-        }
-
         return pageHolder;
     }
 
@@ -2798,7 +2796,14 @@ public class RecordManager extends AbstractTransactionManager
             ByteBuffer data = pageIo.getData();
 
             int position = data.position();
-            byte[] bytes = new byte[(int)pageIo.getSize() + 12];
+            int dataLength = (int)pageIo.getSize() + 12;
+            
+            if ( dataLength > data.limit() )
+            {
+                dataLength = data.limit();
+            }
+            
+            byte[] bytes = new byte[dataLength];
 
             data.get( bytes );
             data.position( position );
