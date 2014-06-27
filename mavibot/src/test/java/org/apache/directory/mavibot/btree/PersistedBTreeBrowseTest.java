@@ -76,6 +76,7 @@ public class PersistedBTreeBrowseTest
         {
             // Create a new BTree which allows duplicate values
             btree = recordManager1.addBTree( "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE, true );
+            //btree.setPageSize( 4 );
         }
         catch ( Exception e )
         {
@@ -1103,4 +1104,36 @@ public class PersistedBTreeBrowseTest
             }
         }
     }
+    
+    
+    /*
+    @Test
+    public void testAdd20Random() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
+    {
+        long [] values = new long[]
+            { 
+                14,  7, 43, 37, 49,  3, 20, 26, 17, 29, 
+                40, 33, 21, 18,  9, 30, 45, 36, 12,  8
+            };
+    
+        // Inject some data
+        for ( long value : values )
+        {
+            btree.insert( value, Long.toString( value ) );
+            System.out.println( btree );
+        }
+
+
+        BTree copiedPagesBtree = recordManager1.copiedPageBtree;
+        
+        System.out.println( copiedPagesBtree );
+        
+        TupleCursor<Long, String> cursor = btree.browse();
+        
+        while ( cursor.hasNext() )
+        {
+            System.out.println( cursor.nextKey() );
+        }
+    }
+    */
 }
