@@ -283,7 +283,10 @@ public class MavibotInspector
             // and its value must be a modulo of pageSize
             long firstFreePage = recordManagerHeader.getLong();
 
-            checkOffset( recordManager, firstFreePage );
+            if ( firstFreePage != RecordManager.NO_PAGE )
+            {
+                checkOffset( recordManager, firstFreePage );
+            }
 
             int nbPageBits = ( int ) ( nbPages / 32 );
 
