@@ -24,7 +24,7 @@
     <groupId>org.apache.directory.project</groupId>
     <artifactId>project</artifactId>
     <version>32</version>
-    <relativePath/>
+    <relativePath />
   </parent>
 
   <organization>
@@ -33,7 +33,7 @@
   </organization>
 
   <groupId>org.apache.directory.mavibot</groupId>
-  <version>1.0.0-M5-SNAPSHOT</version>
+  <version>1.0.0-M5</version>
   <artifactId>mavibot-parent</artifactId>
   <name>ApacheDS Mavibot Parent</name>
   <packaging>pom</packaging>
