@@ -49,6 +49,9 @@ public class InMemoryBulkDataSorterTest
 {
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
+    
+    /* A counter of tuple files */
+    private int counter = 0;
 
     private Comparator<Tuple<Integer, Integer>> tupleComp = new Comparator<Tuple<Integer, Integer>>()
     {
@@ -69,6 +72,7 @@ public class InMemoryBulkDataSorterTest
         Random random = new Random();
 
         File dataFile = tempFolder.newFile( "tuple.data" );
+        dataFile.deleteOnExit();
         DataOutputStream out = new DataOutputStream( new FileOutputStream( dataFile ) );
 
         Tuple<Integer, Integer>[] arr = ( Tuple<Integer, Integer>[] ) Array.newInstance( Tuple.class, count );
@@ -107,12 +111,14 @@ public class InMemoryBulkDataSorterTest
     }
 
 
-    public void testSortedFileMerge( int count, int splitAfter ) throws IOException
+    private void testSortedFileMerge( int count, int splitAfter ) throws IOException
     {
         IntTupleReaderWriter itrw = new IntTupleReaderWriter();
         Random random = new Random();
 
-        File dataFile = tempFolder.newFile( "tuple.data" );
+        File dataFile = tempFolder.newFile( "tuple.data" + counter );
+        counter++;
+        dataFile.deleteOnExit();
 
         DataOutputStream out = new DataOutputStream( new FileOutputStream( dataFile ) );
 

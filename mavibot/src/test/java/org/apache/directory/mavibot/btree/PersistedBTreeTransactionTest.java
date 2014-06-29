@@ -53,7 +53,7 @@ public class PersistedBTreeTransactionTest
 
 
     @Before
-    public void createBTree()
+    public void createBTree() throws IOException
     {
         dataDirWithTxn = tempFolder.newFolder( UUID.randomUUID().toString() );
         dataDirNoTxn = tempFolder.newFolder( UUID.randomUUID().toString() );

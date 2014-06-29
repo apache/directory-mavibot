@@ -65,7 +65,7 @@ public class RecordManagerTest
 
 
     @Before
-    public void createBTree()
+    public void createBTree() throws IOException
     {
         dataDir = tempFolder.newFolder( UUID.randomUUID().toString() );
 

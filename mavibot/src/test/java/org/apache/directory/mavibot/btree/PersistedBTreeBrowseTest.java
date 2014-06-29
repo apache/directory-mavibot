@@ -66,7 +66,7 @@ public class PersistedBTreeBrowseTest
      * Create a BTree for this test
      */
     @Before
-    public void createBTree()
+    public void createBTree() throws IOException
     {
         dataDir = tempFolder.newFolder( UUID.randomUUID().toString() );
 
