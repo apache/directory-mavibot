@@ -124,6 +124,7 @@ import java.util.concurrent.atomic.AtomicInteger;
         copy.rootPage = null;
         copy.rootPageOffset = -1L;
         copy.btreeHeaderOffset = -1L;
+        copy.nbUsers.set( 0 );
 
         return copy;
     }
