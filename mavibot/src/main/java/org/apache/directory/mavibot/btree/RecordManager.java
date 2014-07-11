@@ -106,7 +106,7 @@ public class RecordManager extends AbstractTransactionManager
      * A B-tree used to manage the page that has been copied in a new version.
      * Those pages can be reclaimed when the associated version is dead.
      **/
-    private BTree<RevisionName, long[]> copiedPageBtree;
+    /* no qualifier */ BTree<RevisionName, long[]> copiedPageBtree;
 
     /** A constant for an offset on a non existing page */
     public static final long NO_PAGE = -1L;
@@ -818,7 +818,7 @@ public class RecordManager extends AbstractTransactionManager
      * @param offset The offset to check
      * @throws InvalidOffsetException If the offset is not valid
      */
-    private void checkOffset( long offset )
+    /* no qualifier */ void checkOffset( long offset )
     {
         if ( ( offset < 0 ) || ( offset > endOfFileOffset ) || ( ( offset % pageSize ) != 0 ) )
         {
