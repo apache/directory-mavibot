@@ -894,8 +894,8 @@ public class RecordManagerTest
         btree.insert( 2L, "V2" );
     }
     
+    
     @Test
-    @Ignore("Fails with bad offset error")
     public void testOffsetsInCopiedPageBTree() throws Exception
     {
         btree.insert( 1L, "V1" );
@@ -907,6 +907,7 @@ public class RecordManagerTest
         checkCpbOffsets();
     }
 
+    
     private void checkCpbOffsets() throws Exception
     {
         TupleCursor<RevisionName, long[]> cursor = recordManager.copiedPageBtree.browse();
@@ -915,6 +916,7 @@ public class RecordManagerTest
         {
             Tuple<RevisionName, long[]> t = cursor.next();
             long[] offsets = t.getValue();
+            
             for( long o : offsets )
             {
                 recordManager.checkOffset( o );

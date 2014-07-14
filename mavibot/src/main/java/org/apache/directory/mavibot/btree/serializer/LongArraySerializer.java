@@ -307,8 +307,8 @@ public class LongArraySerializer extends AbstractElementSerializer<long[]>
     @Override
     public long[] fromBytes( byte[] buffer, int pos ) throws IOException
     {
-        int newPos = pos;
-        int len = IntSerializer.deserialize( buffer, newPos );
+        int len = IntSerializer.deserialize( buffer, pos );
+        int newPos = pos + 4;
 
         switch ( len )
         {

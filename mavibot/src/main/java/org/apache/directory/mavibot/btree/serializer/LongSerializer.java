@@ -118,13 +118,13 @@ public class LongSerializer extends AbstractElementSerializer<Long>
         }
 
         long result = ( ( long ) in[start] << 56 ) +
-            ( ( in[start + 1] & 0xFFL ) << 48 ) +
-            ( ( in[start + 2] & 0xFFL ) << 40 ) +
-            ( ( in[start + 3] & 0xFFL ) << 32 ) +
-            ( ( in[start + 4] & 0xFFL ) << 24 ) +
-            ( ( in[start + 5] & 0xFFL ) << 16 ) +
-            ( ( in[start + 6] & 0xFFL ) << 8 ) +
-            ( in[start + 7] & 0xFFL );
+            ( ( in[start + 1] & 0x00FFL ) << 48 ) +
+            ( ( in[start + 2] & 0x00FFL ) << 40 ) +
+            ( ( in[start + 3] & 0x00FFL ) << 32 ) +
+            ( ( in[start + 4] & 0x00FFL ) << 24 ) +
+            ( ( in[start + 5] & 0x00FFL ) << 16 ) +
+            ( ( in[start + 6] & 0x00FFL ) << 8 ) +
+            ( in[start + 7] & 0x00FFL );
 
         return result;
     }
