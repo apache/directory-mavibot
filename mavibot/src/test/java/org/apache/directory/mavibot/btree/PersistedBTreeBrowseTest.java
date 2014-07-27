@@ -28,6 +28,7 @@ import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
@@ -1106,7 +1107,7 @@ public class PersistedBTreeBrowseTest
     }
     
     
-    /*
+    @Ignore("test used for debugging")
     @Test
     public void testAdd20Random() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
@@ -1116,6 +1117,7 @@ public class PersistedBTreeBrowseTest
                 40, 33, 21, 18,  9, 30, 45, 36, 12,  8
             };
     
+        btree.setPageSize( 4 );
         // Inject some data
         for ( long value : values )
         {
@@ -1124,7 +1126,7 @@ public class PersistedBTreeBrowseTest
         }
 
 
-        BTree copiedPagesBtree = recordManager1.copiedPageBtree;
+        Map copiedPagesBtree = recordManager1.copiedPageMap;
         
         System.out.println( copiedPagesBtree );
         
@@ -1135,5 +1137,4 @@ public class PersistedBTreeBrowseTest
             System.out.println( cursor.nextKey() );
         }
     }
-    */
 }

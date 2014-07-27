@@ -30,7 +30,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -893,37 +895,4 @@ public class RecordManagerTest
         btree.insert( 1L, "V1" );
         btree.insert( 2L, "V2" );
     }
-    
-    
-    @Test
-    public void testOffsetsInCopiedPageBTree() throws Exception
-    {
-        btree.insert( 1L, "V1" );
-
-        checkCpbOffsets();
-        
-        openRecordManagerAndBtree();
-        
-        checkCpbOffsets();
-    }
-
-    
-    private void checkCpbOffsets() throws Exception
-    {
-        TupleCursor<RevisionName, long[]> cursor = recordManager.copiedPageBtree.browse();
-        
-        while( cursor.hasNext() )
-        {
-            Tuple<RevisionName, long[]> t = cursor.next();
-            long[] offsets = t.getValue();
-            
-            for( long o : offsets )
-            {
-                recordManager.checkOffset( o );
-            }
-        }
-      
-        cursor.close();
-    }
-    
 }
