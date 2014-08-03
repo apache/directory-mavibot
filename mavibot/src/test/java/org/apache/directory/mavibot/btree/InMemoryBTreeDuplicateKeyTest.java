@@ -37,6 +37,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
+import org.junit.Ignore;
 import org.junit.Test;
 
 
@@ -743,6 +744,7 @@ public class InMemoryBTreeDuplicateKeyTest
      * Test that a BTree which forbid duplicate values does not accept them
      */
     @Test(expected = DuplicateValueNotAllowedException.class)
+    @Ignore("this condition is removed")
     public void testBTreeForbidDups() throws IOException, BTreeAlreadyManagedException
     {
         BTree<Long, String> singleValueBtree = BTreeFactory.createInMemoryBTree( "test2", LongSerializer.INSTANCE,

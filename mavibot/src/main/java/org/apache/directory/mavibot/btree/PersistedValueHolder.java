@@ -410,6 +410,8 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
                         }
                     }
 
+                    cursor.close();
+                    
                     return returnedValue;
                 }
                 else
@@ -633,6 +635,17 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
         }
 
         return copy;
+    }
+
+
+    @Override
+    public V replaceValueArray( V newValue )
+    {
+        V val = super.replaceValueArray( newValue );
+        // The raw value is not anymore up to date with the content
+        isRawUpToDate = false;
+        
+        return val;
     }
 
 

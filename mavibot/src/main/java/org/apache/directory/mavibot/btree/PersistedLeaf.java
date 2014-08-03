@@ -844,26 +844,29 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
         // Copy the keys and the values
         System.arraycopy( keys, 0, newLeaf.keys, 0, nbElems );
 
-        // It' not enough to copy the ValueHolder, we have to clone them
-        // as ValueHolders are mutable
-        int pos = 0;
-
-        for ( ValueHolder<V> valueHolder : values )
+        if ( values != null )
         {
-            try
+            // It' not enough to copy the ValueHolder, we have to clone them
+            // as ValueHolders are mutable
+            int pos = 0;
+            
+            for ( ValueHolder<V> valueHolder : values )
             {
-                newLeaf.values[pos++] = valueHolder.clone();
-            }
-            catch ( CloneNotSupportedException e )
-            {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-
-            // Stop when we have copied nbElems values
-            if ( pos == nbElems )
-            {
-                break;
+                try
+                {
+                    newLeaf.values[pos++] = valueHolder.clone();
+                }
+                catch ( CloneNotSupportedException e )
+                {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+                
+                // Stop when we have copied nbElems values
+                if ( pos == nbElems )
+                {
+                    break;
+                }
             }
         }
 
@@ -891,17 +894,6 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
 
         boolean valueExists = valueHolder.contains( value );
 
-        // Check we can add a new value
-        if ( !valueExists && !btree.isAllowDuplicates() )
-        {
-            throw new DuplicateValueNotAllowedException( "Duplicate values are not allowed" );
-        }
-
-        if ( valueExists )
-        {
-            return ExistsResult.EXISTS;
-        }
-        
         if ( this.revision != revision )
         {
             // The page hasn't been modified yet, we need to copy it first
@@ -912,21 +904,24 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
         valueHolder = newLeaf.values[pos];
         V replacedValue = null;
 
-        if ( !valueExists )
+        if ( !valueExists && btree.isAllowDuplicates() )
         {
             valueHolder.add( value );
             newLeaf.values[pos] = valueHolder;
         }
-        else
+        else if ( valueExists && btree.isAllowDuplicates() )
         {
-            // this block should be deleted after fixing MAVIBOT-39
             // As strange as it sounds, we need to remove the value to reinject it.
             // There are cases where the value retrieval just use one part of the
             // value only (typically for LDAP Entries, where we use the DN)
-            //replacedValue = valueHolder.remove( value );
-            //valueHolder.add( value );
+            replacedValue = valueHolder.remove( value );
+            valueHolder.add( value );
         }
-
+        else if ( !btree.isAllowDuplicates() )
+        {
+            replacedValue = valueHolder.replaceValueArray( value );
+        }
+        
         // Create the result
         InsertResult<K, V> result = new ModifyResult<K, V>( newLeaf, replacedValue );
         result.addCopiedPage( this );
@@ -1096,6 +1091,15 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
      */
     public Tuple<K, V> findLeftMost() throws IOException
     {
+        K key = keys[0].getKey();
+        
+        boolean isSubTree = ( btree.getType() == PERSISTED_SUB );
+        
+        if ( isSubTree )
+        {
+            return new Tuple<K, V>( key, null );
+        }
+        
         ValueCursor<V> cursor = values[0].getCursor();
 
         try
@@ -1103,12 +1107,12 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
             cursor.beforeFirst();
             if ( cursor.hasNext() )
             {
-                return new Tuple<K, V>( keys[0].getKey(), cursor.next() );
+                return new Tuple<K, V>( key, cursor.next() );
             }
             else
             {
                 // Null value
-                return new Tuple<K, V>( keys[0].getKey(), null );
+                return new Tuple<K, V>( key, null );
             }
         }
         finally
@@ -1123,6 +1127,16 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
      */
     public Tuple<K, V> findRightMost() throws EndOfFileExceededException, IOException
     {
+        
+        K key = keys[nbElems - 1].getKey();
+        
+        boolean isSubTree = ( btree.getType() == PERSISTED_SUB );
+        
+        if ( isSubTree )
+        {
+            return new Tuple<K, V>( key, null );
+        }
+
         ValueCursor<V> cursor = values[nbElems - 1].getCursor();
 
         try
@@ -1131,12 +1145,12 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
 
             if ( cursor.hasPrev() )
             {
-                return new Tuple<K, V>( keys[nbElems - 1].getKey(), cursor.prev() );
+                return new Tuple<K, V>( key, cursor.prev() );
             }
             else
             {
                 // Null value
-                return new Tuple<K, V>( keys[nbElems - 1].getKey(), null );
+                return new Tuple<K, V>( key, null );
             }
         }
         finally

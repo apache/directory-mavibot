@@ -389,6 +389,11 @@ import org.slf4j.LoggerFactory;
         // a Node or a Leaf
         InsertResult<K, V> result = newBtreeHeader.getRootPage().insert( key, value, revision );
 
+        if ( result instanceof ExistsResult )
+        {
+            return result;
+        }
+
         if ( result instanceof ModifyResult )
         {
             ModifyResult<K, V> modifyResult = ( ( ModifyResult<K, V> ) result );

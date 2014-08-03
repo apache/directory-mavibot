@@ -19,6 +19,8 @@
  */
 package org.apache.directory.mavibot.btree;
 
+import java.io.Serializable;
+
 
 /**
  * A data structure that stores a revision associated to a BTree name. We use
@@ -26,7 +28,7 @@ package org.apache.directory.mavibot.btree;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* no qualifier*/class RevisionName extends Tuple<Long, String>
+/* no qualifier*/class RevisionName extends Tuple<Long, String> implements Serializable
 {
     /**
      * A constructor for the RevisionName class

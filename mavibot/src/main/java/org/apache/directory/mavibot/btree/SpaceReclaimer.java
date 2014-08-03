@@ -83,7 +83,7 @@ public class SpaceReclaimer
 
         try
         {
-            LOG.debug( "Storing {} RevisionName of Copied page map", rm.copiedPageMap.size() );
+            LOG.debug( "Storing {} RevisionNames of Copied page map", rm.copiedPageMap.size() );
             
             OutputStream fileOut = new FileOutputStream( file );
             

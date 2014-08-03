@@ -69,6 +69,18 @@ package org.apache.directory.mavibot.btree;
      */
     V remove( V removedValue );
 
+    
+    /**
+     * Replaces the single value present in the array.
+     * 
+     * This is only applicable for B-Trees that don't
+     * support duplicate values.
+     *
+     * @param newValue the new value
+     * @return the value that was replaced
+     */
+    V replaceValueArray( V newValue );
+    
 
     /**
      * Create a clone of this instance

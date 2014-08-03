@@ -41,6 +41,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -792,11 +793,40 @@ public class PersistedBTreeDuplicateKeyTest
         cursor.close();
     }
 
+    
+    @Test
+    public void testFindLeftAndRightMosetInSubBTree() throws Exception
+    {
+        PersistedBTreeConfiguration<Integer, Integer> config = new PersistedBTreeConfiguration<Integer, Integer>();
+
+        config.setName( "test" );
+        config.setKeySerializer( IntSerializer.INSTANCE );
+        config.setValueSerializer( IntSerializer.INSTANCE );
+        config.setAllowDuplicates( false );
+        config.setBtreeType( BTreeTypeEnum.PERSISTED_SUB );
+
+        PersistedBTree<Integer, Integer> subBtree = new PersistedBTree<Integer, Integer>( config );
+        
+        subBtree.setRecordManager( recordManager1 );
+        
+        subBtree.insert( 1, 1 ); // the values will be discarded in this BTree type
+        subBtree.insert( 2, 2 );
+        subBtree.insert( 3, 3 );
+        subBtree.insert( 4, 4 );
+        subBtree.insert( 5, 5 );
+        
+        Tuple<Integer, Integer> t = subBtree.getRootPage().findLeftMost();
+        assertEquals( Integer.valueOf( 1 ), t.getKey() );
+        
+        t = subBtree.getRootPage().findRightMost();
+        assertEquals( Integer.valueOf( 5 ), t.getKey() );
+    }
 
     /**
      * Test that a BTree which forbid duplicate values does not accept them
      */
     @Test(expected = DuplicateValueNotAllowedException.class)
+    @Ignore("this condition is removed")
     public void testBTreeForbidDups() throws IOException, BTreeAlreadyManagedException
     {
         BTree<Long, String> singleValueBtree = recordManager1.addBTree( "test2", LongSerializer.INSTANCE,

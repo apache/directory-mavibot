@@ -36,6 +36,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
+import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
 import org.junit.After;
@@ -1106,6 +1107,30 @@ public class PersistedBTreeBrowseTest
         }
     }
     
+    
+    /**
+     * Test the overwriting of elements
+     */
+    @Test
+    public void testOverwrite() throws Exception
+    {
+        btree.setAllowDuplicates( false );
+        
+        // Adding an element with a null value
+        btree.insert( 1L, "1" );
+
+        assertTrue( btree.hasKey( 1L ) );
+
+        assertEquals( "1", btree.get( 1L ) );
+        
+        btree.insert( 1L, "10" );
+
+        assertTrue( btree.hasKey( 1L ) );
+        assertEquals( "10", btree.get( 1L ) );
+
+        btree.close();
+    }
+
     
     @Ignore("test used for debugging")
     @Test

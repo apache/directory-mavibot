@@ -1982,4 +1982,29 @@ public class InMemoryBTreeTest
 
         btree.close();
     }
+
+    
+    /**
+     * Test the overwriting of elements
+     */
+    @Test
+    public void testOverwrite() throws Exception
+    {
+        BTree<Integer, Integer> btree = BTreeFactory.createInMemoryBTree( "test", IntSerializer.INSTANCE,
+            IntSerializer.INSTANCE );
+
+        // Adding an element with a null value
+        btree.insert( 1, 1 );
+
+        assertTrue( btree.hasKey( 1 ) );
+
+        assertEquals( Integer.valueOf( 1 ), btree.get( 1 ) );
+        
+        btree.insert( 1, 10 );
+
+        assertTrue( btree.hasKey( 1 ) );
+        assertEquals( Integer.valueOf( 10 ), btree.get( 1 ) );
+
+        btree.close();
+    }
 }

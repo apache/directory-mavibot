@@ -375,4 +375,25 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             addInBtree( value );
         }
     }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public V replaceValueArray( V newValue )
+    {
+        if( isSubBtree() )
+        {
+            throw new IllegalStateException( "method is not applicable for the duplicate B-Trees" );
+        }
+        
+        V tmp = valueArray[0];
+        
+        nbArrayElems = 1;
+        valueArray[0] = newValue;
+        
+        return tmp;
+    }
+
 }

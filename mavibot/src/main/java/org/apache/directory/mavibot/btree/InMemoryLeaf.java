@@ -748,12 +748,6 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         boolean valueExists = valueHolder.contains( value );
 
-        // Check we can add a new value
-        if ( !valueExists && !btree.isAllowDuplicates() )
-        {
-            throw new DuplicateValueNotAllowedException( "Duplicate values are not allowed" );
-        }
-
         if ( this.revision != revision )
         {
             // The page hasn't been modified yet, we need to copy it first
@@ -764,18 +758,22 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         valueHolder = newLeaf.values[pos];
         V replacedValue = null;
 
-        if ( !valueExists )
+        if ( !valueExists && btree.isAllowDuplicates() )
         {
             valueHolder.add( value );
             newLeaf.values[pos] = valueHolder;
         }
-        else
+        else if ( valueExists && btree.isAllowDuplicates() )
         {
             // As strange as it sounds, we need to remove the value to reinject it.
             // There are cases where the value retrieval just use one part of the
             // value only (typically for LDAP Entries, where we use the DN)
             replacedValue = valueHolder.remove( value );
             valueHolder.add( value );
+        }
+        else if ( !btree.isAllowDuplicates() )
+        {
+            replacedValue = valueHolder.replaceValueArray( value );
         }
 
         // Create the result
