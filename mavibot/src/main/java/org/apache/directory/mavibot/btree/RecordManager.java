@@ -106,6 +106,9 @@ public class RecordManager extends AbstractTransactionManager
     /**
      * A Map used to hold the pages that were copied in a new version.
      * Those pages can be reclaimed when the associated version is dead.
+     * 
+     * Note: the offsets are of AbstractPageS' while freeing the associated
+     *       PageIOs will be fetched and freed.
      **/
     /* no qualifier */ Map<RevisionName, long[]> copiedPageMap = null;
 
@@ -3585,28 +3588,26 @@ public class RecordManager extends AbstractTransactionManager
     /**
      * Add an array of PageIOs to the list of free PageIOs
      *
-     * @param offsets The offsets of the pages to be freed
+     * @param offsets The offsets of the pages whose associated PageIOs will be fetched and freed.
      * @throws IOException If we weren't capable of updating the file
      */
     public void free( long[] offsets ) throws IOException
     {
-        if( offsets.length == 1 )
-        {
-            PageIO page = fetchPage( offsets[0] );
-            free( page );
-            return;
-        }
-        
-        PageIO[] pageIos = new PageIO[offsets.length];
-        
+        List<PageIO> pageIos = new ArrayList<PageIO>();
+        int pageIndex = 0;
         for( int i=0; i < offsets.length; i++ )
         {
-            PageIO page = fetchPage( offsets[i] );
-            pageIos[i] = page;
-            
-            if( i > 0 )
+            PageIO[] ios = readPageIOs( offsets[i], Long.MAX_VALUE );
+            for( PageIO io : ios )
             {
-                pageIos[i-1].setNextPage( page.getOffset() );
+                pageIos.add( io );
+                
+                if( pageIndex > 0 )
+                {
+                    pageIos.get( pageIndex - 1 ).setNextPage( io.getOffset() );
+                }
+                
+                pageIndex++;
             }
         }
 
@@ -3615,16 +3616,16 @@ public class RecordManager extends AbstractTransactionManager
         // We add the Page's PageIOs before the
         // existing free pages.
         // Link it to the first free page
-        pageIos[pageIos.length - 1].setNextPage( firstFreePage );
+        pageIos.get( pageIndex -1 ).setNextPage( firstFreePage );
 
         LOG.debug( "Flushing the first free page" );
 
         // And flush it to disk
         //FIXME can be flushed last after releasing the lock
-        flushPages( pageIos );
+        flushPages( pageIos.toArray( new PageIO[0] ) );
 
         // We can update the firstFreePage offset
-        firstFreePage = pageIos[0].getOffset();
+        firstFreePage = pageIos.get( 0 ).getOffset();
         
         freePageLock.unlock();
     }
