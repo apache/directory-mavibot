@@ -32,10 +32,10 @@ package org.apache.directory.mavibot.btree;
 public class Tuple<K, V>
 {
     /** The key */
-    private K key;
+    protected K key;
 
     /** The value */
-    private V value;
+    protected V value;
 
 
     /**

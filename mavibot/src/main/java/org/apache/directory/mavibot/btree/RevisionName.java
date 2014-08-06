@@ -31,6 +31,14 @@ import java.io.Serializable;
 /* no qualifier*/class RevisionName extends Tuple<Long, String> implements Serializable
 {
     /**
+     * for serialization purpose
+     */
+    protected RevisionName()
+    {
+    }
+    
+    
+    /**
      * A constructor for the RevisionName class
      * @param revision The revision
      * @param name The BTree name
