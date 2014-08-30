@@ -223,6 +223,12 @@ import org.apache.directory.mavibot.btree.BTree;
     }
 
 
+    /* No qualifier */ BTree<V, V> getValueBTree()
+    {
+        return valueBtree;
+    }
+    
+    
     /**
      * @see Object#toString()
      */
