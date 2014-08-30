@@ -115,8 +115,8 @@ public class RecordManager extends AbstractTransactionManager
     /** A constant for an offset on a non existing page */
     public static final long NO_PAGE = -1L;
 
-    /** The number of element we can store in a page */
-    private static final int PAGE_SIZE = 4;
+    /** The number of bytes needed to store the data size of a page */
+    private static final int PAGE_DATA_SIZE_LENGTH = 4;
 
     /** The size of the link to next page */
     private static final int LINK_SIZE = 8;
