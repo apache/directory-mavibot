@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
@@ -52,6 +53,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongArraySerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
+import org.apache.directory.mavibot.btree.serializer.StringSerializer;
 import org.apache.directory.mavibot.btree.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -167,7 +169,7 @@ public class RecordManager extends AbstractTransactionManager
     public static final boolean NORMAL_BTREE = false;
 
     /** The B-tree of B-trees */
-    private BTree<NameRevision, Long> btreeOfBtrees;
+    /* no qualifier */ BTree<String, RevisionAndHeaderOffset> btreeOfBtrees;
 
     /** The B-tree of B-trees management btree name */
     /* no qualifier */ static final String BTREE_OF_BTREES_NAME = "_btree_of_btrees_";
@@ -351,7 +353,7 @@ public class RecordManager extends AbstractTransactionManager
      * The RecordManager header contains the following details :
      * <pre>
      * +--------------------------+
-     * | PageSize                 | 4 bytes : The size of a physical page (default to 4096)
+     * | PageSize                 | 4 bytes : The size of a physical page (default to {@link #DEFAULT_PAGE_SIZE})
      * +--------------------------+
      * |  NbTree                  | 4 bytes : The number of managed B-trees (at least 1)
      * +--------------------------+
@@ -360,10 +362,6 @@ public class RecordManager extends AbstractTransactionManager
      * | current BoB offset       | 8 bytes : The offset of the current BoB
      * +--------------------------+
      * | previous BoB offset      | 8 bytes : The offset of the previous BoB
-     * +--------------------------+
-     * | current CP btree offset  | 8 bytes : The offset of the current BoB
-     * +--------------------------+
-     * | previous CP btree offset | 8 bytes : The offset of the previous BoB
      * +--------------------------+
      * </pre>
      *
@@ -392,12 +390,12 @@ public class RecordManager extends AbstractTransactionManager
         {
             manage( btreeOfBtrees, INTERNAL_BTREE );
 
-            currentBtreeOfBtreesOffset = ((PersistedBTree<NameRevision, Long>)btreeOfBtrees).getBtreeHeader().getBTreeHeaderOffset();
+            currentBtreeOfBtreesOffset = ((PersistedBTree<String, RevisionAndHeaderOffset>)btreeOfBtrees).getBtreeHeader().getBTreeHeaderOffset();
             updateRecordManagerHeader();
             
             // Inject the BtreeOfBtrees into the currentBtreeHeaders map
-            currentBTreeHeaders.put( BTREE_OF_BTREES_NAME,  ((PersistedBTree<NameRevision, Long>)btreeOfBtrees).getBtreeHeader() );
-            newBTreeHeaders.put( BTREE_OF_BTREES_NAME,  ((PersistedBTree<NameRevision, Long>)btreeOfBtrees).getBtreeHeader() );
+            currentBTreeHeaders.put( BTREE_OF_BTREES_NAME,  ((PersistedBTree<String, RevisionAndHeaderOffset>)btreeOfBtrees).getBtreeHeader() );
+            newBTreeHeaders.put( BTREE_OF_BTREES_NAME,  ((PersistedBTree<String, RevisionAndHeaderOffset>)btreeOfBtrees).getBtreeHeader() );
         }
         catch ( BTreeAlreadyManagedException btame )
         {
@@ -418,12 +416,13 @@ public class RecordManager extends AbstractTransactionManager
      */
     private void createBtreeOfBtrees()
     {
-        PersistedBTreeConfiguration<NameRevision, Long> configuration = new PersistedBTreeConfiguration<NameRevision, Long>();
-        configuration.setKeySerializer( NameRevisionSerializer.INSTANCE );
+        PersistedBTreeConfiguration<String, RevisionAndHeaderOffset> configuration = new PersistedBTreeConfiguration<String, RevisionAndHeaderOffset>();
+        configuration.setKeySerializer( StringSerializer.INSTANCE );
         configuration.setName( BTREE_OF_BTREES_NAME );
-        configuration.setValueSerializer( LongSerializer.INSTANCE );
+        configuration.setValueSerializer( RevisionAndHeaderOffsetSerializer.INSTANCE );
         configuration.setBtreeType( BTreeTypeEnum.BTREE_OF_BTREES );
         configuration.setCacheSize( PersistedBTree.DEFAULT_CACHE_SIZE );
+        configuration.setAllowDuplicates( true );
 
         btreeOfBtrees = BTreeFactory.createPersistedBTree( configuration );
     }
@@ -453,7 +452,7 @@ public class RecordManager extends AbstractTransactionManager
 
             // read the RecordManager Header :
             // +---------------------+
-            // | PageSize            | 4 bytes : The size of a physical page (default to 4096)
+            // | PageSize            | 4 bytes : The size of a physical page (default to DEFAULT_PAGE_SIZE)
             // +---------------------+
             // | NbTree              | 4 bytes : The number of managed B-trees (at least 1)
             // +---------------------+
@@ -462,10 +461,6 @@ public class RecordManager extends AbstractTransactionManager
             // | current BoB offset  | 8 bytes : The offset of the current B-tree of B-trees
             // +---------------------+
             // | previous BoB offset | 8 bytes : The offset of the previous B-tree of B-trees
-            // +---------------------+
-            // | current CP offset   | 8 bytes : The offset of the current Copied Pages B-tree
-            // +---------------------+
-            // | previous CP offset  | 8 bytes : The offset of the previous Copied Pages B-tree
             // +---------------------+
 
             // The page size
@@ -486,55 +481,44 @@ public class RecordManager extends AbstractTransactionManager
             // read the B-tree of B-trees
             PageIO[] bobHeaderPageIos = readPageIOs( currentBtreeOfBtreesOffset, Long.MAX_VALUE );
 
-            btreeOfBtrees = BTreeFactory.<NameRevision, Long> createPersistedBTree( BTreeTypeEnum.BTREE_OF_BTREES );
+            btreeOfBtrees = BTreeFactory.<String, RevisionAndHeaderOffset> createPersistedBTree( BTreeTypeEnum.BTREE_OF_BTREES );
             //BTreeFactory.<NameRevision, Long> setBtreeHeaderOffset( ( PersistedBTree<NameRevision, Long> )btreeOfBtrees, currentBtreeOfBtreesOffset );
 
             loadBtree( bobHeaderPageIos, btreeOfBtrees );
 
             // Now, read all the B-trees from the btree of btrees
-            TupleCursor<NameRevision, Long> btreeCursor = btreeOfBtrees.browse();
-            Map<String, Long> loadedBtrees = new HashMap<String, Long>();
-
-            // loop on all the btrees we have, and keep only the latest revision
-            long currentRevision = -1L;
+            TupleCursor<String, RevisionAndHeaderOffset> btreeCursor = btreeOfBtrees.browse();
+            Map<String, RevisionAndHeaderOffset> loadedBtrees = new HashMap<String, RevisionAndHeaderOffset>();
 
             while ( btreeCursor.hasNext() )
             {
-                Tuple<NameRevision, Long> btreeTuple = btreeCursor.next();
-                NameRevision nameRevision = btreeTuple.getKey();
-                long btreeOffset = btreeTuple.getValue();
-                long revision = nameRevision.getValue();
+                Tuple<String, RevisionAndHeaderOffset> btreeTuple = btreeCursor.next();
+                String name = btreeTuple.getKey();
+                ValueCursor<RevisionAndHeaderOffset> cursor = btreeOfBtrees.getValues( name );
+                
+                cursor.afterLast();
+                RevisionAndHeaderOffset revisionHeader = cursor.prev();
 
-                // Check if we already have processed this B-tree
-                Long loadedBtreeRevision = loadedBtrees.get( nameRevision.getName() );
-
-                if ( loadedBtreeRevision != null )
+                // This is a new B-tree
+                loadedBtrees.put( name, revisionHeader );
+                
+                if ( cursor instanceof ValueBTreeCursor )
                 {
-                    // The btree has already been loaded. The revision is necessarily higher
-                    if ( revision > currentRevision )
-                    {
-                        // We have a newer revision : switch to the new revision (we keep the offset atm)
-                        loadedBtrees.put( nameRevision.getName(), btreeOffset );
-                        currentRevision = revision;
-                    }
+                    PersistedBTree subBtree = ( PersistedBTree ) ( ( ValueBTreeCursor ) cursor ).getValueBTree();
+                    _deleteBTree( subBtree, 0 );
                 }
-                else
-                {
-                    // This is a new B-tree
-                    loadedBtrees.put( nameRevision.getName(), btreeOffset );
-                    currentRevision = nameRevision.getRevision();
-                }
+                
+                cursor.close();
             }
 
-            // TODO : clean up the old revisions...
-
-
+            btreeCursor.close();
+            
             // Now, we can load the real btrees using the offsets
             for ( String btreeName : loadedBtrees.keySet() )
             {
-                long btreeOffset = loadedBtrees.get( btreeName );
+                RevisionAndHeaderOffset headerOffset = loadedBtrees.get( btreeName );
 
-                PageIO[] btreePageIos = readPageIOs( btreeOffset, Long.MAX_VALUE );
+                PageIO[] btreePageIos = readPageIOs( headerOffset.getOffset(), Long.MAX_VALUE );
 
                 BTree<?, ?> btree = BTreeFactory.<NameRevision, Long> createPersistedBTree();
                 //( ( PersistedBTree<NameRevision, Long> ) btree ).setBtreeHeaderOffset( btreeOffset );
@@ -542,6 +526,9 @@ public class RecordManager extends AbstractTransactionManager
 
                 // Add the btree into the map of managed B-trees
                 managedBtrees.put( btreeName, ( BTree<Object, Object> ) btree );
+                
+                btreeOfBtrees.delete( btreeName );
+                btreeOfBtrees.insert( btreeName, headerOffset );
             }
 
             // We are done ! Let's finish with the last initialization parts
@@ -779,7 +766,17 @@ public class RecordManager extends AbstractTransactionManager
         }
 
         PageIO firstPage = fetchPage( position );
-        firstPage.setSize();
+        
+        if( firstPage.isFree() )
+        {
+            System.out.println("------------- NOT freeing free page ---------------");
+            return new PageIO[]{};
+        }
+        else
+        {
+            firstPage.setSize();
+        }
+        
         List<PageIO> listPages = new ArrayList<PageIO>();
         listPages.add( firstPage );
         long dataRead = pageSize - LONG_SIZE - INT_SIZE;
@@ -817,7 +814,7 @@ public class RecordManager extends AbstractTransactionManager
      * <ul>
      * <li>It's >= 0</li>
      * <li>It's below the end of the file</li>
-     * <li>It's a multipl of the pageSize
+     * <li>It's a multiple of the pageSize
      * </ul>
      * @param offset The offset to check
      * @throws InvalidOffsetException If the offset is not valid
@@ -1479,11 +1476,11 @@ public class RecordManager extends AbstractTransactionManager
             // We can safely increment the number of managed B-trees
             nbBtree++;
 
-            // Create the new NameRevision
-            NameRevision nameRevision = new NameRevision( name, 0L );
+            // Create the new RevisionAndHeaderOffset
+            RevisionAndHeaderOffset revisionAndHeader = new RevisionAndHeaderOffset( 0L, btreeHeaderOffset );
 
             // Inject it into the B-tree of B-tree
-            btreeOfBtrees.insert( nameRevision, btreeHeaderOffset );
+            btreeOfBtrees.insert( name, revisionAndHeader );
         }
     }
 
@@ -1974,9 +1971,9 @@ public class RecordManager extends AbstractTransactionManager
     /* no qualifier */ <K, V> void addInBtreeOfBtrees( String name, long revision, long btreeHeaderOffset ) throws IOException
     {
         checkOffset( btreeHeaderOffset );
-        NameRevision nameRevision = new NameRevision( name, revision );
+        RevisionAndHeaderOffset revisionAndHeader = new RevisionAndHeaderOffset( revision, btreeHeaderOffset );
 
-        btreeOfBtrees.insert( nameRevision, btreeHeaderOffset );
+        btreeOfBtrees.insert( name, revisionAndHeader );
 
         // Update the B-tree of B-trees offset
         currentBtreeOfBtreesOffset = getNewBTreeHeader( BTREE_OF_BTREES_NAME ).getBTreeHeaderOffset();
@@ -2300,7 +2297,7 @@ public class RecordManager extends AbstractTransactionManager
 
                 // keep a track of the allocated and copied pages so that we can
                 // free them when we do a commit or rollback, if the btree is an management one
-                if ( ( btree.getType() == BTreeTypeEnum.BTREE_OF_BTREES ) || ( btree.getType() == BTreeTypeEnum.COPIED_PAGES_BTREE ) )
+                if ( btree.getType() == BTreeTypeEnum.BTREE_OF_BTREES )
                 {
                     freedPages.add( pageIo );
                     allocatedPages.add( newPageIOs[pos] );
@@ -2396,7 +2393,7 @@ public class RecordManager extends AbstractTransactionManager
     {
         long pageNb = 0;
 
-        offset -= pageSize - LINK_SIZE - PAGE_SIZE;
+        offset -= pageSize - LINK_SIZE - PAGE_DATA_SIZE_LENGTH;
 
         if ( offset < 0 )
         {
@@ -3377,32 +3374,6 @@ public class RecordManager extends AbstractTransactionManager
 
 
     /**
-     * Store a reference to an old rootPage into the Revision B-tree
-     *
-     * @param btree The B-tree we want to keep an old RootPage for
-     * @param rootPage The old rootPage
-     * @throws IOException If we have an issue while writing on disk
-     */
-    /* No qualifier */<K, V> void storeRootPage( BTree<K, V> btree, Page<K, V> rootPage ) throws IOException
-    {
-        if ( !isKeepRevisions() )
-        {
-            return;
-        }
-
-        NameRevision nameRevision = new NameRevision( btree.getName(), rootPage.getRevision() );
-
-        ( ( AbstractBTree<NameRevision, Long> ) btreeOfBtrees ).insert( nameRevision,
-            ( ( AbstractPage<K, V> ) rootPage ).getOffset(), 0 );
-
-        if ( LOG_CHECK.isDebugEnabled() )
-        {
-            MavibotInspector.check( this );
-        }
-    }
-
-
-    /**
      * Fetch the rootPage of a given B-tree for a given revision.
      *
      * @param btree The B-tree we are interested in
@@ -3421,11 +3392,26 @@ public class RecordManager extends AbstractTransactionManager
         }
 
         // Get the B-tree header offset
-        NameRevision nameRevision = new NameRevision( btree.getName(), revision );
-        long btreeHeaderOffset = btreeOfBtrees.get( nameRevision );
+        RevisionAndHeaderOffset revisionAndHeader = null;
+        ValueCursor<RevisionAndHeaderOffset> cursor = btreeOfBtrees.getValues( btree.getName() );
+        while( cursor.hasNext() )
+        {
+            revisionAndHeader = cursor.next();
+            if( revisionAndHeader.getRevision() == revision )
+            {
+                break;
+            }
+        }
 
+        cursor.close();
+        
+        if ( revisionAndHeader == null )
+        {
+            return null;
+        }
+        
         // get the B-tree rootPage
-        Page<K, V> btreeRoot = readRootPage( btree, btreeHeaderOffset );
+        Page<K, V> btreeRoot = readRootPage( btree, revisionAndHeader.getOffset() );
 
         return btreeRoot;
     }
@@ -3533,7 +3519,7 @@ public class RecordManager extends AbstractTransactionManager
                 pageOffsets[pos++] = ((AbstractPage<K, V>)page).offset;
             }
 
-            if ( ( btree.getType() != BTreeTypeEnum.BTREE_OF_BTREES ) && ( btree.getType() != BTreeTypeEnum.COPIED_PAGES_BTREE ) )
+            if ( btree.getType() != BTreeTypeEnum.BTREE_OF_BTREES )
             {
                 // Deal with standard B-trees
                 RevisionName revisionName = new RevisionName( revision, btree.getName() );
@@ -3576,6 +3562,7 @@ public class RecordManager extends AbstractTransactionManager
 
         // And flush it to disk
         //FIXME can be flushed last after releasing the lock
+        pageIo.markFree();
         flushPages( pageIo );
 
         // We can update the firstFreePage offset
@@ -3591,7 +3578,7 @@ public class RecordManager extends AbstractTransactionManager
      * @param offsets The offsets of the pages whose associated PageIOs will be fetched and freed.
      * @throws IOException If we weren't capable of updating the file
      */
-    public void free( long[] offsets ) throws IOException
+    public void free( long... offsets ) throws IOException
     {
         List<PageIO> pageIos = new ArrayList<PageIO>();
         int pageIndex = 0;
@@ -3601,6 +3588,7 @@ public class RecordManager extends AbstractTransactionManager
             for( PageIO io : ios )
             {
                 pageIos.add( io );
+                io.markFree();
                 
                 if( pageIndex > 0 )
                 {
@@ -3611,6 +3599,11 @@ public class RecordManager extends AbstractTransactionManager
             }
         }
 
+        if( pageIos.isEmpty() )
+        {
+            return;
+        }
+        
         freePageLock.lock();
         
         // We add the Page's PageIOs before the
@@ -3803,6 +3796,135 @@ public class RecordManager extends AbstractTransactionManager
     }
 
 
+    /**
+     * Deletes a BTree and any sub-btrees associated with it from the disk.
+     * 
+     * @param name the name of the managed B-tree
+     * @return the number of AbstractPages that were freed after deleting
+     */
+    @SuppressWarnings("all")
+    public int deleteBTree( String name )
+    {
+        PersistedBTree tree = ( PersistedBTree ) getManagedTree( name );
+
+        if ( tree == null )
+        {
+            LOG.warn( "No managed btree exists with the name {}", name );
+            return -1; 
+        }
+        
+        managedBtrees.remove( name );
+        
+        int pageCount = 0;
+        pageCount = _deleteBTree( tree, pageCount );
+        
+        // now remove the revisions from BoB
+        try
+        {
+            ValueCursor<RevisionAndHeaderOffset> cursor = btreeOfBtrees.getValues( name );
+            
+            if ( cursor instanceof ValueBTreeCursor )
+            {
+                PersistedBTree subBtree = ( PersistedBTree ) ( ( ValueBTreeCursor ) cursor ).getValueBTree();
+                pageCount += _deleteBTree( subBtree, pageCount );
+            }
+            
+            cursor.close();
+            
+            btreeOfBtrees.delete( name );
+        }
+        catch( Exception e )
+        {
+            //ignore
+        }
+        
+        System.out.println( "Freed " + pageCount + " AbstractPages" );
+        
+        return pageCount;
+    }
+    
+    
+    /**
+     * Deletes the given BTree from the disk and updates the pageCount
+     * with the number of AbstractPages freed.
+     * 
+     * @param tree the BTree to be deleted
+     * @param pageCount variable holding the number of AbstractPages freed
+     * @return the number of AbstractPages that were freed after deleting
+     */
+    @SuppressWarnings("all")
+    private int _deleteBTree( PersistedBTree tree, int pageCount )
+    {
+        Stack<AbstractPage> stack = new Stack<AbstractPage>();
+        
+        // use post-order traversal to free all the pages
+        AbstractPage root = ( AbstractPage ) tree.getRootPage();
+        stack.push( root );
+        
+        try
+        {
+            while( !stack.isEmpty() )
+            {
+                AbstractPage page = stack.peek();
+                
+                if( page instanceof PersistedLeaf )
+                {
+                    stack.pop();
+                    pageCount++;
+                    
+                    PersistedLeaf leaf = ( PersistedLeaf ) page;
+                    if( tree.isAllowDuplicates() )
+                    {
+                        for( ValueHolder vh : leaf.values )
+                        {
+                            if( vh.isSubBtree() )
+                            {
+                                pageCount += _deleteBTree( ( PersistedBTree ) ( ( PersistedValueHolder ) vh ).valueBtree, pageCount );
+                            }
+                        }
+                    }
+                    
+                    free( page.offset );
+                    
+                    if ( !stack.isEmpty() )
+                    {
+                        stack.peek().nbElems--;
+                    }
+                }
+                else if ( page instanceof PersistedNode )
+                {
+                    if ( page.nbElems <= 0 )
+                    {
+                        stack.pop();
+                        pageCount++;
+                        
+                        free( page.offset );
+                    }
+                    else
+                    {
+                        for ( int i = page.nbElems - 1; i >= 0; i-- )
+                        {
+                            stack.push( ( AbstractPage ) page.children[i].getValue() );
+                        }
+                    }
+                }
+            }
+            
+            free( tree.getBtreeHeader().getBTreeHeaderOffset() );
+            pageCount++;
+        }
+        catch( IOException e )
+        {
+            LOG.warn( "Failed to free the pages of the tree {}", tree.getName() );
+            LOG.warn( "", e );
+            
+            return pageCount;
+        }
+
+        return pageCount;
+    }
+    
+    
     /**
      * @see Object#toString()
      */

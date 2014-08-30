@@ -178,7 +178,20 @@ import org.apache.directory.mavibot.btree.util.Strings;
         this.offset = offset;
     }
 
+    
+    void markFree()
+    {
+        setSize( 0x01 );
+    }
 
+    
+    boolean isFree()
+    {
+        int t = data.getInt( 8 );
+        
+        return ( t == 0x01 );
+    }
+    
     /* no qualifier */PageIO copy( PageIO copy )
     {
         // The data
