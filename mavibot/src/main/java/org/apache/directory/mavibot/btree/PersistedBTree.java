@@ -125,7 +125,6 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
         switch ( btreeType )
         {
             case BTREE_OF_BTREES :
-            case COPIED_PAGES_BTREE :
                 // We will create a new cache and a new readTransactions map 
                 init( null );
                 currentBtreeHeader = btreeHeader;
@@ -341,7 +340,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
         // Inject the old B-tree header into the pages to be freed
         // if we are deleting an element from a management BTree
-        if ( ( btreeType == BTreeTypeEnum.BTREE_OF_BTREES ) || ( btreeType == BTreeTypeEnum.COPIED_PAGES_BTREE ) )
+        if ( ( btreeType == BTreeTypeEnum.BTREE_OF_BTREES ) || ( btreeType == BTreeTypeEnum.PERSISTED_SUB ) )
         {
             PageIO[] pageIos = recordManager.readPageIOs( btreeHeader.getBTreeHeaderOffset(), -1L );
 
@@ -399,18 +398,6 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
             case BTREE_OF_BTREES :
                 // The B-tree of B-trees or the copiedPages B-tree has been updated, update the RMheader parameters
                 recordManager.updateRecordManagerHeader( newBtreeHeaderOffset, -1L );
-
-                // We can free the copied pages
-                recordManager.freePages( this, revision, result.getCopiedPages() );
-
-                // Store the new revision
-                storeRevision( newBtreeHeader, recordManager.isKeepRevisions() );
-
-                break;
-
-            case COPIED_PAGES_BTREE :
-                // The B-tree of B-trees or the copiedPages B-tree has been updated, update the RMheader parameters
-                recordManager.updateRecordManagerHeader( -1L, newBtreeHeaderOffset );
 
                 // We can free the copied pages
                 recordManager.freePages( this, revision, result.getCopiedPages() );
@@ -479,9 +466,6 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
             case BTREE_OF_BTREES : 
                 return recordManager.getNewBTreeHeader( RecordManager.BTREE_OF_BTREES_NAME );
                     
-            case COPIED_PAGES_BTREE : 
-                return recordManager.getNewBTreeHeader( RecordManager.COPIED_PAGE_BTREE_NAME );
-                
             default : 
                 return recordManager.getBTreeHeader( getName() );
         }
@@ -520,7 +504,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
         // Inject the old B-tree header into the pages to be freed
         // if we are inserting an element in a management BTree
-        if ( ( btreeType == BTreeTypeEnum.BTREE_OF_BTREES ) || ( btreeType == BTreeTypeEnum.COPIED_PAGES_BTREE ) )
+        if ( ( btreeType == BTreeTypeEnum.BTREE_OF_BTREES ) || ( btreeType == BTreeTypeEnum.PERSISTED_SUB ) )
         {
             PageIO[] pageIos = recordManager.readPageIOs( btreeHeader.getBTreeHeaderOffset(), -1L );
 
@@ -606,18 +590,6 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
             case BTREE_OF_BTREES :
                 // The B-tree of B-trees or the copiedPages B-tree has been updated, update the RMheader parameters
                 recordManager.updateRecordManagerHeader( newBtreeHeaderOffset, -1L );
-
-                // We can free the copied pages
-                recordManager.freePages( this, revision, result.getCopiedPages() );
-
-                // Store the new revision
-                storeRevision( newBtreeHeader, recordManager.isKeepRevisions() );
-
-                break;
-
-            case COPIED_PAGES_BTREE :
-                // The B-tree of B-trees or the copiedPages B-tree has been updated, update the RMheader parameters
-                recordManager.updateRecordManagerHeader( -1L, newBtreeHeaderOffset );
 
                 // We can free the copied pages
                 recordManager.freePages( this, revision, result.getCopiedPages() );

@@ -47,9 +47,6 @@ public enum BTreeTypeEnum
     /** Persisted Management B-tree */
     BTREE_OF_BTREES,
 
-    /** Persisted Management B-tree */
-    COPIED_PAGES_BTREE,
-
     /** In-memory B-tree but saved on disk */
     BACKED_ON_DISK
 }
