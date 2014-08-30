@@ -708,19 +708,15 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
 
 
     /**
-     * Constructs the sub-BTree using bulkload instead of performing sequential inserts.
-     * 
-     * @param btree the sub-BTtree to be constructed
-     * @param dupKeyValues the array of values to be inserted as keys
-     * @return
-     * @throws Exception
+     * {@inheritDoc}
      */
-    private BTree build( PersistedBTree<V, V> btree, V[] dupKeyValues ) throws Exception
+    protected BTree buildSubBTree( BTree<V, V> givenBTree, V[] dupKeyValues ) throws Exception
     {
+        PersistedBTree<V, V> btree = ( PersistedBTree<V, V> ) givenBTree;
+        
         long newRevision = btree.getRevision() + 1;
         
         int numKeysInNode = btree.getPageSize();
-        
         RecordManager rm = btree.getRecordManager();
         
         List<Page<V, V>> lstLeaves = new ArrayList<Page<V, V>>();
@@ -787,7 +783,7 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
         Page oldRoot = btree.getRootPage();
         
         long newRootPageOffset = ( ( AbstractPage ) rootPage ).getOffset();
-        System.out.println( "replacing old offset " + btree.getRootPageOffset() + " of the BTree " + btree.getName() + " with " + newRootPageOffset );
+        //System.out.println( "replacing old offset " + btree.getRootPageOffset() + " of the BTree " + btree.getName() + " with " + newRootPageOffset );
         
         BTreeHeader header = btree.getBtreeHeader();
         
@@ -799,7 +795,7 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
         
         header.setBTreeHeaderOffset( newBtreeHeaderOffset );
         
-        rm.freePages( ( BTree ) btree, btree.getRevision(), ( List ) Arrays.asList( oldRoot ) );
+        rm.free( ( ( AbstractPage ) oldRoot ).getOffset() );
 
         return btree;
     }

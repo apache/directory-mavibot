@@ -134,6 +134,23 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected BTree buildSubBTree( BTree<V, V> btree, V[] dupKeyValues ) throws Exception
+    {
+        for ( V val : dupKeyValues )
+        {
+            // Here, we should insert all the values in one shot then 
+            // write the btree on disk only once.
+            valueBtree.insert( val, null );
+        }
+        
+        return valueBtree;
+    }
+
+
+    /**
      * Set the subBtree in the ValueHolder
      */
     /* No qualifier*/void setSubBtree( BTree<V, V> subBtree )

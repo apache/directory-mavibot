@@ -273,7 +273,18 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      */
     protected abstract void createSubTree();
 
+    
+    /**
+     * Constructs the sub-BTree using bulkload instead of performing sequential inserts.
+     * 
+     * @param btree the sub-BTtree to be constructed
+     * @param dupKeyValues the array of values to be inserted as keys
+     * @return
+     * @throws Exception
+     */
+    protected abstract BTree buildSubBTree( BTree<V, V> btree, V[] dupKeyValues ) throws Exception;
 
+    
     /**
      * Add the value in an array
      */
@@ -287,13 +298,8 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
             try
             {
-                for ( V val : valueArray )
-                {
-                    // Here, we should insert all the values in one shot then 
-                    // write the btree on disk only once.
-                    valueBtree.insert( val, null );
-                }
-
+                buildSubBTree( valueBtree, valueArray );
+                
                 // We can delete the array now
                 nbArrayElems = 0;
                 valueArray = null;
@@ -301,7 +307,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
                 // And inject the new value
                 valueBtree.insert( value, null );
             }
-            catch ( IOException e )
+            catch ( Exception e )
             {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -318,6 +324,8 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             }
             else
             {
+                //FIXME delete the sub-btree if the valueThresholdLow is reached
+                
                 // check that the value is not already present in the ValueHolder
                 int pos = findPos( value );
 
