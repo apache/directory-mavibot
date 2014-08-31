@@ -136,7 +136,7 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
 //                }
                 try
                 {
-                    build( ( PersistedBTree<V, V> ) valueBtree, values );
+                    buildSubBTree( ( PersistedBTree<V, V> ) valueBtree, values );
                 }
                 catch( Exception e )
                 {
