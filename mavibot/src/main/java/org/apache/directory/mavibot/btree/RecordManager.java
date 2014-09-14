@@ -20,6 +20,8 @@
 package org.apache.directory.mavibot.btree;
 
 
+import static org.apache.directory.mavibot.btree.BTreeTypeEnum.PERSISTED_SUB;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -3902,7 +3904,8 @@ public class RecordManager extends AbstractTransactionManager
                     }
                     else
                     {
-                        for ( int i = page.nbElems - 1; i >= 0; i-- )
+                        // the will be nbElems + 1 children
+                        for ( int i = page.nbElems; i >= 0; i-- )
                         {
                             stack.push( ( AbstractPage ) page.children[i].getValue() );
                         }
@@ -3922,6 +3925,261 @@ public class RecordManager extends AbstractTransactionManager
         }
 
         return pageCount;
+    }
+    
+    
+    @SuppressWarnings("all")
+    /* No qualifier */boolean chopTree( PersistedBTree tree, Object key)
+    {
+        AbstractPage root = ( AbstractPage ) tree.getRootPage();
+        
+        try
+        {
+            int pageCount = 0;
+            Stack<ParentPos> stack = new Stack<ParentPos>();
+            AbstractPage page = root;
+            
+            while( true )
+            {
+                int pos = page.findPos( key );
+                
+                ParentPos pp = new ParentPos( page, pos );
+                stack.push( pp );
+                
+                if( pos < 0 )
+                {
+                    if( page instanceof PersistedNode )
+                    {
+                        page = ( AbstractPage ) page.children[-(pos+1)].getValue();
+                        pos = page.findPos( key );
+                        stack.push( new ParentPos( page, pos ) );
+                    }
+                    
+                    break;
+                }
+
+                // no key found
+                if( page instanceof PersistedLeaf )
+                {
+                    return false;
+                }
+                
+                page = ( AbstractPage ) page.children[pos].getValue();
+            }
+
+            long keysToRemove = countKeysUpto( key, tree );
+            
+            boolean isSubTree = ( tree.getType() == PERSISTED_SUB );
+            
+            PersistedPageHolder pageHolder = null;
+            
+            Object leftKey = null;
+            
+            long revision = tree.getRevision();
+            
+            while( !stack.isEmpty() )
+            {
+                ParentPos pp = stack.pop();
+                
+                page = ( AbstractPage ) pp.page;
+                
+                if( page instanceof PersistedLeaf )
+                {
+                    pageCount++;
+                    
+                    PersistedLeaf leaf = ( PersistedLeaf ) page;
+                    int actPos = -( pp.pos + 1 );
+
+                    int nbElems = leaf.nbElems - actPos - 1;
+                    
+                    if( nbElems != 0 )
+                    {
+                        PersistedLeaf newLeaf = ( PersistedLeaf ) BTreeFactory.createLeaf( tree, revision, nbElems );
+                        // Copy the keys and the values
+                        System.arraycopy( leaf.keys, actPos + 1, newLeaf.keys, 0, nbElems );
+                        
+                        if ( !isSubTree )
+                        {
+                            for ( int i = 0; i < nbElems; i++ )
+                            {
+                                try
+                                {
+                                    newLeaf.values[i] = leaf.values[actPos + i + 1].clone();
+                                }
+                                catch ( CloneNotSupportedException e )
+                                {
+                                    // shouldn't happen
+                                    e.printStackTrace();
+                                }
+                            }    
+                        }
+                        
+                        pageHolder = ( PersistedPageHolder ) writePage( tree, newLeaf, revision );
+                        leftKey = newLeaf.keys[0];
+                    }
+                    
+                    if( tree.isAllowDuplicates() )
+                    {
+                        for ( int i = 0; i <= actPos; i++ )
+                        {
+                            ValueHolder vh = leaf.values[i];
+                            
+                            if( vh.isSubBtree() )
+                            {
+                                pageCount += _deleteBTree( ( PersistedBTree ) ( ( PersistedValueHolder ) vh ).valueBtree, pageCount );
+                            }
+                        }
+                    }
+                    
+                    free( page.offset );
+                }
+                else if ( page instanceof PersistedNode )
+                {
+                    int actPos = pp.pos;
+                    
+                    //TODO not completed yet
+                    PersistedNode node = ( PersistedNode ) page;
+                    if ( pp.pos < 0 )
+                    {
+                        actPos = -( actPos + 1 );
+                    }
+                    
+                    int nbElems = node.nbElems - actPos - 1;
+                    int copyStartPos = actPos;
+                    
+                    // no child to point to
+                    if( pageHolder == null )
+                    {
+                        nbElems--;
+                        copyStartPos = actPos + 1;
+                    }
+                    
+                    if( nbElems != 0 )
+                    {
+                        PersistedNode newNode = ( PersistedNode ) BTreeFactory.createNode( tree, revision, nbElems );
+                        // Copy the keys and the values
+                        System.arraycopy( node.keys, copyStartPos, newNode.keys, 0, nbElems );
+                        
+                        System.arraycopy( node.children, copyStartPos, newNode.children, 0, nbElems + 1 );
+                        
+                        if( pageHolder != null )
+                        {
+                            newNode.children[0] = pageHolder;
+                        }
+                        
+                        pageHolder = ( PersistedPageHolder ) writePage( tree, newNode, revision );
+                        leftKey = newNode.keys[0];
+                    }
+                    else
+                    {
+                        free( page.offset );
+                    }
+                }
+            }
+            
+            //update btree header with the new root-page's offset
+            BTreeHeader header = tree.getBtreeHeader();
+            
+            header.setRootPage( pageHolder.getValue() );
+            header.setRevision( tree.getRevision() );
+            
+            // compute 
+            header.setNbElems( tree.getNbElems() - keysToRemove );
+            
+            writeBtreeHeader( tree, header );
+        }
+        catch( IOException e )
+        {
+            LOG.warn( "Failed to free the pages of the tree {}", tree.getName() );
+            LOG.warn( "", e );
+            return false;
+        }
+        
+        return true;
+    }
+    
+
+    /** no qualifier */ long countKeysUpto( Object key, BTree tree )
+    {
+        // count number of keys to be removed
+        long numKeysToRemove = 0;
+        
+        Stack<AbstractPage> pageStack = new Stack<AbstractPage>();
+        
+        AbstractPage root = ( AbstractPage ) tree.getRootPage();
+        pageStack.push( root );
+        
+        int childCount = 0;
+        
+        while( !pageStack.isEmpty() )
+        {
+            AbstractPage abstractPage = pageStack.peek();
+            
+            if( abstractPage instanceof PersistedLeaf )
+            {
+                pageStack.pop();
+                
+                PersistedLeaf leaf = ( PersistedLeaf ) abstractPage;
+                
+                int pos = leaf.findPos( key );
+                boolean found = ( pos < 0 ? true : false );
+                if ( found )
+                {
+                    pos = -(pos + 1);
+                }
+                
+                if( tree.isAllowDuplicates() )
+                {
+                    for( int i=0; i < leaf.values.length; i++ )
+                    {
+                        if( found && ( i > pos ) )
+                        {
+                            break;
+                        }
+                        ValueHolder vh = leaf.values[i];
+                        numKeysToRemove += ( ( PersistedValueHolder ) vh ).size();
+                    }
+                }
+                else
+                {
+                    if( found )
+                    {
+                        numKeysToRemove += (pos + 1);
+                    }
+                    else
+                    {
+                        numKeysToRemove += leaf.nbElems;
+                    }
+                }
+                
+                if ( found )
+                {
+                    break;
+                }
+                
+                if ( !pageStack.isEmpty() )
+                {
+                    childCount++;
+                }
+            }
+            else if ( abstractPage instanceof PersistedNode )
+            {
+                if ( abstractPage.nbElems == ( childCount - 1 ) )
+                {
+                    pageStack.pop();
+                    childCount = 0;
+                }
+                else
+                {
+                    for ( int i = abstractPage.nbElems; i >= 0; i-- )
+                    {
+                        pageStack.push( ( AbstractPage ) abstractPage.children[i].getValue() );
+                    }
+                }
+            }
+        }
+        
+        return numKeysToRemove;
     }
     
     
