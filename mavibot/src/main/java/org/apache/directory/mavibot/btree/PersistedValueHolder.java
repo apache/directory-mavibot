@@ -121,22 +121,16 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
             {
                 // Use a sub btree, now that we have reached the threshold
                 createSubTree();
-
-//             // Now inject all the values into it
-//                for ( V value : values )
-//                {
-//                    try
-//                    {
-//                        valueBtree.insert( value, value );
-//                    }
-//                    catch ( IOException e )
-//                    {
-//                        e.printStackTrace();
-//                    }
-//                }
                 try
                 {
-                    buildSubBTree( ( PersistedBTree<V, V> ) valueBtree, values );
+                    if( values.length == 1 )
+                    {
+                        add( values[0] );
+                    }
+                    else
+                    {
+                        buildSubBTree( ( PersistedBTree<V, V> ) valueBtree, values );
+                    }
                 }
                 catch( Exception e )
                 {
@@ -783,7 +777,7 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
         Page oldRoot = btree.getRootPage();
         
         long newRootPageOffset = ( ( AbstractPage ) rootPage ).getOffset();
-        //System.out.println( "replacing old offset " + btree.getRootPageOffset() + " of the BTree " + btree.getName() + " with " + newRootPageOffset );
+        System.out.println( "replacing old offset " + btree.getRootPageOffset() + " of the BTree " + btree.getName() + " with " + newRootPageOffset );
         
         BTreeHeader header = btree.getBtreeHeader();
         
