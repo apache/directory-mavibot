@@ -140,6 +140,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             if ( page == null )
             {
                 System.out.println( "Page is null for pos = " + pos + ", children = " + children[pos] );
+                return false;
             }
 
             return page.hasKey( key );
