@@ -3950,7 +3950,7 @@ public class RecordManager extends AbstractTransactionManager
                 {
                     if( page instanceof PersistedNode )
                     {
-                        page = ( AbstractPage ) page.children[-(pos+1)].getValue();
+                        page = ( AbstractPage ) page.children[-(pos+1) + 1].getValue();
                         pos = page.findPos( key );
                         stack.push( new ParentPos( page, pos ) );
                     }
@@ -4017,6 +4017,14 @@ public class RecordManager extends AbstractTransactionManager
                         pageHolder = ( PersistedPageHolder ) writePage( tree, newLeaf, revision );
                         leftKey = newLeaf.keys[0];
                     }
+                    else
+                    {
+                        if ( page.offset == root.offset )
+                        {
+                            PersistedLeaf newLeaf = ( PersistedLeaf ) BTreeFactory.createLeaf( tree, revision, nbElems );
+                            pageHolder = ( PersistedPageHolder ) writePage( tree, newLeaf, revision );
+                        }
+                    }
                     
                     if( tree.isAllowDuplicates() )
                     {
@@ -4044,7 +4052,7 @@ public class RecordManager extends AbstractTransactionManager
                         actPos = -( actPos + 1 );
                     }
                     
-                    int nbElems = node.nbElems - actPos - 1;
+                    int nbElems = node.nbElems;
                     int copyStartPos = actPos;
                     
                     // no child to point to
@@ -4052,6 +4060,19 @@ public class RecordManager extends AbstractTransactionManager
                     {
                         nbElems--;
                         copyStartPos = actPos + 1;
+                    }
+                    else if ( pp.pos < 0 )
+                    {
+                        nbElems = node.nbElems - actPos - 1;
+                        copyStartPos = actPos + 1;
+                    }
+                    
+                    if ( ( pageHolder != null ) && ( nbElems == 0 ) )
+                    {
+                        if( node.children.length == 2 )
+                        {
+                            nbElems = 1;
+                        }
                     }
                     
                     if( nbElems != 0 )
@@ -4069,10 +4090,22 @@ public class RecordManager extends AbstractTransactionManager
                         
                         pageHolder = ( PersistedPageHolder ) writePage( tree, newNode, revision );
                         leftKey = newNode.keys[0];
+                        
+                        free( page.offset );
                     }
                     else
                     {
                         free( page.offset );
+                        
+                        if ( page.offset == root.offset )
+                        {
+                            pageHolder = new PersistedPageHolder( tree, page.children[actPos + 1].getValue() );
+                        }
+                        else
+                        {
+                            PersistedNode newNode = ( PersistedNode ) BTreeFactory.createNode( tree, revision, 1 );
+                            //newNode.keys[0].key = leftKey;
+                        }
                     }
                 }
             }
@@ -4099,6 +4132,9 @@ public class RecordManager extends AbstractTransactionManager
     }
     
 
+    /**
+     * counts the number of keys present upto and including the given key
+     */
     /** no qualifier */ long countKeysUpto( Object key, BTree tree )
     {
         // count number of keys to be removed
