@@ -20,6 +20,9 @@
 package org.apache.directory.mavibot.btree;
 
 
+import java.util.Comparator;
+
+
 /**
  * The Tuple class is used when we browse a btree, it will contain the results
  * fetched from the btree.
@@ -29,13 +32,16 @@ package org.apache.directory.mavibot.btree;
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
  */
-public class Tuple<K, V>
+public class Tuple<K, V> implements Comparable<Tuple<K, V>>
 {
     /** The key */
     protected K key;
 
     /** The value */
     protected V value;
+
+    /** The key comparator */
+    protected Comparator<K> keyComparator;
 
 
     /**
@@ -55,6 +61,19 @@ public class Tuple<K, V>
     {
         this.key = key;
         this.value = value;
+    }
+
+
+    /**
+     * Creates a Tuple containing a key and its associated value.
+     * @param key The key
+     * @param value The associated value
+     */
+    public Tuple( K key, V value, Comparator<K> keyComparator )
+    {
+        this.key = key;
+        this.value = value;
+        this.keyComparator = keyComparator;
     }
 
 
@@ -91,6 +110,77 @@ public class Tuple<K, V>
     public void setValue( V value )
     {
         this.value = value;
+    }
+
+
+    /**
+     * @see Object#hashCode()
+     */
+    @Override
+    public int hashCode()
+    {
+        return key.hashCode();
+    }
+
+
+    /**
+     * @see Object#equals()
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public boolean equals( Object obj )
+    {
+        if ( this == obj )
+        {
+            return true;
+        }
+
+        if ( !( obj instanceof Tuple ) )
+        {
+            return false;
+        }
+
+        if ( this.key == null )
+        {
+            return ( ( Tuple<K, V> ) obj ).key == null;
+        }
+
+        return this.key.equals( ( ( Tuple<K, V> ) obj ).key );
+    }
+
+
+    /**
+     * @see java.lang.Comparable#compareTo(java.lang.Object)
+     */
+    @Override
+    public int compareTo( Tuple<K, V> t )
+    {
+        if ( keyComparator != null )
+        {
+            return keyComparator.compare( key, t.key );
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+
+    /**
+     * @return the keyComparator
+     */
+    public Comparator<K> getKeyComparator()
+    {
+        return keyComparator;
+    }
+
+
+    /**
+     * @param keyComparator the keyComparator to set
+     */
+    public void setKeyComparator( Comparator<K> keyComparator )
+    {
+        this.keyComparator = keyComparator;
     }
 
 
