@@ -77,6 +77,7 @@ import org.slf4j.LoggerFactory;
     /** The Journal channel */
     private FileChannel journalChannel = null;
 
+
     /**
      * Creates a new BTree, with no initialization.
      */
@@ -137,7 +138,7 @@ import org.slf4j.LoggerFactory;
         newBtreeHeader.setRootPage( new InMemoryLeaf<K, V>( this ) );
         newBtreeHeader.setRootPageOffset( 0L );
 
-        btreeRevisions.put( 0L,  newBtreeHeader );
+        btreeRevisions.put( 0L, newBtreeHeader );
         currentBtreeHeader = newBtreeHeader;
 
         // Now, initialize the BTree
@@ -180,7 +181,7 @@ import org.slf4j.LoggerFactory;
 
         // Create the queue containing the pending read transactions
         readTransactions = new ConcurrentLinkedQueue<ReadTransaction<K, V>>();
-        
+
         // Create the transaction manager
         transactionManager = new InMemoryTransactionManager();
 
@@ -236,8 +237,8 @@ import org.slf4j.LoggerFactory;
 
         return readTransaction;
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
@@ -247,7 +248,7 @@ import org.slf4j.LoggerFactory;
 
         if ( btreeHeader != null )
         {
-            ReadTransaction<K, V> readTransaction = new ReadTransaction<K, V>(  btreeHeader, readTransactions );
+            ReadTransaction<K, V> readTransaction = new ReadTransaction<K, V>( btreeHeader, readTransactions );
 
             readTransactions.add( readTransaction );
 
@@ -520,40 +521,40 @@ import org.slf4j.LoggerFactory;
         try
         {
             TupleCursor<K, V> cursor = browse();
-    
+
             if ( keySerializer == null )
             {
                 throw new MissingSerializerException( "Cannot flush the btree without a Key serializer" );
             }
-    
+
             if ( valueSerializer == null )
             {
                 throw new MissingSerializerException( "Cannot flush the btree without a Value serializer" );
             }
-    
+
             // Write the number of elements first
             bb.putLong( getBtreeHeader().getNbElems() );
-    
+
             while ( cursor.hasNext() )
             {
                 Tuple<K, V> tuple = cursor.next();
-    
+
                 byte[] keyBuffer = keySerializer.serialize( tuple.getKey() );
-    
+
                 writeBuffer( ch, bb, keyBuffer );
-    
+
                 byte[] valueBuffer = valueSerializer.serialize( tuple.getValue() );
-    
+
                 writeBuffer( ch, bb, valueBuffer );
             }
-    
+
             // Write the buffer if needed
             if ( bb.position() > 0 )
             {
                 bb.flip();
                 ch.write( bb );
             }
-    
+
             // Flush to the disk for real
             ch.force( true );
             ch.close();
@@ -741,6 +742,20 @@ import org.slf4j.LoggerFactory;
 
 
     /**
+     * Set the file path where the journal will be stored
+     * 
+     * @param filePath The file path
+     */
+    public void setFilePath( String filePath )
+    {
+        if ( filePath != null )
+        {
+            envDir = new File( filePath );
+        }
+    }
+
+
+    /**
      * @return the journal
      */
     public File getJournal()
@@ -836,8 +851,8 @@ import org.slf4j.LoggerFactory;
             case BACKED_ON_DISK:
                 sb.append( "Persistent " );
                 break;
-                
-            default :
+
+            default:
                 sb.append( "Wrong type... " );
                 break;
         }
