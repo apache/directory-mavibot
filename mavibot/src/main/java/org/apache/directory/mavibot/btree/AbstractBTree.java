@@ -93,9 +93,10 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
     /** The current revision */
     protected AtomicLong currentRevision = new AtomicLong( 0L );
-    
+
     /** The TransactionManager used for this BTree */
     protected TransactionManager transactionManager;
+
 
     /**
      * Starts a Read Only transaction. If the transaction is not closed, it will be
@@ -125,7 +126,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         {
             throw new BTreeCreationException( "We don't have a transactionLManager" );
         }
-        
+
         ReadTransaction<K, V> transaction = beginReadTransaction();
 
         if ( transaction == null )
@@ -134,7 +135,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         }
         else
         {
-            ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
+            ParentPos<K, V>[] stack = ( ParentPos<K, V>[] ) Array.newInstance( ParentPos.class, 32 );
 
             TupleCursor<K, V> cursor = getRootPage().browse( transaction, stack, 0 );
 
@@ -165,7 +166,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         }
         else
         {
-            ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
+            ParentPos<K, V>[] stack = ( ParentPos<K, V>[] ) Array.newInstance( ParentPos.class, 32 );
 
             // And get the cursor
             TupleCursor<K, V> cursor = getRootPage( transaction.getRevision() ).browse( transaction, stack, 0 );
@@ -188,13 +189,13 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
         ReadTransaction<K, V> transaction = beginReadTransaction();
 
-        ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
+        ParentPos<K, V>[] stack = ( ParentPos<K, V>[] ) Array.newInstance( ParentPos.class, 32 );
 
         TupleCursor<K, V> cursor;
         try
         {
             cursor = getRootPage( transaction.getRevision() ).browse( key, transaction, stack, 0 );
-            
+
             return cursor;
         }
         catch ( KeyNotFoundException e )
@@ -223,7 +224,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         }
         else
         {
-            ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
+            ParentPos<K, V>[] stack = ( ParentPos<K, V>[] ) Array.newInstance( ParentPos.class, 32 );
 
             // And get the cursor
             TupleCursor<K, V> cursor = getRootPage( transaction.getRevision() ).browse( key, transaction, stack, 0 );
@@ -332,7 +333,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         {
             // We have had an exception, we must rollback the transaction
             transactionManager.rollback();
-            
+
             return null;
         }
     }
@@ -364,15 +365,15 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         try
         {
             Tuple<K, V> deleted = delete( key, value, currentRevision.get() + 1 );
-            
+
             transactionManager.commit();
-    
+
             return deleted;
         }
         catch ( IOException ioe )
         {
             transactionManager.rollback();
-            
+
             throw ioe;
         }
     }
@@ -418,7 +419,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         {
             transactionManager.beginTransaction();
         }
-        
+
         try
         {
             InsertResult<K, V> result = insert( key, value, -1L );
@@ -431,14 +432,14 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             {
                 existingValue = ( ( ModifyResult<K, V> ) result ).getModifiedValue();
             }
-            
+
             // Commit now if it's not a sub-btree
             if ( btreeType != BTreeTypeEnum.PERSISTED_SUB )
             {
                 //FIXME when result type is ExistsResult then we should avoid writing the headers
                 transactionManager.commit();
             }
-    
+
             return existingValue;
         }
         catch ( IOException ioe )
@@ -449,7 +450,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             {
                 transactionManager.rollback();
             }
-            
+
             return null;
         }
         catch ( DuplicateValueNotAllowedException e )
@@ -771,7 +772,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
         currentRevision.set( revision );
         currentBtreeHeader = btreeHeader;
-        
+
         // And update the newBTreeHeaders map
         if ( btreeHeader.getBtree().getType() != BTreeTypeEnum.PERSISTED_SUB )
         {
@@ -794,7 +795,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
         currentRevision.set( revision );
         currentBtreeHeader = btreeHeader;
-        
+
         // And update the newBTreeHeaders map
         if ( btreeHeader.getBtree().getType() != BTreeTypeEnum.PERSISTED_SUB )
         {
@@ -907,9 +908,18 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     /**
      * {@inheritDoc}
      */
-    public Comparator<K> getComparator()
+    public Comparator<K> getKeyComparator()
     {
         return keySerializer.getComparator();
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public Comparator<V> getValueComparator()
+    {
+        return valueSerializer.getComparator();
     }
 
 
@@ -1012,7 +1022,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         {
             throw new BTreeCreationException( "We don't have a Transaction Manager" );
         }
-        
+
         ReadTransaction transaction = beginReadTransaction();
 
         if ( transaction == null )
@@ -1021,7 +1031,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         }
         else
         {
-            ParentPos<K, K>[] stack = (ParentPos<K, K>[]) Array.newInstance( ParentPos.class, 32 );
+            ParentPos<K, K>[] stack = ( ParentPos<K, K>[] ) Array.newInstance( ParentPos.class, 32 );
 
             KeyCursor<K> cursor = getRootPage().browseKeys( transaction, stack, 0 );
 
@@ -1032,7 +1042,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         }
     }
 
-    
+
     /**
      * Create a thread that is responsible of cleaning the transactions when
      * they hit the timeout

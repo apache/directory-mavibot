@@ -36,7 +36,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
-import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
 import org.junit.After;
@@ -98,7 +97,7 @@ public class PersistedBTreeBrowseTest
         {
             FileUtils.deleteDirectory( dataDir );
         }
-        
+
         recordManager1.close();
         assertTrue( recordManager1.isContextOk() );
     }
@@ -416,12 +415,12 @@ public class PersistedBTreeBrowseTest
         assertEquals( "3", tuple.getValue() );
 
         // Now, move to the prev value
-        cursor.prev();
+        tuple = cursor.prev();
         assertEquals( 2L, ( long ) tuple.getKey() );
         assertEquals( "2", tuple.getValue() );
 
         // And to the next value
-        cursor.next();
+        tuple = cursor.next();
         assertEquals( 3L, ( long ) tuple.getKey() );
         assertEquals( "3", tuple.getValue() );
     }
@@ -716,7 +715,8 @@ public class PersistedBTreeBrowseTest
      * stored into a sub btree
      */
     @Test
-    public void testBrowseBTreeLeafNextDupsSubBTree1() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
+    public void testBrowseBTreeLeafNextDupsSubBTree1() throws IOException, BTreeAlreadyManagedException,
+        KeyNotFoundException
     {
         // Inject some duplicate data which will be stored into a sub btree
         for ( long i = 1L; i < 32L; i++ )
@@ -748,7 +748,8 @@ public class PersistedBTreeBrowseTest
      * Test the browse methods on a btree containing just a leaf with duplicate values
      */
     @Test
-    public void testBrowseBTreeLeafPrevDupsSubBTree1() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
+    public void testBrowseBTreeLeafPrevDupsSubBTree1() throws IOException, BTreeAlreadyManagedException,
+        KeyNotFoundException
     {
         // Inject some duplicate data which will be stored into a sub btree
         for ( long i = 1L; i < 32L; i++ )
@@ -911,7 +912,7 @@ public class PersistedBTreeBrowseTest
 
         // Create the cursor
         TupleCursor<Long, String> cursor = btree.browseFrom( 1500L );
-        
+
         assertFalse( cursor.hasNext() );
         assertTrue( cursor.hasPrev() );
         assertEquals( 1000L, cursor.prev().getKey().longValue() );
@@ -1009,55 +1010,55 @@ public class PersistedBTreeBrowseTest
         }
     }
 
-    
+
     /**
      * Test the TupleCursor.nextKey method on a btree containing nodes
      * with duplicate values.
      */
-   @Test
-   @Ignore
-   public void testNextKeyDups() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
-   {
-       // Inject some data
-       //for ( long i = 1; i < 3; i++ )
-       {
-           for ( long j = 1; j < 9; j++ )
-           {
-               btree.insert( 1L, Long.toString( j ) );
-           }
-       }
+    @Test
+    @Ignore
+    public void testNextKeyDups() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
+    {
+        // Inject some data
+        //for ( long i = 1; i < 3; i++ )
+        {
+            for ( long j = 1; j < 9; j++ )
+            {
+                btree.insert( 1L, Long.toString( j ) );
+            }
+        }
 
-       btree.insert( 1L, "10" );
+        btree.insert( 1L, "10" );
 
-       // Create the cursor
-       TupleCursor<Long, String> cursor = btree.browse();
+        // Create the cursor
+        TupleCursor<Long, String> cursor = btree.browse();
 
-       // Move forward
-       cursor.beforeFirst();
+        // Move forward
+        cursor.beforeFirst();
 
-       assertFalse( cursor.hasPrevKey() );
-       assertTrue( cursor.hasNextKey() );
+        assertFalse( cursor.hasPrevKey() );
+        assertTrue( cursor.hasNextKey() );
 
-       Tuple<Long, String> tuple = cursor.nextKey();
+        Tuple<Long, String> tuple = cursor.nextKey();
 
-       checkTuple( tuple, 1L, "1" );
-       
-       cursor.beforeFirst();
-       long val = 1L;
-       
-       while ( cursor.hasNext() )
-       {
-           tuple = cursor.next();
-           
-           assertEquals( Long.valueOf( 1L ), tuple.getKey() );
-           assertEquals( Long.toString( val ), tuple.getValue() );
-           
-           val++;
-       }
-       
-       assertFalse( cursor.hasNextKey() );
-       assertFalse( cursor.hasPrevKey() );
-   }
+        checkTuple( tuple, 1L, "1" );
+
+        cursor.beforeFirst();
+        long val = 1L;
+
+        while ( cursor.hasNext() )
+        {
+            tuple = cursor.next();
+
+            assertEquals( Long.valueOf( 1L ), tuple.getKey() );
+            assertEquals( Long.toString( val ), tuple.getValue() );
+
+            val++;
+        }
+
+        assertFalse( cursor.hasNextKey() );
+        assertFalse( cursor.hasPrevKey() );
+    }
 
 
     /**
@@ -1106,8 +1107,8 @@ public class PersistedBTreeBrowseTest
             }
         }
     }
-    
-    
+
+
     /**
      * Test the overwriting of elements
      */
@@ -1115,14 +1116,14 @@ public class PersistedBTreeBrowseTest
     public void testOverwrite() throws Exception
     {
         btree.setAllowDuplicates( false );
-        
+
         // Adding an element with a null value
         btree.insert( 1L, "1" );
 
         assertTrue( btree.hasKey( 1L ) );
 
         assertEquals( "1", btree.get( 1L ) );
-        
+
         btree.insert( 1L, "10" );
 
         assertTrue( btree.hasKey( 1L ) );
@@ -1131,17 +1132,17 @@ public class PersistedBTreeBrowseTest
         btree.close();
     }
 
-    
+
     @Ignore("test used for debugging")
     @Test
     public void testAdd20Random() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
-        long [] values = new long[]
-            { 
-                14,  7, 43, 37, 49,  3, 20, 26, 17, 29, 
-                40, 33, 21, 18,  9, 30, 45, 36, 12,  8
-            };
-    
+        long[] values = new long[]
+            {
+                14, 7, 43, 37, 49, 3, 20, 26, 17, 29,
+                40, 33, 21, 18, 9, 30, 45, 36, 12, 8
+        };
+
         btree.setPageSize( 4 );
         // Inject some data
         for ( long value : values )
@@ -1150,13 +1151,12 @@ public class PersistedBTreeBrowseTest
             System.out.println( btree );
         }
 
-
         Map copiedPagesBtree = recordManager1.copiedPageMap;
-        
+
         System.out.println( copiedPagesBtree );
-        
+
         TupleCursor<Long, String> cursor = btree.browse();
-        
+
         while ( cursor.hasNext() )
         {
             System.out.println( cursor.nextKey() );

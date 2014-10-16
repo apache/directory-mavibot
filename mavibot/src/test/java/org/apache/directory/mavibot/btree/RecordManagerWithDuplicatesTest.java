@@ -86,7 +86,7 @@ public class RecordManagerWithDuplicatesTest
         {
             FileUtils.deleteDirectory( dataDir );
         }
-        
+
         recordManager.close();
         assertTrue( recordManager.isContextOk() );
     }
@@ -130,7 +130,7 @@ public class RecordManagerWithDuplicatesTest
         BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
-        assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
+        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
         assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
         assertEquals( btree.getName(), btree1.getName() );
         assertEquals( btree.getNbElems(), btree1.getNbElems() );

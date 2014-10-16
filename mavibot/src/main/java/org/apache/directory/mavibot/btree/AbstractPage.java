@@ -511,7 +511,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             return -1;
         }
 
-        return btree.getComparator().compare( key1, key2 );
+        return btree.getKeyComparator().compare( key1, key2 );
     }
 
 

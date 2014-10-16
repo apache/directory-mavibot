@@ -30,9 +30,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -141,7 +139,7 @@ public class RecordManagerTest
         BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
-        assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
+        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
         assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
         assertEquals( btree.getName(), btree1.getName() );
         assertEquals( btree.getNbElems(), btree1.getNbElems() );
@@ -175,7 +173,7 @@ public class RecordManagerTest
         BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
-        assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
+        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
         assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
         assertEquals( btree.getName(), btree1.getName() );
         assertEquals( btree.getNbElems(), btree1.getNbElems() );
@@ -216,7 +214,6 @@ public class RecordManagerTest
             assertEquals( "V" + i, btree.get( i ) );
         }
 
-        
         // Now, try to reload the file back
         openRecordManagerAndBtree();
 
@@ -230,7 +227,7 @@ public class RecordManagerTest
         BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
-        assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
+        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
         assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
         assertEquals( btree.getName(), btree1.getName() );
         assertEquals( btree.getNbElems(), btree1.getNbElems() );
@@ -316,7 +313,7 @@ public class RecordManagerTest
         BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
-        assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
+        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
         assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
         assertEquals( btree.getName(), btree1.getName() );
         assertEquals( btree.getNbElems(), btree1.getNbElems() );
@@ -454,7 +451,7 @@ public class RecordManagerTest
         BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
-        assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
+        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
         assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
         assertEquals( btree.getName(), btree1.getName() );
         assertEquals( btree.getNbElems(), btree1.getNbElems() );
@@ -525,7 +522,7 @@ public class RecordManagerTest
         BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
-        assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
+        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
         assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
         assertEquals( btree.getName(), btree1.getName() );
         assertEquals( btree.getNbElems(), btree1.getNbElems() );
@@ -616,7 +613,7 @@ public class RecordManagerTest
         BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
-        assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
+        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
         assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
         assertEquals( btree.getName(), btree1.getName() );
         assertEquals( btree.getNbElems(), btree1.getNbElems() );
@@ -713,7 +710,7 @@ public class RecordManagerTest
         BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
-        assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
+        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
         assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
         assertEquals( btree.getName(), btree1.getName() );
         assertEquals( btree.getNbElems(), btree1.getNbElems() );
@@ -808,7 +805,7 @@ public class RecordManagerTest
         BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
-        assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
+        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
         assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
         assertEquals( btree.getName(), btree1.getName() );
         assertEquals( btree.getNbElems(), btree1.getNbElems() );
@@ -887,10 +884,10 @@ public class RecordManagerTest
             }
         }
     }
-    
-    
+
+
     @Test
-    public void testAdds() throws IOException, BTreeAlreadyManagedException,KeyNotFoundException
+    public void testAdds() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
         btree.insert( 1L, "V1" );
         btree.insert( 2L, "V2" );
