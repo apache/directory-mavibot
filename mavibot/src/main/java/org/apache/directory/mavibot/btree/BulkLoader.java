@@ -34,6 +34,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 
 import org.apache.directory.mavibot.btree.comparator.IntComparator;
@@ -164,13 +165,7 @@ public class BulkLoader<K, V>
 
             if ( nbRead < chunkSize )
             {
-                if ( nbIteration == 1 )
-                {
-                    // We have read all the data in one round trip, let's get out, no need
-                    // to store the data on disk
-                    ;
-                }
-                else
+                if ( nbIteration != 1 )
                 {
                     // Flush the sorted data on disk and exit
                     inMemory = false;
@@ -1121,8 +1116,8 @@ public class BulkLoader<K, V>
 
         // We will read only one element at a time from each file
         final Tuple<K, Set<V>>[] readTuples = new Tuple[nbFiles];
-        final TreeSet<Tuple<K, Integer>> candidateSet =
-            new TreeSet<Tuple<K, Integer>>(
+        final TreeMap<Tuple<K, Integer>, Set<V>> candidates =
+            new TreeMap<Tuple<K, Integer>, Set<V>>(
                 new TupleComparator<K, Integer>( btree.getKeyComparator(), IntComparator.INSTANCE ) );
 
         // Read the tuple from each files
@@ -1137,10 +1132,16 @@ public class BulkLoader<K, V>
                     Tuple<K, Integer> candidate = new Tuple<K, Integer>( readTuples[i].key, i, btree.getKeySerializer()
                         .getComparator() );
 
-                    if ( !candidateSet.contains( candidate ) )
+                    if ( !candidates.containsKey( candidate ) )
                     {
-                        candidateSet.add( candidate );
+                        candidates.put( candidate, readTuples[i].getValue() );
                         break;
+                    }
+                    else
+                    {
+                        // We have to merge the pulled tuple with the existing one, and read one more tuple
+                        Set<V> oldValues = candidates.get( candidate );
+                        oldValues.addAll( readTuples[i].getValue() );
                     }
                 }
                 else
@@ -1156,23 +1157,46 @@ public class BulkLoader<K, V>
             public Tuple<K, Set<V>> next()
             {
                 // Get the first candidate
-                Tuple<K, Integer> tupleCandidate = candidateSet.first();
+                Tuple<K, Integer> tupleCandidate = candidates.firstKey();
 
                 // Remove it from the set
-                candidateSet.remove( tupleCandidate );
+                candidates.remove( tupleCandidate );
 
                 // Get the the next tuple from the stream we just got the tuple from
                 Tuple<K, Set<V>> tuple = readTuples[tupleCandidate.value];
 
-                // fetch it from the disk and store it into its reader
-                readTuples[tupleCandidate.value] = fetchTuple( btree, streams[tupleCandidate.value] );
-
-                if ( readTuples[tupleCandidate.value] != null )
+                // fetch the next tuple from the file we just read teh candidate from 
+                while ( true )
                 {
-                    // And store it into the candidate set
-                    Tuple<K, Integer> newTuple = new Tuple<K, Integer>( readTuples[tupleCandidate.value].key,
-                        tupleCandidate.value );
-                    candidateSet.add( newTuple );
+                    // fetch it from the disk and store it into its reader
+                    readTuples[tupleCandidate.value] = fetchTuple( btree, streams[tupleCandidate.value] );
+
+                    if ( readTuples[tupleCandidate.value] == null )
+                    {
+                        // No more tuple for this file
+                        break;
+                    }
+
+                    if ( readTuples[tupleCandidate.value] != null )
+                    {
+                        // And store it into the candidate set
+                        Set<V> oldValues = candidates.get( readTuples[tupleCandidate.value] );
+
+                        if ( oldValues != null )
+                        {
+                            // We already have another element with the same key, merge them
+                            oldValues.addAll( readTuples[tupleCandidate.value].value );
+                        }
+                        else
+                        {
+                            Tuple<K, Integer> newTuple = new Tuple<K, Integer>( readTuples[tupleCandidate.value].key,
+                                tupleCandidate.value );
+                            candidates.put( newTuple, readTuples[tupleCandidate.value].getValue() );
+
+                            // and exit the loop
+                            break;
+                        }
+                    }
                 }
 
                 // We can now return the found value
@@ -1184,7 +1208,7 @@ public class BulkLoader<K, V>
             public boolean hasNext()
             {
                 // Check that we have at least one element to read
-                return !candidateSet.isEmpty();
+                return !candidates.isEmpty();
             }
 
 
