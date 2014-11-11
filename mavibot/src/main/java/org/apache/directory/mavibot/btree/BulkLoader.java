@@ -130,41 +130,25 @@ public class BulkLoader<K, V>
 
 
     /**
-     * Bulk Load data into a persisted BTree
+     * Process the data, and creates files to store them sorted if necessary, or store them
+     * TODO readElements.
      *
-     * @param btree The persisted BTree in which we want to load the data
-     * @param iterator The iterator over the data to bulkload
-     * @param chunkSize The number of elements we may store in memory at each iteration
-     * @throws IOException If there is a problem while processing the data
+     * @param btree
+     * @param iterator
+     * @param sortedFiles
+     * @param tuples
+     * @param chunkSize
+     * @return
+     * @throws IOException
      */
-    public BTree<K, V> load( PersistedBTree<K, V> btree, Iterator<Tuple<K, V>> iterator, int chunkSize )
-        throws IOException
+    private int readElements( BTree<K, V> btree, Iterator<Tuple<K, V>> iterator, List<File> sortedFiles,
+        List<Tuple<K, V>> tuples, int chunkSize ) throws IOException
     {
-        if ( btree == null )
-        {
-            throw new RuntimeException( "Invalid BTree : it's null" );
-        }
-
-        if ( iterator == null )
-        {
-            // Nothing to do...
-            return null;
-        }
-
-        // Iterate through the elements by chunk
         int nbRead = 0;
         int nbIteration = 0;
-        boolean inMemory = true;
         int nbElems = 0;
+        boolean inMemory = true;
 
-        // An array of chukSize tuple max
-        List<Tuple<K, V>> tuples = new ArrayList<Tuple<K, V>>( chunkSize );
-
-        // The list of files we will use to store the sorted chunks
-        List<File> sortedFiles = new ArrayList<File>();
-
-        // Now, start to read all the tuples to sort them. We may use intermediate files
-        // for that purpose if we hit the threshold.
         while ( true )
         {
             nbIteration++;
@@ -184,7 +168,7 @@ public class BulkLoader<K, V>
                 {
                     // We have read all the data in one round trip, let's get out, no need
                     // to store the data on disk
-                    sortedFiles.add( flushToDisk( nbIteration, tuples, btree ) );
+                    ;
                 }
                 else
                 {
@@ -227,6 +211,56 @@ public class BulkLoader<K, V>
             }
         }
 
+        if ( !inMemory )
+        {
+            tuples.clear();
+        }
+
+        return nbElems;
+    }
+
+
+    /**
+     * Bulk Load data into a persisted BTree
+     *
+     * @param btree The persisted BTree in which we want to load the data
+     * @param iterator The iterator over the data to bulkload
+     * @param chunkSize The number of elements we may store in memory at each iteration
+     * @throws IOException If there is a problem while processing the data
+     */
+    public BTree<K, V> load( PersistedBTree<K, V> btree, Iterator<Tuple<K, V>> iterator, int chunkSize )
+        throws IOException
+    {
+        if ( btree == null )
+        {
+            throw new RuntimeException( "Invalid BTree : it's null" );
+        }
+
+        if ( iterator == null )
+        {
+            // Nothing to do...
+            return null;
+        }
+
+        // Iterate through the elements by chunk
+        boolean inMemory = true;
+
+        // The list of files we will use to store the sorted chunks
+        List<File> sortedFiles = new ArrayList<File>();
+
+        // An array of chukSize tuple max
+        List<Tuple<K, V>> tuples = new ArrayList<Tuple<K, V>>( chunkSize );
+
+        // Now, start to read all the tuples to sort them. We may use intermediate files
+        // for that purpose if we hit the threshold.
+        int nbElems = readElements( btree, iterator, sortedFiles, tuples, chunkSize );
+
+        // If the tuple list is empty, we have to process the load based on files, not in memory
+        if ( nbElems > 0 )
+        {
+            inMemory = tuples.size() > 0;
+        }
+
         // Now that we have processed all the data, we can start storing them in the btree
         Iterator<Tuple<K, Set<V>>> dataIterator = null;
         FileInputStream[] streams = null;
@@ -236,7 +270,6 @@ public class BulkLoader<K, V>
             // Here, we have all the data in memory, no need to merge files
             // We will build a simple iterator over the data
             dataIterator = createTupleIterator( btree, tuples );
-
         }
         else
         {
@@ -256,7 +289,7 @@ public class BulkLoader<K, V>
         // target btree.
         BTree<K, V> resultBTree = bulkLoad( btree, dataIterator, nbElems );
 
-        // Now, close the FileInputStream if we have some
+        // Now, close the FileInputStream, and delete them if we have some
         if ( !inMemory )
         {
             int nbFiles = sortedFiles.size();
@@ -264,6 +297,7 @@ public class BulkLoader<K, V>
             for ( int i = 0; i < nbFiles; i++ )
             {
                 streams[i].close();
+                sortedFiles.get( i ).delete();
             }
         }
 
@@ -775,19 +809,9 @@ public class BulkLoader<K, V>
 
         // Now, let's fill the levels
         LevelInfo leafLevel = levels.get( 0 );
-        int nbRead = 0;
 
         while ( dataIterator.hasNext() )
         {
-            nbRead++;
-            //System.out.println( "Adding #" + nbRead );
-            //System.out.println( "--------------------------------------------------------" );
-
-            //for ( int i = 0; i < leafLevel.currentPage.getNbElems(); i++ )
-            //{
-            //    System.out.println( "Key[" + i + "] = " + leafLevel.currentPage.getKey( i ) );
-            //}
-
             // let's fill page up to the point all the complete pages have been filled
             if ( leafLevel.nbAddedElems < leafLevel.nbElemsLimit )
             {
@@ -800,7 +824,6 @@ public class BulkLoader<K, V>
                 // The page is completed, update the parent's node and create a new current page
                 if ( leafLevel.currentPos == pageSize )
                 {
-                    //System.out.println( leafLevel.currentPage );
                     injectInNode( btree, leafLevel.currentPage, levels, 1 );
 
                     // The page is full, we have to create a new one
@@ -838,7 +861,6 @@ public class BulkLoader<K, V>
 
                     // Now inject the page into the node
                     injectInNode( btree, leafLevel.currentPage, levels, 1 );
-                    //System.out.println( leafLevel.currentPage );
 
                     // Create a new page for the remaining elements
                     nbToAdd = pageSize / 2;
@@ -859,7 +881,6 @@ public class BulkLoader<K, V>
                     injectInNode( btree, leafLevel.currentPage, levels, 1 );
 
                     // We are done
-                    //System.out.println( leafLevel.currentPage );
                     break;
                 }
                 else
@@ -882,7 +903,6 @@ public class BulkLoader<K, V>
                     injectInNode( btree, leafLevel.currentPage, levels, 1 );
 
                     // and we are done
-                    //System.out.println( leafLevel.currentPage );
                     break;
                 }
             }
@@ -899,27 +919,8 @@ public class BulkLoader<K, V>
      */
     private File flushToDisk( int fileNb, List<Tuple<K, V>> tuples, BTree<K, V> btree ) throws IOException
     {
-        //System.out.println( "Sorted values for file nb[" + fileNb + "] : " );
-
         // Sort the tuples. 
         Tuple<K, Set<V>>[] sortedTuples = sort( btree, tuples );
-
-        boolean isFirst = true;
-        for ( Tuple<K, Set<V>> tuple : sortedTuples )
-        {
-            if ( isFirst )
-            {
-                isFirst = false;
-            }
-            else
-            {
-                //System.out.print( ", " );
-            }
-
-            //System.out.print( tuple.getKey() );
-        }
-
-        //System.out.println();
 
         File file = File.createTempFile( "sorted", Integer.toString( fileNb ) );
         file.deleteOnExit();
@@ -1130,7 +1131,6 @@ public class BulkLoader<K, V>
             while ( true )
             {
                 readTuples[i] = fetchTuple( btree, streams[i] );
-                //System.out.println( "Fetched tuple " + readTuples[i] + " from file " + i );
 
                 if ( readTuples[i] != null )
                 {
@@ -1139,7 +1139,6 @@ public class BulkLoader<K, V>
 
                     if ( !candidateSet.contains( candidate ) )
                     {
-                        //System.out.println( "Added candidate " + candidate + " to the set of candidates" );
                         candidateSet.add( candidate );
                         break;
                     }
@@ -1151,21 +1150,8 @@ public class BulkLoader<K, V>
             }
         }
 
-        int pos = 0;
-        Iterator<Tuple<K, Integer>> iterator = candidateSet.iterator();
-
-        while ( iterator.hasNext() )
-        {
-            Tuple<K, Integer> candidate = iterator.next();
-            //System.out.println( "candidate[" + pos + "] = " + candidate.getKey() );
-            pos++;
-        }
-
         Iterator<Tuple<K, Set<V>>> tupleIterator = new Iterator<Tuple<K, Set<V>>>()
         {
-            private int pos = 0;
-
-
             @Override
             public Tuple<K, Set<V>> next()
             {
@@ -1180,8 +1166,6 @@ public class BulkLoader<K, V>
 
                 // fetch it from the disk and store it into its reader
                 readTuples[tupleCandidate.value] = fetchTuple( btree, streams[tupleCandidate.value] );
-                //System.out.println( "Next : fetched new tuple from file nb " + tupleCandidate.value + " : "
-                //    + readTuples[tupleCandidate.value] );
 
                 if ( readTuples[tupleCandidate.value] != null )
                 {
@@ -1191,18 +1175,7 @@ public class BulkLoader<K, V>
                     candidateSet.add( newTuple );
                 }
 
-                int pos = 0;
-                Iterator<Tuple<K, Integer>> iterator = candidateSet.iterator();
-
-                while ( iterator.hasNext() )
-                {
-                    Tuple<K, Integer> candidate = iterator.next();
-                    //System.out.println( "candidate[" + pos + "] = " + candidate.getKey() );
-                    pos++;
-                }
-
                 // We can now return the found value
-                //System.out.println( "Returning selected tuple : " + tuple );
                 return tuple;
             }
 

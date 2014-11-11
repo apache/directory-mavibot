@@ -149,128 +149,118 @@ public class BulkLoaderTest
     public void testPersistedBulkLoad10Elements() throws IOException, KeyNotFoundException,
         BTreeAlreadyManagedException
     {
-        for ( int i = 1000; i < 1001; i++ )
+        for ( int i = 0; i < 1001; i++ )
         {
-            System.out.println( "=======================================" );
-            System.out.println( "== Iteration #" + i );
-            System.out.println( "=======================================" );
             Random random = new Random( System.currentTimeMillis() );
             File file = File.createTempFile( "managedbtreebuilder", ".data" );
             file.deleteOnExit();
 
-            RecordManager rm = new RecordManager( file.getAbsolutePath() );
-            PersistedBTree<Long, String> btree = ( PersistedBTree<Long, String> ) rm.addBTree( "test",
-                LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
-
-            BulkLoader<Long, String> bulkLoader = new BulkLoader<Long, String>();
-            int nbElems = i;
-            int addedElems = 0;
-
-            final Tuple<Long, String>[] elems = new Tuple[nbElems];
-            Map<Long, Tuple<Long, Set<String>>> expected = new HashMap<Long, Tuple<Long, Set<String>>>();
-
-            long t00 = System.currentTimeMillis();
-
-            while ( addedElems < nbElems )
+            try
             {
-                long key = random.nextLong() % 3333333L;
+                RecordManager rm = new RecordManager( file.getAbsolutePath() );
+                PersistedBTree<Long, String> btree = ( PersistedBTree<Long, String> ) rm.addBTree( "test",
+                    LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
 
-                if ( expected.containsKey( key ) )
+                BulkLoader<Long, String> bulkLoader = new BulkLoader<Long, String>();
+                int nbElems = i;
+                int addedElems = 0;
+
+                final Tuple<Long, String>[] elems = new Tuple[nbElems];
+                Map<Long, Tuple<Long, Set<String>>> expected = new HashMap<Long, Tuple<Long, Set<String>>>();
+
+                long t00 = System.currentTimeMillis();
+
+                while ( addedElems < nbElems )
                 {
-                    continue;
+                    long key = random.nextLong() % 3333333L;
+
+                    if ( expected.containsKey( key ) )
+                    {
+                        continue;
+                    }
+
+                    long w = random.nextLong() % 3333333L;
+                    String value = "V" + w;
+                    elems[addedElems] = new Tuple<Long, String>( key, value );
+
+                    Tuple<Long, Set<String>> expectedTuple = expected.get( key );
+
+                    if ( expectedTuple == null )
+                    {
+                        expectedTuple = new Tuple<Long, Set<String>>( key, new TreeSet<String>() );
+                    }
+
+                    expectedTuple.value.add( value );
+                    expected.put( key, expectedTuple );
+                    addedElems++;
+
+                    if ( addedElems % 100 == 0 )
+                    {
+                        //System.out.println( "Nb added elements = " + addedElems );
+                    }
+                }
+                long t01 = System.currentTimeMillis();
+
+                // System.out.println( "Time to create the " + nbElems + " elements " + ( ( t01 - t00 ) / 1 ) );
+
+                Iterator<Tuple<Long, String>> tupleIterator = new Iterator<Tuple<Long, String>>()
+                {
+                    private int pos = 0;
+
+
+                    @Override
+                    public Tuple<Long, String> next()
+                    {
+                        return elems[pos++];
+                    }
+
+
+                    @Override
+                    public boolean hasNext()
+                    {
+                        return pos < elems.length;
+                    }
+
+
+                    @Override
+                    public void remove()
+                    {
+                    }
+                };
+
+                long t0 = System.currentTimeMillis();
+                BTree<Long, String> result = bulkLoader.load( btree, tupleIterator, 128 );
+                long t1 = System.currentTimeMillis();
+
+                System.out.println( "== Btree #" + i + ", Time to bulkoad the " + nbElems + " elements "
+                    + ( t1 - t0 ) + "ms" );
+
+                TupleCursor<Long, String> cursor = result.browse();
+                int nbFetched = 0;
+
+                long t2 = System.currentTimeMillis();
+
+                while ( cursor.hasNext() )
+                {
+                    Tuple<Long, String> elem = cursor.next();
+
+                    assertTrue( expected.containsKey( elem.key ) );
+                    Tuple<Long, Set<String>> tuple = expected.get( elem.key );
+                    assertNotNull( tuple );
+                    nbFetched++;
                 }
 
-                long w = random.nextLong() % 3333333L;
-                String value = "V" + w;
-                elems[addedElems] = new Tuple<Long, String>( key, value );
+                long t3 = System.currentTimeMillis();
 
-                //System.out.println( "Adding tuple : " + elems[i] );
+                //System.out.println( "Time to read the " + nbElems + " elements " + ( t3 - t2 ) );
+                assertEquals( nbElems, nbFetched );
 
-                Tuple<Long, Set<String>> expectedTuple = expected.get( key );
-
-                if ( expectedTuple == null )
-                {
-                    expectedTuple = new Tuple<Long, Set<String>>( key, new TreeSet<String>() );
-                }
-
-                expectedTuple.value.add( value );
-                expected.put( key, expectedTuple );
-                addedElems++;
-
-                if ( addedElems % 100 == 0 )
-                {
-                    //System.out.println( "Nb added elements = " + addedElems );
-                }
+                checkBtree( btree, result );
             }
-            long t01 = System.currentTimeMillis();
-
-            System.out.println( "Time to create the " + nbElems + " elements " + ( ( t01 - t00 ) / 1 ) );
-
-            Iterator<Tuple<Long, String>> tupleIterator = new Iterator<Tuple<Long, String>>()
+            finally
             {
-                private int pos = 0;
-
-
-                @Override
-                public Tuple<Long, String> next()
-                {
-                    return elems[pos++];
-                }
-
-
-                @Override
-                public boolean hasNext()
-                {
-                    return pos < elems.length;
-                }
-
-
-                @Override
-                public void remove()
-                {
-                }
-            };
-
-            long t0 = System.currentTimeMillis();
-            BTree<Long, String> result = bulkLoader.load( btree, tupleIterator, 65536 );
-            //rm.close();
-            //rm = new RecordManager( file.getAbsolutePath() );
-            //result.close();
-
-            //result = rm.getManagedTree( btree.getName() );
-            long t1 = System.currentTimeMillis();
-
-            System.out.println( "Time to bulkoad the " + nbElems + " elements " + ( ( t1 - t0 ) / 1 ) );
-
-            TupleCursor<Long, String> cursor = result.browse();
-            int nbFetched = 0;
-
-            long t2 = System.currentTimeMillis();
-
-            while ( cursor.hasNext() )
-            {
-                Tuple<Long, String> elem = cursor.next();
-
-                assertTrue( expected.containsKey( elem.key ) );
-                Tuple<Long, Set<String>> tuple = expected.get( elem.key );
-                assertNotNull( tuple );
-                nbFetched++;
-
-                //System.out.println( "Read tuple : " + tuple );
-                /*
-                for ( String value : elem.value )
-                {
-                    assertTrue( tuple.value.contains( value ) );
-                }
-                */
+                file.delete();
             }
-
-            long t3 = System.currentTimeMillis();
-
-            System.out.println( "Time to read the " + nbElems + " elements " + ( t3 - t2 ) );
-            assertEquals( nbElems, nbFetched );
-
-            checkBtree( btree, result );
         }
     }
 
@@ -426,47 +416,54 @@ public class BulkLoaderTest
         File file = File.createTempFile( "managedbtreebuilder", ".data" );
         file.deleteOnExit();
 
-        RecordManager rm = new RecordManager( file.getAbsolutePath() );
-        PersistedBTree<Long, String> btree = ( PersistedBTree<Long, String> ) rm.addBTree( "test",
-            LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
-
-        BulkLoader<Long, String> bulkLoader = new BulkLoader<Long, String>();
-
-        int[] expectedNbPages = new int[]
-            {
-                0,
-                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
-        };
-
-        int[] expectedLimit = new int[]
-            {
-                0,
-                1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-                0, 0, 0, 0, 0, 0, 0, 16, 16, 16, 16, 16, 16, 16, 16, 32,
-                16, 16, 16, 16, 16, 16, 16, 32, 32, 32, 32, 32, 32, 32, 32, 48
-        };
-
-        int[] expectedKeys = new int[]
-            {
-                0,
-                1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-                9, 10, 11, 12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16,
-                16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16
-        };
-
-        for ( int i = 0; i < 49; i++ )
+        try
         {
-            System.out.println( "=======================================" );
-            System.out.println( "== Iteration n#" + i );
-            System.out.println( "=======================================" );
+            RecordManager rm = new RecordManager( file.getAbsolutePath() );
+            PersistedBTree<Long, String> btree = ( PersistedBTree<Long, String> ) rm.addBTree( "test",
+                LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
 
-            BulkLoader<Long, String>.LevelInfo leafInfo = bulkLoader.computeLevel( btree, i, LevelEnum.LEAF );
+            BulkLoader<Long, String> bulkLoader = new BulkLoader<Long, String>();
 
-            assertEquals( expectedNbPages[i], leafInfo.nbPages );
-            assertEquals( expectedLimit[i], leafInfo.nbElemsLimit );
-            assertEquals( expectedKeys[i], leafInfo.currentPage.getNbElems() );
+            int[] expectedNbPages = new int[]
+                {
+                    0,
+                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
+            };
+
+            int[] expectedLimit = new int[]
+                {
+                    0,
+                    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+                    0, 0, 0, 0, 0, 0, 0, 16, 16, 16, 16, 16, 16, 16, 16, 32,
+                    16, 16, 16, 16, 16, 16, 16, 32, 32, 32, 32, 32, 32, 32, 32, 48
+            };
+
+            int[] expectedKeys = new int[]
+                {
+                    0,
+                    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+                    9, 10, 11, 12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16,
+                    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16
+            };
+
+            for ( int i = 0; i < 49; i++ )
+            {
+                System.out.println( "=======================================" );
+                System.out.println( "== Iteration n#" + i );
+                System.out.println( "=======================================" );
+
+                BulkLoader<Long, String>.LevelInfo leafInfo = bulkLoader.computeLevel( btree, i, LevelEnum.LEAF );
+
+                assertEquals( expectedNbPages[i], leafInfo.nbPages );
+                assertEquals( expectedLimit[i], leafInfo.nbElemsLimit );
+                assertEquals( expectedKeys[i], leafInfo.currentPage.getNbElems() );
+            }
+        }
+        finally
+        {
+            file.delete();
         }
     }
 
@@ -482,45 +479,52 @@ public class BulkLoaderTest
         File file = File.createTempFile( "managedbtreebuilder", ".data" );
         file.deleteOnExit();
 
-        RecordManager rm = new RecordManager( file.getAbsolutePath() );
-        PersistedBTree<Long, String> btree = ( PersistedBTree<Long, String> ) rm.addBTree( "test",
-            LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
-
-        BulkLoader<Long, String> bulkLoader = new BulkLoader<Long, String>();
-
-        int[] expectedNbPages = new int[]
-            {
-                -1, -1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
-        };
-
-        int[] expectedLimit = new int[]
-            {
-                -1,
-                -1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
-                0, 0, 0, 0, 0, 0, 0, 0, 17, 17, 17, 17, 17, 17, 17, 17, 34,
-                17, 17, 17, 17, 17, 17, 17, 17, 34, 34, 34, 34, 34, 34, 34, 34, 51
-        };
-
-        int[] expectedKeys = new int[]
-            {
-                -1, -1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-                8, 9, 10, 11, 12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16,
-                16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16
-        };
-
-        for ( int i = 2; i < 52; i++ )
+        try
         {
-            System.out.println( "=======================================" );
-            System.out.println( "== Iteration n#" + i );
-            System.out.println( "=======================================" );
+            RecordManager rm = new RecordManager( file.getAbsolutePath() );
+            PersistedBTree<Long, String> btree = ( PersistedBTree<Long, String> ) rm.addBTree( "test",
+                LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
 
-            BulkLoader<Long, String>.LevelInfo nodeInfo = bulkLoader.computeLevel( btree, i, LevelEnum.NODE );
+            BulkLoader<Long, String> bulkLoader = new BulkLoader<Long, String>();
 
-            assertEquals( expectedNbPages[i], nodeInfo.nbPages );
-            assertEquals( expectedLimit[i], nodeInfo.nbElemsLimit );
-            assertEquals( expectedKeys[i], nodeInfo.currentPage.getNbElems() );
+            int[] expectedNbPages = new int[]
+                {
+                    -1, -1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
+            };
+
+            int[] expectedLimit = new int[]
+                {
+                    -1,
+                    -1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
+                    0, 0, 0, 0, 0, 0, 0, 0, 17, 17, 17, 17, 17, 17, 17, 17, 34,
+                    17, 17, 17, 17, 17, 17, 17, 17, 34, 34, 34, 34, 34, 34, 34, 34, 51
+            };
+
+            int[] expectedKeys = new int[]
+                {
+                    -1, -1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+                    8, 9, 10, 11, 12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16,
+                    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16
+            };
+
+            for ( int i = 2; i < 52; i++ )
+            {
+                System.out.println( "=======================================" );
+                System.out.println( "== Iteration n#" + i );
+                System.out.println( "=======================================" );
+
+                BulkLoader<Long, String>.LevelInfo nodeInfo = bulkLoader.computeLevel( btree, i, LevelEnum.NODE );
+
+                assertEquals( expectedNbPages[i], nodeInfo.nbPages );
+                assertEquals( expectedLimit[i], nodeInfo.nbElemsLimit );
+                assertEquals( expectedKeys[i], nodeInfo.currentPage.getNbElems() );
+            }
+        }
+        finally
+        {
+            file.delete();
         }
     }
 
@@ -536,46 +540,53 @@ public class BulkLoaderTest
         File file = File.createTempFile( "managedbtreebuilder", ".data" );
         file.deleteOnExit();
 
-        RecordManager rm = new RecordManager( file.getAbsolutePath() );
-        PersistedBTree<Long, String> btree = ( PersistedBTree<Long, String> ) rm.addBTree( "test",
-            LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
-
-        BulkLoader<Long, String> bulkLoader = new BulkLoader<Long, String>();
-
-        int[] expectedNbPages = new int[]
-            {
-                -1, -1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
-        };
-
-        int[] expectedLimit = new int[]
-            {
-                -1,
-                -1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
-                0, 0, 0, 0, 0, 0, 0, 0, 17, 17, 17, 17, 17, 17, 17, 17, 34,
-                17, 17, 17, 17, 17, 17, 17, 17, 34, 34, 34, 34, 34, 34, 34, 34, 51
-        };
-
-        int[] expectedKeys = new int[]
-            {
-                -1, -1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-                8, 9, 10, 11, 12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16,
-                16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16
-        };
-
-        for ( int i = 2599; i <= 2599; i++ )
+        try
         {
-            System.out.println( "=======================================" );
-            System.out.println( "== Iteration #" + i );
-            System.out.println( "=======================================" );
+            RecordManager rm = new RecordManager( file.getAbsolutePath() );
+            PersistedBTree<Long, String> btree = ( PersistedBTree<Long, String> ) rm.addBTree( "test",
+                LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
 
-            List<BulkLoader<Long, String>.LevelInfo> levels = bulkLoader.computeLevels( btree, i );
+            BulkLoader<Long, String> bulkLoader = new BulkLoader<Long, String>();
 
-            for ( BulkLoader<Long, String>.LevelInfo level : levels )
+            int[] expectedNbPages = new int[]
+                {
+                    -1, -1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
+            };
+
+            int[] expectedLimit = new int[]
+                {
+                    -1,
+                    -1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
+                    0, 0, 0, 0, 0, 0, 0, 0, 17, 17, 17, 17, 17, 17, 17, 17, 34,
+                    17, 17, 17, 17, 17, 17, 17, 17, 34, 34, 34, 34, 34, 34, 34, 34, 51
+            };
+
+            int[] expectedKeys = new int[]
+                {
+                    -1, -1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+                    8, 9, 10, 11, 12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16,
+                    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16
+            };
+
+            for ( int i = 2599; i <= 2599; i++ )
             {
-                System.out.println( level );
+                System.out.println( "=======================================" );
+                System.out.println( "== Iteration #" + i );
+                System.out.println( "=======================================" );
+
+                List<BulkLoader<Long, String>.LevelInfo> levels = bulkLoader.computeLevels( btree, i );
+
+                for ( BulkLoader<Long, String>.LevelInfo level : levels )
+                {
+                    System.out.println( level );
+                }
             }
+        }
+        finally
+        {
+            file.delete();
         }
     }
 }
