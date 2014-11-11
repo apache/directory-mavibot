@@ -81,7 +81,6 @@
     <slf4j.version>1.7.7</slf4j.version>
     <commons.collections.version>3.2.1</commons.collections.version>
     <commons.io.version>2.4</commons.io.version>
-    <log4j.version>1.2.17</log4j.version>
     <slf4j.api.version>1.7.7</slf4j.api.version>
     <slf4j.log4j12.version>1.7.7</slf4j.log4j12.version>
   </properties>
