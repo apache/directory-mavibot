@@ -155,7 +155,14 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     {
         if ( pos < nbElems + 1 )
         {
-            return children[pos].getValue();
+            if ( children[pos] != null )
+            {
+                return children[pos].getValue();
+            }
+            else
+            {
+                return null;
+            }
         }
         else
         {
@@ -259,7 +266,14 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     {
         if ( ( pos >= 0 ) && ( pos < children.length ) )
         {
-            return children[pos].getValue();
+            if ( children[pos] != null )
+            {
+                return children[pos].getValue();
+            }
+            else
+            {
+                return null;
+            }
         }
         else
         {
