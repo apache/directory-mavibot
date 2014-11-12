@@ -20,6 +20,10 @@
 package org.apache.directory.mavibot.btree;
 
 
+import static org.apache.directory.mavibot.btree.BTreeFactory.createLeaf;
+import static org.apache.directory.mavibot.btree.BTreeFactory.createNode;
+import static org.apache.directory.mavibot.btree.BTreeFactory.setKey;
+
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -34,7 +38,9 @@ import org.apache.directory.mavibot.btree.exception.BTreeCreationException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
-import static org.apache.directory.mavibot.btree.BTreeFactory.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * A holder to store the Values
@@ -44,6 +50,9 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
  */
 /* No qualifier */class PersistedValueHolder<V> extends AbstractValueHolder<V>
 {
+    /** The LoggerFactory used by this class */
+    protected static final Logger LOG = LoggerFactory.getLogger( PersistedValueHolder.class );
+
     /** The parent BTree */
     protected PersistedBTree<V, V> parentBtree;
 
@@ -122,23 +131,23 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
                 // Use a sub btree, now that we have reached the threshold
                 createSubTree();
 
-//             // Now inject all the values into it
-//                for ( V value : values )
-//                {
-//                    try
-//                    {
-//                        valueBtree.insert( value, value );
-//                    }
-//                    catch ( IOException e )
-//                    {
-//                        e.printStackTrace();
-//                    }
-//                }
+                //             // Now inject all the values into it
+                //                for ( V value : values )
+                //                {
+                //                    try
+                //                    {
+                //                        valueBtree.insert( value, value );
+                //                    }
+                //                    catch ( IOException e )
+                //                    {
+                //                        e.printStackTrace();
+                //                    }
+                //                }
                 try
                 {
                     build( ( PersistedBTree<V, V> ) valueBtree, values );
                 }
-                catch( Exception e )
+                catch ( Exception e )
                 {
                     throw new RuntimeException( e );
                 }
@@ -411,7 +420,7 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
                     }
 
                     cursor.close();
-                    
+
                     return returnedValue;
                 }
                 else
@@ -644,7 +653,7 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
         V val = super.replaceValueArray( newValue );
         // The raw value is not anymore up to date with the content
         isRawUpToDate = false;
-        
+
         return val;
     }
 
@@ -718,11 +727,11 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
     private BTree build( PersistedBTree<V, V> btree, V[] dupKeyValues ) throws Exception
     {
         long newRevision = btree.getRevision() + 1;
-        
+
         int numKeysInNode = btree.getPageSize();
-        
+
         RecordManager rm = btree.getRecordManager();
-        
+
         List<Page<V, V>> lstLeaves = new ArrayList<Page<V, V>>();
 
         int totalTupleCount = 0;
@@ -775,7 +784,7 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
             }
         }
 
-        if( lastLeaf.keys.length == 0 )
+        if ( lastLeaf.keys.length == 0 )
         {
             lstLeaves.remove( lastLeaf );
         }
@@ -785,26 +794,27 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
         Page rootPage = attachNodes( lstLeaves, btree, numKeysInNode, rm );
 
         Page oldRoot = btree.getRootPage();
-        
+
         long newRootPageOffset = ( ( AbstractPage ) rootPage ).getOffset();
-        System.out.println( "replacing old offset " + btree.getRootPageOffset() + " of the BTree " + btree.getName() + " with " + newRootPageOffset );
-        
+        LOG.debug( "replacing old offset {} of the BTree {} with {}",
+            btree.getRootPageOffset(), btree.getName(), newRootPageOffset );
+
         BTreeHeader header = btree.getBtreeHeader();
-        
+
         header.setRootPage( rootPage );
         header.setRevision( newRevision );
         header.setNbElems( totalTupleCount );
-        
+
         long newBtreeHeaderOffset = rm.writeBtreeHeader( btree, header );
-        
+
         header.setBTreeHeaderOffset( newBtreeHeaderOffset );
-        
+
         rm.freePages( ( BTree ) btree, btree.getRevision(), ( List ) Arrays.asList( oldRoot ) );
 
         return btree;
     }
 
-    
+
     /**
      * Attaches the Nodes together
      * 
@@ -815,7 +825,8 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
      * @return the new root page of the sub-BTree after attaching all the nodes
      * @throws IOException
      */
-    private Page attachNodes( List<Page<V, V>> children, BTree btree, int numKeysInNode, RecordManager rm ) throws IOException
+    private Page attachNodes( List<Page<V, V>> children, BTree btree, int numKeysInNode, RecordManager rm )
+        throws IOException
     {
         if ( children.size() == 1 )
         {
@@ -874,15 +885,15 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
             }
         }
 
-        if( lastNode.keys.length == 0 )
+        if ( lastNode.keys.length == 0 )
         {
             lstNodes.remove( lastNode );
         }
 
         return attachNodes( lstNodes, btree, numKeysInNode, rm );
     }
-    
-    
+
+
     /**
      * @see Object#toString()
      */
