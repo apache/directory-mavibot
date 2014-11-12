@@ -598,7 +598,6 @@ public class BulkLoaderTest
      * Test that we can load 100 BTrees with 0 to 1000 elements, each one of them having multiple values
      * @throws BTreeAlreadyManagedException 
      */
-    @Ignore
     @Test
     public void testPersistedBulkLoad1000ElementsMultipleValues() throws IOException, KeyNotFoundException,
         BTreeAlreadyManagedException

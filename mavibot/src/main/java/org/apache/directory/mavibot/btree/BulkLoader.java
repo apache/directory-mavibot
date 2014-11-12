@@ -216,6 +216,62 @@ public class BulkLoader<K, V>
 
 
     /**
+     * Read all the sorted files, and inject them into one single big file containing all the 
+     * sorted and merged elements.
+     * @throws IOException 
+     */
+    private Tuple<Iterator<Tuple<K, Set<V>>>, Integer> processFiles( BTree<K, V> btree,
+        Iterator<Tuple<K, Set<V>>> dataIterator ) throws IOException
+    {
+        File file = File.createTempFile( "sortedUnique", "data" );
+        file.deleteOnExit();
+        FileOutputStream fos = new FileOutputStream( file );
+
+        // Number of read elements
+        int nbReads = 0;
+
+        // Flush the tuples on disk
+        while ( dataIterator.hasNext() )
+        {
+            nbReads++;
+
+            // grab a tuple
+            Tuple<K, Set<V>> tuple = dataIterator.next();
+
+            // Serialize the key
+            byte[] bytesKey = btree.getKeySerializer().serialize( tuple.key );
+            fos.write( IntSerializer.serialize( bytesKey.length ) );
+            fos.write( bytesKey );
+
+            // Serialize the number of values
+            int nbValues = tuple.getValue().size();
+            fos.write( IntSerializer.serialize( nbValues ) );
+
+            // Serialize the values
+            for ( V value : tuple.getValue() )
+            {
+                byte[] bytesValue = btree.getValueSerializer().serialize( value );
+
+                // Serialize the value
+                fos.write( IntSerializer.serialize( bytesValue.length ) );
+                fos.write( bytesValue );
+            }
+        }
+
+        fos.flush();
+        fos.close();
+
+        FileInputStream fis = new FileInputStream( file );
+        Iterator<Tuple<K, Set<V>>> uniqueIterator = createUniqueFileIterator( btree, fis );
+
+        Tuple<Iterator<Tuple<K, Set<V>>>, Integer> result = new Tuple<Iterator<Tuple<K, Set<V>>>, Integer>(
+            uniqueIterator, nbReads );
+
+        return result;
+    }
+
+
+    /**
      * Bulk Load data into a persisted BTree
      *
      * @param btree The persisted BTree in which we want to load the data
@@ -259,12 +315,14 @@ public class BulkLoader<K, V>
         // Now that we have processed all the data, we can start storing them in the btree
         Iterator<Tuple<K, Set<V>>> dataIterator = null;
         FileInputStream[] streams = null;
+        BTree<K, V> resultBTree = null;
 
         if ( inMemory )
         {
             // Here, we have all the data in memory, no need to merge files
             // We will build a simple iterator over the data
             dataIterator = createTupleIterator( btree, tuples );
+            resultBTree = bulkLoad( btree, dataIterator, nbElems );
         }
         else
         {
@@ -278,12 +336,14 @@ public class BulkLoader<K, V>
             }
 
             dataIterator = createIterator( btree, streams );
+
+            // Process the files, and construct one single file with an iterator
+            Tuple<Iterator<Tuple<K, Set<V>>>, Integer> result = processFiles( btree, dataIterator );
+            resultBTree = bulkLoad( btree, result.key, result.value );
         }
 
         // Ok, we have an iterator over sorted elements, we can now load them in the 
         // target btree.
-        BTree<K, V> resultBTree = bulkLoad( btree, dataIterator, nbElems );
-
         // Now, close the FileInputStream, and delete them if we have some
         if ( !inMemory )
         {
@@ -1209,6 +1269,55 @@ public class BulkLoader<K, V>
             {
                 // Check that we have at least one element to read
                 return !candidates.isEmpty();
+            }
+
+
+            @Override
+            public void remove()
+            {
+            }
+
+        };
+
+        return tupleIterator;
+    }
+
+
+    /**
+     * Build an iterator over an array of sorted tuples, from files on the disk
+     * @throws FileNotFoundException 
+     */
+    private Iterator<Tuple<K, Set<V>>> createUniqueFileIterator( final BTree<K, V> btree, final FileInputStream stream )
+        throws FileNotFoundException
+    {
+        Iterator<Tuple<K, Set<V>>> tupleIterator = new Iterator<Tuple<K, Set<V>>>()
+        {
+            boolean hasNext = true;
+
+
+            @Override
+            public Tuple<K, Set<V>> next()
+            {
+                // Get the tuple from the stream
+                Tuple<K, Set<V>> tuple = fetchTuple( btree, stream );
+
+                // We can now return the found value
+                return tuple;
+            }
+
+
+            @Override
+            public boolean hasNext()
+            {
+                // Check that we have at least one element to read
+                try
+                {
+                    return stream.available() > 0;
+                }
+                catch ( IOException e )
+                {
+                    return false;
+                }
             }
 
 
