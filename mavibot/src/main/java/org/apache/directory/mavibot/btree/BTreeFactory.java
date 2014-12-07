@@ -62,7 +62,7 @@ public class BTreeFactory<K, V>
     public static <K, V> BTree<K, V> createPersistedBTree( BTreeTypeEnum type )
     {
         BTree<K, V> btree = new PersistedBTree<K, V>();
-        ((AbstractBTree<K, V>)btree).setType( type );
+        ( ( AbstractBTree<K, V> ) btree ).setType( type );
 
         return btree;
     }
@@ -78,6 +78,7 @@ public class BTreeFactory<K, V>
     {
         btree.setBtreeHeaderOffset( btreeHeaderOffset );
     }
+
 
     /**
      * Creates a new persisted B-tree using the BTreeConfiguration to initialize the
@@ -514,6 +515,7 @@ public class BTreeFactory<K, V>
     {
         if ( btree.getType() != BTreeTypeEnum.IN_MEMORY )
         {
+            //System.out.println( "Creating a node with nbElems : " + nbElems );
             return new PersistedNode<K, V>( btree, revision, nbElems );
         }
         else
@@ -609,7 +611,8 @@ public class BTreeFactory<K, V>
      * @throws IllegalArgumentException
      */
     /* no qualifier*/static <K, V> void setKeySerializer( BTree<K, V> btree, String keySerializerFqcn )
-        throws ClassNotFoundException, IllegalAccessException, InstantiationException, IllegalArgumentException, SecurityException, NoSuchFieldException
+        throws ClassNotFoundException, IllegalAccessException, InstantiationException, IllegalArgumentException,
+        SecurityException, NoSuchFieldException
     {
         Class<?> keySerializer = Class.forName( keySerializerFqcn );
         @SuppressWarnings("unchecked")
@@ -618,7 +621,7 @@ public class BTreeFactory<K, V>
         {
             instance = ( ElementSerializer<K> ) keySerializer.getDeclaredField( "INSTANCE" ).get( null );
         }
-        catch( NoSuchFieldException e )
+        catch ( NoSuchFieldException e )
         {
             // ignore
         }
@@ -645,7 +648,8 @@ public class BTreeFactory<K, V>
      * @throws IllegalArgumentException
      */
     /* no qualifier*/static <K, V> void setValueSerializer( BTree<K, V> btree, String valueSerializerFqcn )
-        throws ClassNotFoundException, IllegalAccessException, InstantiationException, IllegalArgumentException, SecurityException, NoSuchFieldException
+        throws ClassNotFoundException, IllegalAccessException, InstantiationException, IllegalArgumentException,
+        SecurityException, NoSuchFieldException
     {
         Class<?> valueSerializer = Class.forName( valueSerializerFqcn );
         @SuppressWarnings("unchecked")
@@ -654,16 +658,16 @@ public class BTreeFactory<K, V>
         {
             instance = ( ElementSerializer<V> ) valueSerializer.getDeclaredField( "INSTANCE" ).get( null );
         }
-        catch( NoSuchFieldException e )
+        catch ( NoSuchFieldException e )
         {
             // ignore
         }
-        
+
         if ( instance == null )
         {
             instance = ( ElementSerializer<V> ) valueSerializer.newInstance();
         }
-        
+
         btree.setValueSerializer( instance );
     }
 

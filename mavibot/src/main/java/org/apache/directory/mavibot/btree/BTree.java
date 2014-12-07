@@ -73,7 +73,7 @@ public interface BTree<K, V>
 
 
     /**
-     * @return the pageSize
+     * @return the number of elements per page
      */
     int getPageSize();
 
@@ -264,11 +264,17 @@ public interface BTree<K, V>
      */
     KeyCursor<K> browseKeys() throws IOException, KeyNotFoundException;
 
-    
+
     /**
-     * @return the comparator
+     * @return the key comparator
      */
-    Comparator<K> getComparator();
+    Comparator<K> getKeyComparator();
+
+
+    /**
+     * @return the value comparator
+     */
+    Comparator<V> getValueComparator();
 
 
     /**

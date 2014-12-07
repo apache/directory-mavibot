@@ -219,7 +219,7 @@ public class RecordManager extends AbstractTransactionManager
     private int commitCount = 0;
     
     /** the threshold at which the SpaceReclaimer will be run to free the copied pages */
-    private int spaceReclaimerThreshold = 200;
+    private int spaceReclaimerThreshold = 0;
     
     /**
      * Create a Record manager which will either create the underlying file
@@ -579,6 +579,14 @@ public class RecordManager extends AbstractTransactionManager
                 return;
             
             case 1 :
+                
+                commitCount++;
+                
+                if( commitCount >= spaceReclaimerThreshold )
+                {
+                    runReclaimer();
+                }
+                
                 // We are done with the transaction, we can update the RMHeader and swap the BTreeHeaders
                 // First update the RMHeader to be sure that we have a way to restore from a crash
                 updateRecordManagerHeader();
@@ -610,19 +618,20 @@ public class RecordManager extends AbstractTransactionManager
                 // And decrement the number of started transactions
                 decrementTxnLevel();
 
-                commitCount++;
-                
-                if( commitCount >= spaceReclaimerThreshold )
-                {
-                    runReclaimer();
-                }
-                
                 // Finally, release the global lock
                 transactionLock.unlock();
                 
                 return;
                 
             default :
+                
+                commitCount++;
+                
+                if( commitCount >= spaceReclaimerThreshold )
+                {
+                    runReclaimer();
+                }
+
                 // We are inner an existing transaction. Just update the necessary elements
                 // Update the RMHeader to be sure that we have a way to restore from a crash
                 updateRecordManagerHeader();
@@ -653,13 +662,6 @@ public class RecordManager extends AbstractTransactionManager
                 
                 // And decrement the number of started transactions
                 decrementTxnLevel();
-
-                commitCount++;
-                
-                if( commitCount >= spaceReclaimerThreshold )
-                {
-                    runReclaimer();
-                }
 
                 // Finally, release the global lock
                 transactionLock.unlock();
@@ -771,7 +773,7 @@ public class RecordManager extends AbstractTransactionManager
         
         if( firstPage.isFree() )
         {
-            System.out.println("------------- NOT freeing free page ---------------");
+            //System.out.println("------------- NOT freeing free page ---------------");
             return new PageIO[]{};
         }
         else
@@ -3931,6 +3933,8 @@ public class RecordManager extends AbstractTransactionManager
     @SuppressWarnings("all")
     /* No qualifier */boolean chopTree( PersistedBTree tree, Object key)
     {
+        beginTransaction();
+        
         AbstractPage root = ( AbstractPage ) tree.getRootPage();
         
         try
@@ -3975,7 +3979,7 @@ public class RecordManager extends AbstractTransactionManager
             
             Object leftKey = null;
             
-            long revision = tree.getRevision();
+            long revision = tree.getRevision() + 1;
             
             while( !stack.isEmpty() )
             {
@@ -4114,15 +4118,21 @@ public class RecordManager extends AbstractTransactionManager
             BTreeHeader header = tree.getBtreeHeader();
             
             header.setRootPage( pageHolder.getValue() );
-            header.setRevision( tree.getRevision() );
+            header.setRevision( revision );
             
             // compute 
             header.setNbElems( tree.getNbElems() - keysToRemove );
             
-            writeBtreeHeader( tree, header );
+            long newBtreeHeaderOffset = writeBtreeHeader( tree, header );
+            
+            // We have a new B-tree header to inject into the B-tree of btrees
+            addInBtreeOfBtrees( tree.name, revision, newBtreeHeaderOffset );
+            
+            commit();
         }
         catch( IOException e )
         {
+            rollback();
             LOG.warn( "Failed to free the pages of the tree {}", tree.getName() );
             LOG.warn( "", e );
             return false;

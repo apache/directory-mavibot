@@ -20,7 +20,7 @@
 package org.apache.directory.mavibot.btree;
 
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -30,9 +30,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -69,9 +67,14 @@ public class RecordManagerTest
     @Before
     public void createBTree() throws IOException
     {
-        dataDir = tempFolder.newFolder( UUID.randomUUID().toString() );
+        //dataDir = tempFolder.newFolder( UUID.randomUUID().toString() );
+        dataDir = new File("/tmp");//tempFolder.newFolder( UUID.randomUUID().toString() );
 
-        System.out.println( dataDir + "/mavibot.db" );
+        String dbFile = dataDir + "/mavibot.db";
+        
+        FileUtils.deleteQuietly( new File ( dbFile ) );
+        
+        System.out.println( dbFile );
 
         openRecordManagerAndBtree();
 
@@ -94,7 +97,7 @@ public class RecordManagerTest
 
         if ( dataDir.exists() )
         {
-            FileUtils.deleteDirectory( dataDir );
+            //FileUtils.deleteDirectory( dataDir );
         }
     }
 
@@ -141,7 +144,7 @@ public class RecordManagerTest
         BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
-        assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
+        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
         assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
         assertEquals( btree.getName(), btree1.getName() );
         assertEquals( btree.getNbElems(), btree1.getNbElems() );
@@ -175,7 +178,7 @@ public class RecordManagerTest
         BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
-        assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
+        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
         assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
         assertEquals( btree.getName(), btree1.getName() );
         assertEquals( btree.getNbElems(), btree1.getNbElems() );
@@ -216,7 +219,6 @@ public class RecordManagerTest
             assertEquals( "V" + i, btree.get( i ) );
         }
 
-        
         // Now, try to reload the file back
         openRecordManagerAndBtree();
 
@@ -230,7 +232,7 @@ public class RecordManagerTest
         BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
-        assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
+        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
         assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
         assertEquals( btree.getName(), btree1.getName() );
         assertEquals( btree.getNbElems(), btree1.getNbElems() );
@@ -316,7 +318,7 @@ public class RecordManagerTest
         BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
-        assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
+        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
         assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
         assertEquals( btree.getName(), btree1.getName() );
         assertEquals( btree.getNbElems(), btree1.getNbElems() );
@@ -454,7 +456,7 @@ public class RecordManagerTest
         BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
-        assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
+        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
         assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
         assertEquals( btree.getName(), btree1.getName() );
         assertEquals( btree.getNbElems(), btree1.getNbElems() );
@@ -525,7 +527,7 @@ public class RecordManagerTest
         BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
-        assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
+        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
         assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
         assertEquals( btree.getName(), btree1.getName() );
         assertEquals( btree.getNbElems(), btree1.getNbElems() );
@@ -616,7 +618,7 @@ public class RecordManagerTest
         BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
-        assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
+        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
         assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
         assertEquals( btree.getName(), btree1.getName() );
         assertEquals( btree.getNbElems(), btree1.getNbElems() );
@@ -713,7 +715,7 @@ public class RecordManagerTest
         BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
-        assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
+        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
         assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
         assertEquals( btree.getName(), btree1.getName() );
         assertEquals( btree.getNbElems(), btree1.getNbElems() );
@@ -808,7 +810,7 @@ public class RecordManagerTest
         BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
 
         assertNotNull( btree1 );
-        assertEquals( btree.getComparator().getClass().getName(), btree1.getComparator().getClass().getName() );
+        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
         assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
         assertEquals( btree.getName(), btree1.getName() );
         assertEquals( btree.getNbElems(), btree1.getNbElems() );
@@ -887,12 +889,233 @@ public class RecordManagerTest
             }
         }
     }
+
+
+    @Test
+    public void testAdds() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
+    {
+        int count = 2;
+        int dupCount = 2;
+        
+        btree.setAllowDuplicates( true );
+        
+        for( int i = 0; i < count; i++ )
+        {
+            for( int j = 0; j < dupCount; j++ )
+            {
+                btree.insert( Long.valueOf( i ), String.valueOf( j ) );
+            }
+        }
+        
+        recordManager.close();
+        recordManager = null;
+        
+        openRecordManagerAndBtree();
+        String s = btree.get( 1l );
+        System.out.println( s );
+        
+        TupleCursor<Long, String> cursor = btree.browse();
+        while(cursor.hasNext())
+        {
+            System.out.println( cursor.next() );
+        }
+        
+        cursor.close();
+    }
     
     
     @Test
-    public void testAdds() throws IOException, BTreeAlreadyManagedException,KeyNotFoundException
+    public void testDeleteBTree() throws IOException, BTreeAlreadyManagedException,KeyNotFoundException
     {
-        btree.insert( 1L, "V1" );
-        btree.insert( 2L, "V2" );
+        String name = btree.getName();
+        
+        btree.setPageSize( 4 );
+        
+        for( long j = 0; j < 8; j++ )
+        {
+            btree.insert( j, String.valueOf( j ) );
+        }
+
+        System.out.println( btree );
+        recordManager.deleteBTree( name );
+        
+        assertNull( recordManager.getManagedTree( name ) );
+        
+        btree = recordManager.addBTree( "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
+        btree.setAllowDuplicates( true );
+        
+        int count = 2;
+        int dupCount = 20;
+
+        for( int i = 0; i < count; i++ )
+        {
+            for( int j = 0; j < dupCount; j++ )
+            {
+                btree.insert( Long.valueOf( i ), String.valueOf( j ) );
+            }
+        }
+
+        recordManager.deleteBTree( name );
+        
+        assertNull( recordManager.getManagedTree( name ) );
+    }
+    
+    
+    @Test
+    public void testKeyCountUptoAGivenKey() throws IOException, BTreeAlreadyManagedException,KeyNotFoundException
+    {
+        int count = 9;
+
+        btree.setPageSize( 4 );
+        
+        for( int i = 0; i < count; i++ )
+        {
+            btree.insert( Long.valueOf( i ), String.valueOf( i ) );
+        }
+        
+        // count starts from zero
+        assertEquals( 2l, recordManager.countKeysUpto( 1L, btree ) );
+        assertEquals( 5l, recordManager.countKeysUpto( 4L, btree ) );
+        assertEquals( 7l, recordManager.countKeysUpto( 6L, btree ) );
+        assertEquals( 9l, recordManager.countKeysUpto( 8L, btree ) );
+        
+        BTree dupsTree = recordManager.addBTree( "test-dups", LongSerializer.INSTANCE, StringSerializer.INSTANCE, true );
+        
+        for( int i = 0; i < count; i++ )
+        {
+            for( int j = 0; j < count; j++ )
+            {
+                dupsTree.insert( Long.valueOf( i ), String.valueOf( j ) );
+            }
+        }
+        
+        assertEquals( 18l, recordManager.countKeysUpto( 1L, dupsTree ) );
+        assertEquals( 45l, recordManager.countKeysUpto( 4L, dupsTree ) );
+        assertEquals( 63l, recordManager.countKeysUpto( 6L, dupsTree ) );
+        assertEquals( 81l, recordManager.countKeysUpto( 8L, dupsTree ) );
+    }
+
+    
+    @Test
+    @SuppressWarnings("all")
+    public void testChopTree() throws IOException, BTreeAlreadyManagedException,KeyNotFoundException
+    {
+        BTree<Long, String> memtree = BTreeFactory.createInMemoryBTree( "test", LongSerializer.INSTANCE,
+            StringSerializer.INSTANCE );
+        memtree.setPageSize( 4 );
+        
+        int count = 9;
+
+        PersistedBTree tree = ( PersistedBTree ) btree;
+        tree.setPageSize( 4 );
+        
+        for( int i = 0; i < count; i++ )
+        {
+            memtree.insert( Long.valueOf( i ), String.valueOf( i ) );
+            tree.insert( Long.valueOf( i ), String.valueOf( i ) );
+        }
+        
+        System.out.println(memtree);
+        System.exit( 0 );
+        boolean result = recordManager.chopTree( tree, 2L );
+        assertTrue( result );
+        
+        for( long i = 0; i < 3; i++ )
+        {
+            assertFalse( tree.hasKey( i ) );
+        }        
+        
+        assertTrue( tree.hasKey( 3L ) );
+        
+        result = recordManager.chopTree( tree, 3L );
+        assertTrue( result );
+        for( long i = 0; i < 4; i++ )
+        {
+            assertFalse( tree.hasKey( i ) );
+        }
+        
+        assertTrue( tree.hasKey( 4L ) );
+        
+        result = recordManager.chopTree( tree, 4L );
+        assertTrue( result );
+        for( long i = 0; i < 5; i++ )
+        {
+            assertFalse( tree.hasKey( i ) );
+        }
+        
+        assertTrue( tree.hasKey( 5L ) );
+
+        result = recordManager.chopTree( tree, 5L );
+        assertTrue( result );
+        for( long i = 0; i < 6; i++ )
+        {
+            assertFalse( tree.hasKey( i ) );
+        }
+        
+        assertTrue( tree.hasKey( 6L ) );
+        
+
+        result = recordManager.chopTree( tree, 6L );
+        assertTrue( result );
+        for( long i = 0; i < 7; i++ )
+        {
+            assertFalse( tree.hasKey( i ) );
+        }
+        
+        assertTrue( tree.hasKey( 7L ) );
+        
+        result = recordManager.chopTree( tree, 7L );
+        assertTrue( result );
+        for( long i = 0; i < 8; i++ )
+        {
+            assertFalse( tree.hasKey( i ) );
+        }
+        
+        assertTrue( tree.hasKey( 8L ) );
+        
+        result = recordManager.chopTree( tree, 8L );
+        assertTrue( result );
+        for( long i = 0; i < 9; i++ )
+        {
+            assertFalse( tree.hasKey( i ) );
+        }
+        
+        assertEquals( 0l, tree.getNbElems() );
+        System.out.println( "=====================" );
+        System.out.println( tree );
+        
+        for( int i = 0; i < count; i++ )
+        {
+            if( i == 6 )
+            {
+                System.out.println( tree );
+            }
+            
+            tree.insert( Long.valueOf( i ), String.valueOf( i ) );
+        }
+
+        for( long i = 0; i < count; i++ )
+        {
+            if( i == 8 )
+            {
+                System.out.println();
+            }
+            result = recordManager.chopTree( tree, i );
+            assertTrue( result );
+            System.out.println( tree );
+            for( long j = 0; j <= i; j++ )
+            {
+                assertFalse( tree.hasKey( j ) );
+            }
+            for( long j = i+1; j < count; j++ )
+            {
+                System.out.println( "checking the presence of " + j  + " after chopping " + i );
+                assertTrue( tree.hasKey( j ) );
+            }
+            assertEquals( count - (i + 1), tree.getNbElems() );    
+        }
+        
+        openRecordManagerAndBtree();
+        assertEquals( 0l, btree.getNbElems() );
     }
 }

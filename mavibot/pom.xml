@@ -23,12 +23,12 @@
   <parent>
     <groupId>org.apache.directory.mavibot</groupId>
     <artifactId>mavibot-parent</artifactId>
-    <version>1.0.0-M6-SNAPSHOT</version>
+    <version>1.0.0-M7-SNAPSHOT</version>
   </parent>
 
   <artifactId>mavibot</artifactId>
   <name>ApacheDS MVCC BTree implementation</name>
-  <packaging>jar</packaging>
+  <packaging>bundle</packaging>
 
   <description>A MVCC BTree Implementation</description>
 
@@ -65,12 +65,44 @@
       <artifactId>slf4j-log4j12</artifactId>
       <version>${slf4j.log4j12.version}</version>
     </dependency>
+  </dependencies>
+  
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifestFile>META-INF/MANIFEST.MF</manifestFile>
+            <addMavenDescriptor>false</addMavenDescriptor>
+          </archive>
+        </configuration>
+      </plugin>
+      
+      <plugin>
+        <groupId>org.apache.felix</groupId>
+        <artifactId>maven-bundle-plugin</artifactId>
+        <inherited>true</inherited>
+        <extensions>true</extensions>
+        <configuration>
+          <manifestLocation>META-INF</manifestLocation>
+          <instructions>
+            <Bundle-SymbolicName>${project.groupId}.mavibot</Bundle-SymbolicName>
+            <Export-Package>
+              org.apache.directory.mavibot.btree;version=${project.version};-noimport:=true,
+              org.apache.directory.mavibot.btree.comparator;version=${project.version};-noimport:=true,
+              org.apache.directory.mavibot.btree.exception;version=${project.version};-noimport:=true,
+              org.apache.directory.mavibot.btree.memory;version=${project.version};-noimport:=true,
+              org.apache.directory.mavibot.btree.persisted;version=${project.version};-noimport:=true,
+              org.apache.directory.mavibot.btree.serializer;version=${project.version};-noimport:=true,
+              org.apache.directory.mavibot.btree.util;version=${project.version};-noimport:=true
+            </Export-Package>
+          </instructions>
+        </configuration>
+      </plugin>
 
-    <dependency>
-      <groupId>log4j</groupId>
-      <artifactId>log4j</artifactId>
-      <version>${log4j.version}</version>
-    </dependency>
-  </dependencies>  
+    </plugins>
+  </build>
 </project>
 

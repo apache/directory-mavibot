@@ -50,9 +50,9 @@ public abstract class AbstractElementSerializer<T> implements ElementSerializer<
     {
         this.comparator = comparator;
 
-        // We will extract the Type to use for values, using the serializer for that
-        Class<?> valueSerializerClass = comparator.getClass();
-        Type[] types = valueSerializerClass.getGenericInterfaces();
+        // We will extract the Type to use for values, using the comparator for that
+        Class<?> comparatorClass = comparator.getClass();
+        Type[] types = comparatorClass.getGenericInterfaces();
 
         if ( types[0] instanceof Class )
         {

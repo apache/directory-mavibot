@@ -20,6 +20,10 @@
 package org.apache.directory.mavibot.btree;
 
 
+import static org.apache.directory.mavibot.btree.BTreeFactory.createLeaf;
+import static org.apache.directory.mavibot.btree.BTreeFactory.createNode;
+import static org.apache.directory.mavibot.btree.BTreeFactory.setKey;
+
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -34,7 +38,9 @@ import org.apache.directory.mavibot.btree.exception.BTreeCreationException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
-import static org.apache.directory.mavibot.btree.BTreeFactory.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * A holder to store the Values
@@ -44,6 +50,9 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
  */
 /* No qualifier */class PersistedValueHolder<V> extends AbstractValueHolder<V>
 {
+    /** The LoggerFactory used by this class */
+    protected static final Logger LOG = LoggerFactory.getLogger( PersistedValueHolder.class );
+
     /** The parent BTree */
     protected PersistedBTree<V, V> parentBtree;
 
@@ -132,7 +141,7 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
                         buildSubBTree( ( PersistedBTree<V, V> ) valueBtree, values );
                     }
                 }
-                catch( Exception e )
+                catch ( Exception e )
                 {
                     throw new RuntimeException( e );
                 }
@@ -405,7 +414,7 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
                     }
 
                     cursor.close();
-                    
+
                     return returnedValue;
                 }
                 else
@@ -638,7 +647,7 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
         V val = super.replaceValueArray( newValue );
         // The raw value is not anymore up to date with the content
         isRawUpToDate = false;
-        
+
         return val;
     }
 
@@ -702,7 +711,12 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
 
 
     /**
-     * {@inheritDoc}
+     * Constructs the sub-BTree using bulkload instead of performing sequential inserts.
+     * 
+     * @param btree the sub-BTtree to be constructed
+     * @param dupKeyValues the array of values to be inserted as keys
+     * @return
+     * @throws Exception
      */
     protected BTree buildSubBTree( BTree<V, V> givenBTree, V[] dupKeyValues ) throws Exception
     {
@@ -805,7 +819,8 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
      * @return the new root page of the sub-BTree after attaching all the nodes
      * @throws IOException
      */
-    private Page attachNodes( List<Page<V, V>> children, BTree btree, int numKeysInNode, RecordManager rm ) throws IOException
+    private Page attachNodes( List<Page<V, V>> children, BTree btree, int numKeysInNode, RecordManager rm )
+        throws IOException
     {
         if ( children.size() == 1 )
         {
@@ -864,15 +879,15 @@ import static org.apache.directory.mavibot.btree.BTreeFactory.*;
             }
         }
 
-        if( lastNode.keys.length == 0 )
+        if ( lastNode.keys.length == 0 )
         {
             lstNodes.remove( lastNode );
         }
 
         return attachNodes( lstNodes, btree, numKeysInNode, rm );
     }
-    
-    
+
+
     /**
      * @see Object#toString()
      */

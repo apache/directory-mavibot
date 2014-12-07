@@ -54,9 +54,6 @@ public class TupleCursor<K, V>
     /** The transaction used for this cursor */
     protected ReadTransaction<K, V> transaction;
 
-    /** The Tuple used to return the results */
-    protected Tuple<K, V> tuple = new Tuple<K, V>();
-
 
     /**
      * Creates a new instance of Cursor.
@@ -322,8 +319,7 @@ public class TupleCursor<K, V>
         }
 
         AbstractPage<K, V> leaf = ( AbstractPage<K, V> ) ( parentPos.page );
-        tuple.setKey( leaf.getKey( parentPos.pos ) );
-        tuple.setValue( value );
+        Tuple<K, V> tuple = new Tuple<K, V>( leaf.getKey( parentPos.pos ), value );
 
         return tuple;
     }
@@ -396,6 +392,7 @@ public class TupleCursor<K, V>
 
         // The key
         AbstractPage<K, V> leaf = ( AbstractPage<K, V> ) ( parentPos.page );
+        Tuple<K, V> tuple = new Tuple<K, V>();
         tuple.setKey( leaf.getKey( parentPos.pos ) );
 
         // The value
@@ -595,8 +592,7 @@ public class TupleCursor<K, V>
         }
 
         AbstractPage<K, V> leaf = ( AbstractPage<K, V> ) ( parentPos.page );
-        tuple.setKey( leaf.getKey( parentPos.pos ) );
-        tuple.setValue( value );
+        Tuple<K, V> tuple = new Tuple<K, V>( leaf.getKey( parentPos.pos ), value );
 
         return tuple;
     }
@@ -665,6 +661,7 @@ public class TupleCursor<K, V>
         AbstractPage<K, V> leaf = ( AbstractPage<K, V> ) ( parentPos.page );
 
         // The key
+        Tuple<K, V> tuple = new Tuple<K, V>();
         tuple.setKey( leaf.getKey( parentPos.pos ) );
 
         // The value
@@ -703,16 +700,16 @@ public class TupleCursor<K, V>
 
         switch ( parentPos.pos )
         {
-            case 0 :
+            case 0:
                 // Beginning of the leaf. We have to go back into the stack up to the
                 // parent, and down to the leaf
                 return hasPrevParentPos();
-                
-            case -1 :
+
+            case -1:
                 // no previous key
                 return false;
-                
-            default :
+
+            default:
                 // we have a previous key
                 return true;
         }

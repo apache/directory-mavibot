@@ -68,9 +68,10 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
     /** The BtreeInfo offset */
     private long btreeInfoOffset;
-    
+
     /** The internal recordManager */
     private RecordManager recordManager;
+
 
     /**
      * Creates a new BTree, with no initialization.
@@ -130,13 +131,13 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
                 currentBtreeHeader = btreeHeader;
                 break;
 
-            case PERSISTED_SUB :
+            case PERSISTED_SUB:
                 init( ( PersistedBTree<K, V> ) configuration.getParentBTree() );
                 btreeRevisions.put( 0L, btreeHeader );
                 currentBtreeHeader = btreeHeader;
                 break;
-                
-            default :
+
+            default:
                 // We will create a new cache and a new readTransactions map 
                 init( null );
                 btreeRevisions.put( 0L, btreeHeader );
@@ -164,13 +165,13 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
             {
                 cacheSize = 1;
             }
-            
+
             cache = new LRUMap( cacheSize );
         }
         else
         {
-            this.cache = ((PersistedBTree<K, V>)parentBTree).getCache();
-            this.readTransactions = ((PersistedBTree<K, V>)parentBTree).getReadTransactions();
+            this.cache = ( ( PersistedBTree<K, V> ) parentBTree ).getCache();
+            this.readTransactions = ( ( PersistedBTree<K, V> ) parentBTree ).getReadTransactions();
         }
 
         // Initialize the txnManager thread
@@ -274,7 +275,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
      * @return
      * @throws IOException
      */
-    /* no qualifier */ Tuple<K, V> delete( K key, V value, long revision ) throws IOException
+    /* no qualifier */Tuple<K, V> delete( K key, V value, long revision ) throws IOException
     {
         // We have to start a new transaction, which will be committed or rollbacked
         // locally. This will duplicate the current BtreeHeader during this phase.
@@ -327,7 +328,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
         // Try to delete the entry starting from the root page. Here, the root
         // page may be either a Node or a Leaf
-        DeleteResult<K, V> result = btreeHeader.getRootPage().delete( key, value, revision);
+        DeleteResult<K, V> result = btreeHeader.getRootPage().delete( key, value, revision );
 
         if ( result instanceof NotPresentResult )
         {
@@ -369,11 +370,10 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
         // Write down the data on disk
         long newBtreeHeaderOffset = recordManager.writeBtreeHeader( this, newBtreeHeader );
 
-
         // Update the B-tree of B-trees with this new offset, if we are not already doing so
         switch ( btreeType )
         {
-            case PERSISTED :
+            case PERSISTED:
                 // We have a new B-tree header to inject into the B-tree of btrees
                 recordManager.addInBtreeOfBtrees( getName(), revision, newBtreeHeaderOffset );
 
@@ -383,19 +383,18 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
                 storeRevision( newBtreeHeader, recordManager.isKeepRevisions() );
 
                 break;
-                
-            case PERSISTED_SUB :
+
+            case PERSISTED_SUB:
                 // Sub-B-trees are only updating the CopiedPage B-tree
                 recordManager.addInCopiedPagesBtree( getName(), revision, result.getCopiedPages() );
-                
+
                 //btreeRevisions.put( revision, newBtreeHeader );
 
                 currentRevision.set( revision );
 
-
                 break;
 
-            case BTREE_OF_BTREES :
+            case BTREE_OF_BTREES:
                 // The B-tree of B-trees or the copiedPages B-tree has been updated, update the RMheader parameters
                 recordManager.updateRecordManagerHeader( newBtreeHeaderOffset, -1L );
 
@@ -471,20 +470,20 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
         }
     }
 
-    
+
     private BTreeHeader<K, V> getNewBTreeHeader( String name )
     {
         if ( btreeType == BTreeTypeEnum.PERSISTED_SUB )
         {
             return getBtreeHeader();
         }
-        
+
         BTreeHeader<K, V> btreeHeader = recordManager.getNewBTreeHeader( getName() );
 
         return btreeHeader;
     }
 
-    
+
     /**
      * Insert the tuple into the B-tree rootPage, get back the new rootPage
      */
@@ -565,7 +564,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
         // Update the B-tree of B-trees with this new offset, if we are not already doing so
         switch ( btreeType )
         {
-            case PERSISTED :
+            case PERSISTED:
                 // We have a new B-tree header to inject into the B-tree of btrees
                 recordManager.addInBtreeOfBtrees( getName(), revision, newBtreeHeaderOffset );
 
@@ -576,10 +575,10 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
                 break;
 
-            case PERSISTED_SUB :
+            case PERSISTED_SUB:
                 // Sub-B-trees are only updating the CopiedPage B-tree
                 recordManager.addInCopiedPagesBtree( getName(), revision, result.getCopiedPages() );
-                
+
                 // Store the new revision
                 storeRevision( newBtreeHeader, recordManager.isKeepRevisions() );
 
@@ -587,7 +586,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
                 break;
 
-            case BTREE_OF_BTREES :
+            case BTREE_OF_BTREES:
                 // The B-tree of B-trees or the copiedPages B-tree has been updated, update the RMheader parameters
                 recordManager.updateRecordManagerHeader( newBtreeHeaderOffset, -1L );
 
@@ -607,6 +606,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
         // Get the new root page and make it the current root page
         return result;
     }
+
 
     /**
      * Write the data in the ByteBuffer, and eventually on disk if needed.
@@ -659,6 +659,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
         return pageHolder;
     }
+
 
     /**
      * Get the rootPzge associated to a give revision.
@@ -722,8 +723,8 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
         return readTransaction;
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
@@ -733,7 +734,8 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
         if ( btreeHeader != null )
         {
-            ReadTransaction<K, V> readTransaction = new ReadTransaction<K, V>(  recordManager, btreeHeader, readTransactions );
+            ReadTransaction<K, V> readTransaction = new ReadTransaction<K, V>( recordManager, btreeHeader,
+                readTransactions );
 
             readTransactions.add( readTransaction );
 
@@ -744,7 +746,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
             return null;
         }
     }
-    
+
 
     /**
      * @see Object#toString()

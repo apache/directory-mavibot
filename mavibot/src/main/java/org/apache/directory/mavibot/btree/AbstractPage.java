@@ -59,6 +59,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     /** The last {@link PageIO} storing the serialized Page on disk */
     protected long lastOffset = -1L;
 
+
     /**
      * Creates a default empty AbstractPage
      *
@@ -155,7 +156,14 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     {
         if ( pos < nbElems + 1 )
         {
-            return children[pos].getValue();
+            if ( children[pos] != null )
+            {
+                return children[pos].getValue();
+            }
+            else
+            {
+                return null;
+            }
         }
         else
         {
@@ -227,7 +235,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @return The result
      * @throws IOException If we had an issue while processing the deletion
      */
-    /* no qualifier */abstract DeleteResult<K, V> delete( K key, V value, long revision, Page<K, V> parent, int parentPos )
+    /* no qualifier */abstract DeleteResult<K, V> delete( K key, V value, long revision, Page<K, V> parent,
+        int parentPos )
         throws IOException;
 
 
@@ -258,7 +267,14 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     {
         if ( ( pos >= 0 ) && ( pos < children.length ) )
         {
-            return children[pos].getValue();
+            if ( children[pos] != null )
+            {
+                return children[pos].getValue();
+            }
+            else
+            {
+                return null;
+            }
         }
         else
         {
@@ -268,7 +284,10 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
 
     /**
-     * {@inheritDoc}
+     * Inject a pageHolder into the node, at a given position
+     * 
+     * @param pos The position of the added pageHolder
+     * @param pageHolder The pageHolder to add
      */
     /* no qualifier */void setPageHolder( int pos, PageHolder<K, V> pageHolder )
     {
@@ -327,7 +346,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         return page.browseKeys( transaction, stack, depth );
     }
 
-    
+
     /**
      * Selects the sibling (the previous or next page with the same parent) which has
      * the more element assuming it's above N/2
@@ -507,7 +526,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             return -1;
         }
 
-        return btree.getComparator().compare( key1, key2 );
+        return btree.getKeyComparator().compare( key1, key2 );
     }
 
 

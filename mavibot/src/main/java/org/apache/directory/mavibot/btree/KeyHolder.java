@@ -60,4 +60,13 @@ package org.apache.directory.mavibot.btree;
     {
         return key;
     }
+
+
+    /**
+     * @see Object#toString()
+     */
+    public String toString()
+    {
+        return key.toString();
+    }
 }

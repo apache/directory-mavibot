@@ -946,6 +946,7 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
         PersistedLeaf<K, V> newLeaf = new PersistedLeaf<K, V>( btree, revision, nbElems + 1 );
 
         // Create the value holder
+        //System.out.println("( addElement ) creating sub-btree for key " + key + " value " + value );
         ValueHolder<V> valueHolder = new PersistedValueHolder<V>( btree, value );
 
         // Deal with the special case of an empty page
@@ -994,6 +995,8 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
         int middle = btree.getPageSize() >> 1;
         PersistedLeaf<K, V> leftLeaf = null;
         PersistedLeaf<K, V> rightLeaf = null;
+        
+        //System.out.println("(addAndSplit) creating sub-btree for key " + key + " value " + value );
         ValueHolder<V> valueHolder = new PersistedValueHolder<V>( btree, value );
 
         // Determinate where to store the new value

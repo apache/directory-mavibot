@@ -29,6 +29,7 @@ import java.util.List;
 
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
+import org.junit.Ignore;
 import org.junit.Test;
 
 
@@ -40,6 +41,7 @@ import org.junit.Test;
 public class InMemoryBTreeBuilderTest
 {
     @Test
+    @Ignore
     public void testIntegerTree() throws IOException, KeyNotFoundException
     {
         List<Tuple<Integer, Integer>> sortedTuple = new ArrayList<Tuple<Integer, Integer>>();

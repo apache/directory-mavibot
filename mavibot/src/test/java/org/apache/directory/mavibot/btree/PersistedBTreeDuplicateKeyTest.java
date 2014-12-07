@@ -550,6 +550,11 @@ public class PersistedBTreeDuplicateKeyTest
         {
             for ( int k = 0; k < i; k++ )
             {
+                System.out.println( "inserting " + ch + " " + k );
+                if( ch == 'c' && k == 6)
+                {
+                    System.out.println();
+                }
                 btree.insert( Long.valueOf( ch ), String.valueOf( k ) );
             }
         }
@@ -795,11 +800,11 @@ public class PersistedBTreeDuplicateKeyTest
 
     
     @Test
-    public void testFindLeftAndRightMosetInSubBTree() throws Exception
+    public void testFindLeftAndRightMostInSubBTree() throws Exception
     {
         PersistedBTreeConfiguration<Integer, Integer> config = new PersistedBTreeConfiguration<Integer, Integer>();
 
-        config.setName( "test" );
+        config.setName( "testSubBtree" );
         config.setKeySerializer( IntSerializer.INSTANCE );
         config.setValueSerializer( IntSerializer.INSTANCE );
         config.setAllowDuplicates( false );
@@ -807,13 +812,15 @@ public class PersistedBTreeDuplicateKeyTest
 
         PersistedBTree<Integer, Integer> subBtree = new PersistedBTree<Integer, Integer>( config );
         
-        subBtree.setRecordManager( recordManager1 );
+        recordManager1.manage( subBtree );
         
         subBtree.insert( 1, 1 ); // the values will be discarded in this BTree type
         subBtree.insert( 2, 2 );
         subBtree.insert( 3, 3 );
         subBtree.insert( 4, 4 );
         subBtree.insert( 5, 5 );
+        
+        assertEquals( 5l, subBtree.getNbElems() );
         
         Tuple<Integer, Integer> t = subBtree.getRootPage().findLeftMost();
         assertEquals( Integer.valueOf( 1 ), t.getKey() );

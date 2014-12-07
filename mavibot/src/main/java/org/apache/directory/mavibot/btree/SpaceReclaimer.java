@@ -28,6 +28,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -36,6 +37,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -162,6 +164,7 @@ public class SpaceReclaimer
         return map;
     }
 
+    //void reclaim(){}
     
     /**
      * relcaims the copied pages
@@ -191,6 +194,8 @@ public class SpaceReclaimer
 
                 List<RevisionOffset> copiedRevisions = getRevisions( name );
 
+                long lastRev = -1L;
+                
                 for ( RevisionOffset ro : copiedRevisions )
                 {
                     long rv = ro.getRevision();
@@ -207,7 +212,39 @@ public class SpaceReclaimer
                     rm.free( offsets );
 
                     RevisionName key = new RevisionName( rv, name );
+                    
                     rm.copiedPageMap.remove( key );
+                    
+                    if( rv > lastRev )
+                    {
+                        lastRev = rv;
+                    }
+                }
+                
+                if( lastRev != -1 )
+                {
+                    System.out.println( "===================== start ======================= " + name );
+                    System.out.println( "BoB root offset " + ( ( AbstractPage ) rm.btreeOfBtrees.getRootPage() ).getOffset() );
+                    System.out.println( "deleting revisions from BoB upto and including " + lastRev );
+                    ValueCursor<RevisionAndHeaderOffset> values = rm.btreeOfBtrees.getValues( name );
+                    RevisionAndHeaderOffset prevRho = null;
+                    while( values.hasNext() )
+                    {
+                        RevisionAndHeaderOffset rho = values.next();
+                        if( rho.getRevision() > lastRev )
+                        {
+                            System.out.println( "stopped after deleting revision " + prevRho.getRevision() );
+                            break;
+                        }
+                        prevRho = rho;
+                        rm.btreeOfBtrees.delete( name, rho );
+                        System.out.println( "------- deleted " + rho.getRevision() + " , " + rho.getOffset() );
+                    }
+                    
+                    
+                    values.close();
+                    System.out.println( "BoB root offset " + ( ( AbstractPage ) rm.btreeOfBtrees.getRootPage() ).getOffset() );
+                    System.out.println( "===================== end ======================= " + name );
                 }
             }
         }

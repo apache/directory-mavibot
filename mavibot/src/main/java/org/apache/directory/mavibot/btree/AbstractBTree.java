@@ -93,9 +93,10 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
     /** The current revision */
     protected AtomicLong currentRevision = new AtomicLong( 0L );
-    
+
     /** The TransactionManager used for this BTree */
     protected TransactionManager transactionManager;
+
 
     /**
      * Starts a Read Only transaction. If the transaction is not closed, it will be
@@ -125,7 +126,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         {
             throw new BTreeCreationException( "We don't have a transactionLManager" );
         }
-        
+
         ReadTransaction<K, V> transaction = beginReadTransaction();
 
         if ( transaction == null )
@@ -134,7 +135,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         }
         else
         {
-            ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
+            ParentPos<K, V>[] stack = ( ParentPos<K, V>[] ) Array.newInstance( ParentPos.class, 32 );
 
             TupleCursor<K, V> cursor = getRootPage().browse( transaction, stack, 0 );
 
@@ -165,7 +166,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         }
         else
         {
-            ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
+            ParentPos<K, V>[] stack = ( ParentPos<K, V>[] ) Array.newInstance( ParentPos.class, 32 );
 
             // And get the cursor
             TupleCursor<K, V> cursor = getRootPage( transaction.getRevision() ).browse( transaction, stack, 0 );
@@ -188,13 +189,13 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
         ReadTransaction<K, V> transaction = beginReadTransaction();
 
-        ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
+        ParentPos<K, V>[] stack = ( ParentPos<K, V>[] ) Array.newInstance( ParentPos.class, 32 );
 
         TupleCursor<K, V> cursor;
         try
         {
             cursor = getRootPage( transaction.getRevision() ).browse( key, transaction, stack, 0 );
-            
+
             return cursor;
         }
         catch ( KeyNotFoundException e )
@@ -223,7 +224,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         }
         else
         {
-            ParentPos<K, V>[] stack = (ParentPos<K, V>[]) Array.newInstance( ParentPos.class, 32 );
+            ParentPos<K, V>[] stack = ( ParentPos<K, V>[] ) Array.newInstance( ParentPos.class, 32 );
 
             // And get the cursor
             TupleCursor<K, V> cursor = getRootPage( transaction.getRevision() ).browse( key, transaction, stack, 0 );
@@ -316,22 +317,33 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             throw new IllegalArgumentException( "Key must not be null" );
         }
 
-        // Take the lock if it's not already taken by another thread
-        transactionManager.beginTransaction();
+        boolean txnAllowed = ( ( btreeType != BTreeTypeEnum.PERSISTED_SUB ) && ( btreeType != BTreeTypeEnum.BTREE_OF_BTREES ) );
+        
+        if ( txnAllowed )
+        {
+            // Take the lock if it's not already taken by another thread
+            transactionManager.beginTransaction();
+        }
 
         try
         {
             Tuple<K, V> deleted = delete( key, currentRevision.get() + 1 );
 
-            // Commit now
-            transactionManager.commit();
+            if ( txnAllowed )
+            {
+                // Commit now
+                transactionManager.commit();
+            }
 
             return deleted;
         }
         catch ( IOException ioe )
         {
-            // We have had an exception, we must rollback the transaction
-            transactionManager.rollback();
+            if ( txnAllowed )
+            {
+                // We have had an exception, we must rollback the transaction
+                transactionManager.rollback();
+            }
             
             return null;
         }
@@ -359,19 +371,30 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             throw new IllegalArgumentException( "Value must not be null" );
         }
 
-        transactionManager.beginTransaction();
-
+        boolean txnAllowed = ( ( btreeType != BTreeTypeEnum.PERSISTED_SUB ) && ( btreeType != BTreeTypeEnum.BTREE_OF_BTREES ) );
+        
+        if ( txnAllowed )
+        {
+            transactionManager.beginTransaction();
+        }
+        
         try
         {
             Tuple<K, V> deleted = delete( key, value, currentRevision.get() + 1 );
-            
-            transactionManager.commit();
+        
+            if ( txnAllowed )
+            {
+                transactionManager.commit();
+            }
     
             return deleted;
         }
         catch ( IOException ioe )
         {
-            transactionManager.rollback();
+            if ( txnAllowed )
+            {
+                transactionManager.rollback();
+            }
             
             throw ioe;
         }
@@ -412,9 +435,11 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             throw new IllegalArgumentException( "Key must not be null" );
         }
 
+        boolean txnAllowed = ( ( btreeType != BTreeTypeEnum.PERSISTED_SUB ) && ( btreeType != BTreeTypeEnum.BTREE_OF_BTREES ) );
+        
         // Take the lock if it's not already taken by another thread and if we 
         // aren't on a sub-btree
-        if ( btreeType != BTreeTypeEnum.PERSISTED_SUB )
+        if ( txnAllowed )
         {
             transactionManager.beginTransaction();
         }
@@ -433,7 +458,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             }
             
             // Commit now if it's not a sub-btree
-            if ( btreeType != BTreeTypeEnum.PERSISTED_SUB )
+            if ( txnAllowed )
             {
                 //FIXME when result type is ExistsResult then we should avoid writing the headers
                 transactionManager.commit();
@@ -445,7 +470,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         {
             // We have had an exception, we must rollback the transaction
             // if it's not a sub-btree
-            if ( btreeType != BTreeTypeEnum.PERSISTED_SUB )
+            if ( txnAllowed )
             {
                 transactionManager.rollback();
             }
@@ -456,7 +481,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         {
             // We have had an exception, we must rollback the transaction
             // if it's not a sub-btree
-            if ( btreeType != BTreeTypeEnum.PERSISTED_SUB )
+            if ( txnAllowed )
             {
                 transactionManager.rollback();
             }
@@ -771,7 +796,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
         currentRevision.set( revision );
         currentBtreeHeader = btreeHeader;
-        
+
         // And update the newBTreeHeaders map
         if ( btreeHeader.getBtree().getType() != BTreeTypeEnum.PERSISTED_SUB )
         {
@@ -794,7 +819,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
         currentRevision.set( revision );
         currentBtreeHeader = btreeHeader;
-        
+
         // And update the newBTreeHeaders map
         if ( btreeHeader.getBtree().getType() != BTreeTypeEnum.PERSISTED_SUB )
         {
@@ -907,9 +932,18 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     /**
      * {@inheritDoc}
      */
-    public Comparator<K> getComparator()
+    public Comparator<K> getKeyComparator()
     {
         return keySerializer.getComparator();
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public Comparator<V> getValueComparator()
+    {
+        return valueSerializer.getComparator();
     }
 
 
@@ -1012,7 +1046,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         {
             throw new BTreeCreationException( "We don't have a Transaction Manager" );
         }
-        
+
         ReadTransaction transaction = beginReadTransaction();
 
         if ( transaction == null )
@@ -1021,7 +1055,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         }
         else
         {
-            ParentPos<K, K>[] stack = (ParentPos<K, K>[]) Array.newInstance( ParentPos.class, 32 );
+            ParentPos<K, K>[] stack = ( ParentPos<K, K>[] ) Array.newInstance( ParentPos.class, 32 );
 
             KeyCursor<K> cursor = getRootPage().browseKeys( transaction, stack, 0 );
 
@@ -1032,7 +1066,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         }
     }
 
-    
+
     /**
      * Create a thread that is responsible of cleaning the transactions when
      * they hit the timeout
