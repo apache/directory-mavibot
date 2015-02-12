@@ -1184,15 +1184,6 @@ public class PersistedBTreeBrowseTest
             values.add( i );
         }
 
-        long sum = 0L;
-
-        for ( int i = 0; i < 500; i++ )
-        {
-            sum += values.get( i );
-        }
-
-        assertEquals( ( 500 * 499 ) / 2, sum );
-
         for ( int i = 0; i < 500; i++ )
         {
             int index = r.nextInt( 500 - i );
@@ -1200,7 +1191,7 @@ public class PersistedBTreeBrowseTest
             values.remove( index );
         }
 
-        sum = 0L;
+        long sum = 0L;
 
         for ( int i = 0; i < 500; i++ )
         {
@@ -1218,41 +1209,21 @@ public class PersistedBTreeBrowseTest
         // Now, browse the BTree starting from 0 to the end
         for ( long i = 0L; i < 500L; i++ )
         {
-            System.out.println( "Browsing from " + i );
+            //System.out.println( "Browsing from " + i );
             // Create the cursor
             TupleCursor<Long, String> cursor = btree.browseFrom( i );
 
             assertTrue( cursor.hasNext() );
             Long expected = i;
-            boolean error = false;
+            Long key = 0L;
 
             while ( cursor.hasNext() )
             {
                 Tuple<Long, String> tuple = cursor.next();
+                key = tuple.getKey();
 
-                if ( expected != tuple.getKey() )
-                {
-                    System.out.println( "Error on " + expected );
-                    error = true;
-                    break;
-                }
-                assertEquals( expected, tuple.getKey() );
+                assertEquals( expected, key );
                 expected++;
-            }
-
-            expected = i;
-
-            if ( error )
-            {
-                cursor.close();
-                cursor = btree.browseFrom( i );
-
-                while ( cursor.hasNext() )
-                {
-                    Tuple<Long, String> tuple = cursor.next();
-                    assertEquals( expected, tuple.getKey() );
-                    expected++;
-                }
             }
 
             cursor.close();
