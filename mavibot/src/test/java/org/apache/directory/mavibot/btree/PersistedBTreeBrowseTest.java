@@ -28,8 +28,11 @@ import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Random;
 import java.util.UUID;
 
 import org.apache.commons.io.FileUtils;
@@ -1160,6 +1163,57 @@ public class PersistedBTreeBrowseTest
         while ( cursor.hasNext() )
         {
             System.out.println( cursor.nextKey() );
+        }
+    }
+
+
+    /**
+     * Test the browse methods on a btree containing 500 random entries, and 
+     * try to browse it.
+     */
+    @Test
+    public void testBrowseBTree500() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
+    {
+        List<Long> values = new ArrayList<Long>( 500 );
+        long[] randomVals = new long[500];
+        Random r = new Random( System.currentTimeMillis() );
+
+        // Inject some data
+        for ( long i = 0L; i < 5000L; i++ )
+        {
+            values.add( i );
+        }
+
+        for ( int i = 0; i < 500; i++ )
+        {
+            int index = r.nextInt( 500 - i );
+            randomVals[i] = values.get( index );
+        }
+
+        // Inject some data
+        for ( int i = 0; i < 500; i++ )
+        {
+            btree.insert( randomVals[i], Long.toString( randomVals[i] ) );
+        }
+
+        // Now, browse the BTree starting from 0 to the end
+        for ( long i = 0L; i < 500L; i++ )
+        {
+            System.out.println( "Browsing from " + i );
+            // Create the cursor
+            TupleCursor<Long, String> cursor = btree.browseFrom( i );
+
+            assertTrue( cursor.hasNext() );
+            Long expected = i;
+
+            while ( cursor.hasNext() )
+            {
+                Tuple<Long, String> tuple = cursor.next();
+                assertEquals( expected, tuple.getKey() );
+                expected++;
+            }
+
+            cursor.close();
         }
     }
 }
