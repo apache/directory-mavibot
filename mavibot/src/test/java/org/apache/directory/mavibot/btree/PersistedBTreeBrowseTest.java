@@ -1179,16 +1179,35 @@ public class PersistedBTreeBrowseTest
         Random r = new Random( System.currentTimeMillis() );
 
         // Inject some data
-        for ( long i = 0L; i < 5000L; i++ )
+        for ( long i = 0L; i < 500L; i++ )
         {
             values.add( i );
         }
+
+        long sum = 0L;
+
+        for ( int i = 0; i < 500; i++ )
+        {
+            sum += values.get( i );
+        }
+
+        assertEquals( ( 500 * 499 ) / 2, sum );
 
         for ( int i = 0; i < 500; i++ )
         {
             int index = r.nextInt( 500 - i );
             randomVals[i] = values.get( index );
+            values.remove( index );
         }
+
+        sum = 0L;
+
+        for ( int i = 0; i < 500; i++ )
+        {
+            sum += randomVals[i];
+        }
+
+        assertEquals( ( 500 * 499 ) / 2, sum );
 
         // Inject some data
         for ( int i = 0; i < 500; i++ )
@@ -1205,12 +1224,35 @@ public class PersistedBTreeBrowseTest
 
             assertTrue( cursor.hasNext() );
             Long expected = i;
+            boolean error = false;
 
             while ( cursor.hasNext() )
             {
                 Tuple<Long, String> tuple = cursor.next();
+
+                if ( expected != tuple.getKey() )
+                {
+                    System.out.println( "Error on " + expected );
+                    error = true;
+                    break;
+                }
                 assertEquals( expected, tuple.getKey() );
                 expected++;
+            }
+
+            expected = i;
+
+            if ( error )
+            {
+                cursor.close();
+                cursor = btree.browseFrom( i );
+
+                while ( cursor.hasNext() )
+                {
+                    Tuple<Long, String> tuple = cursor.next();
+                    assertEquals( expected, tuple.getKey() );
+                    expected++;
+                }
             }
 
             cursor.close();
