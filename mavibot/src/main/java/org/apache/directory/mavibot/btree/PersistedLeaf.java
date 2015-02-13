@@ -20,13 +20,14 @@
 package org.apache.directory.mavibot.btree;
 
 
+import static org.apache.directory.mavibot.btree.BTreeTypeEnum.PERSISTED_SUB;
+
 import java.io.IOException;
 import java.lang.reflect.Array;
 
-import org.apache.directory.mavibot.btree.exception.DuplicateValueNotAllowedException;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
-import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
+
 
 /**
  * A MVCC Leaf. It stores the keys and values. It does not have any children.
@@ -64,7 +65,7 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
     PersistedLeaf( BTree<K, V> btree, long revision, int nbElems )
     {
         super( btree, revision, nbElems );
-        if( btree.getType() != BTreeTypeEnum.PERSISTED_SUB )
+        if ( btree.getType() != BTreeTypeEnum.PERSISTED_SUB )
         {
             values = ( ValueHolder<V>[] ) Array.newInstance( PersistedValueHolder.class, nbElems );
         }
@@ -87,11 +88,11 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
             // into a copy of this page, unless the page has already be copied
             int index = -( pos + 1 );
 
-            if( isSubTree )
+            if ( isSubTree )
             {
                 return ExistsResult.EXISTS;
             }
-            
+
             // Replace the existing value in a copy of the current page
             InsertResult<K, V> result = replaceElement( revision, key, value, index );
 
@@ -104,7 +105,7 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
             // The current page is not full, it can contain the added element.
             // We insert it into a copied page and return the result
             Page<K, V> modifiedPage = null;
-            
+
             if ( isSubTree )
             {
                 modifiedPage = addSubTreeElement( revision, key, pos );
@@ -124,8 +125,8 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
             // The Page is already full : we split it and return the overflow element,
             // after having created two pages.
             InsertResult<K, V> result = null;
-            
-            if( isSubTree )
+
+            if ( isSubTree )
             {
                 result = addAndSplitSubTree( revision, key, pos );
             }
@@ -133,7 +134,7 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
             {
                 result = addAndSplit( revision, key, value, pos );
             }
-            
+
             result.addCopiedPage( this );
 
             return result;
@@ -145,7 +146,7 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
      * {@inheritDoc}
      */
     @SuppressWarnings("unchecked")
-    /* no qualifier */ DeleteResult<K, V> delete( K key, V value, long revision, Page<K, V> parent, int parentPos )
+    /* no qualifier */DeleteResult<K, V> delete( K key, V value, long revision, Page<K, V> parent, int parentPos )
         throws IOException
     {
         // Check that the leaf is not empty
@@ -175,12 +176,13 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
         boolean isNotSubTree = ( btree.getType() != PERSISTED_SUB );
 
         ValueHolder<V> valueHolder = null;
-        
-        if( isNotSubTree )
+
+        if ( isNotSubTree )
         {
             valueHolder = values[index];
         }
-        else // set value to null, just incase if a non-null value passed while deleting a key from from sub-btree
+        else
+        // set value to null, just incase if a non-null value passed while deleting a key from from sub-btree
         {
             value = null;
         }
@@ -332,7 +334,7 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
         throws EndOfFileExceededException, IOException
     {
         boolean isNotSubTree = ( btree.getType() != PERSISTED_SUB );
-        
+
         // Create the new page. It will contain N - 1 elements (the maximum number)
         // as we merge two pages that contain N/2 elements minus the one we remove
         PersistedLeaf<K, V> newLeaf = new PersistedLeaf<K, V>( btree, revision, btree.getPageSize() - 1 );
@@ -412,7 +414,7 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
         throws IOException
     {
         boolean isNotSubTree = ( btree.getType() != PERSISTED_SUB );
-        
+
         // The sibling is on the left, borrow the rightmost element
         K siblingKey = sibling.keys[sibling.getNbElems() - 1].getKey();
         ValueHolder<V> siblingValue = null;
@@ -444,7 +446,7 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
 
         // And copy the remaining elements
         System.arraycopy( keys, pos + 1, newLeaf.keys, pos + 1, keys.length - pos - 1 );
-        if( isNotSubTree )
+        if ( isNotSubTree )
         {
             System.arraycopy( values, pos + 1, newLeaf.values, pos + 1, values.length - pos - 1 );
         }
@@ -475,7 +477,7 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
         throws IOException
     {
         boolean isNotSubTree = ( btree.getType() != PERSISTED_SUB );
-        
+
         // The sibling is on the left, borrow the rightmost element
         K siblingKey = sibling.keys[0].getKey();
         ValueHolder<V> siblingHolder = null;
@@ -493,7 +495,7 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
         {
             System.arraycopy( sibling.values, 1, newSibling.values, 0, sibling.nbElems - 1 );
         }
-        
+
         // Create the new page and add the new element at the end
         // First copy the current page, with the same size
         PersistedLeaf<K, V> newLeaf = new PersistedLeaf<K, V>( btree, revision, nbElems );
@@ -504,21 +506,21 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
         {
             newLeaf.values[nbElems - 1] = siblingHolder;
         }
-        
+
         // Copy the keys and the values up to the deletion position,
         System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
         if ( isNotSubTree )
         {
             System.arraycopy( values, 0, newLeaf.values, 0, pos );
         }
-        
+
         // And copy the remaining elements
         System.arraycopy( keys, pos + 1, newLeaf.keys, pos, keys.length - pos - 1 );
         if ( isNotSubTree )
         {
             System.arraycopy( values, pos + 1, newLeaf.values, pos, values.length - pos - 1 );
         }
-        
+
         DeleteResult<K, V> result = new BorrowedFromRightResult<K, V>( newLeaf, newSibling, removedElement );
 
         // Add the copied pages to the list
@@ -541,7 +543,7 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
         throws IOException
     {
         boolean isNotSubTree = ( btree.getType() != PERSISTED_SUB );
-        
+
         if ( keyRemoved )
         {
             // Deal with the special case of a page with only one element by skipping
@@ -733,10 +735,11 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
     public TupleCursor<K, V> browse( K key, ReadTransaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
     {
         int pos = findPos( key );
-        TupleCursor<K, V> cursor = null;
+        TupleCursor<K, V> cursor = new TupleCursor<K, V>( transaction, stack, depth );;
 
         if ( pos < 0 )
         {
+            // The key has been found.
             pos = -( pos + 1 );
 
             // Start at the beginning of the page
@@ -746,43 +749,67 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
             parentPos.valueCursor = values[pos].getCursor();
 
             stack[depth] = parentPos;
-
-            cursor = new TupleCursor<K, V>( transaction, stack, depth );
         }
         else
         {
             // The key has not been found. Select the value just above, if we have one
             if ( pos < nbElems )
             {
+                // There is at least one key above the one we are looking for.
+                // This will be the starting point.
                 ParentPos<K, V> parentPos = new ParentPos<K, V>( this, pos );
 
                 // Create the value cursor
                 parentPos.valueCursor = values[pos].getCursor();
 
                 stack[depth] = parentPos;
-
-                cursor = new TupleCursor<K, V>( transaction, stack, depth );
             }
             else if ( nbElems > 0 )
             {
-                // after the last element
-                ParentPos<K, V> parentPos = new ParentPos<K, V>( this, nbElems - 1 );
-
-                // Create the value cursor
-                parentPos.valueCursor = values[nbElems - 1].getCursor();
-
-                stack[depth] = parentPos;
-
-                cursor = new TupleCursor<K, V>( transaction, stack, depth );
-
-                try
+                // We are at the end of a leaf. We have to check if we are at the end 
+                // of the tree or not
+                if ( depth == 0 )
                 {
-                    cursor.afterLast();
+                    // No children, we are at the end of the root page
+                    stack[depth] = new ParentPos<K, V>( this, pos );
+
+                    try
+                    {
+                        cursor.afterLast();
+                    }
+                    catch ( IOException e )
+                    {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
                 }
-                catch ( IOException e )
+                else
                 {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
+                    boolean isLast = true;
+                    stack[depth] = new ParentPos<K, V>( this, pos );
+
+                    // Check each upper node
+                    for ( int i = depth - 2; i >= 0; i-- )
+                    {
+                        if ( stack[i].pos < stack[i].page.getNbElems() )
+                        {
+                            isLast = false;
+                            break;
+                        }
+                    }
+
+                    if ( isLast )
+                    {
+                        try
+                        {
+                            cursor.afterLast();
+                        }
+                        catch ( IOException e )
+                        {
+                            // TODO Auto-generated catch block
+                            e.printStackTrace();
+                        }
+                    }
                 }
             }
             else
@@ -849,7 +876,7 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
             // It' not enough to copy the ValueHolder, we have to clone them
             // as ValueHolders are mutable
             int pos = 0;
-            
+
             for ( ValueHolder<V> valueHolder : values )
             {
                 try
@@ -861,7 +888,7 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
                     // TODO Auto-generated catch block
                     e.printStackTrace();
                 }
-                
+
                 // Stop when we have copied nbElems values
                 if ( pos == nbElems )
                 {
@@ -921,7 +948,7 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
         {
             replacedValue = valueHolder.replaceValueArray( value );
         }
-        
+
         // Create the result
         InsertResult<K, V> result = new ModifyResult<K, V>( newLeaf, replacedValue );
         result.addCopiedPage( this );
@@ -1068,11 +1095,11 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
      */
     public K getLeftMostKey()
     {
-        if( keys.length == 0 )
+        if ( keys.length == 0 )
         {
-            System.out.println("");
+            System.out.println( "" );
         }
-        
+
         return keys[0].getKey();
     }
 
@@ -1092,14 +1119,14 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
     public Tuple<K, V> findLeftMost() throws IOException
     {
         K key = keys[0].getKey();
-        
+
         boolean isSubTree = ( btree.getType() == PERSISTED_SUB );
-        
+
         if ( isSubTree )
         {
             return new Tuple<K, V>( key, null );
         }
-        
+
         ValueCursor<V> cursor = values[0].getCursor();
 
         try
@@ -1127,11 +1154,11 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
      */
     public Tuple<K, V> findRightMost() throws EndOfFileExceededException, IOException
     {
-        
+
         K key = keys[nbElems - 1].getKey();
-        
+
         boolean isSubTree = ( btree.getType() == PERSISTED_SUB );
-        
+
         if ( isSubTree )
         {
             return new Tuple<K, V>( key, null );
@@ -1244,7 +1271,7 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
         return newLeaf;
     }
 
-    
+
     /**
      * same as {@link #addAndSplit(long, Object, Object, int)} except the values are not copied.
      * This method is only used while inserting an element into a sub-BTree.
@@ -1342,17 +1369,17 @@ import static org.apache.directory.mavibot.btree.BTreeTypeEnum.*;
         return cursor;
     }
 
-    
+
     /**
      * sets the values to null
      * WARNING: only used by the internal API (especially during the bulk loading)
      */
-    /* no qualifier */ void _clearValues_()
+    /* no qualifier */void _clearValues_()
     {
         values = null;
     }
 
-    
+
     /**
      * {@inheritDoc}
      */

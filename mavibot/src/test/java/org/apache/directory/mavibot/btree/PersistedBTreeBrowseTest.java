@@ -997,6 +997,7 @@ public class PersistedBTreeBrowseTest
             Tuple<Long, String> tuple = cursor.nextKey();
 
             checkTuple( tuple, i, "1" );
+            System.out.println( i );
 
             if ( i == 999L )
             {
