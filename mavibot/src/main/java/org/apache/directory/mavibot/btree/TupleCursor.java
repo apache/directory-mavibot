@@ -196,6 +196,25 @@ public class TupleCursor<K, V>
 
         if ( parentPos.pos == AFTER_LAST )
         {
+            // Ok, here, we have reached the last value in the leaf. We have to go up and
+            // see if we have some remaining values
+            int currentDepth = depth - 1;
+
+            while ( currentDepth >= 0 )
+            {
+                parentPos = stack[currentDepth];
+
+                if ( parentPos.pos < parentPos.page.getNbElems() )
+                {
+                    // The parent has some remaining values on the right, get out
+                    return true;
+                }
+                else
+                {
+                    currentDepth--;
+                }
+            }
+
             return false;
         }
 
