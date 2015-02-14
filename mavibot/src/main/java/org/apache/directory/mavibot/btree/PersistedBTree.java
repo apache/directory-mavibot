@@ -482,7 +482,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
                 return recordManager.getNewBTreeHeader( RecordManager.COPIED_PAGE_BTREE_NAME );
 
             default:
-                return recordManager.getBTreeHeader( getName() );
+                return recordManager.getBTreeHeader( name );
         }
     }
 
