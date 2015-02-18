@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -149,18 +150,25 @@ public class BulkLoader<K, V>
         int nbIteration = 0;
         int nbElems = 0;
         boolean inMemory = true;
+        Set<K> keys = new HashSet<K>();
 
         while ( true )
         {
             nbIteration++;
             tuples.clear();
+            keys.clear();
 
             // Read up to chukSize elements
             while ( iterator.hasNext() && ( nbRead < chunkSize ) )
             {
                 Tuple<K, V> tuple = iterator.next();
                 tuples.add( tuple );
-                nbRead++;
+
+                if ( !keys.contains( tuple.getKey() ) )
+                {
+                    keys.add( tuple.getKey() );
+                    nbRead++;
+                }
             }
 
             if ( nbRead < chunkSize )
