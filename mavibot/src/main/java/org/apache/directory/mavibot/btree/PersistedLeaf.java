@@ -735,24 +735,42 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     public TupleCursor<K, V> browse( K key, ReadTransaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
     {
         int pos = findPos( key );
-        TupleCursor<K, V> cursor = new TupleCursor<K, V>( transaction, stack, depth );;
 
+        // First use case : the leaf is empty (this is a root page)
+        if ( nbElems == 0 )
+        {
+            // We have to return an empty cursor
+            return new TupleCursor<K, V>( transaction, null, 0 );
+        }
+
+        // Create the cursor we will use
+        TupleCursor<K, V> cursor = new TupleCursor<K, V>( transaction, stack, depth );
+
+        // Depending on the position, we will proceed differently :
+        // 1) if the key is found in the page, the cursor will be 
+        // set to this position.
+        // 2) The value has not been found, but is in the middle of the
+        // page (ie, other keys above teh one we are looking for exist),
+        // the cursor will be set to the current position
+        // 3) The key has not been found, 
         if ( pos < 0 )
         {
             // The key has been found.
             pos = -( pos + 1 );
 
-            // Start at the beginning of the page
+            // Start at the found position in the page
             ParentPos<K, V> parentPos = new ParentPos<K, V>( this, pos );
 
             // Create the value cursor
             parentPos.valueCursor = values[pos].getCursor();
 
+            // And store this position in the stack
             stack[depth] = parentPos;
         }
         else
         {
-            // The key has not been found. Select the value just above, if we have one
+            // The key has not been found, there are keys above this one. 
+            // Select the value just above
             if ( pos < nbElems )
             {
                 // There is at least one key above the one we are looking for.
@@ -764,7 +782,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
                 stack[depth] = parentPos;
             }
-            else if ( nbElems > 0 )
+            else if ( nbElems >= 0 )
             {
                 // We are at the end of a leaf. We have to check if we are at the end 
                 // of the tree or not

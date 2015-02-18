@@ -997,7 +997,6 @@ public class PersistedBTreeBrowseTest
             Tuple<Long, String> tuple = cursor.nextKey();
 
             checkTuple( tuple, i, "1" );
-            System.out.println( i );
 
             if ( i == 999L )
             {
@@ -1169,65 +1168,174 @@ public class PersistedBTreeBrowseTest
 
 
     /**
-     * Test the browse methods on a btree containing 500 random entries, and 
+     * Test the browse methods on a btree containing 500 random entries, with multiple values, and 
      * try to browse it.
      */
     @Test
-    public void testBrowseBTree500() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
+    public void testBrowseBTreeMultipleValues() throws IOException, BTreeAlreadyManagedException,
+        KeyNotFoundException
     {
-        List<Long> values = new ArrayList<Long>( 500 );
-        long[] randomVals = new long[500];
+        BTree<Long, Long> btreeLong = null;
+
+        try
+        {
+            btreeLong = recordManager1.addBTree( "testLong", LongSerializer.INSTANCE, LongSerializer.INSTANCE, true );
+
+            int nbKeys = 500;
+            List<Long> values = new ArrayList<Long>( nbKeys );
+            long[] randomVals = new long[nbKeys];
+            Random r = new Random( System.currentTimeMillis() );
+
+            // Create the data to inject into the btree
+            for ( long i = 0L; i < nbKeys; i++ )
+            {
+                values.add( i );
+            }
+
+            for ( int i = 0; i < nbKeys; i++ )
+            {
+                int index = r.nextInt( nbKeys - i );
+                randomVals[i] = values.get( index );
+                values.remove( index );
+            }
+
+            long sum = 0L;
+
+            for ( int i = 0; i < nbKeys; i++ )
+            {
+                sum += randomVals[i];
+            }
+
+            assertEquals( ( nbKeys * ( nbKeys - 1 ) ) / 2, sum );
+
+            int nbValues = 9;
+
+            // Inject some data
+            for ( int i = 0; i < nbKeys; i++ )
+            {
+                Long value = randomVals[i];
+
+                for ( Long j = 0L; j < nbValues; j++ )
+                {
+                    btreeLong.insert( randomVals[i], value + j );
+                }
+            }
+
+            long t0 = System.currentTimeMillis();
+            // Now, browse the BTree starting from 0 to the end
+            for ( Long i = 0L; i < nbKeys; i++ )
+            {
+                //System.out.println( "Browsing from " + i );
+                // Create the cursor
+                TupleCursor<Long, Long> cursor = btreeLong.browseFrom( i );
+
+                assertTrue( cursor.hasNext() );
+                Long expected = i;
+
+                while ( cursor.hasNext() )
+                {
+                    for ( Long j = 0L; j < nbValues; j++ )
+                    {
+                        Tuple<Long, Long> tuple1 = cursor.next();
+
+                        assertEquals( expected, tuple1.getKey() );
+                        assertEquals( ( Long ) ( expected + j ), tuple1.getValue() );
+                    }
+
+                    expected++;
+                }
+
+                cursor.close();
+            }
+            long t1 = System.currentTimeMillis();
+
+            System.out.println( " Delta for " + nbValues + " = " + ( t1 - t0 ) );
+        }
+        finally
+        {
+            btreeLong.close();
+        }
+    }
+
+
+    /**
+     * Test the browse methods on a btree containing 500 random entries, with multiple values, and 
+     * try to browse it. The key is a complex one
+     */
+    @Test
+    public void testBrowseBTreeComplexKey() throws IOException, BTreeAlreadyManagedException,
+        KeyNotFoundException
+    {
+        /*
+        int nbKeys = 500;
+        List<Long> values = new ArrayList<Long>( nbKeys );
+        long[] randomVals = new long[nbKeys];
         Random r = new Random( System.currentTimeMillis() );
 
-        // Inject some data
-        for ( long i = 0L; i < 500L; i++ )
+        // Create the data to inject into the btree
+        for ( long i = 0L; i < nbKeys; i++ )
         {
             values.add( i );
         }
 
-        for ( int i = 0; i < 500; i++ )
+        for ( int i = 0; i < nbKeys; i++ )
         {
-            int index = r.nextInt( 500 - i );
+            int index = r.nextInt( nbKeys - i );
             randomVals[i] = values.get( index );
             values.remove( index );
         }
 
         long sum = 0L;
 
-        for ( int i = 0; i < 500; i++ )
+        for ( int i = 0; i < nbKeys; i++ )
         {
             sum += randomVals[i];
         }
 
-        assertEquals( ( 500 * 499 ) / 2, sum );
+        assertEquals( ( nbKeys * ( nbKeys - 1 ) ) / 2, sum );
+
+        int nbValues = 9;
 
         // Inject some data
-        for ( int i = 0; i < 500; i++ )
+        for ( int i = 0; i < nbKeys; i++ )
         {
-            btree.insert( randomVals[i], Long.toString( randomVals[i] ) );
+            Long value = randomVals[i];
+
+            for ( Long j = 0L; j < nbValues; j++ )
+            {
+                btreeLong.insert( randomVals[i], value + j );
+            }
         }
 
+        long t0 = System.currentTimeMillis();
         // Now, browse the BTree starting from 0 to the end
-        for ( long i = 0L; i < 500L; i++ )
+        for ( Long i = 0L; i < nbKeys; i++ )
         {
             //System.out.println( "Browsing from " + i );
             // Create the cursor
-            TupleCursor<Long, String> cursor = btree.browseFrom( i );
+            TupleCursor<Long, Long> cursor = btreeLong.browseFrom( i );
 
             assertTrue( cursor.hasNext() );
             Long expected = i;
-            Long key = 0L;
 
             while ( cursor.hasNext() )
             {
-                Tuple<Long, String> tuple = cursor.next();
-                key = tuple.getKey();
+                for ( Long j = 0L; j < nbValues; j++ )
+                {
+                    Tuple<Long, Long> tuple1 = cursor.next();
 
-                assertEquals( expected, key );
+                    assertEquals( expected, tuple1.getKey() );
+                    assertEquals( ( Long ) ( expected + j ), tuple1.getValue() );
+                }
+
                 expected++;
             }
 
             cursor.close();
         }
+        long t1 = System.currentTimeMillis();
+
+        System.out.println( " Delta for " + nbValues + " = " + ( t1 - t0 ) );
+        */
     }
 }

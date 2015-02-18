@@ -131,18 +131,6 @@ import org.slf4j.LoggerFactory;
                 // Use a sub btree, now that we have reached the threshold
                 createSubTree();
 
-                //             // Now inject all the values into it
-                //                for ( V value : values )
-                //                {
-                //                    try
-                //                    {
-                //                        valueBtree.insert( value, value );
-                //                    }
-                //                    catch ( IOException e )
-                //                    {
-                //                        e.printStackTrace();
-                //                    }
-                //                }
                 try
                 {
                     build( ( PersistedBTree<V, V> ) valueBtree, values );
@@ -721,40 +709,50 @@ import org.slf4j.LoggerFactory;
      * 
      * @param btree the sub-BTtree to be constructed
      * @param dupKeyValues the array of values to be inserted as keys
-     * @return
+     * @return The created BTree
      * @throws Exception
      */
-    private BTree build( PersistedBTree<V, V> btree, V[] dupKeyValues ) throws Exception
+    private BTree<V, V> build( PersistedBTree<V, V> btree, V[] dupKeyValues ) throws Exception
     {
         long newRevision = btree.getRevision() + 1;
-
         int numKeysInNode = btree.getPageSize();
-
         RecordManager rm = btree.getRecordManager();
-
         List<Page<V, V>> lstLeaves = new ArrayList<Page<V, V>>();
-
         int totalTupleCount = 0;
+        int nbKeyPage = Math.min( dupKeyValues.length, numKeysInNode );
 
-        Page<V, V> leaf1 = BTreeFactory.createLeaf( btree, newRevision, numKeysInNode );
-        lstLeaves.add( leaf1 );
+        Page<V, V> newLeaf = BTreeFactory.createLeaf( btree, newRevision, nbKeyPage );
+        lstLeaves.add( newLeaf );
 
         int leafIndex = 0;
 
+        // Iterate on all the values
         for ( V v : dupKeyValues )
         {
-            setKey( btree, leaf1, leafIndex, v );
+            // Inject the key in the leaf
+            setKey( btree, newLeaf, leafIndex, v );
 
             leafIndex++;
             totalTupleCount++;
+
             if ( ( totalTupleCount % numKeysInNode ) == 0 )
             {
-                leafIndex = 0;
+                // The page has been completed, create a new one or 
+                // if it was the last value, we are done
+                if ( totalTupleCount == dupKeyValues.length )
+                {
+                    // We are done with the values, exit
+                    break;
+                }
+                else
+                {
+                    // Create a new leaf
+                    leafIndex = 0;
+                    nbKeyPage = Math.min( dupKeyValues.length - totalTupleCount, numKeysInNode );
 
-                PageHolder<V, V> pageHolder = ( PageHolder ) rm.writePage( btree, leaf1, newRevision );
-
-                leaf1 = createLeaf( btree, newRevision, numKeysInNode );
-                lstLeaves.add( leaf1 );
+                    newLeaf = createLeaf( btree, newRevision, nbKeyPage );
+                    lstLeaves.add( newLeaf );
+                }
             }
 
             //TODO build the whole tree in chunks rather than processing *all* leaves at first
@@ -765,41 +763,18 @@ import org.slf4j.LoggerFactory;
             return btree;
         }
 
-        // remove null keys and values from the last leaf and resize
-        PersistedLeaf lastLeaf = ( PersistedLeaf ) lstLeaves.get( lstLeaves.size() - 1 );
-        for ( int i = 0; i < lastLeaf.nbElems; i++ )
-        {
-            if ( lastLeaf.keys[i] == null )
-            {
-                int n = i;
-                lastLeaf.nbElems = n;
-                KeyHolder[] keys = lastLeaf.keys;
-
-                lastLeaf.keys = ( KeyHolder[] ) Array.newInstance( KeyHolder.class, n );
-                System.arraycopy( keys, 0, lastLeaf.keys, 0, n );
-
-                PageHolder pageHolder = ( PageHolder ) rm.writePage( btree, lastLeaf, newRevision );
-
-                break;
-            }
-        }
-
-        if ( lastLeaf.keys.length == 0 )
-        {
-            lstLeaves.remove( lastLeaf );
-        }
-
         // make sure either one of the root pages is reclaimed, cause when we call rm.manage()
         // there is already a root page created
-        Page rootPage = attachNodes( lstLeaves, btree, numKeysInNode, rm );
+        Page<V, V> rootPage = attachNodes( lstLeaves, btree, numKeysInNode, rm );
+        rm.writePage( btree, rootPage, rootPage.getRevision() );
 
-        Page oldRoot = btree.getRootPage();
+        Page<V, V> oldRoot = btree.getRootPage();
 
-        long newRootPageOffset = ( ( AbstractPage ) rootPage ).getOffset();
+        long newRootPageOffset = ( ( AbstractPage<?, V> ) rootPage ).getOffset();
         LOG.debug( "replacing old offset {} of the BTree {} with {}",
             btree.getRootPageOffset(), btree.getName(), newRootPageOffset );
 
-        BTreeHeader header = btree.getBtreeHeader();
+        BTreeHeader<V, V> header = btree.getBtreeHeader();
 
         header.setRootPage( rootPage );
         header.setRevision( newRevision );
@@ -808,6 +783,7 @@ import org.slf4j.LoggerFactory;
         long newBtreeHeaderOffset = rm.writeBtreeHeader( btree, header );
 
         header.setBTreeHeaderOffset( newBtreeHeaderOffset );
+        rm.writeBtreeHeader( btree, header );
 
         rm.freePages( ( BTree ) btree, btree.getRevision(), ( List ) Arrays.asList( oldRoot ) );
 
@@ -825,7 +801,7 @@ import org.slf4j.LoggerFactory;
      * @return the new root page of the sub-BTree after attaching all the nodes
      * @throws IOException
      */
-    private Page attachNodes( List<Page<V, V>> children, BTree btree, int numKeysInNode, RecordManager rm )
+    private Page<V, V> attachNodes( List<Page<V, V>> children, BTree btree, int numKeysInNode, RecordManager rm )
         throws IOException
     {
         if ( children.size() == 1 )
@@ -842,7 +818,7 @@ import org.slf4j.LoggerFactory;
         int i = 0;
         int totalNodes = 0;
 
-        for ( Page p : children )
+        for ( Page<?, V> p : children )
         {
             if ( i != 0 )
             {
@@ -866,7 +842,7 @@ import org.slf4j.LoggerFactory;
         }
 
         // remove null keys and values from the last node and resize
-        AbstractPage lastNode = ( AbstractPage ) lstNodes.get( lstNodes.size() - 1 );
+        AbstractPage<?, V> lastNode = ( AbstractPage<?, V> ) lstNodes.get( lstNodes.size() - 1 );
 
         for ( int j = 0; j < lastNode.nbElems; j++ )
         {
@@ -874,12 +850,10 @@ import org.slf4j.LoggerFactory;
             {
                 int n = j;
                 lastNode.nbElems = n;
-                KeyHolder[] keys = lastNode.keys;
+                KeyHolder<?>[] keys = lastNode.keys;
 
                 lastNode.keys = ( KeyHolder[] ) Array.newInstance( KeyHolder.class, n );
                 System.arraycopy( keys, 0, lastNode.keys, 0, n );
-
-                PageHolder pageHolder = ( PageHolder ) rm.writePage( btree, lastNode, 1 );
 
                 break;
             }
