@@ -55,79 +55,14 @@ import org.apache.directory.mavibot.btree.serializer.IntSerializer;
  */
 public class BulkLoader<K, V>
 {
+    private BulkLoader()
+    {
+    };
+
     static enum LevelEnum
     {
         LEAF,
         NODE
-    }
-
-    /**
-     * A private class to store informations on a level. We have to keep :
-     * <ul>
-     * <li>The number of elements to store in this level</li>
-     * <li>A flag that tells if it's a leaf or a node level</li>
-     * <li>The number of pages necessary to store all the elements in a level</li>
-     * <li>The number of elements we can store in a complete page (we may have one or two 
-     * incomplete pages at the end)</li>
-     * <li>A flag that tells if we have some incomplete page at the end</li>
-     * </ul>
-     * TODO LevelInfo.
-     *
-     * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
-     */
-    /*private*/class LevelInfo
-    {
-        /** The level number */
-        private int levelNumber;
-
-        /** Nb of elements for this level */
-        /*private*/int nbElems;
-
-        /** The number of pages in this level */
-        /*private*/int nbPages;
-
-        /** Nb of elements before we reach an incomplete page */
-        /*private*/int nbElemsLimit;
-
-        /** A flag that tells if the level contains nodes or leaves */
-        private boolean isNode;
-
-        /** The current page which contains the data until we move it to the resulting BTree */
-        /*private*/Page<K, V> currentPage;
-
-        /** The current position in the currentPage */
-        private int currentPos;
-
-        /** The number of already added elements for this level */
-        private int nbAddedElems;
-
-
-        /** @see Object#toString() */
-        public String toString()
-        {
-            StringBuilder sb = new StringBuilder();
-
-            if ( isNode )
-            {
-                sb.append( "NodeLevel[" );
-                sb.append( levelNumber );
-                sb.append( "] :" );
-            }
-            else
-            {
-                sb.append( "LeafLevel:" );
-            }
-
-            sb.append( "\n    nbElems           = " ).append( nbElems );
-            sb.append( "\n    nbPages           = " ).append( nbPages );
-            sb.append( "\n    nbElemsLimit      = " ).append( nbElemsLimit );
-            sb.append( "\n    nbAddedElems      = " ).append( nbAddedElems );
-            sb.append( "\n    currentPos        = " ).append( currentPos );
-            sb.append( "\n    currentPage" );
-            sb.append( "\n        nbKeys : " ).append( currentPage.getNbElems() );
-
-            return sb.toString();
-        }
     }
 
 
@@ -143,7 +78,7 @@ public class BulkLoader<K, V>
      * @return
      * @throws IOException
      */
-    private int readElements( BTree<K, V> btree, Iterator<Tuple<K, V>> iterator, List<File> sortedFiles,
+    private static <K, V> int readElements( BTree<K, V> btree, Iterator<Tuple<K, V>> iterator, List<File> sortedFiles,
         List<Tuple<K, V>> tuples, int chunkSize ) throws IOException
     {
         int nbRead = 0;
@@ -228,7 +163,7 @@ public class BulkLoader<K, V>
      * sorted and merged elements.
      * @throws IOException 
      */
-    private Tuple<Iterator<Tuple<K, Set<V>>>, Integer> processFiles( BTree<K, V> btree,
+    private static <K, V> Tuple<Iterator<Tuple<K, Set<V>>>, Integer> processFiles( BTree<K, V> btree,
         Iterator<Tuple<K, Set<V>>> dataIterator ) throws IOException
     {
         File file = File.createTempFile( "sortedUnique", "data" );
@@ -287,7 +222,7 @@ public class BulkLoader<K, V>
      * @param chunkSize The number of elements we may store in memory at each iteration
      * @throws IOException If there is a problem while processing the data
      */
-    public BTree<K, V> load( PersistedBTree<K, V> btree, Iterator<Tuple<K, V>> iterator, int chunkSize )
+    public static <K, V> BTree<K, V> load( PersistedBTree<K, V> btree, Iterator<Tuple<K, V>> iterator, int chunkSize )
         throws IOException
     {
         if ( btree == null )
@@ -372,7 +307,7 @@ public class BulkLoader<K, V>
      * Creates a node leaf LevelInfo based on the number of elements in the lower level. We can store
      * up to PageSize + 1 references to pages in a node.
      */
-    /* no qualifier*/LevelInfo computeLevel( BTree<K, V> btree, int nbElems, LevelEnum levelType )
+    /* no qualifier*/static <K, V> LevelInfo<K, V> computeLevel( BTree<K, V> btree, int nbElems, LevelEnum levelType )
     {
         int pageSize = btree.getPageSize();
         int incrementNode = 0;
@@ -382,31 +317,31 @@ public class BulkLoader<K, V>
             incrementNode = 1;
         }
 
-        LevelInfo level = new LevelInfo();
-        level.isNode = ( levelType == LevelEnum.NODE );
-        level.nbElems = nbElems;
-        level.nbPages = nbElems / ( pageSize + incrementNode );
-        level.levelNumber = 0;
-        level.nbAddedElems = 0;
-        level.currentPos = 0;
+        LevelInfo<K, V> level = new LevelInfo<K, V>();
+        level.setType( ( levelType == LevelEnum.NODE ) );
+        level.setNbElems( nbElems );
+        level.setNbPages( nbElems / ( pageSize + incrementNode ) );
+        level.setLevelNumber( 0 );
+        level.setNbAddedElems( 0 );
+        level.setCurrentPos( 0 );
 
         // Create the first level page
         if ( nbElems <= pageSize + incrementNode )
         {
             if ( nbElems % ( pageSize + incrementNode ) != 0 )
             {
-                level.nbPages = 1;
+                level.setNbPages( 1 );
             }
 
-            level.nbElemsLimit = nbElems;
+            level.setNbElemsLimit( nbElems );
 
-            if ( level.isNode )
+            if ( level.isNode() )
             {
-                level.currentPage = BTreeFactory.createNode( btree, 0L, nbElems - 1 );
+                level.setCurrentPage( BTreeFactory.createNode( btree, 0L, nbElems - 1 ) );
             }
             else
             {
-                level.currentPage = BTreeFactory.createLeaf( btree, 0L, nbElems );
+                level.setCurrentPage( BTreeFactory.createLeaf( btree, 0L, nbElems ) );
             }
         }
         else
@@ -415,59 +350,60 @@ public class BulkLoader<K, V>
 
             if ( remaining == 0 )
             {
-                level.nbElemsLimit = nbElems;
+                level.setNbElemsLimit( nbElems );
 
-                if ( level.isNode )
+                if ( level.isNode() )
                 {
-                    level.currentPage = BTreeFactory.createNode( btree, 0L, pageSize );
+                    level.setCurrentPage( BTreeFactory.createNode( btree, 0L, pageSize ) );
                 }
                 else
                 {
-                    level.currentPage = BTreeFactory.createLeaf( btree, 0L, pageSize );
+                    level.setCurrentPage( BTreeFactory.createLeaf( btree, 0L, pageSize ) );
                 }
             }
             else
             {
-                level.nbPages++;
+                level.incNbPages();
 
                 if ( remaining < ( pageSize / 2 ) + incrementNode )
                 {
-                    level.nbElemsLimit = nbElems - remaining - ( pageSize + incrementNode );
+                    level.setNbElemsLimit( nbElems - remaining - ( pageSize + incrementNode ) );
 
-                    if ( level.nbElemsLimit > 0 )
+                    if ( level.getNbElemsLimit() > 0 )
                     {
-                        if ( level.isNode )
+                        if ( level.isNode() )
                         {
-                            level.currentPage = BTreeFactory.createNode( btree, 0L, pageSize );
+                            level.setCurrentPage( BTreeFactory.createNode( btree, 0L, pageSize ) );
                         }
                         else
                         {
-                            level.currentPage = BTreeFactory.createLeaf( btree, 0L, pageSize );
+                            level.setCurrentPage( BTreeFactory.createLeaf( btree, 0L, pageSize ) );
                         }
                     }
                     else
                     {
-                        if ( level.isNode )
+                        if ( level.isNode() )
                         {
-                            level.currentPage = BTreeFactory.createNode( btree, 0L, ( pageSize / 2 ) + remaining - 1 );
+                            level
+                                .setCurrentPage( BTreeFactory.createNode( btree, 0L, ( pageSize / 2 ) + remaining - 1 ) );
                         }
                         else
                         {
-                            level.currentPage = BTreeFactory.createLeaf( btree, 0L, ( pageSize / 2 ) + remaining );
+                            level.setCurrentPage( BTreeFactory.createLeaf( btree, 0L, ( pageSize / 2 ) + remaining ) );
                         }
                     }
                 }
                 else
                 {
-                    level.nbElemsLimit = nbElems - remaining;
+                    level.setNbElemsLimit( nbElems - remaining );
 
-                    if ( level.isNode )
+                    if ( level.isNode() )
                     {
-                        level.currentPage = BTreeFactory.createNode( btree, 0L, pageSize );
+                        level.setCurrentPage( BTreeFactory.createNode( btree, 0L, pageSize ) );
                     }
                     else
                     {
-                        level.currentPage = BTreeFactory.createLeaf( btree, 0L, pageSize );
+                        level.setCurrentPage( BTreeFactory.createLeaf( btree, 0L, pageSize ) );
                     }
                 }
             }
@@ -481,24 +417,24 @@ public class BulkLoader<K, V>
      * Compute the number of pages necessary to store all the elements per level. The resulting list is
      * reversed ( ie the leaves are on the left, the root page on the right.
      */
-    /* No Qualifier */List<LevelInfo> computeLevels( BTree<K, V> btree, int nbElems )
+    /* No Qualifier */static <K, V> List<LevelInfo<K, V>> computeLevels( BTree<K, V> btree, int nbElems )
     {
-        List<LevelInfo> levelList = new ArrayList<LevelInfo>();
+        List<LevelInfo<K, V>> levelList = new ArrayList<LevelInfo<K, V>>();
 
         // Compute the leaves info
-        LevelInfo leafLevel = computeLevel( btree, nbElems, LevelEnum.LEAF );
+        LevelInfo<K, V> leafLevel = computeLevel( btree, nbElems, LevelEnum.LEAF );
 
         levelList.add( leafLevel );
-        int nbPages = leafLevel.nbPages;
+        int nbPages = leafLevel.getNbPages();
         int levelNumber = 1;
 
         while ( nbPages > 1 )
         {
             // Compute the Nodes info
-            LevelInfo nodeLevel = computeLevel( btree, nbPages, LevelEnum.NODE );
-            nodeLevel.levelNumber = levelNumber++;
+            LevelInfo<K, V> nodeLevel = computeLevel( btree, nbPages, LevelEnum.NODE );
+            nodeLevel.setLevelNumber( levelNumber++ );
             levelList.add( nodeLevel );
-            nbPages = nodeLevel.nbPages;
+            nbPages = nodeLevel.getNbPages();
         }
 
         return levelList;
@@ -508,23 +444,23 @@ public class BulkLoader<K, V>
     /**
      * Inject a tuple into a leaf
      */
-    private void injectInLeaf( BTree<K, V> btree, Tuple<K, Set<V>> tuple, LevelInfo leafLevel )
+    private static <K, V> void injectInLeaf( BTree<K, V> btree, Tuple<K, Set<V>> tuple, LevelInfo leafLevel )
     {
-        PersistedLeaf<K, V> leaf = ( PersistedLeaf<K, V> ) leafLevel.currentPage;
+        PersistedLeaf<K, V> leaf = ( PersistedLeaf<K, V> ) leafLevel.getCurrentPage();
 
         KeyHolder<K> keyHolder = new PersistedKeyHolder<K>( btree.getKeySerializer(), tuple.getKey() );
         ValueHolder<V> valueHolder = new PersistedValueHolder<V>( btree, ( V[] ) tuple.getValue().toArray() );
-        leaf.setKey( leafLevel.currentPos, keyHolder );
-        leaf.setValue( leafLevel.currentPos, valueHolder );
+        leaf.setKey( leafLevel.getCurrentPos(), keyHolder );
+        leaf.setValue( leafLevel.getCurrentPos(), valueHolder );
 
-        leafLevel.currentPos++;
+        leafLevel.incCurrentPos();
     }
 
 
-    private int computeNbElemsLeaf( BTree<K, V> btree, LevelInfo levelInfo )
+    private static <K, V> int computeNbElemsLeaf( BTree<K, V> btree, LevelInfo<K, V> levelInfo )
     {
         int pageSize = btree.getPageSize();
-        int remaining = levelInfo.nbElems - levelInfo.nbAddedElems;
+        int remaining = levelInfo.getNbElems() - levelInfo.getNbAddedElems();
 
         if ( remaining < pageSize )
         {
@@ -534,7 +470,7 @@ public class BulkLoader<K, V>
         {
             return pageSize;
         }
-        else if ( remaining > levelInfo.nbElems - levelInfo.nbElemsLimit )
+        else if ( remaining > levelInfo.getNbElems() - levelInfo.getNbElemsLimit() )
         {
             return pageSize;
         }
@@ -548,10 +484,10 @@ public class BulkLoader<K, V>
     /**
      * Compute the number of nodes necessary to store all the elements.
      */
-    /* No qualifier */int computeNbElemsNode( BTree<K, V> btree, LevelInfo levelInfo )
+    /* No qualifier */int computeNbElemsNode( BTree<K, V> btree, LevelInfo<K, V> levelInfo )
     {
         int pageSize = btree.getPageSize();
-        int remaining = levelInfo.nbElems - levelInfo.nbAddedElems;
+        int remaining = levelInfo.getNbElems() - levelInfo.getNbAddedElems();
 
         if ( remaining < pageSize + 1 )
         {
@@ -561,7 +497,7 @@ public class BulkLoader<K, V>
         {
             return pageSize + 1;
         }
-        else if ( remaining > levelInfo.nbElems - levelInfo.nbElemsLimit )
+        else if ( remaining > levelInfo.getNbElems() - levelInfo.getNbElemsLimit() )
         {
             return pageSize + 1;
         }
@@ -575,28 +511,28 @@ public class BulkLoader<K, V>
     /**
      * Inject a page reference into the root page.
      */
-    private void injectInRoot( BTree<K, V> btree, Page<K, V> page, PageHolder<K, V> pageHolder, LevelInfo level )
-        throws IOException
+    private static <K, V> void injectInRoot( BTree<K, V> btree, Page<K, V> page, PageHolder<K, V> pageHolder,
+        LevelInfo<K, V> level ) throws IOException
     {
-        PersistedNode<K, V> node = ( PersistedNode<K, V> ) level.currentPage;
-        if ( ( level.currentPos == 0 ) && ( node.getPage( 0 ) == null ) )
+        PersistedNode<K, V> node = ( PersistedNode<K, V> ) level.getCurrentPage();
+        if ( ( level.getCurrentPos() == 0 ) && ( node.getPage( 0 ) == null ) )
 
         {
             node.setPageHolder( 0, pageHolder );
-            level.nbAddedElems++;
+            level.incNbAddedElems();
         }
         else
         {
             // Inject the pageHolder and the page leftmost key
-            node.setPageHolder( level.currentPos + 1, pageHolder );
+            node.setPageHolder( level.getCurrentPos() + 1, pageHolder );
             KeyHolder<K> keyHolder = new PersistedKeyHolder<K>( btree.getKeySerializer(), page.getLeftMostKey() );
-            node.setKey( level.currentPos, keyHolder );
-            level.currentPos++;
-            level.nbAddedElems++;
+            node.setKey( level.getCurrentPos(), keyHolder );
+            level.incCurrentPos();
+            level.incNbAddedElems();
 
             // Check that we haven't added the last element. If so,
             // we have to write the page on disk and update the btree
-            if ( level.nbAddedElems == level.nbElems )
+            if ( level.getNbAddedElems() == level.getNbElems() )
             {
                 PageHolder<K, V> rootHolder = ( ( PersistedBTree<K, V> ) btree ).getRecordManager().writePage(
                     btree, node, 0L );
@@ -611,19 +547,20 @@ public class BulkLoader<K, V>
     /**
      * Inject a page reference into a Node. This method will recurse if needed.
      */
-    private void injectInNode( BTree<K, V> btree, Page<K, V> page, List<LevelInfo> levels, int levelIndex )
+    private static <K, V> void injectInNode( BTree<K, V> btree, Page<K, V> page, List<LevelInfo<K, V>> levels,
+        int levelIndex )
         throws IOException
     {
         int pageSize = btree.getPageSize();
-        LevelInfo level = levels.get( levelIndex );
-        PersistedNode<K, V> node = ( PersistedNode<K, V> ) level.currentPage;
+        LevelInfo<K, V> level = levels.get( levelIndex );
+        PersistedNode<K, V> node = ( PersistedNode<K, V> ) level.getCurrentPage();
 
         // We first have to write the page on disk
         PageHolder<K, V> pageHolder = ( ( PersistedBTree<K, V> ) btree ).getRecordManager().writePage( btree, page, 0L );
 
         // First deal with a node that has less than PageSize elements at this level.
         // It will become the root node.
-        if ( level.nbElems <= pageSize + 1 )
+        if ( level.getNbElems() <= pageSize + 1 )
         {
             injectInRoot( btree, page, pageHolder, level );
 
@@ -634,31 +571,31 @@ public class BulkLoader<K, V>
         // o Full node before the limit
         // o Node over the limit but with at least N/2 elements
         // o Node over the limit but with elements spread into 2 nodes
-        if ( level.nbAddedElems < level.nbElemsLimit )
+        if ( level.getNbAddedElems() < level.getNbElemsLimit() )
         {
             // Ok, we haven't yet reached the incomplete pages (if any).
             // Let's add the page reference into the node
             // There is one special case : when we are adding the very first page 
             // reference into a node. In this case, we don't store the key
-            if ( ( level.currentPos == 0 ) && ( node.getKey( 0 ) == null ) )
+            if ( ( level.getCurrentPos() == 0 ) && ( node.getKey( 0 ) == null ) )
             {
                 node.setPageHolder( 0, pageHolder );
             }
             else
             {
                 // Inject the pageHolder and the page leftmost key
-                node.setPageHolder( level.currentPos, pageHolder );
+                node.setPageHolder( level.getCurrentPos(), pageHolder );
                 KeyHolder<K> keyHolder = new PersistedKeyHolder<K>( btree.getKeySerializer(), page.getLeftMostKey() );
-                node.setKey( level.currentPos - 1, keyHolder );
+                node.setKey( level.getCurrentPos() - 1, keyHolder );
             }
 
             // Now, increment this level nb of added elements
-            level.currentPos++;
-            level.nbAddedElems++;
+            level.incCurrentPos();
+            level.incNbAddedElems();
 
             // Check that we haven't added the last element. If so,
             // we have to write the page on disk and update the parent's node
-            if ( level.nbAddedElems == level.nbElems )
+            if ( level.getNbAddedElems() == level.getNbElems() )
             {
                 //PageHolder<K, V> rootHolder = ( ( PersistedBTree<K, V> ) btree ).getRecordManager().writePage(
                 //    btree, node, 0L );
@@ -670,29 +607,30 @@ public class BulkLoader<K, V>
             else
             {
                 // Check that we haven't completed the current node, and that this is not the root node.
-                if ( ( level.currentPos == pageSize + 1 ) && ( level.levelNumber < levels.size() - 1 ) )
+                if ( ( level.getCurrentPos() == pageSize + 1 ) && ( level.getLevelNumber() < levels.size() - 1 ) )
                 {
                     // yes. We have to write the node on disk, update its parent
                     // and create a new current node
                     injectInNode( btree, node, levels, levelIndex + 1 );
 
                     // The page is full, we have to create a new one, with a size depending on the remaining elements
-                    if ( level.nbAddedElems < level.nbElemsLimit )
+                    if ( level.getNbAddedElems() < level.getNbElemsLimit() )
                     {
                         // We haven't reached the limit, create a new full node
-                        level.currentPage = BTreeFactory.createNode( btree, 0L, pageSize );
+                        level.setCurrentPage( BTreeFactory.createNode( btree, 0L, pageSize ) );
                     }
-                    else if ( level.nbElems - level.nbAddedElems <= pageSize )
+                    else if ( level.getNbElems() - level.getNbAddedElems() <= pageSize )
                     {
-                        level.currentPage = BTreeFactory.createNode( btree, 0L, level.nbElems - level.nbAddedElems - 1 );
+                        level.setCurrentPage( BTreeFactory.createNode( btree, 0L,
+                            level.getNbElems() - level.getNbAddedElems() - 1 ) );
                     }
                     else
                     {
-                        level.currentPage = BTreeFactory.createNode( btree, 0L, ( level.nbElems - 1 )
-                            - ( level.nbAddedElems + 1 ) - pageSize / 2 );
+                        level.setCurrentPage( BTreeFactory.createNode( btree, 0L, ( level.getNbElems() - 1 )
+                            - ( level.getNbAddedElems() + 1 ) - pageSize / 2 ) );
                     }
 
-                    level.currentPos = 0;
+                    level.setCurrentPos( 0 );
                 }
             }
 
@@ -704,32 +642,32 @@ public class BulkLoader<K, V>
             // We can have either one single pages which can contain up to pageSize-1 elements
             // or with two pages, the first one containing ( nbElems - limit ) - pageSize/2 elements
             // and the second one will contain pageSize/2 elements. 
-            if ( level.nbElems - level.nbElemsLimit > pageSize )
+            if ( level.getNbElems() - level.getNbElemsLimit() > pageSize )
             {
                 // As the remaining elements are above a page size, they will be spread across
                 // two pages. We have two cases here, depending on the page we are filling
-                if ( level.nbElems - level.nbAddedElems <= pageSize / 2 + 1 )
+                if ( level.getNbElems() - level.getNbAddedElems() <= pageSize / 2 + 1 )
                 {
                     // As we have less than PageSize/2 elements to write, we are on the second page
-                    if ( ( level.currentPos == 0 ) && ( node.getKey( 0 ) == null ) )
+                    if ( ( level.getCurrentPos() == 0 ) && ( node.getKey( 0 ) == null ) )
                     {
                         node.setPageHolder( 0, pageHolder );
                     }
                     else
                     {
                         // Inject the pageHolder and the page leftmost key
-                        node.setPageHolder( level.currentPos, pageHolder );
+                        node.setPageHolder( level.getCurrentPos(), pageHolder );
                         KeyHolder<K> keyHolder = new PersistedKeyHolder<K>( btree.getKeySerializer(),
                             page.getLeftMostKey() );
-                        node.setKey( level.currentPos - 1, keyHolder );
+                        node.setKey( level.getCurrentPos() - 1, keyHolder );
                     }
 
                     // Now, increment this level nb of added elements
-                    level.currentPos++;
-                    level.nbAddedElems++;
+                    level.incCurrentPos();
+                    level.incNbAddedElems();
 
                     // Check if we are done with the page
-                    if ( level.nbAddedElems == level.nbElems )
+                    if ( level.getNbAddedElems() == level.getNbElems() )
                     {
                         // Yes, we have to update the parent
                         injectInNode( btree, node, levels, levelIndex + 1 );
@@ -738,7 +676,7 @@ public class BulkLoader<K, V>
                 else
                 {
                     // This is the first page 
-                    if ( ( level.currentPos == 0 ) && ( node.getKey( 0 ) == null ) )
+                    if ( ( level.getCurrentPos() == 0 ) && ( node.getKey( 0 ) == null ) )
                     {
                         // First element of the page
                         node.setPageHolder( 0, pageHolder );
@@ -747,32 +685,32 @@ public class BulkLoader<K, V>
                     {
                         // Any other following elements
                         // Inject the pageHolder and the page leftmost key
-                        node.setPageHolder( level.currentPos, pageHolder );
+                        node.setPageHolder( level.getCurrentPos(), pageHolder );
                         KeyHolder<K> keyHolder = new PersistedKeyHolder<K>( btree.getKeySerializer(),
                             page.getLeftMostKey() );
-                        node.setKey( level.currentPos - 1, keyHolder );
+                        node.setKey( level.getCurrentPos() - 1, keyHolder );
                     }
 
                     // Now, increment this level nb of added elements
-                    level.currentPos++;
-                    level.nbAddedElems++;
+                    level.incCurrentPos();
+                    level.incNbAddedElems();
 
                     // Check if we are done with the page
-                    if ( level.currentPos == node.getNbElems() + 1 )
+                    if ( level.getCurrentPos() == node.getNbElems() + 1 )
                     {
                         // Yes, we have to update the parent
                         injectInNode( btree, node, levels, levelIndex + 1 );
 
                         // An create a new one
-                        level.currentPage = BTreeFactory.createNode( btree, 0L, pageSize / 2 );
-                        level.currentPos = 0;
+                        level.setCurrentPage( BTreeFactory.createNode( btree, 0L, pageSize / 2 ) );
+                        level.setCurrentPos( 0 );
                     }
                 }
             }
             else
             {
                 // Two cases : we don't have anything else to write, or this is a single page
-                if ( level.nbAddedElems == level.nbElems )
+                if ( level.getNbAddedElems() == level.getNbElems() )
                 {
                     // We are done with the page
                     injectInNode( btree, node, levels, levelIndex + 1 );
@@ -781,7 +719,7 @@ public class BulkLoader<K, V>
                 {
                     // We have some more elements to add in  the page
                     // This is the first page 
-                    if ( ( level.currentPos == 0 ) && ( node.getKey( 0 ) == null ) )
+                    if ( ( level.getCurrentPos() == 0 ) && ( node.getKey( 0 ) == null ) )
                     {
                         // First element of the page
                         node.setPageHolder( 0, pageHolder );
@@ -790,25 +728,25 @@ public class BulkLoader<K, V>
                     {
                         // Any other following elements
                         // Inject the pageHolder and the page leftmost key
-                        node.setPageHolder( level.currentPos, pageHolder );
+                        node.setPageHolder( level.getCurrentPos(), pageHolder );
                         KeyHolder<K> keyHolder = new PersistedKeyHolder<K>( btree.getKeySerializer(),
                             page.getLeftMostKey() );
-                        node.setKey( level.currentPos - 1, keyHolder );
+                        node.setKey( level.getCurrentPos() - 1, keyHolder );
                     }
 
                     // Now, increment this level nb of added elements
-                    level.currentPos++;
-                    level.nbAddedElems++;
+                    level.incCurrentPos();
+                    level.incNbAddedElems();
 
                     // Check if we are done with the page
-                    if ( level.currentPos == node.getNbElems() + 1 )
+                    if ( level.getCurrentPos() == node.getNbElems() + 1 )
                     {
                         // Yes, we have to update the parent
                         injectInNode( btree, node, levels, levelIndex + 1 );
 
                         // An create a new one
-                        level.currentPage = BTreeFactory.createNode( btree, 0L, pageSize / 2 );
-                        level.currentPos = 0;
+                        level.setCurrentPage( BTreeFactory.createNode( btree, 0L, pageSize / 2 ) );
+                        level.setCurrentPos( 0 );
                     }
                 }
 
@@ -818,8 +756,8 @@ public class BulkLoader<K, V>
     }
 
 
-    private BTree<K, V> bulkLoadSinglePage( BTree<K, V> btree, Iterator<Tuple<K, Set<V>>> dataIterator, int nbElems )
-        throws IOException
+    private static <K, V> BTree<K, V> bulkLoadSinglePage( BTree<K, V> btree, Iterator<Tuple<K, Set<V>>> dataIterator,
+        int nbElems ) throws IOException
     {
         // Create a new page
         PersistedLeaf<K, V> rootPage = ( PersistedLeaf<K, V> ) BTreeFactory.createLeaf( btree, 0L, nbElems );
@@ -854,7 +792,7 @@ public class BulkLoader<K, V>
      * Construct the target BTree from the sorted data. We will use the nb of elements
      * to determinate the structure of the BTree, as it must be balanced
      */
-    private BTree<K, V> bulkLoad( BTree<K, V> btree, Iterator<Tuple<K, Set<V>>> dataIterator, int nbElems )
+    private static <K, V> BTree<K, V> bulkLoad( BTree<K, V> btree, Iterator<Tuple<K, Set<V>>> dataIterator, int nbElems )
         throws IOException
     {
         int pageSize = btree.getPageSize();
@@ -868,49 +806,50 @@ public class BulkLoader<K, V>
         // Ok, we will need more than one page to store the elements, which
         // means we also will need more than one level.
         // First, compute the needed number of levels.
-        List<LevelInfo> levels = computeLevels( btree, nbElems );
+        List<LevelInfo<K, V>> levels = computeLevels( btree, nbElems );
 
         // Now, let's fill the levels
-        LevelInfo leafLevel = levels.get( 0 );
+        LevelInfo<K, V> leafLevel = levels.get( 0 );
 
         while ( dataIterator.hasNext() )
         {
             // let's fill page up to the point all the complete pages have been filled
-            if ( leafLevel.nbAddedElems < leafLevel.nbElemsLimit )
+            if ( leafLevel.getNbAddedElems() < leafLevel.getNbElemsLimit() )
             {
                 // grab a tuple
                 Tuple<K, Set<V>> tuple = dataIterator.next();
 
                 injectInLeaf( btree, tuple, leafLevel );
-                leafLevel.nbAddedElems++;
+                leafLevel.incNbAddedElems();
 
                 // The page is completed, update the parent's node and create a new current page
-                if ( leafLevel.currentPos == pageSize )
+                if ( leafLevel.getCurrentPos() == pageSize )
                 {
-                    injectInNode( btree, leafLevel.currentPage, levels, 1 );
+                    injectInNode( btree, leafLevel.getCurrentPage(), levels, 1 );
 
                     // The page is full, we have to create a new one
-                    leafLevel.currentPage = BTreeFactory.createLeaf( btree, 0L, computeNbElemsLeaf( btree, leafLevel ) );
-                    leafLevel.currentPos = 0;
+                    leafLevel.setCurrentPage( BTreeFactory
+                        .createLeaf( btree, 0L, computeNbElemsLeaf( btree, leafLevel ) ) );
+                    leafLevel.setCurrentPos( 0 );
                 }
             }
             else
             {
                 // We have to deal with uncompleted pages now (if we have any)
-                if ( leafLevel.nbAddedElems == nbElems )
+                if ( leafLevel.getNbAddedElems() == nbElems )
                 {
                     // First use case : we have injected all the elements in the btree : get out
                     break;
                 }
 
-                if ( nbElems - leafLevel.nbElemsLimit > pageSize )
+                if ( nbElems - leafLevel.getNbElemsLimit() > pageSize )
                 {
                     // Second use case : the number of elements after the limit does not
                     // fit in a page, that means we have to split it into
                     // two pages
 
                     // First page will contain nbElems - leafLevel.nbElemsLimit - PageSize/2 elements
-                    int nbToAdd = nbElems - leafLevel.nbElemsLimit - pageSize / 2;
+                    int nbToAdd = nbElems - leafLevel.getNbElemsLimit() - pageSize / 2;
 
                     while ( nbToAdd > 0 )
                     {
@@ -918,17 +857,17 @@ public class BulkLoader<K, V>
                         Tuple<K, Set<V>> tuple = dataIterator.next();
 
                         injectInLeaf( btree, tuple, leafLevel );
-                        leafLevel.nbAddedElems++;
+                        leafLevel.incNbAddedElems();
                         nbToAdd--;
                     }
 
                     // Now inject the page into the node
-                    injectInNode( btree, leafLevel.currentPage, levels, 1 );
+                    injectInNode( btree, leafLevel.getCurrentPage(), levels, 1 );
 
                     // Create a new page for the remaining elements
                     nbToAdd = pageSize / 2;
-                    leafLevel.currentPage = BTreeFactory.createLeaf( btree, 0L, nbToAdd );
-                    leafLevel.currentPos = 0;
+                    leafLevel.setCurrentPage( BTreeFactory.createLeaf( btree, 0L, nbToAdd ) );
+                    leafLevel.setCurrentPos( 0 );
 
                     while ( nbToAdd > 0 )
                     {
@@ -936,12 +875,12 @@ public class BulkLoader<K, V>
                         Tuple<K, Set<V>> tuple = dataIterator.next();
 
                         injectInLeaf( btree, tuple, leafLevel );
-                        leafLevel.nbAddedElems++;
+                        leafLevel.incNbAddedElems();
                         nbToAdd--;
                     }
 
                     // And update the parent node
-                    injectInNode( btree, leafLevel.currentPage, levels, 1 );
+                    injectInNode( btree, leafLevel.getCurrentPage(), levels, 1 );
 
                     // We are done
                     break;
@@ -950,7 +889,7 @@ public class BulkLoader<K, V>
                 {
                     // Third use case : we can push all the elements in the last page.
                     // Let's do it
-                    int nbToAdd = nbElems - leafLevel.nbElemsLimit;
+                    int nbToAdd = nbElems - leafLevel.getNbElemsLimit();
 
                     while ( nbToAdd > 0 )
                     {
@@ -958,12 +897,12 @@ public class BulkLoader<K, V>
                         Tuple<K, Set<V>> tuple = dataIterator.next();
 
                         injectInLeaf( btree, tuple, leafLevel );
-                        leafLevel.nbAddedElems++;
+                        leafLevel.incNbAddedElems();
                         nbToAdd--;
                     }
 
                     // Now inject the page into the node
-                    injectInNode( btree, leafLevel.currentPage, levels, 1 );
+                    injectInNode( btree, leafLevel.getCurrentPage(), levels, 1 );
 
                     // and we are done
                     break;
@@ -980,7 +919,8 @@ public class BulkLoader<K, V>
      * for the tuples having the same keys.
      * @throws IOException 
      */
-    private File flushToDisk( int fileNb, List<Tuple<K, V>> tuples, BTree<K, V> btree ) throws IOException
+    private static <K, V> File flushToDisk( int fileNb, List<Tuple<K, V>> tuples, BTree<K, V> btree )
+        throws IOException
     {
         // Sort the tuples. 
         Tuple<K, Set<V>>[] sortedTuples = sort( btree, tuples );
@@ -1023,7 +963,7 @@ public class BulkLoader<K, V>
      * Sort a list of tuples, eliminating the duplicate keys and storing the values in a set when we 
      * have a duplicate key
      */
-    private Tuple<K, Set<V>>[] sort( BTree<K, V> btree, List<Tuple<K, V>> tuples )
+    private static <K, V> Tuple<K, Set<V>>[] sort( BTree<K, V> btree, List<Tuple<K, V>> tuples )
     {
         Comparator<Tuple<K, Set<V>>> tupleComparator = new TupleComparator( btree.getKeyComparator(), btree
             .getValueComparator() );
@@ -1079,7 +1019,7 @@ public class BulkLoader<K, V>
     /**
      * Build an iterator over an array of sorted tuples, in memory
      */
-    private Iterator<Tuple<K, Set<V>>> createTupleIterator( BTree<K, V> btree, List<Tuple<K, V>> tuples )
+    private static <K, V> Iterator<Tuple<K, Set<V>>> createTupleIterator( BTree<K, V> btree, List<Tuple<K, V>> tuples )
     {
         final Tuple<K, Set<V>>[] sortedTuples = sort( btree, tuples );
 
@@ -1121,7 +1061,7 @@ public class BulkLoader<K, V>
     }
 
 
-    private Tuple<K, Set<V>> fetchTuple( BTree<K, V> btree, FileInputStream fis )
+    private static <K, V> Tuple<K, Set<V>> fetchTuple( BTree<K, V> btree, FileInputStream fis )
     {
         try
         {
@@ -1176,7 +1116,8 @@ public class BulkLoader<K, V>
      * Build an iterator over an array of sorted tuples, from files on the disk
      * @throws FileNotFoundException 
      */
-    private Iterator<Tuple<K, Set<V>>> createIterator( final BTree<K, V> btree, final FileInputStream[] streams )
+    private static <K, V> Iterator<Tuple<K, Set<V>>> createIterator( final BTree<K, V> btree,
+        final FileInputStream[] streams )
         throws FileNotFoundException
     {
         // The number of files we have to read from
@@ -1295,7 +1236,8 @@ public class BulkLoader<K, V>
      * Build an iterator over an array of sorted tuples, from files on the disk
      * @throws FileNotFoundException 
      */
-    private Iterator<Tuple<K, Set<V>>> createUniqueFileIterator( final BTree<K, V> btree, final FileInputStream stream )
+    private static <K, V> Iterator<Tuple<K, Set<V>>> createUniqueFileIterator( final BTree<K, V> btree,
+        final FileInputStream stream )
         throws FileNotFoundException
     {
         Iterator<Tuple<K, Set<V>>> tupleIterator = new Iterator<Tuple<K, Set<V>>>()

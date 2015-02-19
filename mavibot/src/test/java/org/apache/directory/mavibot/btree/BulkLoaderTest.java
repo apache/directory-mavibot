@@ -162,7 +162,6 @@ public class BulkLoaderTest
                 PersistedBTree<Long, String> btree = ( PersistedBTree<Long, String> ) rm.addBTree( "test",
                     LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
 
-                BulkLoader<Long, String> bulkLoader = new BulkLoader<Long, String>();
                 int nbElems = i;
                 int addedElems = 0;
 
@@ -230,7 +229,7 @@ public class BulkLoaderTest
                 };
 
                 long t0 = System.currentTimeMillis();
-                BTree<Long, String> result = bulkLoader.load( btree, tupleIterator, 128 );
+                BTree<Long, String> result = BulkLoader.load( btree, tupleIterator, 128 );
                 long t1 = System.currentTimeMillis();
 
                 if ( i % 100 == 0 )
@@ -426,8 +425,6 @@ public class BulkLoaderTest
             PersistedBTree<Long, String> btree = ( PersistedBTree<Long, String> ) rm.addBTree( "test",
                 LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
 
-            BulkLoader<Long, String> bulkLoader = new BulkLoader<Long, String>();
-
             int[] expectedNbPages = new int[]
                 {
                     0,
@@ -458,11 +455,11 @@ public class BulkLoaderTest
                 System.out.println( "== Iteration n#" + i );
                 System.out.println( "=======================================" );
 
-                BulkLoader<Long, String>.LevelInfo leafInfo = bulkLoader.computeLevel( btree, i, LevelEnum.LEAF );
+                LevelInfo<Long, String> leafInfo = BulkLoader.computeLevel( btree, i, LevelEnum.LEAF );
 
-                assertEquals( expectedNbPages[i], leafInfo.nbPages );
-                assertEquals( expectedLimit[i], leafInfo.nbElemsLimit );
-                assertEquals( expectedKeys[i], leafInfo.currentPage.getNbElems() );
+                assertEquals( expectedNbPages[i], leafInfo.getNbPages() );
+                assertEquals( expectedLimit[i], leafInfo.getNbElemsLimit() );
+                assertEquals( expectedKeys[i], leafInfo.getCurrentPage().getNbElems() );
             }
         }
         finally
@@ -488,8 +485,6 @@ public class BulkLoaderTest
             RecordManager rm = new RecordManager( file.getAbsolutePath() );
             PersistedBTree<Long, String> btree = ( PersistedBTree<Long, String> ) rm.addBTree( "test",
                 LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
-
-            BulkLoader<Long, String> bulkLoader = new BulkLoader<Long, String>();
 
             int[] expectedNbPages = new int[]
                 {
@@ -519,11 +514,11 @@ public class BulkLoaderTest
                 System.out.println( "== Iteration n#" + i );
                 System.out.println( "=======================================" );
 
-                BulkLoader<Long, String>.LevelInfo nodeInfo = bulkLoader.computeLevel( btree, i, LevelEnum.NODE );
+                LevelInfo<Long, String> nodeInfo = BulkLoader.computeLevel( btree, i, LevelEnum.NODE );
 
-                assertEquals( expectedNbPages[i], nodeInfo.nbPages );
-                assertEquals( expectedLimit[i], nodeInfo.nbElemsLimit );
-                assertEquals( expectedKeys[i], nodeInfo.currentPage.getNbElems() );
+                assertEquals( expectedNbPages[i], nodeInfo.getNbPages() );
+                assertEquals( expectedLimit[i], nodeInfo.getNbElemsLimit() );
+                assertEquals( expectedKeys[i], nodeInfo.getCurrentPage().getNbElems() );
             }
         }
         finally
@@ -549,8 +544,6 @@ public class BulkLoaderTest
             RecordManager rm = new RecordManager( file.getAbsolutePath() );
             PersistedBTree<Long, String> btree = ( PersistedBTree<Long, String> ) rm.addBTree( "test",
                 LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
-
-            BulkLoader<Long, String> bulkLoader = new BulkLoader<Long, String>();
 
             int[] expectedNbPages = new int[]
                 {
@@ -580,9 +573,9 @@ public class BulkLoaderTest
                 System.out.println( "== Iteration #" + i );
                 System.out.println( "=======================================" );
 
-                List<BulkLoader<Long, String>.LevelInfo> levels = bulkLoader.computeLevels( btree, i );
+                List<LevelInfo<Long, String>> levels = BulkLoader.computeLevels( btree, i );
 
-                for ( BulkLoader<Long, String>.LevelInfo level : levels )
+                for ( LevelInfo<Long, String> level : levels )
                 {
                     System.out.println( level );
                 }
@@ -616,7 +609,6 @@ public class BulkLoaderTest
                 PersistedBTree<Long, String> btree = ( PersistedBTree<Long, String> ) rm.addBTree( "test",
                     LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
 
-                BulkLoader<Long, String> bulkLoader = new BulkLoader<Long, String>();
                 int nbElems = i;
                 int addedElems = 0;
 
@@ -684,7 +676,7 @@ public class BulkLoaderTest
 
                 try
                 {
-                    result = bulkLoader.load( btree, tupleIterator, 128 );
+                    result = BulkLoader.load( btree, tupleIterator, 128 );
                 }
                 catch ( NullPointerException npe )
                 {
@@ -762,7 +754,6 @@ public class BulkLoaderTest
             PersistedBTree<Long, String> btree = ( PersistedBTree<Long, String> ) rm.addBTree( "test",
                 LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
 
-            BulkLoader<Long, String> bulkLoader = new BulkLoader<Long, String>();
             int nbElems = 4;
             int addedElems = 0;
 
@@ -804,7 +795,7 @@ public class BulkLoaderTest
             BTree<Long, String> result = null;
             try
             {
-                result = bulkLoader.load( btree, tupleIterator, 128 );
+                result = BulkLoader.load( btree, tupleIterator, 128 );
             }
             catch ( NullPointerException npe )
             {
@@ -1185,8 +1176,6 @@ public class BulkLoaderTest
 
             // btree.valueThresholdUp = 8;
 
-            BulkLoader<Long, String> bulkLoader = new BulkLoader<Long, String>();
-
             Iterator<Tuple<Long, String>> tupleIterator = new Iterator<Tuple<Long, String>>()
             {
                 private int pos = 0;
@@ -1217,7 +1206,7 @@ public class BulkLoaderTest
             long t0 = System.currentTimeMillis();
             BTree<Long, String> result = null;
 
-            result = bulkLoader.load( btree, tupleIterator, 128 );
+            result = BulkLoader.load( btree, tupleIterator, 128 );
 
             TupleCursor<Long, String> cursor = result.browse();
             int nbFetched = 0;
