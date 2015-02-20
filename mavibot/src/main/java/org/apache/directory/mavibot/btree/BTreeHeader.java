@@ -19,6 +19,7 @@
  */
 package org.apache.directory.mavibot.btree;
 
+
 import java.util.concurrent.atomic.AtomicInteger;
 
 
@@ -33,7 +34,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * +--------------------+-------------+
  * | rootPageOffset     | 8 bytes     |
  * +--------------------+-------------+
- * | BtreeOffset        | 8 bytes     |
+ * | BtreeHeaderOffset  | 8 bytes     |
  * +--------------------+-------------+
  * </pre>
  * Each B-tree Header will be written starting on a new page.
@@ -84,7 +85,7 @@ import java.util.concurrent.atomic.AtomicInteger;
      */
     public long getBTreeInfoOffset()
     {
-        return ((PersistedBTree<K, V>)btree).getBtreeInfoOffset();
+        return ( ( PersistedBTree<K, V> ) btree ).getBtreeInfoOffset();
     }
 
 
@@ -97,11 +98,16 @@ import java.util.concurrent.atomic.AtomicInteger;
     }
 
 
+    /**
+     * Clone the BTreeHeader
+     * 
+     * @return The cloned BTreeHeader
+     */
     public BTreeHeader<K, V> clone()
     {
         try
         {
-            BTreeHeader<K, V> copy = (BTreeHeader<K, V>)super.clone();
+            BTreeHeader<K, V> copy = ( BTreeHeader<K, V> ) super.clone();
 
             return copy;
         }
@@ -113,10 +119,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 
     /**
-     * Copy the current B-tre header and return the copy
-     * @return
+     * Copy the current B-tree header and return the copy
+     * @return The copied B-tree header
      */
-    /* no qualifier */ BTreeHeader<K, V> copy()
+    /* no qualifier */BTreeHeader<K, V> copy()
     {
         BTreeHeader<K, V> copy = clone();
 
@@ -131,6 +137,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 
     /**
+     * Set the B-tree header offset
+     * 
      * @param btreeOffset the B-tree header Offset to set
      */
     /* no qualifier */void setBTreeHeaderOffset( long btreeHeaderOffset )
@@ -149,6 +157,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 
     /**
+     * Set the Root Page offset
+     * 
      * @param rootPageOffset the rootPageOffset to set
      */
     /* no qualifier */void setRootPageOffset( long rootPageOffset )
@@ -167,6 +177,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 
     /**
+     * Set the new revision
+     * 
      * @param revision the revision to set
      */
     /* no qualifier */void setRevision( long revision )
@@ -212,28 +224,32 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 
     /**
+     * Get the root page
      * @return the rootPage
      */
-    /* no qualifier */ Page<K, V> getRootPage()
+    /* no qualifier */Page<K, V> getRootPage()
     {
         return rootPage;
     }
 
 
     /**
+     * Set the root page
      * @param rootPage the rootPage to set
      */
-    /* no qualifier */ void setRootPage( Page<K, V> rootPage )
+    /* no qualifier */void setRootPage( Page<K, V> rootPage )
     {
         this.rootPage = rootPage;
-        this.rootPageOffset = ((AbstractPage<K, V>)rootPage).getOffset();
+        this.rootPageOffset = ( ( AbstractPage<K, V> ) rootPage ).getOffset();
     }
 
 
     /**
+     * Get the number of users
+     * 
      * @return the nbUsers
      */
-    /* no qualifier */ int getNbUsers()
+    /* no qualifier */int getNbUsers()
     {
         return nbUsers.get();
     }
@@ -242,7 +258,7 @@ import java.util.concurrent.atomic.AtomicInteger;
     /**
      * Increment the number of users
      */
-    /* no qualifier */ void incrementNbUsers()
+    /* no qualifier */void incrementNbUsers()
     {
         nbUsers.incrementAndGet();
     }
@@ -251,25 +267,27 @@ import java.util.concurrent.atomic.AtomicInteger;
     /**
      * Decrement the number of users
      */
-    /* no qualifier */ void decrementNbUsers()
+    /* no qualifier */void decrementNbUsers()
     {
         nbUsers.decrementAndGet();
     }
 
 
     /**
-     * @return the btree
+     * @return the B-tree
      */
-    /* no qualifier */ BTree<K, V> getBtree()
+    /* no qualifier */BTree<K, V> getBtree()
     {
         return btree;
     }
 
 
     /**
-     * @param btree the btree to set
+     * Associate a B-tree with this BTreeHeader instance
+     * 
+     * @param btree the B-tree to set
      */
-    /* no qualifier */ void setBtree( BTree<K, V> btree )
+    /* no qualifier */void setBtree( BTree<K, V> btree )
     {
         this.btree = btree;
     }
@@ -286,7 +304,8 @@ import java.util.concurrent.atomic.AtomicInteger;
         sb.append( ", offset[0x" ).append( Long.toHexString( btreeHeaderOffset ) ).append( "]" );
         sb.append( ", name[" ).append( btree.getName() ).append( "]" );
         sb.append( ", revision[" ).append( revision ).append( "]" );
-        sb.append( ", btreeInfoOffset[0x" ).append( Long.toHexString( ((PersistedBTree<K, V>)btree).getBtreeInfoOffset() ) ).append( "]" );
+        sb.append( ", btreeInfoOffset[0x" )
+            .append( Long.toHexString( ( ( PersistedBTree<K, V> ) btree ).getBtreeInfoOffset() ) ).append( "]" );
         sb.append( ", rootPageOffset[0x" ).append( Long.toHexString( rootPageOffset ) ).append( "]" );
         sb.append( ", nbElems[" ).append( nbElems ).append( "]" );
         sb.append( ", nbUsers[" ).append( nbUsers.get() ).append( "]" );
