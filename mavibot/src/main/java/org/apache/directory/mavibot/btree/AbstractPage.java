@@ -138,11 +138,6 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         {
             Page<K, V> page = children[pos].getValue();
 
-            if ( page == null )
-            {
-                System.out.println( "Page is null for pos = " + pos + ", children = " + children[pos] );
-            }
-
             return page.hasKey( key );
         }
     }
@@ -315,6 +310,17 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         {
             return children[pos].getValue().getValues( key );
         }
+    }
+
+
+    /**
+     * Sets the value at a give position
+     * @param pos The position in the values array
+     * @param value the value to inject
+     */
+    /* no qualifier */void setValue( int pos, ValueHolder<V> value )
+    {
+        // Implementation in the leaves
     }
 
 

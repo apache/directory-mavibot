@@ -67,7 +67,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
     /*No qualifier*/static int valueThresholdLow = DEFAULT_VALUE_THRESHOLD_LOW;
 
     /** The BtreeInfo offset */
-    private long btreeInfoOffset;
+    private long btreeInfoOffset = RecordManager.NO_PAGE;
 
     /** The internal recordManager */
     private RecordManager recordManager;

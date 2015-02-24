@@ -1193,7 +1193,8 @@ public class InMemoryBTreeTest
      * @param element The removed element
      * @param expected The expected set of elements
      */
-    private void checkRemoval( BTree<Integer, String> btree, int element, Set<Integer> expected ) throws IOException, KeyNotFoundException
+    private void checkRemoval( BTree<Integer, String> btree, int element, Set<Integer> expected ) throws IOException,
+        KeyNotFoundException
     {
         Tuple<Integer, String> removed = btree.delete( element );
         assertEquals( element, removed.getKey().intValue() );
@@ -1983,7 +1984,7 @@ public class InMemoryBTreeTest
         btree.close();
     }
 
-    
+
     /**
      * Test the overwriting of elements
      */
@@ -1999,7 +2000,7 @@ public class InMemoryBTreeTest
         assertTrue( btree.hasKey( 1 ) );
 
         assertEquals( Integer.valueOf( 1 ), btree.get( 1 ) );
-        
+
         btree.insert( 1, 10 );
 
         assertTrue( btree.hasKey( 1 ) );

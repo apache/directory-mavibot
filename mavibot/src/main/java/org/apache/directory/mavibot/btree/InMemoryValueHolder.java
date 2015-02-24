@@ -134,6 +134,15 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
 
     /**
+     * Manage a new Sub-BTree
+     */
+    protected void manageSubTree()
+    {
+        // Nothing to do
+    }
+
+
+    /**
      * Set the subBtree in the ValueHolder
      */
     /* No qualifier*/void setSubBtree( BTree<V, V> subBtree )

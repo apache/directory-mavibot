@@ -23,6 +23,7 @@ package org.apache.directory.mavibot.btree;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
@@ -376,7 +377,7 @@ public class RecordManager extends AbstractTransactionManager
         // Create a new Header
         nbBtree = 0;
         firstFreePage = NO_PAGE;
-        currentBtreeOfBtreesOffset = 0L;
+        currentBtreeOfBtreesOffset = NO_PAGE;
 
         updateRecordManagerHeader();
 
@@ -389,7 +390,7 @@ public class RecordManager extends AbstractTransactionManager
         // Inject these B-trees into the RecordManager. They are internal B-trees.
         try
         {
-            manage( btreeOfBtrees, INTERNAL_BTREE );
+            manageSubBtree( btreeOfBtrees );
 
             currentBtreeOfBtreesOffset = ( ( PersistedBTree<NameRevision, Long> ) btreeOfBtrees ).getBtreeHeader()
                 .getBTreeHeaderOffset();
@@ -1407,22 +1408,6 @@ public class RecordManager extends AbstractTransactionManager
      * Manage a B-tree. The btree will be added and managed by this RecordManager. We will create a
      * new RootPage for this added B-tree, which will contain no data.<br/>
      * This method is threadsafe.
-     *
-     * @param btree The new B-tree to manage.
-     * @throws BTreeAlreadyManagedException if the B-tree is already managed
-     * @throws IOException if there was a problem while accessing the file
-     */
-    public synchronized <K, V> void manage( BTree<K, V> btree ) throws BTreeAlreadyManagedException, IOException
-    {
-        beginTransaction();
-
-        manage( ( BTree<Object, Object> ) btree, NORMAL_BTREE );
-
-        commit();
-    }
-
-
-    /**
      * Managing a btree is a matter of storing an reference to the managed B-tree in the B-tree Of B-trees.
      * We store a tuple of NameRevision (where revision is 0L) and a offset to the B-tree header.
      * At the same time, we keep a track of the managed B-trees in a Map.
@@ -1431,49 +1416,51 @@ public class RecordManager extends AbstractTransactionManager
      * @param treeType flag indicating if this is an internal tree
      *
      * @throws BTreeAlreadyManagedException If the B-tree is already managed
-     * @throws IOException
+     * @throws IOException if there was a problem while accessing the file
      */
-    public synchronized <K, V> void manage( BTree<K, V> btree, boolean treeType )
-        throws BTreeAlreadyManagedException, IOException
+    public synchronized <K, V> void manage( BTree<K, V> btree ) throws BTreeAlreadyManagedException, IOException
     {
-        LOG.debug( "Managing the btree {} which is an internam tree : {}", btree.getName(), treeType );
-        BTreeFactory.setRecordManager( btree, this );
+        beginTransaction();
 
-        String name = btree.getName();
-
-        if ( managedBtrees.containsKey( name ) )
+        try
         {
-            // There is already a B-tree with this name in the recordManager...
-            LOG.error( "There is already a B-tree named '{}' managed by this recordManager", name );
-            throw new BTreeAlreadyManagedException( name );
-        }
+            LOG.debug( "Managing the btree {}", btree.getName() );
+            BTreeFactory.setRecordManager( btree, this );
 
-        // Now, write the B-tree informations
-        long btreeInfoOffset = writeBtreeInfo( btree );
-        BTreeHeader<K, V> btreeHeader = ( ( AbstractBTree<K, V> ) btree ).getBtreeHeader();
-        ( ( PersistedBTree<K, V> ) btree ).setBtreeInfoOffset( btreeInfoOffset );
+            String name = btree.getName();
 
-        // Serialize the B-tree root page
-        Page<K, V> rootPage = btreeHeader.getRootPage();
+            if ( managedBtrees.containsKey( name ) )
+            {
+                // There is already a B-tree with this name in the recordManager...
+                LOG.error( "There is already a B-tree named '{}' managed by this recordManager", name );
+                rollback();
+                throw new BTreeAlreadyManagedException( name );
+            }
 
-        PageIO[] rootPageIos = serializePage( btree, btreeHeader.getRevision(), rootPage );
+            // Now, write the B-tree informations
+            long btreeInfoOffset = writeBtreeInfo( btree );
+            BTreeHeader<K, V> btreeHeader = ( ( AbstractBTree<K, V> ) btree ).getBtreeHeader();
+            ( ( PersistedBTree<K, V> ) btree ).setBtreeInfoOffset( btreeInfoOffset );
 
-        // Get the reference on the first page
-        long rootPageOffset = rootPageIos[0].getOffset();
+            // Serialize the B-tree root page
+            Page<K, V> rootPage = btreeHeader.getRootPage();
 
-        // Store the rootPageOffset into the Btree header and into the rootPage
-        btreeHeader.setRootPageOffset( rootPageOffset );
-        ( ( PersistedLeaf<K, V> ) rootPage ).setOffset( rootPageOffset );
+            PageIO[] rootPageIos = serializePage( btree, btreeHeader.getRevision(), rootPage );
 
-        LOG.debug( "Flushing the newly managed '{}' btree rootpage", btree.getName() );
-        flushPages( rootPageIos );
+            // Get the reference on the first page
+            long rootPageOffset = rootPageIos[0].getOffset();
 
-        // And the B-tree header
-        long btreeHeaderOffset = writeBtreeHeader( btree, btreeHeader );
+            // Store the rootPageOffset into the Btree header and into the rootPage
+            btreeHeader.setRootPageOffset( rootPageOffset );
+            ( ( PersistedLeaf<K, V> ) rootPage ).setOffset( rootPageOffset );
 
-        // Now, if this is a new B-tree, add it to the B-tree of B-trees
-        if ( treeType != INTERNAL_BTREE )
-        {
+            LOG.debug( "Flushing the newly managed '{}' btree rootpage", btree.getName() );
+            flushPages( rootPageIos );
+
+            // And the B-tree header
+            long btreeHeaderOffset = writeBtreeHeader( btree, btreeHeader );
+
+            // Now, if this is a new B-tree, add it to the B-tree of B-trees
             // Add the btree into the map of managed B-trees
             managedBtrees.put( name, ( BTree<Object, Object> ) btree );
 
@@ -1489,7 +1476,90 @@ public class RecordManager extends AbstractTransactionManager
 
             // Inject it into the B-tree of B-tree
             btreeOfBtrees.insert( nameRevision, btreeHeaderOffset );
+            commit();
         }
+        catch ( IOException ioe )
+        {
+            rollback();
+            throw ioe;
+        }
+    }
+
+
+    /**
+     * Managing a btree is a matter of storing an reference to the managed B-tree in the B-tree Of B-trees.
+     * We store a tuple of NameRevision (where revision is 0L) and a offset to the B-tree header.
+     * At the same time, we keep a track of the managed B-trees in a Map.
+     *
+     * @param btree The new B-tree to manage.
+     * @param treeType flag indicating if this is an internal tree
+     *
+     * @throws BTreeAlreadyManagedException If the B-tree is already managed
+     * @throws IOException
+     */
+    public synchronized <K, V> void manageSubBtree( BTree<K, V> btree )
+        throws BTreeAlreadyManagedException, IOException
+    {
+        LOG.debug( "Managing the sub-btree {}", btree.getName() );
+        BTreeFactory.setRecordManager( btree, this );
+
+        String name = btree.getName();
+
+        if ( managedBtrees.containsKey( name ) )
+        {
+            // There is already a subB-tree with this name in the recordManager...
+            LOG.error( "There is already a sub-B-tree named '{}' managed by this recordManager", name );
+            throw new BTreeAlreadyManagedException( name );
+        }
+
+        // Now, write the subB-tree informations
+        long btreeInfoOffset = writeBtreeInfo( btree );
+        BTreeHeader<K, V> btreeHeader = ( ( AbstractBTree<K, V> ) btree ).getBtreeHeader();
+        ( ( PersistedBTree<K, V> ) btree ).setBtreeInfoOffset( btreeInfoOffset );
+
+        // Serialize the B-tree root page
+        Page<K, V> rootPage = btreeHeader.getRootPage();
+
+        PageIO[] rootPageIos = serializePage( btree, btreeHeader.getRevision(), rootPage );
+
+        // Get the reference on the first page
+        long rootPageOffset = rootPageIos[0].getOffset();
+
+        // Store the rootPageOffset into the Btree header and into the rootPage
+        btreeHeader.setRootPageOffset( rootPageOffset );
+
+        ( ( AbstractPage<K, V> ) rootPage ).setOffset( rootPageOffset );
+
+        LOG.debug( "Flushing the newly managed '{}' btree rootpage", btree.getName() );
+        flushPages( rootPageIos );
+
+        // And the B-tree header
+        long btreeHeaderOffset = writeBtreeHeader( btree, btreeHeader );
+
+        // Now, if this is a new B-tree, add it to the B-tree of B-trees
+        // Add the btree into the map of managed B-trees
+        if ( ( btree.getType() != BTreeTypeEnum.BTREE_OF_BTREES ) && ( btree.getType() != BTreeTypeEnum.PERSISTED_SUB ) )
+        {
+            managedBtrees.put( name, ( BTree<Object, Object> ) btree );
+        }
+
+        // And in the Map of currentBtreeHeaders and newBtreeHeaders
+        currentBTreeHeaders.put( name, btreeHeader );
+        newBTreeHeaders.put( name, btreeHeader );
+
+        // Create the new NameRevision
+        NameRevision nameRevision = new NameRevision( name, 0L );
+
+        // Inject it into the B-tree of B-tree
+        if ( ( btree.getType() != BTreeTypeEnum.BTREE_OF_BTREES ) && ( btree.getType() != BTreeTypeEnum.PERSISTED_SUB ) )
+        {
+            // We can safely increment the number of managed B-trees
+            nbBtree++;
+
+            btreeOfBtrees.insert( nameRevision, btreeHeaderOffset );
+        }
+
+        updateRecordManagerHeader();
     }
 
 
@@ -1692,6 +1762,15 @@ public class RecordManager extends AbstractTransactionManager
         int dataSize = 0;
         int nbValues = valueHolder.size();
 
+        if ( nbValues == 0 )
+        {
+            // No value.
+            byte[] buffer = IntSerializer.serialize( nbValues );
+            serializedData.add( buffer );
+
+            return buffer.length;
+        }
+
         if ( !valueHolder.isSubBtree() )
         {
             // Write the nb elements first
@@ -1716,47 +1795,15 @@ public class RecordManager extends AbstractTransactionManager
         }
         else
         {
-            if ( nbValues == 0 )
-            {
-                // No value.
-                byte[] buffer = IntSerializer.serialize( nbValues );
-                serializedData.add( buffer );
+            // Store the nbVlues as a negative number. We add 1 so that 0 is not confused with an Array value
+            byte[] buffer = IntSerializer.serialize( -( nbValues + 1 ) );
+            serializedData.add( buffer );
+            dataSize += buffer.length;
 
-                return buffer.length;
-            }
-
-            if ( valueHolder.isSubBtree() )
-            {
-                // Store the nbVlues as a negative number. We add 1 so that 0 is not confused with an Array value
-                byte[] buffer = IntSerializer.serialize( -( nbValues + 1 ) );
-                serializedData.add( buffer );
-                dataSize += buffer.length;
-
-                // the B-tree offset
-                buffer = LongSerializer.serialize( ( ( PersistedValueHolder<V> ) valueHolder ).getOffset() );
-                serializedData.add( buffer );
-                dataSize += buffer.length;
-            }
-            else
-            {
-                // This is an array, store the nb of values as a positive number
-                byte[] buffer = IntSerializer.serialize( nbValues );
-                serializedData.add( buffer );
-                dataSize += buffer.length;
-
-                // Now store each value
-                byte[] data = ( ( PersistedValueHolder<V> ) valueHolder ).getRaw();
-                buffer = IntSerializer.serialize( data.length );
-                serializedData.add( buffer );
-                dataSize += buffer.length;
-
-                if ( data.length > 0 )
-                {
-                    serializedData.add( data );
-                }
-
-                dataSize += data.length;
-            }
+            // the B-tree offset
+            buffer = LongSerializer.serialize( ( ( PersistedValueHolder<V> ) valueHolder ).getOffset() );
+            serializedData.add( buffer );
+            dataSize += buffer.length;
         }
 
         return dataSize;
@@ -2926,8 +2973,6 @@ public class RecordManager extends AbstractTransactionManager
      */
     private PageIO fetchNewPage() throws IOException
     {
-        //dumpFreePages( firstFreePage );
-
         if ( firstFreePage == NO_PAGE )
         {
             nbCreatedPages.incrementAndGet();

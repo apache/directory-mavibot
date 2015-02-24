@@ -121,6 +121,11 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             sb.append( key );
             sb.append( ", " );
         }
+        else if ( raw != null )
+        {
+            K key = getKey();
+            sb.append( ":" ).append( key ).append( ":," );
+        }
         else
         {
             sb.append( "null," );

@@ -1113,11 +1113,6 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      */
     public K getLeftMostKey()
     {
-        if ( keys.length == 0 )
-        {
-            System.out.println( "" );
-        }
-
         return keys[0].getKey();
     }
 
@@ -1250,7 +1245,18 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                     sb.append( ", " );
                 }
 
-                sb.append( "<" ).append( keys[i] ).append( "," ).append( values[i] ).append( ">" );
+                sb.append( "<" ).append( keys[i] ).append( "," );
+
+                if ( values != null )
+                {
+                    sb.append( values[i] );
+                }
+                else
+                {
+                    sb.append( "null" );
+                }
+
+                sb.append( ">" );
             }
         }
 
@@ -1422,7 +1428,18 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                     sb.append( ", " );
                 }
 
-                sb.append( "<" ).append( keys[i] ).append( "," ).append( values[i] ).append( ">" );
+                sb.append( "<" ).append( keys[i] ).append( "," );
+
+                if ( values != null )
+                {
+                    sb.append( values[i] );
+                }
+                else
+                {
+                    sb.append( "null" );
+                }
+
+                sb.append( ">" );
             }
         }
 

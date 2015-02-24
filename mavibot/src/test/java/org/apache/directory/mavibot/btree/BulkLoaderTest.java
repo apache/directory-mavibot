@@ -150,7 +150,7 @@ public class BulkLoaderTest
     public void testPersistedBulkLoad1000Elements() throws IOException, KeyNotFoundException,
         BTreeAlreadyManagedException
     {
-        for ( int i = 0; i < 1001; i++ )
+        for ( int i = 1000000; i < 1000001; i++ )
         {
             Random random = new Random( System.currentTimeMillis() );
             File file = File.createTempFile( "managedbtreebuilder", ".data" );
@@ -161,6 +161,7 @@ public class BulkLoaderTest
                 RecordManager rm = new RecordManager( file.getAbsolutePath() );
                 PersistedBTree<Long, String> btree = ( PersistedBTree<Long, String> ) rm.addBTree( "test",
                     LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
+                btree.setPageSize( 64 );
 
                 int nbElems = i;
                 int addedElems = 0;
@@ -193,12 +194,8 @@ public class BulkLoaderTest
                     expectedTuple.value.add( value );
                     expected.put( key, expectedTuple );
                     addedElems++;
-
-                    if ( addedElems % 100 == 0 )
-                    {
-                        //System.out.println( "Nb added elements = " + addedElems );
-                    }
                 }
+
                 long t01 = System.currentTimeMillis();
 
                 // System.out.println( "Time to create the " + nbElems + " elements " + ( ( t01 - t00 ) / 1 ) );
@@ -229,10 +226,10 @@ public class BulkLoaderTest
                 };
 
                 long t0 = System.currentTimeMillis();
-                BTree<Long, String> result = BulkLoader.load( btree, tupleIterator, 128 );
+                BTree<Long, String> result = BulkLoader.load( btree, tupleIterator, 1024000 );
                 long t1 = System.currentTimeMillis();
 
-                if ( i % 100 == 0 )
+                if ( ( i % 100 ) == 0 )
                 {
                     System.out.println( "== Btree #" + i + ", Time to bulkoad the " + nbElems + " elements "
                         + ( t1 - t0 ) + "ms" );
@@ -451,10 +448,6 @@ public class BulkLoaderTest
 
             for ( int i = 0; i < 49; i++ )
             {
-                System.out.println( "=======================================" );
-                System.out.println( "== Iteration n#" + i );
-                System.out.println( "=======================================" );
-
                 LevelInfo<Long, String> leafInfo = BulkLoader.computeLevel( btree, i, LevelEnum.LEAF );
 
                 assertEquals( expectedNbPages[i], leafInfo.getNbPages() );
@@ -510,10 +503,6 @@ public class BulkLoaderTest
 
             for ( int i = 2; i < 52; i++ )
             {
-                System.out.println( "=======================================" );
-                System.out.println( "== Iteration n#" + i );
-                System.out.println( "=======================================" );
-
                 LevelInfo<Long, String> nodeInfo = BulkLoader.computeLevel( btree, i, LevelEnum.NODE );
 
                 assertEquals( expectedNbPages[i], nodeInfo.getNbPages() );
@@ -569,10 +558,6 @@ public class BulkLoaderTest
 
             for ( int i = 2599; i <= 2599; i++ )
             {
-                System.out.println( "=======================================" );
-                System.out.println( "== Iteration #" + i );
-                System.out.println( "=======================================" );
-
                 List<LevelInfo<Long, String>> levels = BulkLoader.computeLevels( btree, i );
 
                 for ( LevelInfo<Long, String> level : levels )
@@ -592,7 +577,7 @@ public class BulkLoaderTest
      * Test that we can load 100 BTrees with 0 to 1000 elements, each one of them having multiple values
      * @throws BTreeAlreadyManagedException 
      */
-    @Ignore("The test is failing atm due to the sub-btree construction which is not working correctly when we have too many elements")
+    //@Ignore("The test is failing atm due to the sub-btree construction which is not working correctly when we have too many elements")
     @Test
     public void testPersistedBulkLoad1000ElementsMultipleValues() throws IOException, KeyNotFoundException,
         BTreeAlreadyManagedException
@@ -672,24 +657,11 @@ public class BulkLoaderTest
                 };
 
                 long t0 = System.currentTimeMillis();
-                BTree<Long, String> result = null;
-
-                try
-                {
-                    result = BulkLoader.load( btree, tupleIterator, 128 );
-                }
-                catch ( NullPointerException npe )
-                {
-                    System.out.println( "Error with : " );
-                    for ( int j = 0; j < i; j++ )
-                    {
-                        System.out.println( elems[j] );
-                    }
-                }
+                BTree<Long, String> result = BulkLoader.load( btree, tupleIterator, 128 );
                 long t1 = System.currentTimeMillis();
 
-                System.out.println( "== Btree #" + i + ", Time to bulkoad the " + nbElems + " elements "
-                    + ( t1 - t0 ) + "ms" );
+                //System.out.println( "== Btree #" + i + ", Time to bulkoad the " + nbElems + " elements "
+                //    + ( t1 - t0 ) + "ms" );
 
                 TupleCursor<Long, String> cursor = result.browse();
                 int nbFetched = 0;
@@ -793,19 +765,8 @@ public class BulkLoaderTest
 
             long t0 = System.currentTimeMillis();
             BTree<Long, String> result = null;
-            try
-            {
-                result = BulkLoader.load( btree, tupleIterator, 128 );
-            }
-            catch ( NullPointerException npe )
-            {
-                npe.printStackTrace();
-                System.out.println( "Error with : " );
-                for ( int j = 0; j < 4; j++ )
-                {
-                    System.out.println( elems[j] );
-                }
-            }
+
+            result = BulkLoader.load( btree, tupleIterator, 128 );
             long t1 = System.currentTimeMillis();
 
             System.out.println( "== Btree #" + 4 + ", Time to bulkoad the " + nbElems + " elements "
@@ -819,10 +780,6 @@ public class BulkLoaderTest
             while ( cursor.hasNext() )
             {
                 Tuple<Long, String> elem = cursor.next();
-
-                assertTrue( expected.containsKey( elem.key ) );
-                Tuple<Long, Set<String>> tuple = expected.get( elem.key );
-                assertNotNull( tuple );
                 nbFetched++;
             }
 
@@ -856,7 +813,7 @@ public class BulkLoaderTest
         listTuples.add( new Tuple<Long, String>( 32L, "V8" ) );
         listTuples.add( new Tuple<Long, String>( -21L, "V9" ) );
         listTuples.add( new Tuple<Long, String>( 9L, "V10" ) );
-        //listTuples.add( new Tuple<Long, String>( 0L, "V11" ) );
+        listTuples.add( new Tuple<Long, String>( 0L, "V11" ) );
         listTuples.add( new Tuple<Long, String>( -7L, "V12" ) );
         listTuples.add( new Tuple<Long, String>( -13L, "V13" ) );
         listTuples.add( new Tuple<Long, String>( 23L, "V14" ) );
@@ -1222,6 +1179,7 @@ public class BulkLoaderTest
                     prev = elem;
                     elem = cursor.next();
                     nbFetched++;
+                    System.out.println( elem );
                 }
             }
             catch ( Exception e )
@@ -1234,7 +1192,7 @@ public class BulkLoaderTest
         }
         catch ( Exception e )
         {
-
+            e.printStackTrace();
         }
     }
 }

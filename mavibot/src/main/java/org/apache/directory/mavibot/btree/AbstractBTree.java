@@ -1095,11 +1095,6 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
                         long t1 = System.currentTimeMillis();
 
-                        if ( nbTxns > 0 )
-                        {
-                            System.out.println( "Processing old txn : " + nbTxns + ", " + ( t1 - t0 ) + "ms" );
-                        }
-
                         // Wait until we reach the timeout
                         Thread.sleep( readTimeOut );
                     }

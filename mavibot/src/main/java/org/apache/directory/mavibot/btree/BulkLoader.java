@@ -65,6 +65,27 @@ public class BulkLoader<K, V>
         NODE
     }
 
+    /**
+     * A private class used to store the temporary sorted file. It's used by
+     * the bulkLoader
+     */
+    private static class SortedFile
+    {
+        /** the file that contains the values */
+        private File file;
+
+        /** The number of stored values */
+        private int nbValues;
+
+
+        /** A constructor for this class */
+        /*No Qualifier*/SortedFile( File file, int nbValues )
+        {
+            this.file = file;
+            this.nbValues = nbValues;
+        }
+    }
+
 
     /**
      * Process the data, and creates files to store them sorted if necessary, or store them
@@ -163,7 +184,7 @@ public class BulkLoader<K, V>
      * sorted and merged elements.
      * @throws IOException 
      */
-    private static <K, V> Tuple<Iterator<Tuple<K, Set<V>>>, Integer> processFiles( BTree<K, V> btree,
+    private static <K, V> Tuple<Iterator<Tuple<K, Set<V>>>, SortedFile> processFiles( BTree<K, V> btree,
         Iterator<Tuple<K, Set<V>>> dataIterator ) throws IOException
     {
         File file = File.createTempFile( "sortedUnique", "data" );
@@ -206,9 +227,10 @@ public class BulkLoader<K, V>
 
         FileInputStream fis = new FileInputStream( file );
         Iterator<Tuple<K, Set<V>>> uniqueIterator = createUniqueFileIterator( btree, fis );
+        SortedFile sortedFile = new SortedFile( file, nbReads );
 
-        Tuple<Iterator<Tuple<K, Set<V>>>, Integer> result = new Tuple<Iterator<Tuple<K, Set<V>>>, Integer>(
-            uniqueIterator, nbReads );
+        Tuple<Iterator<Tuple<K, Set<V>>>, SortedFile> result = new Tuple<Iterator<Tuple<K, Set<V>>>, SortedFile>(
+            uniqueIterator, sortedFile );
 
         return result;
     }
@@ -222,7 +244,7 @@ public class BulkLoader<K, V>
      * @param chunkSize The number of elements we may store in memory at each iteration
      * @throws IOException If there is a problem while processing the data
      */
-    public static <K, V> BTree<K, V> load( PersistedBTree<K, V> btree, Iterator<Tuple<K, V>> iterator, int chunkSize )
+    public static <K, V> BTree<K, V> load( BTree<K, V> btree, Iterator<Tuple<K, V>> iterator, int chunkSize )
         throws IOException
     {
         if ( btree == null )
@@ -281,8 +303,9 @@ public class BulkLoader<K, V>
             dataIterator = createIterator( btree, streams );
 
             // Process the files, and construct one single file with an iterator
-            Tuple<Iterator<Tuple<K, Set<V>>>, Integer> result = processFiles( btree, dataIterator );
-            resultBTree = bulkLoad( btree, result.key, result.value );
+            Tuple<Iterator<Tuple<K, Set<V>>>, SortedFile> result = processFiles( btree, dataIterator );
+            resultBTree = bulkLoad( btree, result.key, result.value.nbValues );
+            result.value.file.delete();
         }
 
         // Ok, we have an iterator over sorted elements, we can now load them in the 
@@ -444,14 +467,18 @@ public class BulkLoader<K, V>
     /**
      * Inject a tuple into a leaf
      */
-    private static <K, V> void injectInLeaf( BTree<K, V> btree, Tuple<K, Set<V>> tuple, LevelInfo leafLevel )
+    private static <K, V> void injectInLeaf( BTree<K, V> btree, Tuple<K, Set<V>> tuple, LevelInfo<K, V> leafLevel )
     {
         PersistedLeaf<K, V> leaf = ( PersistedLeaf<K, V> ) leafLevel.getCurrentPage();
 
         KeyHolder<K> keyHolder = new PersistedKeyHolder<K>( btree.getKeySerializer(), tuple.getKey() );
-        ValueHolder<V> valueHolder = new PersistedValueHolder<V>( btree, ( V[] ) tuple.getValue().toArray() );
         leaf.setKey( leafLevel.getCurrentPos(), keyHolder );
-        leaf.setValue( leafLevel.getCurrentPos(), valueHolder );
+
+        if ( btree.getType() != BTreeTypeEnum.PERSISTED_SUB )
+        {
+            ValueHolder<V> valueHolder = new PersistedValueHolder<V>( btree, ( V[] ) tuple.getValue().toArray() );
+            leaf.setValue( leafLevel.getCurrentPos(), valueHolder );
+        }
 
         leafLevel.incCurrentPos();
     }
@@ -515,8 +542,8 @@ public class BulkLoader<K, V>
         LevelInfo<K, V> level ) throws IOException
     {
         PersistedNode<K, V> node = ( PersistedNode<K, V> ) level.getCurrentPage();
-        if ( ( level.getCurrentPos() == 0 ) && ( node.getPage( 0 ) == null ) )
 
+        if ( ( level.getCurrentPos() == 0 ) && ( node.getPage( 0 ) == null ) )
         {
             node.setPageHolder( 0, pageHolder );
             level.incNbAddedElems();
@@ -759,8 +786,23 @@ public class BulkLoader<K, V>
     private static <K, V> BTree<K, V> bulkLoadSinglePage( BTree<K, V> btree, Iterator<Tuple<K, Set<V>>> dataIterator,
         int nbElems ) throws IOException
     {
-        // Create a new page
-        PersistedLeaf<K, V> rootPage = ( PersistedLeaf<K, V> ) BTreeFactory.createLeaf( btree, 0L, nbElems );
+        // Use the root page
+        Page<K, V> rootPage = btree.getRootPage();
+
+        // Initialize the root page
+        ( ( AbstractPage<K, V> ) rootPage ).setNbElems( nbElems );
+        KeyHolder<K>[] keys = new KeyHolder[nbElems];
+        ValueHolder<V>[] values = new ValueHolder[nbElems];
+
+        switch ( btree.getType() )
+        {
+            case IN_MEMORY:
+                ( ( InMemoryLeaf<K, V> ) rootPage ).values = values;
+                break;
+
+            default:
+                ( ( PersistedLeaf<K, V> ) rootPage ).values = values;
+        }
 
         // We first have to inject data into the page
         int pos = 0;
@@ -771,18 +813,31 @@ public class BulkLoader<K, V>
 
             // Store the current element in the rootPage
             KeyHolder<K> keyHolder = new PersistedKeyHolder<K>( btree.getKeySerializer(), tuple.getKey() );
-            ValueHolder<V> valueHolder = new PersistedValueHolder<V>( btree, ( V[] ) tuple.getValue().toArray() );
-            rootPage.setKey( pos, keyHolder );
-            rootPage.setValue( pos, valueHolder );
+            keys[pos] = keyHolder;
+
+            switch ( btree.getType() )
+            {
+                case IN_MEMORY:
+                    ValueHolder<V> valueHolder = new InMemoryValueHolder<V>( btree, ( V[] ) tuple.getValue()
+                        .toArray() );
+                    ( ( InMemoryLeaf<K, V> ) rootPage ).values[pos] = valueHolder;
+                    break;
+
+                default:
+                    valueHolder = new PersistedValueHolder<V>( btree, ( V[] ) tuple.getValue()
+                        .toArray() );
+                    ( ( PersistedLeaf<K, V> ) rootPage ).values[pos] = valueHolder;
+            }
+
             pos++;
         }
 
-        // Now write the page on disk
-        ( ( PersistedBTree<K, V> ) btree ).getRecordManager().writePage( btree, rootPage, 0L );
+        // Update the rootPage
+        ( ( AbstractPage<K, V> ) rootPage ).setKeys( keys );
 
-        // Update the btree with the rootPage and the nb of added elements
-        ( ( PersistedBTree<K, V> ) btree ).getBtreeHeader().setRootPage( rootPage );
-        ( ( PersistedBTree<K, V> ) btree ).getBtreeHeader().setNbElems( nbElems );
+        // Update the btree with the nb of added elements, and write it$
+        BTreeHeader<K, V> btreeHeader = ( ( AbstractBTree<K, V> ) btree ).getBtreeHeader();
+        btreeHeader.setNbElems( nbElems );
 
         return btree;
     }
@@ -862,7 +917,8 @@ public class BulkLoader<K, V>
                     }
 
                     // Now inject the page into the node
-                    injectInNode( btree, leafLevel.getCurrentPage(), levels, 1 );
+                    Page<K, V> currentPage = leafLevel.getCurrentPage();
+                    injectInNode( btree, currentPage, levels, 1 );
 
                     // Create a new page for the remaining elements
                     nbToAdd = pageSize / 2;
@@ -880,7 +936,8 @@ public class BulkLoader<K, V>
                     }
 
                     // And update the parent node
-                    injectInNode( btree, leafLevel.getCurrentPage(), levels, 1 );
+                    Page<K, V> levelCurrentPage = leafLevel.getCurrentPage();
+                    injectInNode( btree, levelCurrentPage, levels, 1 );
 
                     // We are done
                     break;
@@ -909,6 +966,10 @@ public class BulkLoader<K, V>
                 }
             }
         }
+
+        // Update the btree with the nb of added elements, and write it$
+        BTreeHeader<K, V> btreeHeader = ( ( AbstractBTree<K, V> ) btree ).getBtreeHeader();
+        btreeHeader.setNbElems( nbElems );
 
         return btree;
     }

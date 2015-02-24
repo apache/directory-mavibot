@@ -19,6 +19,7 @@
  */
 package org.apache.directory.mavibot.btree;
 
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -34,6 +35,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+
 
 /**
  * Tests for KeyCursor of a persisted sub-Btree.
@@ -71,7 +73,7 @@ public class PersistedSubBtreeKeyCursorTest
 
             btree = BTreeFactory.createPersistedBTree( configuration );
 
-            recordManager.manage( btree, RecordManager.INTERNAL_BTREE );
+            recordManager.manage( btree );
         }
         catch ( Exception e )
         {
@@ -91,33 +93,34 @@ public class PersistedSubBtreeKeyCursorTest
         {
             FileUtils.deleteDirectory( dataDir );
         }
-        
+
         recordManager.close();
         assertTrue( recordManager.isContextOk() );
     }
 
+
     @Test
     public void testBrowseKeys() throws Exception
     {
-        for( int i=0; i< 10; i++ )
+        for ( int i = 0; i < 10; i++ )
         {
             // only the keys are stored, values are ignored
             btree.insert( i, i );
         }
-        
+
         KeyCursor<Integer> cursor = btree.browseKeys();
-        
-        for( int i=0; i< 10; i++ )
+
+        for ( int i = 0; i < 10; i++ )
         {
             assertTrue( cursor.hasNext() );
             assertEquals( String.valueOf( i ), String.valueOf( cursor.next() ) );
         }
-        
+
         assertFalse( cursor.hasNext() );
 
         cursor.afterLast();
-        
-        for( int i=9; i>= 0; i-- )
+
+        for ( int i = 9; i >= 0; i-- )
         {
             assertTrue( cursor.hasPrev() );
             assertEquals( String.valueOf( i ), String.valueOf( cursor.prev() ) );

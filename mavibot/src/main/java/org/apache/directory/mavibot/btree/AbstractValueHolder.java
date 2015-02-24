@@ -23,6 +23,7 @@ package org.apache.directory.mavibot.btree;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.Comparator;
+import java.util.Iterator;
 
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
@@ -247,7 +248,8 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         }
         catch ( KeyNotFoundException knfe )
         {
-            knfe.printStackTrace();return false;
+            knfe.printStackTrace();
+            return false;
         }
     }
 
@@ -275,9 +277,15 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 
     /**
+     * Manage a new Sub-BTree .
+     */
+    protected abstract void manageSubTree();
+
+
+    /**
      * Add the value in an array
      */
-    private void addInArray( V value )
+    private void addInArray( final V value )
     {
         // We have to check that we have reached the threshold or not
         if ( size() >= valueThresholdUp )
@@ -285,27 +293,61 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             // Ok, transform the array into a btree
             createSubTree();
 
-            try
+            Iterator<Tuple<V, V>> valueIterator = new Iterator<Tuple<V, V>>()
             {
-                for ( V val : valueArray )
+                int pos = 0;
+
+
+                @Override
+                public Tuple<V, V> next()
                 {
-                    // Here, we should insert all the values in one shot then 
-                    // write the btree on disk only once.
-                    valueBtree.insert( val, null );
+                    // We can now return the found value
+                    if ( pos == valueArray.length )
+                    {
+                        // Special case : deal with the added value
+                        pos++;
+
+                        return new Tuple<V, V>( value, value );
+                    }
+                    else
+                    {
+                        V oldValue = valueArray[pos];
+                        pos++;
+
+                        return new Tuple<V, V>( oldValue, oldValue );
+                    }
                 }
 
-                // We can delete the array now
-                nbArrayElems = 0;
-                valueArray = null;
 
-                // And inject the new value
-                valueBtree.insert( value, null );
+                @Override
+                public boolean hasNext()
+                {
+                    // Check that we have at least one element to read
+                    return pos < valueArray.length + 1;
+                }
+
+
+                @Override
+                public void remove()
+                {
+                }
+
+            };
+
+            try
+            {
+                BulkLoader.load( valueBtree, valueIterator, valueArray.length );
             }
             catch ( IOException e )
             {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
             }
+
+            manageSubTree();
+
+            // And make the valueArray to be null now
+            valueArray = null;
         }
         else
         {
@@ -375,24 +417,24 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
             addInBtree( value );
         }
     }
-    
-    
+
+
     /**
      * {@inheritDoc}
      */
     @Override
     public V replaceValueArray( V newValue )
     {
-        if( isSubBtree() )
+        if ( isSubBtree() )
         {
             throw new IllegalStateException( "method is not applicable for the duplicate B-Trees" );
         }
-        
+
         V tmp = valueArray[0];
-        
+
         nbArrayElems = 1;
         valueArray[0] = newValue;
-        
+
         return tmp;
     }
 

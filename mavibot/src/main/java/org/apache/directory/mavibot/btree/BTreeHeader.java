@@ -59,7 +59,7 @@ import java.util.concurrent.atomic.AtomicInteger;
     private long rootPageOffset;
 
     /** The position of the B-tree header in the file */
-    private long btreeHeaderOffset;
+    private long btreeHeaderOffset = RecordManager.NO_PAGE;
 
     // Those are data which aren't serialized : they are in memory only */
     /** A Map containing the rootPage for this tree */
