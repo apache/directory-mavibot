@@ -191,10 +191,9 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
         ParentPos<K, V>[] stack = ( ParentPos<K, V>[] ) Array.newInstance( ParentPos.class, 32 );
 
-        TupleCursor<K, V> cursor;
         try
         {
-            cursor = getRootPage( transaction.getRevision() ).browse( key, transaction, stack, 0 );
+            TupleCursor<K, V> cursor = getRootPage( transaction.getRevision() ).browse( key, transaction, stack, 0 );
 
             return cursor;
         }

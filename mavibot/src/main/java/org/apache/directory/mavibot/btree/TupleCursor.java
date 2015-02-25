@@ -226,8 +226,9 @@ public class TupleCursor<K, V>
         else
         {
             // Check if we have some more value
-            if ( parentPos.valueCursor.hasNext() )
+            if ( ( parentPos.valueCursor != null ) && parentPos.valueCursor.hasNext() )
             {
+                // No problem, we still have some values to read
                 return true;
             }
 

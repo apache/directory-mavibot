@@ -782,7 +782,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
                 stack[depth] = parentPos;
             }
-            else if ( nbElems >= 0 )
+            else
             {
                 // We are at the end of a leaf. We have to check if we are at the end 
                 // of the tree or not
@@ -795,10 +795,9 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                     {
                         cursor.afterLast();
                     }
-                    catch ( IOException e )
+                    catch ( IOException ioe )
                     {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
+                        // Not likely to happen
                     }
                 }
                 else
@@ -829,13 +828,6 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                         }
                     }
                 }
-            }
-            else
-            {
-                // Not found, because there are no elements : return a null cursor
-                stack[depth] = null;
-
-                cursor = new TupleCursor<K, V>( transaction, null, 0 );
             }
         }
 

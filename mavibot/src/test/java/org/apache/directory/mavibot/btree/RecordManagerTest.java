@@ -69,8 +69,6 @@ public class RecordManagerTest
     {
         dataDir = tempFolder.newFolder( UUID.randomUUID().toString() );
 
-        System.out.println( dataDir + "/mavibot.db" );
-
         openRecordManagerAndBtree();
 
         try

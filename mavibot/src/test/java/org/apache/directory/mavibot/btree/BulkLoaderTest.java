@@ -365,7 +365,7 @@ public class BulkLoaderTest
 
             //System.out.println( "Delta initial load = " + ( t3 - t2 ) );
 
-            System.out.println( "Checking for N = " + n );
+            //System.out.println( "Checking for N = " + n );
             checkBtree( btree, newBtree );
         }
     }
@@ -400,7 +400,7 @@ public class BulkLoaderTest
 
         //System.out.println( "Delta initial load = " + ( t3 - t2 ) );
 
-        System.out.println( "Checking for N = " + 21 );
+        //System.out.println( "Checking for N = " + 21 );
         checkBtree( btree, newBtree );
     }
 
@@ -559,11 +559,6 @@ public class BulkLoaderTest
             for ( int i = 2599; i <= 2599; i++ )
             {
                 List<LevelInfo<Long, String>> levels = BulkLoader.computeLevels( btree, i );
-
-                for ( LevelInfo<Long, String> level : levels )
-                {
-                    System.out.println( level );
-                }
             }
         }
         finally
@@ -768,9 +763,6 @@ public class BulkLoaderTest
 
             result = BulkLoader.load( btree, tupleIterator, 128 );
             long t1 = System.currentTimeMillis();
-
-            System.out.println( "== Btree #" + 4 + ", Time to bulkoad the " + nbElems + " elements "
-                + ( t1 - t0 ) + "ms" );
 
             TupleCursor<Long, String> cursor = result.browse();
             int nbFetched = 0;
@@ -1179,7 +1171,6 @@ public class BulkLoaderTest
                     prev = elem;
                     elem = cursor.next();
                     nbFetched++;
-                    System.out.println( elem );
                 }
             }
             catch ( Exception e )
