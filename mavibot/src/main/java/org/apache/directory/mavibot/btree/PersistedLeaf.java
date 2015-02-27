@@ -1088,11 +1088,6 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         // Get the pivot
         K pivot = rightLeaf.keys[0].getKey();
 
-        if ( pivot == null )
-        {
-            pivot = rightLeaf.keys[0].getKey();
-        }
-
         // Create the result
         InsertResult<K, V> result = new SplitResult<K, V>( pivot, leftLeaf, rightLeaf );
 
@@ -1344,11 +1339,6 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
         // Get the pivot
         K pivot = rightLeaf.keys[0].getKey();
-
-        if ( pivot == null )
-        {
-            pivot = rightLeaf.keys[0].getKey();
-        }
 
         // Create the result
         InsertResult<K, V> result = new SplitResult<K, V>( pivot, leftLeaf, rightLeaf );
