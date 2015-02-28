@@ -131,7 +131,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
         if ( transaction == null )
         {
-            return new EmptyTupleCursor<K, V>( 0L );
+            return new EmptyTupleCursor<K, V>();
         }
         else
         {
@@ -162,7 +162,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
         if ( transaction == null )
         {
-            return new EmptyTupleCursor<K, V>( revision );
+            return new EmptyTupleCursor<K, V>();
         }
         else
         {
@@ -219,7 +219,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
         if ( transaction == null )
         {
-            return new EmptyTupleCursor<K, V>( revision );
+            return new EmptyTupleCursor<K, V>();
         }
         else
         {

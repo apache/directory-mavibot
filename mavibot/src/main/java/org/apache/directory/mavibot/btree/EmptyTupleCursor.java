@@ -23,12 +23,9 @@ package org.apache.directory.mavibot.btree;
 import java.io.IOException;
 import java.util.NoSuchElementException;
 
-import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
-
 
 /**
  * A Cursor which is used when we have no element to return
- * <p>
  *
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
@@ -37,20 +34,20 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
  */
 public class EmptyTupleCursor<K, V> extends TupleCursor<K, V>
 {
-    private long revision;
+    /** AN empty cursor does not have a revision */
+    private static final long NO_REVISION = -1L;
+
+    /** The creation date */
     private long creationDate;
 
+
     /**
-     * Creates a new instance of Cursor, starting on a page at a given position.
-     *
-     * @param transaction The transaction this operation is protected by
-     * @param stack The stack of parent's from root to this page
+     * Creates a new instance of EmptyTupleCursor. It will never return any result
      */
-    public EmptyTupleCursor( long revision )
+    public EmptyTupleCursor()
     {
         super();
 
-        this.revision = revision;
         creationDate = System.currentTimeMillis();
     }
 
@@ -72,50 +69,35 @@ public class EmptyTupleCursor<K, V> extends TupleCursor<K, V>
 
 
     /**
-     * Tells if the cursor can return a next element
+     * Always return false.
      *
-     * @return true if there are some more elements
-     * @throws IOException
-     * @throws EndOfFileExceededException
+     * @return Always false
      */
-    public boolean hasNext() throws EndOfFileExceededException, IOException
+    public boolean hasNext()
     {
         return false;
     }
 
 
     /**
-     * Find the next key/value
+     * Always throws a NoSuchElementException.
      *
-     * @return A Tuple containing the found key and value
-     * @throws IOException
-     * @throws EndOfFileExceededException
+     * @return Nothing
+     * @throws NoSuchElementException There is no element in a EmptyTupleCursor
      */
-    public Tuple<K, V> next() throws EndOfFileExceededException, IOException
+    public Tuple<K, V> next() throws NoSuchElementException
     {
         throw new NoSuchElementException( "No tuple present" );
     }
 
 
     /**
-     * Get the next non-duplicate key.
-     * If the BTree contains :
+     * Always throws a NoSuchElementException.
      *
-     *  <ul>
-     *    <li><1,0></li>
-     *    <li><1,1></li>
-     *    <li><1,2></li>
-     *    <li><2,0></li>
-     *    <li><2,1></li>
-     *  </ul>
-     *
-     *  and cursor is present at <1,1> then the returned tuple will be <2,0> (not <1,2>)
-     *
-     * @return A Tuple containing the found key and value
-     * @throws EndOfFileExceededException
-     * @throws IOException
+     * @return Nothing
+     * @throws NoSuchElementException There is no element in a EmptyTupleCursor
      */
-    public Tuple<K, V> nextKey() throws EndOfFileExceededException, IOException
+    public Tuple<K, V> nextKey() throws NoSuchElementException
     {
         // This is the end : no more value
         throw new NoSuchElementException( "No more tuples present" );
@@ -123,76 +105,57 @@ public class EmptyTupleCursor<K, V> extends TupleCursor<K, V>
 
 
     /**
-     * Tells if the cursor can return a next key
+     * Always false
      *
-     * @return true if there are some more keys
-     * @throws IOException
-     * @throws EndOfFileExceededException
+     * @return false
      */
-    public boolean hasNextKey() throws EndOfFileExceededException, IOException
+    public boolean hasNextKey()
     {
         return false;
     }
 
 
     /**
-     * Tells if the cursor can return a previous element
-     *
-     * @return true if there are some more elements
-     * @throws IOException
-     * @throws EndOfFileExceededException
+     * Always false
+     * 
+     * @return false
      */
-    public boolean hasPrev() throws EndOfFileExceededException, IOException
+    public boolean hasPrev()
     {
         return false;
     }
 
 
     /**
-     * Find the previous key/value
+     * Always throws a NoSuchElementException.
      *
-     * @return A Tuple containing the found key and value
-     * @throws IOException
-     * @throws EndOfFileExceededException
+     * @return Nothing
+     * @throws NoSuchElementException There is no element in a EmptyTupleCursor
      */
-    public Tuple<K, V> prev() throws EndOfFileExceededException, IOException
+    public Tuple<K, V> prev() throws NoSuchElementException
     {
         throw new NoSuchElementException( "No more tuple present" );
     }
 
 
     /**
-     * Get the previous non-duplicate key.
-     * If the BTree contains :
+     * Always throws a NoSuchElementException.
      *
-     *  <ul>
-     *    <li><1,0></li>
-     *    <li><1,1></li>
-     *    <li><1,2></li>
-     *    <li><2,0></li>
-     *    <li><2,1></li>
-     *  </ul>
-     *
-     *  and cursor is present at <2,1> then the returned tuple will be <1,0> (not <2,0>)
-     *
-     * @return A Tuple containing the found key and value
-     * @throws EndOfFileExceededException
-     * @throws IOException
+     * @return Nothing
+     * @throws NoSuchElementException There is no element in a EmptyTupleCursor
      */
-    public Tuple<K, V> prevKey() throws EndOfFileExceededException, IOException
+    public Tuple<K, V> prevKey() throws NoSuchElementException
     {
         throw new NoSuchElementException( "No more tuples present" );
     }
 
 
     /**
-     * Tells if the cursor can return a previous key
-     *
-     * @return true if there are some more keys
-     * @throws IOException
-     * @throws EndOfFileExceededException
+     * Always false
+     * 
+     * @return false
      */
-    public boolean hasPrevKey() throws EndOfFileExceededException, IOException
+    public boolean hasPrevKey()
     {
         return false;
     }
@@ -208,6 +171,7 @@ public class EmptyTupleCursor<K, V> extends TupleCursor<K, V>
 
     /**
      * Get the creation date
+     * 
      * @return The creation date for this cursor
      */
     public long getCreationDate()
@@ -217,16 +181,19 @@ public class EmptyTupleCursor<K, V> extends TupleCursor<K, V>
 
 
     /**
-     * Get the current revision
+     * Always -1L for an empty cursor
      *
-     * @return The revision this cursor is based on
+     * @return -1L
      */
     public long getRevision()
     {
-        return revision;
+        return NO_REVISION;
     }
 
 
+    /**
+     * @see Object#toString()
+     */
     public String toString()
     {
         return "EmptyTupleCursor";

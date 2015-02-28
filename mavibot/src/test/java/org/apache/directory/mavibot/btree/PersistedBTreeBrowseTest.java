@@ -814,7 +814,7 @@ public class PersistedBTreeBrowseTest
             // Expected
         }
 
-        assertEquals( 0L, cursor.getRevision() );
+        assertEquals( -1L, cursor.getRevision() );
     }
 
 

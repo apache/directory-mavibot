@@ -740,7 +740,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         if ( nbElems == 0 )
         {
             // We have to return an empty cursor
-            return new TupleCursor<K, V>( transaction, null, 0 );
+            return new EmptyTupleCursor<K, V>();
         }
 
         // Create the cursor we will use
