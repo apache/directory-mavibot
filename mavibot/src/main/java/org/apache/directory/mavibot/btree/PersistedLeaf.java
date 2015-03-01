@@ -743,16 +743,17 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             return new EmptyTupleCursor<K, V>();
         }
 
-        // Create the cursor we will use
+        // The cursor we will return
         TupleCursor<K, V> cursor = new TupleCursor<K, V>( transaction, stack, depth );
 
         // Depending on the position, we will proceed differently :
         // 1) if the key is found in the page, the cursor will be 
         // set to this position.
-        // 2) The value has not been found, but is in the middle of the
-        // page (ie, other keys above teh one we are looking for exist),
+        // 2) The key has not been found, but is in the middle of the
+        // page (ie, other keys above the one we are looking for exist),
         // the cursor will be set to the current position
-        // 3) The key has not been found, 
+        // 3) The key has not been found, and we are at the end of
+        // the page. We have to fetch the next key in yhe B-tree
         if ( pos < 0 )
         {
             // The key has been found.
@@ -766,6 +767,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
             // And store this position in the stack
             stack[depth] = parentPos;
+
+            return cursor;
         }
         else
         {
@@ -781,57 +784,88 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
                 parentPos.valueCursor = values[pos].getCursor();
 
                 stack[depth] = parentPos;
+
+                return cursor;
             }
             else
             {
-                // We are at the end of a leaf. We have to check if we are at the end 
-                // of the tree or not
+                // We are at the end of a leaf. We have to see if we have other
+                // keys on the right.
                 if ( depth == 0 )
                 {
                     // No children, we are at the end of the root page
                     stack[depth] = new ParentPos<K, V>( this, pos );
 
+                    // As we are done, set the cursor at the end
                     try
                     {
                         cursor.afterLast();
                     }
-                    catch ( IOException ioe )
+                    catch ( IOException e )
                     {
-                        // Not likely to happen
+                        e.printStackTrace();
                     }
+
+                    return cursor;
                 }
                 else
                 {
+                    // We have to find the adjacent key in the B-tree
                     boolean isLast = true;
                     stack[depth] = new ParentPos<K, V>( this, pos );
 
-                    // Check each upper node
-                    for ( int i = depth - 2; i >= 0; i-- )
+                    // Check each upper node, starting from the direct parent
+                    int stackIndex = depth - 1;
+
+                    for ( int i = stackIndex; i >= 0; i-- )
                     {
                         if ( stack[i].pos < stack[i].page.getNbElems() )
                         {
                             isLast = false;
                             break;
                         }
+
+                        stackIndex--;
                     }
 
                     if ( isLast )
                     {
+                        // We don't have any more elements
                         try
                         {
                             cursor.afterLast();
                         }
                         catch ( IOException e )
                         {
-                            // TODO Auto-generated catch block
                             e.printStackTrace();
                         }
+
+                        return cursor;
+                    }
+                    else
+                    {
+                        // go down the tree again, but one position to the right
+                        stack[stackIndex].pos++;
+
+                        for ( int i = stackIndex + 1; i < depth - 1; i++ )
+                        {
+                            ParentPos<K, V> parentPos = new ParentPos<K, V>( this, 0 );
+
+                            stack[i] = parentPos;
+                        }
+
+                        ParentPos<K, V> parentPos = new ParentPos<K, V>( this, 0 );
+
+                        // Create the value cursor
+                        parentPos.valueCursor = values[0].getCursor();
+
+                        stack[depth - 1] = parentPos;
+
+                        return cursor;
                     }
                 }
             }
         }
-
-        return cursor;
     }
 
 
