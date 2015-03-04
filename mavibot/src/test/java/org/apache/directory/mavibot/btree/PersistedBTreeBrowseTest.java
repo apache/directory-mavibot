@@ -1180,6 +1180,8 @@ public class PersistedBTreeBrowseTest
         {
             btreeLong = recordManager1.addBTree( "testLong", LongSerializer.INSTANCE, LongSerializer.INSTANCE, true );
 
+            // Create a set of 500 values from 0 to 499, in a random order
+            // (all the values are there, they are just shuffled)
             int nbKeys = 500;
             List<Long> values = new ArrayList<Long>( nbKeys );
             long[] randomVals = new long[nbKeys];
@@ -1209,7 +1211,7 @@ public class PersistedBTreeBrowseTest
 
             int nbValues = 9;
 
-            // Inject some data
+            // Inject the 500 keys, each of them with 10 values
             for ( int i = 0; i < nbKeys; i++ )
             {
                 Long value = randomVals[i];
@@ -1222,11 +1224,12 @@ public class PersistedBTreeBrowseTest
 
             long t0 = System.currentTimeMillis();
 
-            // Now, browse the BTree starting from 0 to the end
+            // Now, browse the BTree fully, as many time as we have keys.
+            // We always browse from a different position, we should cover all
+            // the possible situations.
             for ( Long i = 0L; i < nbKeys; i++ )
             {
-                //System.out.println( "Browsing from " + i );
-                // Create the cursor
+                // Create the cursor, positionning it before the key
                 TupleCursor<Long, Long> cursor = btreeLong.browseFrom( i );
 
                 assertTrue( cursor.hasNext() );
@@ -1253,7 +1256,7 @@ public class PersistedBTreeBrowseTest
 
             long t00 = System.currentTimeMillis();
 
-            // Now, browse the BTree starting from 0 to the end
+            // Now, browse the BTree backward
             for ( Long i = nbKeys - 1L; i >= 0; i-- )
             {
                 // Create the cursor

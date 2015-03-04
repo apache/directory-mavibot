@@ -164,7 +164,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
 
             if ( cacheSize < 1 )
             {
-                cacheSize = 1;
+                cacheSize = DEFAULT_CACHE_SIZE;
             }
 
             cache = new LRUMap( cacheSize );

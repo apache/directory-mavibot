@@ -842,27 +842,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
                         return cursor;
                     }
-                    else
-                    {
-                        // go down the tree again, but one position to the right
-                        stack[stackIndex].pos++;
 
-                        for ( int i = stackIndex + 1; i < depth - 1; i++ )
-                        {
-                            ParentPos<K, V> parentPos = new ParentPos<K, V>( this, 0 );
-
-                            stack[i] = parentPos;
-                        }
-
-                        ParentPos<K, V> parentPos = new ParentPos<K, V>( this, 0 );
-
-                        // Create the value cursor
-                        parentPos.valueCursor = values[0].getCursor();
-
-                        stack[depth - 1] = parentPos;
-
-                        return cursor;
-                    }
+                    return cursor;
                 }
             }
         }
