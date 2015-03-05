@@ -23,7 +23,6 @@ package org.apache.directory.mavibot.btree;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
@@ -87,9 +86,6 @@ public class RecordManager extends AbstractTransactionManager
 
     /** The first and last free page */
     /* no qualifier */long firstFreePage;
-
-    /** The list of available free pages */
-    List<PageIO> freePages = new ArrayList<PageIO>();
 
     /** Some counters to track the number of free pages */
     public AtomicLong nbFreedPages = new AtomicLong( 0 );
@@ -480,6 +476,9 @@ public class RecordManager extends AbstractTransactionManager
             // The first and last free page
             firstFreePage = recordManagerHeader.getLong();
 
+            // Read all the free pages
+            checkFreePages();
+
             // The current BOB offset
             currentBtreeOfBtreesOffset = recordManagerHeader.getLong();
 
@@ -557,7 +556,8 @@ public class RecordManager extends AbstractTransactionManager
      */
     public void beginTransaction()
     {
-        // First, take the lock
+        // First, take the lock if it's not already taken
+        //( ( ReadWriteLock ) transactionLock ).writeLock();
         transactionLock.lock();
 
         // Now, check the TLS state
@@ -1168,6 +1168,16 @@ public class RecordManager extends AbstractTransactionManager
 
         // Compute the position in the current page
         int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * pageSize;
+
+        // Check that the length is correct : it should fit in the provided pageIos
+        int pageEnd = computePageNb( position + length );
+
+        if ( pageEnd > pageIos.length )
+        {
+            // This is wrong...
+            LOG.error( "Wrong size : {}, it's larger than the number of provided pages {}", length, pageIos.length );
+            throw new ArrayIndexOutOfBoundsException();
+        }
 
         ByteBuffer pageData = pageIos[pageNb].getData();
         int remaining = pageData.capacity() - pagePos;
@@ -3858,6 +3868,40 @@ public class RecordManager extends AbstractTransactionManager
             // should not happen
             throw new BTreeCreationException( e );
         }
+    }
+
+
+    private void checkFreePages() throws EndOfFileExceededException, IOException
+    {
+        System.out.println( "Checking the free pages, starting from " + Long.toHexString( firstFreePage ) );
+
+        // read all the free pages, add them into a set, to be sure we don't have a cycle
+        Set<Long> freePageOffsets = new HashSet<Long>();
+
+        long currentFreePageOffset = firstFreePage;
+
+        while ( currentFreePageOffset != NO_PAGE )
+        {
+            System.out.println( "Next page offset :" + Long.toHexString( currentFreePageOffset ) );
+
+            if ( ( currentFreePageOffset % pageSize ) != 0 )
+            {
+                throw new InvalidOffsetException( "Wrong offset : " + Long.toHexString( currentFreePageOffset ) );
+            }
+
+            if ( freePageOffsets.contains( currentFreePageOffset ) )
+            {
+                throw new InvalidOffsetException( "Offset : " + Long.toHexString( currentFreePageOffset )
+                    + " already read, there is a cycle" );
+            }
+
+            freePageOffsets.add( currentFreePageOffset );
+            PageIO pageIO = fetchPage( currentFreePageOffset );
+
+            currentFreePageOffset = pageIO.getNextPage();
+        }
+
+        return;
     }
 
 
