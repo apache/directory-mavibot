@@ -19,13 +19,14 @@
  */
 package org.apache.directory.mavibot.btree;
 
+
 /**
  * An interface used to manage the transactions mechanism in B-trees. Transactions are cross
  * B-trees.
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public interface TransactionManager
+public interface TransactionManager<K, V>
 {
     /**
      * Starts a transaction
@@ -43,21 +44,21 @@ public interface TransactionManager
      * Rollback a transaction
      */
     void rollback();
-    
-    
+
+
     /**
      * Gets the current BtreeHeader for a given BTree.
      * 
      * @param btreeName The Btree name we are looking the BtreeHeader for
      * @return the current BTreeHeader
      */
-    BTreeHeader<?, ?> getBTreeHeader( String btreeName );
-    
-    
+    BTreeHeader<K, V> getBTreeHeader( String btreeName );
+
+
     /**
      * Updates the map of new BTreeHeaders
      * 
      * @param btreeHeader The new BtreeHeader
      */
-    void updateNewBTreeHeaders( BTreeHeader<?, ?> btreeHeader );
+    void updateNewBTreeHeaders( BTreeHeader<K, V> btreeHeader );
 }

@@ -19,16 +19,12 @@
  */
 package org.apache.directory.mavibot.btree;
 
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * An abstract class implementing the TransactionManager interface.
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public abstract class AbstractTransactionManager implements TransactionManager
+public abstract class AbstractTransactionManager<K, V> implements TransactionManager<K, V>
 {
-    /** A lock to protect the transaction handling */
-    private ReadWriteLock transactionLock = new ReentrantReadWriteLock();
 }
