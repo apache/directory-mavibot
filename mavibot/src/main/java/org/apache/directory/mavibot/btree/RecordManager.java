@@ -2020,8 +2020,15 @@ public class RecordManager extends AbstractTransactionManager
 
         try
         {
-            writeCounter.put( 0L, writeCounter.containsKey( 0L ) ? writeCounter.get( 0L ) + 1 : 1 );
-            fileChannel.write( RECORD_MANAGER_HEADER_BUFFER, 0 );
+
+            Integer nbTxnStarted = context.get();
+
+            if ( ( nbTxnStarted == null ) || ( nbTxnStarted <= 1 ) )
+            {
+                //System.out.println( "Writing page at 0000" );
+                writeCounter.put( 0L, writeCounter.containsKey( 0L ) ? writeCounter.get( 0L ) + 1 : 1 );
+                fileChannel.write( RECORD_MANAGER_HEADER_BUFFER, 0 );
+            }
         }
         catch ( IOException ioe )
         {
@@ -2523,6 +2530,7 @@ public class RecordManager extends AbstractTransactionManager
                 //fileChannel.force( false );
             }
 
+            //System.out.println( "Writing page at " + Long.toHexString( pos ) );
             writeCounter.put( pos, writeCounter.containsKey( pos ) ? writeCounter.get( pos ) + 1 : 1 );
 
             nbUpdatePageIOs.incrementAndGet();
@@ -3060,6 +3068,7 @@ public class RecordManager extends AbstractTransactionManager
      */
     private PageIO fetchNewPage() throws IOException
     {
+        //System.out.println( "Fetching new page" );
         if ( firstFreePage == NO_PAGE )
         {
             nbCreatedPages.incrementAndGet();
@@ -3950,6 +3959,8 @@ public class RecordManager extends AbstractTransactionManager
 
     private void checkFreePages() throws EndOfFileExceededException, IOException
     {
+        //System.out.println( "Checking the free pages, starting from " + Long.toHexString( firstFreePage ) );
+
         // read all the free pages, add them into a set, to be sure we don't have a cycle
         Set<Long> freePageOffsets = new HashSet<Long>();
 
@@ -3957,6 +3968,8 @@ public class RecordManager extends AbstractTransactionManager
 
         while ( currentFreePageOffset != NO_PAGE )
         {
+            //System.out.println( "Next page offset :" + Long.toHexString( currentFreePageOffset ) );
+
             if ( ( currentFreePageOffset % pageSize ) != 0 )
             {
                 throw new InvalidOffsetException( "Wrong offset : " + Long.toHexString( currentFreePageOffset ) );
