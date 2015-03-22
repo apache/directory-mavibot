@@ -890,4 +890,71 @@ public class RecordManagerTest
         btree.insert( 1L, "V1" );
         btree.insert( 2L, "V2" );
     }
+
+
+    @Ignore
+    @Test
+    public void testAddInTxns() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
+    {
+        /*
+        for ( Long key : recordManager.writeCounter.keySet() )
+        {
+            System.out.println( "Page " + Long.toHexString( key ) + " written " + recordManager.writeCounter.get( key )
+                + " times" );
+        }
+
+        System.out.println( "Test start" );
+        */
+        recordManager.beginTransaction();
+        /*
+        System.out.println( "Before V1" );
+        for ( Long key : recordManager.writeCounter.keySet() )
+        {
+            System.out.println( "Page " + Long.toHexString( key ) + " written " + recordManager.writeCounter.get( key )
+                + " times" );
+        }
+        */
+        btree.insert( 1L, "V1" );
+        /*
+        for ( Long key : recordManager.writeCounter.keySet() )
+        {
+            System.out.println( "Page " + Long.toHexString( key ) + " written " + recordManager.writeCounter.get( key )
+                + " times" );
+        }
+        
+        System.out.println( "After V1" );
+        */
+
+        //System.out.println( "Before V2" );
+        btree.insert( 2L, "V2" );
+        //System.out.println( "After V2" );
+
+        //System.out.println( "Before V3" );
+        btree.insert( 3L, "V3" );
+        /*
+        for ( Long key : recordManager.writeCounter.keySet() )
+        {
+            System.out.println( "Page " + Long.toHexString( key ) + " written " + recordManager.writeCounter.get( key )
+                + " times" );
+        }
+        */
+
+        recordManager.commit();
+
+        /*
+        for ( Long key : recordManager.writeCounter.keySet() )
+        {
+            System.out.println( "Page " + Long.toHexString( key ) + " written " + recordManager.writeCounter.get( key )
+                + " times" );
+        }
+        */
+    }
+
+
+    @Test
+    public void testInspector() throws Exception
+    {
+        MavibotInspector inspector = new MavibotInspector( new File( "/Users/elecharny/Downloads/mavibot.db" ) );
+        inspector.start();
+    }
 }
