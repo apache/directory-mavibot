@@ -213,7 +213,8 @@ public class SpaceReclaimer
         }
         catch ( Exception e )
         {
-            e.printStackTrace();
+        	LOG.warn( "Errors while reclaiming", e );
+        	throw new RuntimeException( e );
         }
     }
 
