@@ -3992,6 +3992,18 @@ public class RecordManager extends AbstractTransactionManager
 
 
     /**
+     * sets the threshold of the number of commits to be performed before
+     * reclaiming the free pages.
+     * 
+     * @param spaceReclaimerThreshold the number of commits before the reclaimer runs
+     */
+    public void setSpaceReclaimerThreshold( int spaceReclaimerThreshold )
+    {
+        this.spaceReclaimerThreshold = spaceReclaimerThreshold;
+    }
+
+
+    /**
      * @see Object#toString()
      */
     public String toString()
