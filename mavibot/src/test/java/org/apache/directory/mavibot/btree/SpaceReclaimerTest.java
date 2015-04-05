@@ -102,6 +102,8 @@ public class SpaceReclaimerTest
         TupleCursor<Integer, String> cursor = uidTree.browse();
         while ( cursor.hasNext() )
         {
+            Tuple<Integer, String> t = cursor.next();
+            assertEquals( t.key, Integer.valueOf( count ) );
             count++;
         }
         
