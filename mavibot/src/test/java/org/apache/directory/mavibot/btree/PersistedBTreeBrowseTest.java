@@ -1153,10 +1153,6 @@ public class PersistedBTreeBrowseTest
             System.out.println( btree );
         }
 
-        Map copiedPagesBtree = recordManager1.copiedPageMap;
-
-        System.out.println( copiedPagesBtree );
-
         TupleCursor<Long, String> cursor = btree.browse();
 
         while ( cursor.hasNext() )
