@@ -48,6 +48,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.exception.RecordManagerException;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
+import org.apache.directory.mavibot.btree.serializer.LongArraySerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.util.Strings;
 import org.slf4j.Logger;
@@ -101,13 +102,10 @@ public class RecordManager extends AbstractTransactionManager
     private long endOfFileOffset;
 
     /**
-     * A Map used to hold the pages that were copied in a new version.
+     * A B-tree used to manage the page that has been copied in a new version.
      * Those pages can be reclaimed when the associated version is dead.
-     * 
-     * Note: the offsets are of AbstractPageS' while freeing the associated
-     *       PageIOs will be fetched and freed.
      **/
-    /* no qualifier */Map<RevisionName, long[]> copiedPageMap = null;
+    /* no qualifier */ BTree<RevisionName, long[]> copiedPageBtree;
 
     /** A constant for an offset on a non existing page */
     public static final long NO_PAGE = -1L;
@@ -177,6 +175,12 @@ public class RecordManager extends AbstractTransactionManager
 
     /** The previous B-tree of B-trees header offset */
     private long previousBtreeOfBtreesOffset = NO_PAGE;
+
+    /** The offset on the current copied pages B-tree */
+    /* no qualifier */ long currentCopiedPagesBtreeOffset = NO_PAGE;
+
+    /** The offset on the previous copied pages B-tree */
+    private long previousCopiedPagesBtreeOffset = NO_PAGE;
 
     /** A lock to protect the transaction handling */
     private ReentrantLock transactionLock = new ReentrantLock();
@@ -285,8 +289,6 @@ public class RecordManager extends AbstractTransactionManager
             }
 
             reclaimer = new SpaceReclaimer( this );
-
-            copiedPageMap = reclaimer.readCopiedPageMap( file.getParentFile() );
             runReclaimer();
         }
         catch ( Exception e )
@@ -387,6 +389,9 @@ public class RecordManager extends AbstractTransactionManager
         // First, create the btree of btrees <NameRevision, Long>
         createBtreeOfBtrees();
 
+        // Now, initialize the Copied Page B-tree
+        createCopiedPagesBtree();
+
         // Inject these B-trees into the RecordManager. They are internal B-trees.
         try
         {
@@ -401,6 +406,16 @@ public class RecordManager extends AbstractTransactionManager
                 ( ( PersistedBTree<NameRevision, Long> ) btreeOfBtrees ).getBtreeHeader() );
             newBTreeHeaders.put( BTREE_OF_BTREES_NAME,
                 ( ( PersistedBTree<NameRevision, Long> ) btreeOfBtrees ).getBtreeHeader() );
+
+            // The FreePage B-tree
+            manageSubBtree( copiedPageBtree );
+
+            currentCopiedPagesBtreeOffset = ( ( PersistedBTree<RevisionName, long[]> ) copiedPageBtree ).getBtreeHeader().getBTreeHeaderOffset();
+            updateRecordManagerHeader();
+            
+            // Inject the CopiedPagesBTree into the currentBtreeHeaders map
+            currentBTreeHeaders.put( COPIED_PAGE_BTREE_NAME, ( ( PersistedBTree<RevisionName, long[]> ) copiedPageBtree ).getBtreeHeader() );
+            newBTreeHeaders.put( COPIED_PAGE_BTREE_NAME, ( ( PersistedBTree<RevisionName, long[]> ) copiedPageBtree ).getBtreeHeader() );
         }
         catch ( BTreeAlreadyManagedException btame )
         {
@@ -429,6 +444,22 @@ public class RecordManager extends AbstractTransactionManager
         configuration.setCacheSize( PersistedBTree.DEFAULT_CACHE_SIZE );
 
         btreeOfBtrees = BTreeFactory.createPersistedBTree( configuration );
+    }
+
+
+    /**
+     * Create the CopiedPagesBtree
+     */
+    private void createCopiedPagesBtree()
+    {
+        PersistedBTreeConfiguration<RevisionName, long[]> configuration = new PersistedBTreeConfiguration<RevisionName, long[]>();
+        configuration.setKeySerializer( RevisionNameSerializer.INSTANCE );
+        configuration.setName( COPIED_PAGE_BTREE_NAME );
+        configuration.setValueSerializer( LongArraySerializer.INSTANCE );
+        configuration.setBtreeType( BTreeTypeEnum.COPIED_PAGES_BTREE );
+        configuration.setCacheSize( PersistedBTree.DEFAULT_CACHE_SIZE );
+
+        copiedPageBtree = BTreeFactory.createPersistedBTree( configuration );
     }
 
 
@@ -489,6 +520,12 @@ public class RecordManager extends AbstractTransactionManager
             // The previous BOB offset
             previousBtreeOfBtreesOffset = recordManagerHeader.getLong();
 
+            // The current Copied Pages B-tree offset
+            currentCopiedPagesBtreeOffset = recordManagerHeader.getLong();
+
+            // The previous Copied Pages B-tree offset
+            previousCopiedPagesBtreeOffset = recordManagerHeader.getLong();
+
             // read the B-tree of B-trees
             PageIO[] bobHeaderPageIos = readPageIOs( currentBtreeOfBtreesOffset, Long.MAX_VALUE );
 
@@ -496,6 +533,14 @@ public class RecordManager extends AbstractTransactionManager
             //BTreeFactory.<NameRevision, Long> setBtreeHeaderOffset( ( PersistedBTree<NameRevision, Long> )btreeOfBtrees, currentBtreeOfBtreesOffset );
 
             loadBtree( bobHeaderPageIos, btreeOfBtrees );
+
+            // read the copied page B-tree
+            PageIO[] copiedPagesPageIos = readPageIOs( currentCopiedPagesBtreeOffset, Long.MAX_VALUE );
+
+            copiedPageBtree = BTreeFactory.<RevisionName, long[]> createPersistedBTree( BTreeTypeEnum.COPIED_PAGES_BTREE );
+            //( ( PersistedBTree<RevisionName, long[]> ) copiedPageBtree ).setBtreeHeaderOffset( currentCopiedPagesBtreeOffset );
+
+            loadBtree( copiedPagesPageIos, copiedPageBtree );
 
             // Now, read all the B-trees from the btree of btrees
             TupleCursor<NameRevision, Long> btreeCursor = btreeOfBtrees.browse();
@@ -533,6 +578,7 @@ public class RecordManager extends AbstractTransactionManager
             }
 
             // TODO : clean up the old revisions...
+
 
             // Now, we can load the real btrees using the offsets
             for ( String btreeName : loadedBtrees.keySet() )
@@ -1620,7 +1666,9 @@ public class RecordManager extends AbstractTransactionManager
 
         // Now, if this is a new B-tree, add it to the B-tree of B-trees
         // Add the btree into the map of managed B-trees
-        if ( ( btree.getType() != BTreeTypeEnum.BTREE_OF_BTREES ) && ( btree.getType() != BTreeTypeEnum.PERSISTED_SUB ) )
+        if ( ( btree.getType() != BTreeTypeEnum.BTREE_OF_BTREES ) && 
+            ( btree.getType() != BTreeTypeEnum.COPIED_PAGES_BTREE ) && 
+            ( btree.getType() != BTreeTypeEnum.PERSISTED_SUB ) )
         {
             managedBtrees.put( name, ( BTree<Object, Object> ) btree );
         }
@@ -1633,7 +1681,9 @@ public class RecordManager extends AbstractTransactionManager
         NameRevision nameRevision = new NameRevision( name, 0L );
 
         // Inject it into the B-tree of B-tree
-        if ( ( btree.getType() != BTreeTypeEnum.BTREE_OF_BTREES ) && ( btree.getType() != BTreeTypeEnum.PERSISTED_SUB ) )
+        if ( ( btree.getType() != BTreeTypeEnum.BTREE_OF_BTREES ) && 
+            ( btree.getType() != BTreeTypeEnum.COPIED_PAGES_BTREE ) && 
+            ( btree.getType() != BTreeTypeEnum.PERSISTED_SUB ) )
         {
             // We can safely increment the number of managed B-trees
             nbBtree++;
@@ -1959,6 +2009,12 @@ public class RecordManager extends AbstractTransactionManager
         // The offset of the copied pages B-tree
         position = writeData( RECORD_MANAGER_HEADER_BYTES, position, previousBtreeOfBtreesOffset );
 
+        // The offset of the current B-tree of B-trees
+        position = writeData( RECORD_MANAGER_HEADER_BYTES, position, currentCopiedPagesBtreeOffset );
+
+        // The offset of the copied pages B-tree
+        position = writeData( RECORD_MANAGER_HEADER_BYTES, position, previousCopiedPagesBtreeOffset );
+
         // Write the RecordManager header on disk
         RECORD_MANAGER_HEADER_BUFFER.put( RECORD_MANAGER_HEADER_BYTES );
         RECORD_MANAGER_HEADER_BUFFER.flip();
@@ -1970,10 +2026,10 @@ public class RecordManager extends AbstractTransactionManager
             StringBuilder sb = new StringBuilder();
 
             sb.append( "First free page     : 0x" ).append( Long.toHexString( firstFreePage ) ).append( "\n" );
-            sb.append( "Current BOB header  : 0x" ).append( Long.toHexString( currentBtreeOfBtreesOffset ) )
-                .append( "\n" );
-            sb.append( "Previous BOB header : 0x" ).append( Long.toHexString( previousBtreeOfBtreesOffset ) )
-                .append( "\n" );
+            sb.append( "Current BOB header  : 0x" ).append( Long.toHexString( currentBtreeOfBtreesOffset ) ).append( "\n" );
+            sb.append( "Previous BOB header : 0x" ).append( Long.toHexString( previousBtreeOfBtreesOffset ) ).append( "\n" );
+            sb.append( "Current CPB header  : 0x" ).append( Long.toHexString( currentCopiedPagesBtreeOffset ) ).append( "\n" );
+            sb.append( "Previous CPB header : 0x" ).append( Long.toHexString( previousCopiedPagesBtreeOffset ) ).append( "\n" );
 
             if ( firstFreePage != NO_PAGE )
             {
@@ -2039,6 +2095,7 @@ public class RecordManager extends AbstractTransactionManager
 
         // Reset the old versions
         previousBtreeOfBtreesOffset = -1L;
+        previousCopiedPagesBtreeOffset = -1L;
 
         nbUpdateRMHeader.incrementAndGet();
     }
@@ -2071,6 +2128,12 @@ public class RecordManager extends AbstractTransactionManager
         {
             previousBtreeOfBtreesOffset = currentBtreeOfBtreesOffset;
             currentBtreeOfBtreesOffset = newBtreeOfBtreesOffset;
+        }
+
+        if ( newCopiedPageBtreeOffset != -1L )
+        {
+            previousCopiedPagesBtreeOffset = currentCopiedPagesBtreeOffset;
+            currentCopiedPagesBtreeOffset = newCopiedPageBtreeOffset;
         }
     }
 
@@ -2149,7 +2212,10 @@ public class RecordManager extends AbstractTransactionManager
             pageOffsets[pos++] = ( ( AbstractPage<K, V> ) page ).getOffset();
         }
 
-        copiedPageMap.put( revisionName, pageOffsets );
+        copiedPageBtree.insert( revisionName, pageOffsets );
+
+        // Update the CopiedPageBtree offset
+        currentCopiedPagesBtreeOffset = ( ( AbstractBTree<RevisionName, long[]> ) copiedPageBtree ).getBtreeHeader().getBTreeHeaderOffset();
     }
 
 
@@ -3191,6 +3257,7 @@ public class RecordManager extends AbstractTransactionManager
         }
 
         // Close the management B-trees
+        copiedPageBtree.close();
         btreeOfBtrees.close();
 
         managedBtrees.clear();
@@ -3200,8 +3267,6 @@ public class RecordManager extends AbstractTransactionManager
 
         // And close the channel
         fileChannel.close();
-
-        reclaimer.storeCopiedPageMap( file.getParentFile() );
 
         commit();
     }
@@ -3524,7 +3589,7 @@ public class RecordManager extends AbstractTransactionManager
     {
         RevisionName revisionName = new RevisionName( revision, name );
 
-        copiedPageMap.put( revisionName, copiedPages );
+        copiedPageBtree.insert( revisionName, copiedPages );
     }
 
 
@@ -3538,6 +3603,11 @@ public class RecordManager extends AbstractTransactionManager
     /* No qualifier */<K, V> void storeRootPage( BTree<K, V> btree, Page<K, V> rootPage ) throws IOException
     {
         if ( !isKeepRevisions() )
+        {
+            return;
+        }
+
+        if ( btree == copiedPageBtree )
         {
             return;
         }
@@ -3692,7 +3762,10 @@ public class RecordManager extends AbstractTransactionManager
                 // Deal with standard B-trees
                 RevisionName revisionName = new RevisionName( revision, btree.getName() );
 
-                copiedPageMap.put( revisionName, pageOffsets );
+                copiedPageBtree.insert( revisionName, pageOffsets );
+
+                // Update the RecordManager Copiedpage Offset
+                currentCopiedPagesBtreeOffset = ( ( PersistedBTree<RevisionName, long[]> ) copiedPageBtree ).getBtreeOffset();
             }
             else
             {

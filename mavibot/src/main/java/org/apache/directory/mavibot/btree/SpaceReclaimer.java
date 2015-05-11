@@ -63,104 +63,7 @@ public class SpaceReclaimer
     public SpaceReclaimer( RecordManager rm )
     {
         this.rm = rm;
-    }
-
-    
-    /**
-     * stores the copied page map, if not empty, in a file under the given directory
-     * 
-     * @param dir the directory where mavibot database file is present
-     */
-    /* no qualifier */ void storeCopiedPageMap( File dir )
-    {
-        if ( rm.copiedPageMap.isEmpty() )
-        {
-            LOG.debug( "Copied page map is empty, nothing to store on disk." );
-            return;
-        }
-        
-        File file = new File( dir, COPIED_PAGE_MAP_DATA_FILE );
-
-        try
-        {
-            LOG.debug( "Storing {} RevisionNames of Copied page map", rm.copiedPageMap.size() );
-            
-            OutputStream fileOut = new FileOutputStream( file );
-            
-            ObjectOutputStream objOut = new ObjectOutputStream( fileOut );
-            
-            objOut.writeObject( rm.copiedPageMap );
-            
-            objOut.close();
-            
-            LOG.debug( "Successfully stored copied page map in {}", file.getAbsolutePath() );
-        }
-        catch( Exception e )
-        {
-            LOG.warn( "Failed to store the copied page map in {}", file.getAbsolutePath() );
-            LOG.warn( "", e );
-        }
-    }
-
-
-    /**
-     * reads the copied page map from the file named {@link #COPIED_PAGE_MAP_DATA_FILE} if it
-     * is present under the given directory
-     * 
-     * @param dir the directory where mavibot database file is present
-     * 
-     * @return
-     */
-    /* no qualifier */ ConcurrentHashMap<RevisionName, long[]> readCopiedPageMap( File dir )
-    {
-        
-        ConcurrentHashMap<RevisionName, long[]> map = new ConcurrentHashMap<RevisionName, long[]>();
-        
-        File file = new File( dir, COPIED_PAGE_MAP_DATA_FILE );
-        
-        if ( !file.exists() )
-        {
-            LOG.debug( "Copied page map store {} doesn't exist, returning empty map", file.getAbsolutePath() );
-            return map;
-        }
-
-        try
-        {
-            LOG.debug( "Reading Copied page map data stored in {}", file.getAbsolutePath() );
-            
-            InputStream fileIn = new FileInputStream( file );
-            
-            ObjectInputStream objIn = new ObjectInputStream( fileIn );
-            
-            map = ( ConcurrentHashMap<RevisionName, long[]> ) objIn.readObject();
-            
-            objIn.close();
-            
-            LOG.debug( "Successfully read copied page map containing {} RevisionNames", map.size() );
-        }
-        catch( Exception e )
-        {
-            LOG.warn( "Failed to read the copied page map from {}", file.getAbsolutePath() );
-            LOG.warn( "", e );
-        }
-        finally
-        {
-            boolean deleted = file.delete();
-            
-            // this is dangerous, cause during a subsequent restart the pages
-            // will be freed again, but this time they might have been in use
-            if( !deleted )
-            {
-                String warn = "Failed to delete the copied page map store " + file.getAbsolutePath() +
-                    " Make sure the approapriate permissions are given to delete this file by mavibot process." ;
-                LOG.warn( warn );
-                
-                throw new RuntimeException( warn );
-            }
-        }
-        
-        return map;
-    }
+    }    
 
     
     /**
@@ -207,7 +110,7 @@ public class SpaceReclaimer
                     rm.free( offsets );
 
                     RevisionName key = new RevisionName( rv, name );
-                    rm.copiedPageMap.remove( key );
+                    rm.copiedPageBtree.delete( key );
                 }
             }
         }
@@ -228,21 +131,13 @@ public class SpaceReclaimer
      */
     private List<RevisionOffset> getRevisions( String name ) throws Exception
     {
-        long nbElems = rm.copiedPageMap.size();
-        //System.out.println( "Total number of entries in CPB " + nbElems );
-
-        if ( nbElems == 0 )
-        {
-            return Collections.EMPTY_LIST;
-        }
-
-        Iterator<Map.Entry<RevisionName, long[]>> cursor = rm.copiedPageMap.entrySet().iterator();
+        TupleCursor<RevisionName, long[]> cursor = rm.copiedPageBtree.browse();
 
         List<RevisionOffset> lst = new ArrayList<RevisionOffset>();
 
         while ( cursor.hasNext() )
         {
-            Map.Entry<RevisionName, long[]> t = cursor.next();
+            Tuple<RevisionName, long[]> t = cursor.next();
             RevisionName rn = t.getKey();
             if ( name.equals( rn.getName() ) )
             {
