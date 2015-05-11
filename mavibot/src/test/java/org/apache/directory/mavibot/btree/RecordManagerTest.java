@@ -88,6 +88,8 @@ public class RecordManagerTest
     {
         btree.close();
 
+        recordManager.close();
+        
         if ( dataDir.exists() )
         {
             FileUtils.deleteDirectory( dataDir );

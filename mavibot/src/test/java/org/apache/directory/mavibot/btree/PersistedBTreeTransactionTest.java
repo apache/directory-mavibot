@@ -79,6 +79,12 @@ public class PersistedBTreeTransactionTest
         btreeNoTransactions.close();
         btreeWithTransactions.close();
 
+        recordManagerNoTxn.close();
+        recordManagerTxn.close();
+        
+        assertTrue( recordManagerNoTxn.isContextOk() );
+        assertTrue( recordManagerTxn.isContextOk() );
+
         if ( dataDirNoTxn.exists() )
         {
             FileUtils.deleteDirectory( dataDirNoTxn );
@@ -88,12 +94,6 @@ public class PersistedBTreeTransactionTest
         {
             FileUtils.deleteDirectory( dataDirWithTxn );
         }
-        
-        recordManagerNoTxn.close();
-        recordManagerTxn.close();
-        
-        assertTrue( recordManagerNoTxn.isContextOk() );
-        assertTrue( recordManagerTxn.isContextOk() );
     }
 
 

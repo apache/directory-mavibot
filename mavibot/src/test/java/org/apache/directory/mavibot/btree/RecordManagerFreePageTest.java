@@ -84,14 +84,13 @@ public class RecordManagerFreePageTest
 
         btree.close();
 
+        recordManager1.close();
+        assertTrue( recordManager1.isContextOk() );
+
         if ( dataDir.exists() )
         {
             FileUtils.deleteDirectory( dataDir );
         }
-
-        recordManager1.close();
-        
-        assertTrue( recordManager1.isContextOk() );
     }
 
 

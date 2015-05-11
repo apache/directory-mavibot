@@ -82,13 +82,13 @@ public class RecordManagerWithDuplicatesTest
     {
         btree.close();
 
+        recordManager.close();
+        assertTrue( recordManager.isContextOk() );
+
         if ( dataDir.exists() )
         {
             FileUtils.deleteDirectory( dataDir );
         }
-
-        recordManager.close();
-        assertTrue( recordManager.isContextOk() );
     }
 
 
