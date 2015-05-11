@@ -58,6 +58,7 @@ public class SpaceReclaimerTest
         
         dbFile = tmpDir.newFile( "spacereclaimer.db" );
 
+        System.out.println(dbFile.getAbsolutePath());
         rm = new RecordManager( dbFile.getAbsolutePath() );
         rm.setSpaceReclaimerThreshold( 10 );
         
@@ -91,12 +92,12 @@ public class SpaceReclaimerTest
         for ( int i=0; i < total; i++ )
         {
             uidTree.insert( i, String.valueOf( i ) );
-            System.out.println( dbFile.length() );
         }
-    
+
+        System.out.println( "Total size before closing " + dbFile.length() );
         closeAndReopenRM();
         
-        System.out.println( dbFile.length() );
+        System.out.println( "Total size AFTER closing " + dbFile.length() );
         
         int count = 0;
         TupleCursor<Integer, String> cursor = uidTree.browse();
