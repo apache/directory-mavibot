@@ -110,4 +110,41 @@ public class SpaceReclaimerTest
         
         assertEquals( count, total );
     }
+    
+
+    /**
+     * with the reclaimer threshold 10 and total entries of 1120
+     * there was a condition that resulted in OOM while reopening the RM
+     * 
+     * This issue was fixed after SpaceReclaimer was updated to run in
+     * a transaction.
+     * 
+     * This test is present to verify the fix
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testReclaimerWithMagicNum() throws Exception
+    {
+    	rm.setSpaceReclaimerThreshold( 10 );
+    	
+        int total = 1120;
+        for ( int i=0; i < total; i++ )
+        {
+            uidTree.insert( i, String.valueOf( i ) );
+        }
+
+        closeAndReopenRM();
+        
+        int count = 0;
+        TupleCursor<Integer, String> cursor = uidTree.browse();
+        while ( cursor.hasNext() )
+        {
+            Tuple<Integer, String> t = cursor.next();
+            assertEquals( t.key, Integer.valueOf( count ) );
+            count++;
+        }
+        
+        assertEquals( count, total );
+    }
 }

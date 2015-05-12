@@ -20,21 +20,11 @@
 package org.apache.directory.mavibot.btree;
 
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,11 +40,12 @@ public class SpaceReclaimer
     /** the record manager */
     private RecordManager rm;
 
-    private static String COPIED_PAGE_MAP_DATA_FILE = "cpm.db";
-
     /** The LoggerFactory used by this class */
     protected static final Logger LOG = LoggerFactory.getLogger( SpaceReclaimer.class );
 
+    /** a flag to detect the running state */
+    private boolean running = false;
+    
     /**
      * Creates a new instance of SpaceReclaimer.
      *
@@ -74,6 +65,15 @@ public class SpaceReclaimer
         //System.out.println( "reclaiming pages" );
         try
         {
+            if ( running )
+            {
+                return;
+            }
+            
+            running = true;
+            
+            rm.beginTransaction();
+            
             Set<String> managed = rm.getManagedTrees();
 
             for ( String name : managed )
@@ -81,7 +81,7 @@ public class SpaceReclaimer
                 PersistedBTree tree = ( PersistedBTree ) rm.getManagedTree( name );
 
                 Set<Long> inUseRevisions = new TreeSet<Long>();
-
+                
                 // the tree might have been removed
                 if ( tree != null )
                 {
@@ -110,12 +110,18 @@ public class SpaceReclaimer
                     rm.free( offsets );
 
                     RevisionName key = new RevisionName( rv, name );
+                    
                     rm.copiedPageBtree.delete( key );
                 }
             }
+
+            running = false;
+            rm.commit();
         }
         catch ( Exception e )
         {
+        	running = false;
+        	rm.rollback();
         	LOG.warn( "Errors while reclaiming", e );
         	throw new RuntimeException( e );
         }
@@ -146,6 +152,8 @@ public class SpaceReclaimer
             }
         }
 
+        cursor.close();
+        
         return lst;
     }
 }
