@@ -162,7 +162,7 @@ public class RecordManager extends AbstractTransactionManager
     public static final boolean NORMAL_BTREE = false;
 
     /** The B-tree of B-trees */
-    private BTree<NameRevision, Long> btreeOfBtrees;
+    /* no qualifier */ BTree<NameRevision, Long> btreeOfBtrees;
 
     /** The B-tree of B-trees management btree name */
     /* no qualifier */static final String BTREE_OF_BTREES_NAME = "_btree_of_btrees_";
@@ -216,7 +216,9 @@ public class RecordManager extends AbstractTransactionManager
     private int commitCount = 0;
 
     /** the threshold at which the SpaceReclaimer will be run to free the copied pages */
-    private int spaceReclaimerThreshold = 200;
+    // FIXME the below value is derived after seeing that anything higher than that
+    // is resulting in a "This thread does not hold the transactionLock" error
+    private int spaceReclaimerThreshold = 70;
 
     public Map<Long, Integer> writeCounter = new HashMap<Long, Integer>();
 

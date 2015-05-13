@@ -72,14 +72,14 @@ public class SpaceReclaimer
             
             running = true;
             
-            rm.beginTransaction();
-            
             Set<String> managed = rm.getManagedTrees();
 
             for ( String name : managed )
             {
                 PersistedBTree tree = ( PersistedBTree ) rm.getManagedTree( name );
 
+                long latestRev = tree.getRevision();
+                
                 Set<Long> inUseRevisions = new TreeSet<Long>();
                 
                 // the tree might have been removed
@@ -94,6 +94,13 @@ public class SpaceReclaimer
 
                 List<RevisionOffset> copiedRevisions = getRevisions( name );
 
+                // the revision last removed from copiedPage BTree
+                long lastRemovedRev = -1;
+
+                // FIXME an additional txn needs to be started to safeguard the copiedPage BTree changes
+                // no clue yet on why this is needed 
+                rm.beginTransaction();
+                
                 for ( RevisionOffset ro : copiedRevisions )
                 {
                     long rv = ro.getRevision();
@@ -112,11 +119,30 @@ public class SpaceReclaimer
                     RevisionName key = new RevisionName( rv, name );
                     
                     rm.copiedPageBtree.delete( key );
+                    lastRemovedRev = rv;
+                }
+
+                rm.commit();
+                
+                // no new txn is needed for the operations on BoB
+                if ( lastRemovedRev != -1 )
+                {
+                    // we SHOULD NOT delete the latest revision from BoB
+                    NameRevision nr = new NameRevision( name, latestRev );
+                    TupleCursor<NameRevision, Long> cursor = rm.btreeOfBtrees.browseFrom( nr );
+                    
+                    while ( cursor.hasPrev() )
+                    {
+                        Tuple<NameRevision, Long> t = cursor.prev();
+                        //System.out.println( "deleting BoB rev " + t.getKey()  + " latest rev " + latestRev );
+                        rm.btreeOfBtrees.delete( t.getKey() );
+                    }
+
+                    cursor.close();
                 }
             }
 
             running = false;
-            rm.commit();
         }
         catch ( Exception e )
         {

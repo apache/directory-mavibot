@@ -20,7 +20,13 @@
 package org.apache.directory.mavibot.btree;
 
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.File;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
@@ -29,7 +35,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import static org.junit.Assert.*;
 
 /**
  * Tests for free page reclaimer.
@@ -147,4 +152,85 @@ public class SpaceReclaimerTest
         
         assertEquals( count, total );
     }
+
+    
+    /**
+     * Test reclaimer functionality while multiple threads writing to the same BTree
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testReclaimerWithMultiThreads() throws Exception
+    {
+        final int numEntriesPerThread = 11;
+        final int numThreads = 5;
+        
+        final int total = numThreads * numEntriesPerThread;
+        
+        final Map<Integer, Integer> keyMap = new ConcurrentHashMap<Integer, Integer>();
+        
+        final Random rnd = new Random();
+        
+        final CountDownLatch latch = new CountDownLatch( numThreads );
+        
+        Runnable r = new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                for ( int i=0; i < numEntriesPerThread; i++ )
+                {
+                    try
+                    {
+                        int key = rnd.nextInt( total );
+                        while( true )
+                        {
+                            if( !keyMap.containsKey( key ) )
+                            {
+                                keyMap.put( key, key );
+                                break;
+                            }
+                            
+                            //System.out.println( "duplicate " + key );
+                            key = rnd.nextInt( total );
+                        }
+                        
+                        uidTree.insert( key, String.valueOf( key ) );
+                    }
+                    catch( Exception e )
+                    {
+                        throw new RuntimeException(e);
+                    }
+                }
+                
+                latch.countDown();
+            }
+        };
+
+        for ( int i=0; i<numThreads; i++ )
+        {
+            Thread t = new Thread( r );
+            t.start();
+        }
+        
+        latch.await();
+        
+        System.out.println( "Total size before closing " + dbFile.length() );
+        closeAndReopenRM();
+        System.out.println( "Total size AFTER closing " + dbFile.length() );
+        
+        int count = 0;
+        TupleCursor<Integer, String> cursor = uidTree.browse();
+        while ( cursor.hasNext() )
+        {
+            Tuple<Integer, String> t = cursor.next();
+            assertEquals( t.key, Integer.valueOf( count ) );
+            count++;
+        }
+        
+        cursor.close();
+        
+        assertEquals( count, total );
+    }
+    
 }
