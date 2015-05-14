@@ -219,6 +219,9 @@ public class RecordManager extends AbstractTransactionManager
     // FIXME the below value is derived after seeing that anything higher than that
     // is resulting in a "This thread does not hold the transactionLock" error
     private int spaceReclaimerThreshold = 70;
+    
+    /* a flag used to disable the free page reclaimer (used for internal testing only) */
+    private boolean disableReclaimer = false;
 
     public Map<Long, Integer> writeCounter = new HashMap<Long, Integer>();
 
@@ -307,6 +310,12 @@ public class RecordManager extends AbstractTransactionManager
      */
     private void runReclaimer()
     {
+        if ( disableReclaimer )
+        {
+            LOG.warn( "Free page reclaimer is disabled, this should not be disabled on production systems." );
+            return; 
+        }
+        
         try
         {
             commitCount = 0;
@@ -4072,11 +4081,15 @@ public class RecordManager extends AbstractTransactionManager
      * 
      * @param spaceReclaimerThreshold the number of commits before the reclaimer runs
      */
-    public void setSpaceReclaimerThreshold( int spaceReclaimerThreshold )
+    /* no qualifier */ void setSpaceReclaimerThreshold( int spaceReclaimerThreshold )
     {
         this.spaceReclaimerThreshold = spaceReclaimerThreshold;
     }
 
+    /* no qualifier */ void _disableReclaimer( boolean toggle )
+    {
+        this.disableReclaimer = toggle;
+    }
 
     /**
      * @see Object#toString()

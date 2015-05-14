@@ -232,5 +232,33 @@ public class SpaceReclaimerTest
         
         assertEquals( count, total );
     }
-    
+
+    @Test
+    public void testInspectTreeState() throws Exception
+    {
+        File file = File.createTempFile( "freepagedump", ".db" );
+        RecordManager manager = new RecordManager( file.getAbsolutePath() );
+        manager._disableReclaimer( true );
+        
+        PersistedBTreeConfiguration config = new PersistedBTreeConfiguration();
+
+        config.setName( "dump-tree" );
+        config.setKeySerializer( IntSerializer.INSTANCE );
+        config.setValueSerializer( StringSerializer.INSTANCE );
+        config.setAllowDuplicates( false );
+        config.setPageSize( 4 );
+
+        BTree btree = new PersistedBTree( config );
+        manager.manage( btree );
+        
+        // insert 5 so that we get 1 root and 2 child nodes
+        for( int i=0; i<5; i++ )
+        {
+            btree.insert( i, String.valueOf( i ) );
+        }
+        
+        System.out.println(btree.getRootPage());
+        System.out.println( file.getAbsolutePath() );
+        manager.close();
+    }
 }
