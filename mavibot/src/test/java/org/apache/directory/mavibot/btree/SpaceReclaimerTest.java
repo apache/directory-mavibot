@@ -100,8 +100,8 @@ public class SpaceReclaimerTest
         }
 
         System.out.println( "Total size before closing " + dbFile.length() );
+        System.out.println( dbFile.length() );
         closeAndReopenRM();
-        
         System.out.println( "Total size AFTER closing " + dbFile.length() );
         
         int count = 0;
@@ -256,6 +256,16 @@ public class SpaceReclaimerTest
         {
             btree.insert( i, String.valueOf( i ) );
         }
+        
+        System.out.println( "Total number of pages created " + manager.nbCreatedPages );
+        System.out.println( "Total number of pages reused " + manager.nbReusedPages );
+        System.out.println( "Total number of pages freed " + manager.nbFreedPages );
+        System.out.println( "Total file size (bytes) " + file.length() );
+        
+        long totalPages = file.length() / RecordManager.DEFAULT_PAGE_SIZE;
+        
+        // in RM the header page gets skipped before incrementing nbCreatedPages 
+        assertEquals( manager.nbCreatedPages.get()+1, totalPages );
         
         System.out.println(btree.getRootPage());
         System.out.println( file.getAbsolutePath() );
