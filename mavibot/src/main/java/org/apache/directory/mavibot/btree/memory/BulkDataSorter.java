@@ -34,7 +34,6 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
-import org.apache.directory.mavibot.btree.InMemoryBTreeBuilder;
 import org.apache.directory.mavibot.btree.Tuple;
 import org.apache.directory.mavibot.btree.util.TupleReaderWriter;
 

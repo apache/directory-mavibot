@@ -38,8 +38,8 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 public interface Cursor<K>
 {
     /** Static value for the beforeFrst and afterLast positions */
-    static final int BEFORE_FIRST = -1;
-    static final int AFTER_LAST = -2;
+    int BEFORE_FIRST = -1;
+    int AFTER_LAST = -2;
 
 
     /**
@@ -83,5 +83,5 @@ public interface Cursor<K>
      * 
      * @throws IOException
      */
-    public void afterLast() throws IOException;
+    void afterLast() throws IOException;
 }

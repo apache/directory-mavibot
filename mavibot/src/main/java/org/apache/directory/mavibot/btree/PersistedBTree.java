@@ -361,7 +361,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
         // Write the modified page on disk
         // Note that we don't use the holder, the new root page will
         // remain in memory.
-        PageHolder<K, V> holder = writePage( newRootPage, revision );
+        writePage( newRootPage, revision );
 
         // Decrease the number of elements in the current tree
         newBtreeHeader.decrementNbElems();

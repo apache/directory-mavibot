@@ -172,16 +172,8 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
         Page<K, V> page = getValue();
 
-        if ( page != null )
-        {
-            sb.append( btree.getName() ).append( "[" ).append( offset ).append( ", " ).append( lastOffset )
-                .append( "]:" ).append( page );
-        }
-        else
-        {
-            sb.append( btree.getName() ).append( "[" ).append( offset ).append( ", " ).append( lastOffset )
-                .append( "]" );
-        }
+        sb.append( btree.getName() ).append( "[" ).append( offset ).append( ", " ).append( lastOffset )
+            .append( "]:" ).append( page );
 
         return sb.toString();
     }

@@ -179,7 +179,7 @@ public class PersistedBTreeBuilder<K, V>
             {
                 i = 0;
 
-                PageHolder<K, V> pageHolder = rm.writePage( btree, node, 1 );
+                rm.writePage( btree, node, 1 );
 
                 node = ( PersistedNode<K, V> ) BTreeFactory.createNode( btree, 0, numKeysInNode );
                 lstNodes.add( node );
@@ -200,7 +200,7 @@ public class PersistedBTreeBuilder<K, V>
                 lastNode.setKeys( ( KeyHolder[] ) Array.newInstance( KeyHolder.class, n ) );
                 System.arraycopy( keys, 0, lastNode.getKeys(), 0, n );
 
-                PageHolder<K, V> pageHolder = rm.writePage( btree, lastNode, 1 );
+                rm.writePage( btree, lastNode, 1 );
 
                 break;
             }

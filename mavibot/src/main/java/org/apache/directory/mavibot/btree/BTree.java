@@ -38,19 +38,19 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 public interface BTree<K, V>
 {
     /** Default page size (number of entries per node) */
-    static final int DEFAULT_PAGE_SIZE = 16;
+    int DEFAULT_PAGE_SIZE = 16;
 
     /** Default size of the buffer used to write data on disk. Around 1Mb */
-    static final int DEFAULT_WRITE_BUFFER_SIZE = 4096 * 250;
+    int DEFAULT_WRITE_BUFFER_SIZE = 4096 * 250;
 
     /** Define a default delay for a read transaction. This is 10 seconds */
-    static final long DEFAULT_READ_TIMEOUT = 10 * 1000L;
+    long DEFAULT_READ_TIMEOUT = 10 * 1000L;
 
     /** The B-tree allows duplicate values */
-    static final boolean ALLOW_DUPLICATES = true;
+    boolean ALLOW_DUPLICATES = true;
 
     /** The B-tree forbids duplicate values */
-    static final boolean FORBID_DUPLICATES = false;
+    boolean FORBID_DUPLICATES = false;
 
 
     /**

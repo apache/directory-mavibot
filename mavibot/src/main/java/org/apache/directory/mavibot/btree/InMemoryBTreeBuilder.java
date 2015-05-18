@@ -178,11 +178,13 @@ public class InMemoryBTreeBuilder<K, V>
                     if ( leaf.getNbElems() < btree.getPageSize() / 2 )
                     {
                         // Not enough elements in the added leaf. Borrow some from the left.
+                        // TODO
                     }
                     else
                     {
                         // Enough elements in the added leaf (at least N/2). We just have to update
                         // the parent's node.
+                        // TODO
                     }
                 }
             }
@@ -210,26 +212,14 @@ public class InMemoryBTreeBuilder<K, V>
         // Then iterate on the tuples, creating the needed pages
         for ( InMemoryNode<K, V> node : nodes )
         {
-            if ( nodePos == 0 )
-            {
-                PageHolder<K, V> pageHolder = new PageHolder<K, V>( btree, node );
-                parentNode.setPageHolder( nodePos, pageHolder );
-            }
-            else if ( nodePos == btree.getPageSize() )
+            if ( nodePos != 0 )
             {
                 K key = node.getLeftMostKey();
                 BTreeFactory.setKey( btree, parentNode, nodePos - 1, key );
-                PageHolder<K, V> pageHolder = new PageHolder<K, V>( btree, node );
-                parentNode.setPageHolder( nodePos, pageHolder );
-            }
-            else
-            {
-                K key = node.getLeftMostKey();
-                BTreeFactory.setKey( btree, parentNode, nodePos - 1, key );
-                PageHolder<K, V> pageHolder = new PageHolder<K, V>( btree, node );
-                parentNode.setPageHolder( nodePos, pageHolder );
             }
 
+            PageHolder<K, V> pageHolder = new PageHolder<K, V>( btree, node );
+            parentNode.setPageHolder( nodePos, pageHolder );
             nodePos++;
         }
 
@@ -423,6 +413,7 @@ public class InMemoryBTreeBuilder<K, V>
             {
                 // Ok, it's full. We need to create a new page and to propagate the
                 // added element to the upper level
+                //TODO
             }
             else
             {

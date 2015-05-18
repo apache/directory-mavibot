@@ -23,9 +23,9 @@ package org.apache.directory.mavibot.btree;
 import java.io.IOException;
 import java.lang.reflect.Array;
 
-import org.apache.directory.mavibot.btree.exception.DuplicateValueNotAllowedException;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
+
 
 /**
  * A MVCC Leaf. It stores the keys and values. It does not have any children.
@@ -116,7 +116,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * {@inheritDoc}
      */
     @SuppressWarnings("unchecked")
-    /* no qualifier */ DeleteResult<K, V> delete( K key, V value, long revision, Page<K, V> parent, int parentPos )
+    /* no qualifier */DeleteResult<K, V> delete( K key, V value, long revision, Page<K, V> parent, int parentPos )
         throws IOException
     {
         // Check that the leaf is not empty
@@ -708,7 +708,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         return cursor;
     }
 
-    
+
     /**
      * Copy the current page and all of the keys, values and children, if it's not a leaf.
      *

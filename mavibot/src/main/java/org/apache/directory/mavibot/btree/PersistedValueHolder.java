@@ -774,30 +774,23 @@ import org.slf4j.LoggerFactory;
             {
                 sb.append( ", array{" );
 
-                if ( valueArray == null )
-                {
-                    sb.append( "}" );
-                }
-                else
-                {
-                    boolean isFirst = true;
+                boolean isFirst = true;
 
-                    for ( V value : valueArray )
+                for ( V value : valueArray )
+                {
+                    if ( isFirst )
                     {
-                        if ( isFirst )
-                        {
-                            isFirst = false;
-                        }
-                        else
-                        {
-                            sb.append( "/" );
-                        }
-
-                        sb.append( value );
+                        isFirst = false;
+                    }
+                    else
+                    {
+                        sb.append( "/" );
                     }
 
-                    sb.append( "}" );
+                    sb.append( value );
                 }
+
+                sb.append( "}" );
             }
         }
 
