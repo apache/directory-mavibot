@@ -41,7 +41,7 @@ import org.junit.rules.TemporaryFolder;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class SpaceReclaimerTest
+public class PageReclaimerTest
 {
     private static final String TREE_NAME = "uid-tree";
 
@@ -121,7 +121,7 @@ public class SpaceReclaimerTest
      * with the reclaimer threshold 10 and total entries of 1120
      * there was a condition that resulted in OOM while reopening the RM
      * 
-     * This issue was fixed after SpaceReclaimer was updated to run in
+     * This issue was fixed after PageReclaimer was updated to run in
      * a transaction.
      * 
      * This test is present to verify the fix

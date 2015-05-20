@@ -35,23 +35,23 @@ import org.slf4j.LoggerFactory;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class SpaceReclaimer
+public class PageReclaimer
 {
     /** the record manager */
     private RecordManager rm;
 
     /** The LoggerFactory used by this class */
-    protected static final Logger LOG = LoggerFactory.getLogger( SpaceReclaimer.class );
+    protected static final Logger LOG = LoggerFactory.getLogger( PageReclaimer.class );
 
     /** a flag to detect the running state */
     private boolean running = false;
     
     /**
-     * Creates a new instance of SpaceReclaimer.
+     * Creates a new instance of PageReclaimer.
      *
      * @param rm the record manager
      */
-    public SpaceReclaimer( RecordManager rm )
+    public PageReclaimer( RecordManager rm )
     {
         this.rm = rm;
     }    

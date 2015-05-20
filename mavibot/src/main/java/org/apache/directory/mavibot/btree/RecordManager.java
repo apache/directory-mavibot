@@ -210,12 +210,12 @@ public class RecordManager extends AbstractTransactionManager
     private ReentrantLock freePageLock = new ReentrantLock();
 
     /** the space reclaimer */
-    private SpaceReclaimer reclaimer;
+    private PageReclaimer reclaimer;
 
     /** variable to keep track of the write commit count */
     private int commitCount = 0;
 
-    /** the threshold at which the SpaceReclaimer will be run to free the copied pages */
+    /** the threshold at which the PageReclaimer will be run to free the copied pages */
     // FIXME the below value is derived after seeing that anything higher than that
     // is resulting in a "This thread does not hold the transactionLock" error
     private int spaceReclaimerThreshold = 70;
@@ -293,7 +293,7 @@ public class RecordManager extends AbstractTransactionManager
                 loadRecordManager();
             }
 
-            reclaimer = new SpaceReclaimer( this );
+            reclaimer = new PageReclaimer( this );
             runReclaimer();
         }
         catch ( Exception e )
@@ -306,7 +306,7 @@ public class RecordManager extends AbstractTransactionManager
 
 
     /**
-     * runs the SpaceReclaimer to free the copied pages
+     * runs the PageReclaimer to free the copied pages
      */
     private void runReclaimer()
     {
@@ -323,7 +323,7 @@ public class RecordManager extends AbstractTransactionManager
         }
         catch ( Exception e )
         {
-            LOG.warn( "SpaceReclaimer failed to free the pages", e );
+            LOG.warn( "PageReclaimer failed to free the pages", e );
         }
     }
 
