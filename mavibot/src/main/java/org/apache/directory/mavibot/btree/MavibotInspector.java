@@ -1127,7 +1127,8 @@ public class MavibotInspector
 
     
     /**
-     * Gives a list of offsets of free pages.
+     * Gives a list of offsets of pages from the page array associated wit the given name.
+     * 
      * This method should always be called after calling check() method.
      * 
      * @return a list of offsets
