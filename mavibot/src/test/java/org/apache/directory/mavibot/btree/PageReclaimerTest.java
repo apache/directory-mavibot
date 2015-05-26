@@ -23,6 +23,8 @@ package org.apache.directory.mavibot.btree;
 import static org.junit.Assert.assertEquals;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
@@ -238,7 +240,8 @@ public class PageReclaimerTest
     {
         File file = File.createTempFile( "freepagedump", ".db" );
         RecordManager manager = new RecordManager( file.getAbsolutePath() );
-        manager._disableReclaimer( true );
+        manager.setSpaceReclaimerThreshold(17);
+        //manager._disableReclaimer( true );
         
         PersistedBTreeConfiguration config = new PersistedBTreeConfiguration();
 
@@ -265,10 +268,26 @@ public class PageReclaimerTest
         long totalPages = file.length() / RecordManager.DEFAULT_PAGE_SIZE;
         
         // in RM the header page gets skipped before incrementing nbCreatedPages 
-        assertEquals( manager.nbCreatedPages.get()+1, totalPages );
+        //assertEquals( manager.nbCreatedPages.get()+1, totalPages );
         
         System.out.println(btree.getRootPage());
         System.out.println( file.getAbsolutePath() );
+        
+        MavibotInspector.check(manager);
+        List<Long> lst = MavibotInspector.getFreePages();
+        System.out.println(lst);
+        
+        lst = MavibotInspector.getGlobalPages();
+        System.out.println(lst);
+        System.out.println("Total global offsets " + lst.size() );
+        
+        lst = MavibotInspector.getPageOffsets( RecordManager.BTREE_OF_BTREES_NAME );
+        System.out.println(lst);
+        
+        lst = MavibotInspector.getPageOffsets( RecordManager.COPIED_PAGE_BTREE_NAME );
+        System.out.println(lst);
+
         manager.close();
     }
+    
 }

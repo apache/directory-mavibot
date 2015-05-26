@@ -28,8 +28,10 @@ import java.io.RandomAccessFile;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -51,7 +53,7 @@ public class MavibotInspector
     private File dbFile;
 
     // The recordManager
-    private RecordManager rm;
+    private static RecordManager rm;
 
     private BufferedReader br = new BufferedReader( new InputStreamReader( System.in ) );
 
@@ -61,6 +63,12 @@ public class MavibotInspector
 
     // The set of page array we already know about
     private static Set<String> knownPagesArrays = new HashSet<String>();
+
+    // Create an array of pages to be checked for each B-tree, plus
+    // two others for the free pages and the global one
+    // We use one bit per page. It's 0 when the page
+    // hasn't been checked, 1 otherwise.
+    private static Map<String, int[]> checkedPages = new HashMap<String, int[]>();
 
     static
     {
@@ -248,6 +256,8 @@ public class MavibotInspector
     {
         try
         {
+            rm = recordManager;
+            
             // First check the RMheader
             ByteBuffer recordManagerHeader = ByteBuffer.allocate( RecordManager.RECORD_MANAGER_HEADER_SIZE );
             long fileSize = recordManager.fileChannel.size();
@@ -273,7 +283,7 @@ public class MavibotInspector
             // Compute the number of pages in this file
             long nbPages = ( fileSize - RecordManager.RECORD_MANAGER_HEADER_SIZE ) / pageSize;
 
-            // The number of trees. It must be at least 2 and > 0
+            // The number of trees. It must be at least >= 2
             int nbBtrees = recordManagerHeader.getInt();
 
             if ( ( nbBtrees < 0 ) || ( nbBtrees != recordManager.nbBtree ) )
@@ -291,12 +301,6 @@ public class MavibotInspector
             }
 
             int nbPageBits = ( int ) ( nbPages / 32 );
-
-            // Create an array of pages to be checked for each B-tree, plus
-            // two others for the free pages and the global one
-            // We use one bit per page. It's 0 when the page
-            // hasn't been checked, 1 otherwise.
-            Map<String, int[]> checkedPages = new HashMap<String, int[]>( nbBtrees + 4 );
 
             // The global page array
             checkedPages.put( GLOBAL_PAGES_NAME, new int[nbPageBits + 1] );
@@ -1104,6 +1108,66 @@ public class MavibotInspector
     }
 
 
+    /**
+     * @see #getPageOffsets()
+     */
+    public static List<Long> getFreePages() throws IOException
+    {
+        return getPageOffsets( FREE_PAGES_NAME );
+    }
+
+    
+    /**
+     * @see #getPageOffsets()
+     */
+    public static List<Long> getGlobalPages() throws IOException
+    {
+        return getPageOffsets( GLOBAL_PAGES_NAME );
+    }
+
+    
+    /**
+     * Gives a list of offsets of free pages.
+     * This method should always be called after calling check() method.
+     * 
+     * @return a list of offsets
+     * @throws IOException
+     */
+    public static List<Long> getPageOffsets( String pageArrayName ) throws IOException
+    {
+        List<Long> lst = new ArrayList<Long>();
+        
+        int[] fparry = checkedPages.get( pageArrayName );
+
+        long nbPagesChecked = 0;
+        long fileSize = rm.fileChannel.size();
+        long nbPages = ( fileSize - RecordManager.RECORD_MANAGER_HEADER_SIZE ) / rm.pageSize;
+
+        for ( int checkedPage : fparry )
+        {
+            for ( int j = 0; j < 32; j++ )
+            {
+                nbPagesChecked++;
+
+                if ( nbPagesChecked > nbPages + 1 )
+                {
+                    break;
+                }
+                else
+                {
+                    int mask = ( checkedPage & ( 1 << j ) );
+                    if ( mask != 0 )
+                    {
+                        lst.add( nbPagesChecked * rm.pageSize);
+                    }
+                }
+            }
+        }
+        
+        return lst;
+    }
+    
+    
     /**
      * Process a page array
      */
