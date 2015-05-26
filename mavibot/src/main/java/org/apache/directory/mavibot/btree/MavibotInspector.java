@@ -946,23 +946,7 @@ public class MavibotInspector
         {
             long offset = pageIO.getOffset();
 
-            if ( ( offset % pageSize ) != 0 )
-            {
-                throw new InvalidBTreeException( "Offset invalid : " + offset );
-            }
-
-            int pageNumber = ( int ) ( offset / pageSize );
-            int nbBitsPage = ( RecordManager.INT_SIZE << 3 );
-            int pageMask = checkedPages[pageNumber / nbBitsPage];
-            int mask = 1 << pageNumber % nbBitsPage;
-
-            if ( ( pageMask & mask ) != 0 )
-            {
-                //throw new InvalidBTreeException( "The page " + offset + " has already been referenced" );
-            }
-
-            pageMask |= mask;
-            checkedPages[pageNumber / nbBitsPage] = pageMask;
+            setCheckedPage( rm, checkedPages, offset );
         }
     }
 
@@ -1140,7 +1124,7 @@ public class MavibotInspector
         
         int[] fparry = checkedPages.get( pageArrayName );
 
-        long nbPagesChecked = 0;
+        long nbPagesChecked = 0; // the 0th page will always be of RM header
         long fileSize = rm.fileChannel.size();
         long nbPages = ( fileSize - RecordManager.RECORD_MANAGER_HEADER_SIZE ) / rm.pageSize;
 
@@ -1148,7 +1132,6 @@ public class MavibotInspector
         {
             for ( int j = 0; j < 32; j++ )
             {
-                nbPagesChecked++;
 
                 if ( nbPagesChecked > nbPages + 1 )
                 {
@@ -1162,6 +1145,8 @@ public class MavibotInspector
                         lst.add( nbPagesChecked * rm.pageSize);
                     }
                 }
+                
+                nbPagesChecked++;
             }
         }
         
