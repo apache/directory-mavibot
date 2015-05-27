@@ -364,9 +364,9 @@ public class RecordManager extends AbstractTransactionManager
      * The RecordManager header contains the following details :
      * <pre>
      * +--------------------------+
-     * | PageSize                 | 4 bytes : The size of a physical page (default to 4096)
+     * | PageSize                 | 4 bytes : The size of a physical page (default to 512)
      * +--------------------------+
-     * |  NbTree                  | 4 bytes : The number of managed B-trees (at least 1)
+     * |  NbTree                  | 4 bytes : The number of managed B-trees (zero or more)
      * +--------------------------+
      * | FirstFree                | 8 bytes : The offset of the first free page
      * +--------------------------+
@@ -3829,7 +3829,7 @@ public class RecordManager extends AbstractTransactionManager
      * @param offsets The offsets of the pages whose associated PageIOs will be fetched and freed.
      * @throws IOException If we weren't capable of updating the file
      */
-    public void free( long[] offsets ) throws IOException
+    /*no qualifier*/ void free( long... offsets ) throws IOException
     {
         List<PageIO> pageIos = new ArrayList<PageIO>();
         int pageIndex = 0;
