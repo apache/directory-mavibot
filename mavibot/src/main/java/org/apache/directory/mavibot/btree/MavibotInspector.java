@@ -192,7 +192,7 @@ public class MavibotInspector
     /**
      * Check a B-tree
      */
-    public void checkBTree()
+    public void inspectBTree()
     {
         if ( rm == null )
         {
@@ -557,7 +557,7 @@ public class MavibotInspector
         if ( !RecordManager.COPIED_PAGE_BTREE_NAME.equals( btreeName )
             && !RecordManager.BTREE_OF_BTREES_NAME.equals( btreeName ) )
         {
-            btreeName = btreeName + "<" + btreeRevision + ">";
+            //btreeName = btreeName + "<" + btreeRevision + ">";
         }
 
         btreeInfo.btreeName = btreeName;
@@ -736,7 +736,7 @@ public class MavibotInspector
 
                 // Add the new name in the checkedPage name if it's not already there
                 int[] btreePagesArray = createPageArray( recordManager );
-                checkedPages.put( btreeName + "<" + btreeRevision + ">", btreePagesArray );
+                checkedPages.put( btreeName, btreePagesArray );
 
                 // Now, we can check the Btree we just found
                 checkBtree( recordManager, btreeOffset, checkedPages );
@@ -1225,32 +1225,32 @@ public class MavibotInspector
         while ( !stop )
         {
             System.out.println( "Choose an option:" );
-            System.out.println( "1. Print Number of BTrees" );
-            System.out.println( "2. Print BTree Names" );
-            System.out.println( "3. Inspect BTree" );
-            System.out.println( "4. Check Free Pages" );
-            System.out.println( "5. Get database file size" );
-            System.out.println( "6. Dump RecordManager" );
-            System.out.println( "7. Reload RecordManager" );
-            System.out.println( "q. Quit" );
+            System.out.println( "n - Print Number of BTrees" );
+            System.out.println( "b - Print BTree Names" );
+            System.out.println( "i - Inspect BTree" );
+            System.out.println( "c - Check Free Pages" );
+            System.out.println( "s - Get database file size" );
+            System.out.println( "d - Dump RecordManager" );
+            System.out.println( "r - Reload RecordManager" );
+            System.out.println( "q - Quit" );
 
             char c = readOption();
 
             switch ( c )
             {
-                case '1':
+                case 'n':
                     printNumberOfBTrees();
                     break;
 
-                case '2':
+                case 'b':
                     printBTreeNames();
                     break;
 
-                case '3':
-                    checkBTree();
+                case 'i':
+                    inspectBTree();
                     break;
 
-                case '4':
+                case 'c':
                     long fileSize = rm.fileChannel.size();
                     long nbPages = fileSize / rm.pageSize;
                     int nbPageBits = ( int ) ( nbPages / RecordManager.INT_SIZE );
@@ -1266,15 +1266,15 @@ public class MavibotInspector
                     checkFreePages( rm, checkedPages );
                     break;
 
-                case '5':
+                case 's':
                     printFileSize();
                     break;
 
-                case '6':
+                case 'd':
                     check( rm );
                     break;
 
-                case '7':
+                case 'r':
                     loadRm();
                     break;
 
@@ -1354,44 +1354,14 @@ public class MavibotInspector
      */
     public static void main( String[] args ) throws Exception
     {
-        File f = new File( "/tmp/mavibotispector.db" );
 
-        RecordManager rm = new RecordManager( f.getAbsolutePath() );
-        String name1 = "corpus";
-        String name2 = "multiValues";
-        /*
-        if ( !rm.getManagedTrees().contains( name1 ) )
+        if ( args.length == 0 )
         {
-            rm.addBTree( name1, StringSerializer.INSTANCE, StringSerializer.INSTANCE, true );
+            System.out.println( "Usage java MavibotInspector <db-file-path>" );
+            System.exit( 0 );
         }
-        */
-        if ( !rm.getManagedTrees().contains( name2 ) )
-        {
-            rm.addBTree( name2, StringSerializer.INSTANCE, StringSerializer.INSTANCE, true );
-        }
-
-        /*
-        // Load some elements in the single value btree
-        BTree<String, String> btree1 = rm.getManagedTree( name1 );
         
-        for ( int i = 0; i < 10; i++ )
-        {
-            btree1.insert( Integer.toString( i ), Integer.toString( i ) );
-        }
-        */
-
-        // Load some elements in the multi value btree
-        BTree<String, String> btree2 = rm.getManagedTree( name2 );
-
-        for ( int i = 0; i < 1; i++ )
-        {
-            for ( int j = 0; j < 10; j++ )
-            {
-                btree2.insert( Integer.toString( i ), Integer.toString( j ) );
-            }
-        }
-
-        rm.close();
+        File f = new File( args[0] );
 
         MavibotInspector mi = new MavibotInspector( f );
         mi.start();
