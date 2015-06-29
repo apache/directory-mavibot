@@ -649,8 +649,10 @@ public class RecordManager extends AbstractTransactionManager
         // We *must* own the transactionLock
         if ( !transactionLock.isHeldByCurrentThread() )
         {
-            TXN_LOG.error( "This thread does not hold the transactionLock" );
-            throw new RecordManagerException( "This thread does not hold the transactionLock" );
+            String name = Thread.currentThread().getName();
+            String err = "This thread, '" + name + "' does not hold the transactionLock ";
+            TXN_LOG.error( err );
+            throw new RecordManagerException( err );
         }
 
         if ( TXN_LOG.isDebugEnabled() )
