@@ -23,6 +23,10 @@ package org.apache.directory.mavibot.btree;
 import static org.junit.Assert.assertEquals;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +36,7 @@ import java.util.concurrent.CountDownLatch;
 
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
+import org.apache.directory.mavibot.btree.util.Strings;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -65,9 +70,9 @@ public class PageReclaimerTest
         
         dbFile = tmpDir.newFile( "spacereclaimer.db" );
 
-        System.out.println(dbFile.getAbsolutePath());
+        //System.out.println(dbFile.getAbsolutePath());
         rm = new RecordManager( dbFile.getAbsolutePath() );
-        rm.setSpaceReclaimerThreshold( 10 );
+        rm.setPageReclaimerThreshold( 10 );
         
         uidTree = ( PersistedBTree<Integer, String> ) rm.addBTree( TREE_NAME, IntSerializer.INSTANCE, StringSerializer.INSTANCE, false );
     }
@@ -95,16 +100,15 @@ public class PageReclaimerTest
     public void testReclaimer() throws Exception
     {
         int total = 11;
-        System.out.println( dbFile.length() );
         for ( int i=0; i < total; i++ )
         {
             uidTree.insert( i, String.valueOf( i ) );
         }
 
-        System.out.println( "Total size before closing " + dbFile.length() );
-        System.out.println( dbFile.length() );
+        //System.out.println( "Total size before closing " + dbFile.length() );
+        //System.out.println( dbFile.length() );
         closeAndReopenRM();
-        System.out.println( "Total size AFTER closing " + dbFile.length() );
+        //System.out.println( "Total size AFTER closing " + dbFile.length() );
         
         int count = 0;
         TupleCursor<Integer, String> cursor = uidTree.browse();
@@ -133,7 +137,7 @@ public class PageReclaimerTest
     @Test
     public void testReclaimerWithMagicNum() throws Exception
     {
-    	rm.setSpaceReclaimerThreshold( 10 );
+    	rm.setPageReclaimerThreshold( 10 );
     	
         int total = 1120;
         for ( int i=0; i < total; i++ )
@@ -217,9 +221,9 @@ public class PageReclaimerTest
         
         latch.await();
         
-        System.out.println( "Total size before closing " + dbFile.length() );
+        //System.out.println( "Total size before closing " + dbFile.length() );
         closeAndReopenRM();
-        System.out.println( "Total size AFTER closing " + dbFile.length() );
+        //System.out.println( "Total size AFTER closing " + dbFile.length() );
         
         int count = 0;
         TupleCursor<Integer, String> cursor = uidTree.browse();
@@ -236,11 +240,22 @@ public class PageReclaimerTest
     }
 
     @Test
+    @SuppressWarnings("all")
     public void testInspectTreeState() throws Exception
     {
         File file = File.createTempFile( "freepagedump", ".db" );
+        
+        if ( file.exists() )
+        {
+            boolean deleted = file.delete();
+            if ( !deleted )
+            {
+                throw new IllegalStateException( "Could not delete the data file " + file.getAbsolutePath() );
+            }
+        }
+            
         RecordManager manager = new RecordManager( file.getAbsolutePath() );
-        manager.setSpaceReclaimerThreshold(17);
+        manager.setPageReclaimerThreshold(17);
         //manager._disableReclaimer( true );
         
         PersistedBTreeConfiguration config = new PersistedBTreeConfiguration();
@@ -260,34 +275,61 @@ public class PageReclaimerTest
             btree.insert( i, String.valueOf( i ) );
         }
         
+        /*
         System.out.println( "Total number of pages created " + manager.nbCreatedPages );
         System.out.println( "Total number of pages reused " + manager.nbReusedPages );
         System.out.println( "Total number of pages freed " + manager.nbFreedPages );
         System.out.println( "Total file size (bytes) " + file.length() );
+        */
         
         long totalPages = file.length() / RecordManager.DEFAULT_PAGE_SIZE;
         
         // in RM the header page gets skipped before incrementing nbCreatedPages 
-        //assertEquals( manager.nbCreatedPages.get()+1, totalPages );
+        assertEquals( manager.nbCreatedPages.get() + 1, totalPages );
         
-        System.out.println(btree.getRootPage());
-        System.out.println( file.getAbsolutePath() );
+        //System.out.println(btree.getRootPage());
+        //System.out.println( file.getAbsolutePath() );
         
-        MavibotInspector.check(manager);
-        List<Long> lst = MavibotInspector.getFreePages();
-        System.out.println(lst);
+        check( manager, btree );
         
-        lst = MavibotInspector.getGlobalPages();
-        System.out.println(lst);
-        System.out.println("Total global offsets " + lst.size() );
-        
-        lst = MavibotInspector.getPageOffsets( RecordManager.BTREE_OF_BTREES_NAME );
-        System.out.println(lst);
-        
-        lst = MavibotInspector.getPageOffsets( RecordManager.COPIED_PAGE_BTREE_NAME );
-        System.out.println(lst);
-
         manager.close();
+        
+        file.delete();
+    }
+    
+   
+    private void check(RecordManager manager, BTree btree) throws Exception
+    {
+        MavibotInspector.check(manager);
+        
+        List<Long> allOffsets = MavibotInspector.getGlobalPages();
+        //System.out.println( "Global: " + allOffsets);
+        //System.out.println("Total global offsets " + allOffsets.size() );
+        
+        int pagesize = RecordManager.DEFAULT_PAGE_SIZE;
+        long total = manager.fileChannel.size();
+        
+        List<Long> unaccounted = new ArrayList<Long>();
+        
+        for(long i = pagesize; i<= total-pagesize; i+=pagesize)
+        {
+            if( !allOffsets.contains( Long.valueOf( i ) ) )
+            {
+                unaccounted.add( i );
+            }
+        }
+        
+        TupleCursor<NameRevision, Long> cursor = manager.btreeOfBtrees.browse();
+        while(cursor.hasNext())
+        {
+            Tuple<NameRevision, Long> t = cursor.next();
+            System.out.println( t.getKey() + " offset " + t.getValue() );
+        }
+        
+        cursor.close();
+
+        //System.out.println("Unaccounted offsets " + unaccounted);
+        assertEquals( 0, unaccounted.size() );
     }
     
 }

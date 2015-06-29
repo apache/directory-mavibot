@@ -21,6 +21,7 @@ package org.apache.directory.mavibot.btree;
 
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -97,9 +98,7 @@ public class PageReclaimer
                 // the revision last removed from copiedPage BTree
                 long lastRemovedRev = -1;
 
-                // FIXME an additional txn needs to be started to safeguard the copiedPage BTree changes
-                // no clue yet on why this is needed 
-                rm.beginTransaction();
+                List<Long> freeList = new ArrayList<Long>();
                 
                 for ( RevisionOffset ro : copiedRevisions )
                 {
@@ -114,32 +113,63 @@ public class PageReclaimer
 
                     //System.out.println( "Reclaiming " + Arrays.toString( offsets ) + "( " + offsets.length + " ) pages of the revision " + rv + " of BTree " + name );
 
-                    rm.free( offsets );
+                    for( long l : offsets )
+                    {
+                        freeList.add( l );
+                    }
 
                     RevisionName key = new RevisionName( rv, name );
                     
+                    //System.out.println( "delete cpb key " + key );
                     rm.copiedPageBtree.delete( key );
                     lastRemovedRev = rv;
                 }
 
-                rm.commit();
-                
                 // no new txn is needed for the operations on BoB
-                if ( lastRemovedRev != -1 )
+                // and also no need to traverse BoB if the tree is a sub-btree
+                if ( ( lastRemovedRev != -1 ) && !tree.isAllowDuplicates() )
                 {
                     // we SHOULD NOT delete the latest revision from BoB
                     NameRevision nr = new NameRevision( name, latestRev );
                     TupleCursor<NameRevision, Long> cursor = rm.btreeOfBtrees.browseFrom( nr );
+                    
+                    List<Long> btreeHeaderOffsets = new ArrayList<Long>();
                     
                     while ( cursor.hasPrev() )
                     {
                         Tuple<NameRevision, Long> t = cursor.prev();
                         //System.out.println( "deleting BoB rev " + t.getKey()  + " latest rev " + latestRev );
                         rm.btreeOfBtrees.delete( t.getKey() );
+                        btreeHeaderOffsets.add( t.value );
                     }
 
                     cursor.close();
+                    
+                    for( Long l : btreeHeaderOffsets )
+                    {
+                        // the offset may have already been present while
+                        // clearing CPB so skip it here, otherwise it will result in OOM
+                        // due to the attempt to free and already freed page
+                        if(freeList.contains( l ))
+                        {
+                            //System.out.println( "bob duplicate offset " + l );
+                            continue;
+                        }
+
+                        freeList.add( l );
+                    }
                 }
+                
+                for( Long offset : freeList )
+                {
+                    PageIO[] pageIos = rm.readPageIOs( offset, -1L );
+                    
+                    for ( PageIO pageIo : pageIos )
+                    {
+                        rm.free( pageIo );
+                    }
+                }
+
             }
 
             running = false;

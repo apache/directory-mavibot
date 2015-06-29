@@ -218,7 +218,7 @@ public class RecordManager extends AbstractTransactionManager
     /** the threshold at which the PageReclaimer will be run to free the copied pages */
     // FIXME the below value is derived after seeing that anything higher than that
     // is resulting in a "This thread does not hold the transactionLock" error
-    private int spaceReclaimerThreshold = 70;
+    private int pageReclaimerThreshold = 70;
     
     /* a flag used to disable the free page reclaimer (used for internal testing only) */
     private boolean disableReclaimer = false;
@@ -320,6 +320,8 @@ public class RecordManager extends AbstractTransactionManager
         {
             commitCount = 0;
             reclaimer.reclaim();
+            // must update the headers after reclaim operation
+            updateRecordManagerHeader();
         }
         catch ( Exception e )
         {
@@ -713,7 +715,7 @@ public class RecordManager extends AbstractTransactionManager
 
                 commitCount++;
 
-                if ( commitCount >= spaceReclaimerThreshold )
+                if ( commitCount >= pageReclaimerThreshold )
                 {
                     runReclaimer();
                 }
@@ -760,7 +762,7 @@ public class RecordManager extends AbstractTransactionManager
 
                 commitCount++;
 
-                if ( commitCount >= spaceReclaimerThreshold )
+                if ( commitCount >= pageReclaimerThreshold )
                 {
                     runReclaimer();
                 }
@@ -3801,7 +3803,7 @@ public class RecordManager extends AbstractTransactionManager
      * @param pageIo The page to free
      * @throws IOException If we weren't capable of updating the file
      */
-    private void free( PageIO pageIo ) throws IOException
+    /* no qualifier */ void free( PageIO pageIo ) throws IOException
     {
         freePageLock.lock();
 
@@ -3831,6 +3833,8 @@ public class RecordManager extends AbstractTransactionManager
      */
     /*no qualifier*/ void free( long... offsets ) throws IOException
     {
+        freePageLock.lock();
+
         List<PageIO> pageIos = new ArrayList<PageIO>();
         int pageIndex = 0;
         for ( int i = 0; i < offsets.length; i++ )
@@ -3849,7 +3853,6 @@ public class RecordManager extends AbstractTransactionManager
             }
         }
 
-        freePageLock.lock();
 
         // We add the Page's PageIOs before the
         // existing free pages.
@@ -4079,18 +4082,20 @@ public class RecordManager extends AbstractTransactionManager
      * sets the threshold of the number of commits to be performed before
      * reclaiming the free pages.
      * 
-     * @param spaceReclaimerThreshold the number of commits before the reclaimer runs
+     * @param pageReclaimerThreshold the number of commits before the reclaimer runs
      */
-    /* no qualifier */ void setSpaceReclaimerThreshold( int spaceReclaimerThreshold )
+    /* no qualifier */ void setPageReclaimerThreshold( int pageReclaimerThreshold )
     {
-        this.spaceReclaimerThreshold = spaceReclaimerThreshold;
+        this.pageReclaimerThreshold = pageReclaimerThreshold;
     }
 
+    
     /* no qualifier */ void _disableReclaimer( boolean toggle )
     {
         this.disableReclaimer = toggle;
     }
 
+    
     /**
      * @see Object#toString()
      */
