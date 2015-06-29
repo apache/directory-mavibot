@@ -1232,6 +1232,7 @@ public class MavibotInspector
             System.out.println( "s - Get database file size" );
             System.out.println( "d - Dump RecordManager" );
             System.out.println( "r - Reload RecordManager" );
+            System.out.println( "o - Read page at offset" );
             System.out.println( "q - Quit" );
 
             char c = readOption();
@@ -1278,6 +1279,9 @@ public class MavibotInspector
                     loadRm();
                     break;
 
+                case 'o':
+                    readPageAt();
+                    break;
                 case 'q':
                     stop = true;
                     break;
@@ -1348,7 +1352,63 @@ public class MavibotInspector
         }
     }
 
+    
+    private void readPageAt() throws IOException
+    {
+        System.out.println();
+        System.out.print( "Offset: " );
+        
+        String s = readLine();
+        
+        long offset = -1;
+        
+        try
+        {
+            offset = Long.parseLong( s.trim() );
+        }
+        catch( Exception e )
+        {
+            offset = -1;
+        }
+        
+        if( offset < 0 || offset > (rm.fileChannel.size() - rm.DEFAULT_PAGE_SIZE) )
+        {
+            System.out.println( "Invalid offset " + s );
+            return;
+        }
+        
+        PageIO io = rm.fetchPage( offset );
 
+        List<Long> ll = new ArrayList<Long>();
+        ll.add( offset );
+        
+        do
+        {
+//            System.out.println( "Next Page: " + next );
+//            System.out.println( "Size: " + io.getSize() );
+//            ByteBuffer data = io.getData();
+            
+            long next = io.getNextPage();
+            ll.add( next );
+            if ( next == -1 )
+            {
+                break;
+            }
+            
+            io = rm.fetchPage( next );
+        }
+        while( true );
+        
+        int i = 0;
+        for ( ; i < ll.size() - 2; i++ )
+        {
+            System.out.print( ll.get( i ) + " --> ");
+        }
+        
+        System.out.println( ll.get( i ) );
+    }
+
+    
     /**
      * Main method
      */
