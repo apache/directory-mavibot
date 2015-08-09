@@ -33,7 +33,7 @@
   </organization>
 
   <groupId>org.apache.directory.mavibot</groupId>
-  <version>1.0.0-M8</version>
+  <version>1.0.0-M9-SNAPSHOT</version>
   <artifactId>mavibot-parent</artifactId>
   <name>ApacheDS Mavibot Parent</name>
   <packaging>pom</packaging>
@@ -51,9 +51,9 @@
   </issueManagement>
 
   <scm>
-    <connection>scm:svn:http://svn.apache.org/repos/asf/directory/mavibot/tags/1.0.0-M8</connection>
-    <developerConnection>scm:svn:https://svn.apache.org/repos/asf/directory/mavibot/tags/1.0.0-M8</developerConnection>
-    <url>http://svn.apache.org/viewvc/directory/mavibot/tags/1.0.0-M8</url>
+    <connection>scm:svn:http://svn.apache.org/repos/asf/directory/mavibot/trunk</connection>
+    <developerConnection>scm:svn:https://svn.apache.org/repos/asf/directory/mavibot/trunk</developerConnection>
+    <url>http://svn.apache.org/viewvc/directory/mavibot/trunk</url>
   </scm>
 
   <ciManagement>
