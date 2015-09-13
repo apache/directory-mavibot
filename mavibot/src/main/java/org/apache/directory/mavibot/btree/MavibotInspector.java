@@ -1019,7 +1019,7 @@ public class MavibotInspector
 
 
     /**
-     * Update the ChekcedPages array
+     * Update the CheckedPages array
      */
     private static void setCheckedPage( RecordManager recordManager, int[] checkedPages, long offset )
     {
