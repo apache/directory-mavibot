@@ -97,6 +97,9 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
     /** The TransactionManager used for this BTree */
     protected TransactionManager transactionManager;
 
+    /** The size of the stack to use to manage tree searches */
+    private final static int MAX_STACK_DEPTH = 32;
+
 
     /**
      * Starts a Read Only transaction. If the transaction is not closed, it will be
@@ -135,7 +138,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         }
         else
         {
-            ParentPos<K, V>[] stack = ( ParentPos<K, V>[] ) Array.newInstance( ParentPos.class, 32 );
+            ParentPos<K, V>[] stack = ( ParentPos<K, V>[] ) Array.newInstance( ParentPos.class, MAX_STACK_DEPTH );
 
             TupleCursor<K, V> cursor = getRootPage().browse( transaction, stack, 0 );
 
@@ -166,7 +169,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         }
         else
         {
-            ParentPos<K, V>[] stack = ( ParentPos<K, V>[] ) Array.newInstance( ParentPos.class, 32 );
+            ParentPos<K, V>[] stack = ( ParentPos<K, V>[] ) Array.newInstance( ParentPos.class, MAX_STACK_DEPTH );
 
             // And get the cursor
             TupleCursor<K, V> cursor = getRootPage( transaction.getRevision() ).browse( transaction, stack, 0 );
@@ -189,7 +192,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
         ReadTransaction<K, V> transaction = beginReadTransaction();
 
-        ParentPos<K, V>[] stack = ( ParentPos<K, V>[] ) Array.newInstance( ParentPos.class, 32 );
+        ParentPos<K, V>[] stack = ( ParentPos<K, V>[] ) Array.newInstance( ParentPos.class, MAX_STACK_DEPTH );
 
         try
         {
@@ -223,7 +226,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         }
         else
         {
-            ParentPos<K, V>[] stack = ( ParentPos<K, V>[] ) Array.newInstance( ParentPos.class, 32 );
+            ParentPos<K, V>[] stack = ( ParentPos<K, V>[] ) Array.newInstance( ParentPos.class, MAX_STACK_DEPTH );
 
             // And get the cursor
             TupleCursor<K, V> cursor = getRootPage( transaction.getRevision() ).browse( key, transaction, stack, 0 );
@@ -1030,7 +1033,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
         }
         else
         {
-            ParentPos<K, K>[] stack = ( ParentPos<K, K>[] ) Array.newInstance( ParentPos.class, 32 );
+            ParentPos<K, K>[] stack = ( ParentPos<K, K>[] ) Array.newInstance( ParentPos.class, MAX_STACK_DEPTH );
 
             KeyCursor<K> cursor = getRootPage().browseKeys( transaction, stack, 0 );
 
