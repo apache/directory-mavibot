@@ -35,7 +35,7 @@ import java.util.List;
 /* No qualifier*/abstract class AbstractResult<K, V> implements Result<Page<K, V>>
 {
     /** The list of copied page reference */
-    private List<Page<K, V>> copiedPage;
+    private List<Page<K, V>> copiedPages;
 
 
     /**
@@ -44,7 +44,7 @@ import java.util.List;
      */
     public AbstractResult()
     {
-        copiedPage = new ArrayList<Page<K, V>>();
+        copiedPages = new ArrayList<Page<K, V>>();
     }
 
 
@@ -55,7 +55,7 @@ import java.util.List;
      */
     public AbstractResult( List<Page<K, V>> copiedPages )
     {
-        this.copiedPage = copiedPages;
+        this.copiedPages = copiedPages;
     }
 
 
@@ -64,7 +64,7 @@ import java.util.List;
      */
     public List<Page<K, V>> getCopiedPages()
     {
-        return copiedPage;
+        return copiedPages;
     }
 
 
@@ -73,7 +73,7 @@ import java.util.List;
      */
     public void addCopiedPage( Page<K, V> page )
     {
-        copiedPage.add( page );
+        copiedPages.add( page );
     }
 
 
