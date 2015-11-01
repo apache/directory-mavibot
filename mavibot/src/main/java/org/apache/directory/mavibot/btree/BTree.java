@@ -23,6 +23,7 @@ package org.apache.directory.mavibot.btree;
 import java.io.IOException;
 import java.util.Comparator;
 
+import org.apache.directory.mavibot.btree.exception.CursorException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
@@ -218,7 +219,7 @@ public interface BTree<K, V>
      * @return A cursor on the B-tree
      * @throws IOException
      */
-    TupleCursor<K, V> browse() throws IOException, KeyNotFoundException;
+    TupleCursor<K, V> browse() throws IOException, KeyNotFoundException, CursorException;
 
 
     /**
@@ -369,19 +370,13 @@ public interface BTree<K, V>
 
 
     /**
-     * @return true if this B-tree allow duplicate values
-     */
-    boolean isAllowDuplicates();
-
-
-    /**
-     * @param allowDuplicates True if the B-tree will allow duplicate values
-     */
-    void setAllowDuplicates( boolean allowDuplicates );
-
-
-    /**
      * @return the type
      */
     BTreeTypeEnum getType();
+    
+    
+    /**
+     * @return The recordManager reference
+     */
+    RecordManager getRecordManager();
 }

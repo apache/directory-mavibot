@@ -23,21 +23,26 @@ package org.apache.directory.mavibot.btree;
 import java.io.IOException;
 import java.util.NoSuchElementException;
 
+import org.apache.directory.mavibot.btree.exception.CursorException;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
 
 /**
  * A Cursor is used to fetch elements in a BTree and is returned by the
- * @see BTree#browse method. The cursor <strng>must</strong> be closed
+ * @see BTree#browse method. The cursor <strong>must</strong> be closed
  * when the user is done with it.
  * <p>
+ * We keep a track of the current position at each level of the B-tree, so
+ * we can navigate in this B-tree forward and backward. Two special positions
+ * are defined : BEFORE_FIRST and AFTER_LAST which are befoe the leftmost and 
+ * after the rightmost elements in the B-tree
  *
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class TupleCursor<K, V>
+public class TupleCursor<K, V> //implements Iterator<Tuple<K,V>>
 {
     /** A marker to tell that we are before the first element */
     private static final int BEFORE_FIRST = -1;
@@ -78,59 +83,95 @@ public class TupleCursor<K, V>
 
 
     /**
-     * Change the position in the current cursor to set it after the last key
+     * Positions this Cursor after the last element. This will set the path to the
+     * rightmost page for each level, and the position to the rightmost element
+     * of each page.
+     *
+     * @throws CursorException if there are problems positioning this Cursor or if
+     * this Cursor is closed
      */
-    public void afterLast() throws IOException
+    public void afterLast() throws CursorException
     {
         // First check that we have elements in the BTree
         if ( ( stack == null ) || ( stack.length == 0 ) )
         {
             return;
         }
+        
+        // Update the parent page.
+        ParentPos<K, V> parentPos = stack[0];
+        parentPos.pos = parentPos.page.getNbElems();
+        Page<K, V> childPage = null;
 
-        Page<K, V> child = null;
-
-        for ( int i = 0; i < depth; i++ )
+        if ( parentPos.page instanceof PersistedNode )
         {
-            ParentPos<K, V> parentPos = stack[i];
-
-            if ( child != null )
-            {
-                parentPos.page = child;
-                parentPos.pos = child.getNbElems();
-            }
-            else
-            {
-                // We have N+1 children if the page is a Node, so we don't decrement the nbElems field
-                parentPos.pos = parentPos.page.getNbElems();
-            }
-
-            child = ( ( AbstractPage<K, V> ) parentPos.page ).getPage( parentPos.pos );
+            childPage = ( ( AbstractPage<K, V> ) parentPos.page ).getPage( parentPos.pos );
         }
 
-        // and leaf
+        // Go down the Tree, selecting the rightmost element in each Node
+        for ( int i = 1; i < depth; i++ )
+        {
+            parentPos = stack[i];
+
+            // We are in the middle of the tree, change the parentPos to be
+            // the one we have selected previously
+            // Set the parentPos to be at the rightmost position for this level.
+            parentPos.page = childPage;
+            parentPos.pos = childPage.getNbElems();
+
+            // Get the child page, and iterate
+            childPage = ( ( AbstractPage<K, V> ) childPage ).getPage( parentPos.pos );
+        }
+
+        // Now, we should handle the leaf
+        parentPos = stack[depth];
+
+        if ( childPage != null )
+        {
+            // The tree had more than one level, so we make the current parentPos
+            // point on the previously selected leaf.
+            parentPos.page = childPage;
+        }
+
+        // Finally, set the position after the rightmost element
+        parentPos.pos = AFTER_LAST;
+    }
+
+    
+    /**
+     * Determines whether or not a call to get() will succeed.
+     *
+     * @return true if a call to the get() method will succeed, false otherwise
+     */
+    public boolean available()
+    {
+        // First check that we have elements in the BTree
+        if ( ( stack == null ) || ( stack.length == 0 ) )
+        {
+            return false;
+        }
+
+        // Take the leaf and check if we have no mare values
         ParentPos<K, V> parentPos = stack[depth];
 
-        if ( child == null )
+        if ( parentPos.page == null )
         {
-            parentPos.pos = parentPos.page.getNbElems() - 1;
+            // Empty BTree, get out
+            return false;
         }
-        else
-        {
-            parentPos.page = child;
-            parentPos.pos = child.getNbElems() - 1;
-        }
-
-        parentPos.valueCursor = ( ( AbstractPage<K, V> ) parentPos.page ).getValue( parentPos.pos ).getCursor();
-        parentPos.valueCursor.afterLast();
-        parentPos.pos = AFTER_LAST;
+        
+        // We must not be AFTER_LAST or BEFORE_FIRST 
+        return ( parentPos.pos != BEFORE_FIRST ) && ( parentPos.pos != AFTER_LAST );
     }
 
 
     /**
-     * Change the position in the current cursor before the first key
+     * Positions this Cursor before the first element.
+     *
+     * @throws Exception if there are problems positioning this cursor or if
+     * this Cursor is closed
      */
-    public void beforeFirst() throws IOException
+    public void beforeFirst() throws CursorException
     {
         // First check that we have elements in the BTree
         if ( ( stack == null ) || ( stack.length == 0 ) )
@@ -138,34 +179,31 @@ public class TupleCursor<K, V>
             return;
         }
 
+        ParentPos<K, V> parentPos = stack[0];
+        parentPos.pos = 0;
         Page<K, V> child = null;
-
-        for ( int i = 0; i < depth; i++ )
+        
+        if ( parentPos.page instanceof PersistedNode )
         {
-            ParentPos<K, V> parentPos = stack[i];
-            parentPos.pos = 0;
+            child = ( ( AbstractPage<K, V> ) parentPos.page ).getPage( 0 );
+        }
 
-            if ( child != null )
-            {
-                parentPos.page = child;
-            }
+        for ( int i = 1; i < depth; i++ )
+        {
+            parentPos = stack[i];
+            parentPos.pos = 0;
+            parentPos.page = child;
 
             child = ( ( AbstractPage<K, V> ) parentPos.page ).getPage( 0 );
         }
 
         // and leaf
-        ParentPos<K, V> parentPos = stack[depth];
+        parentPos = stack[depth];
         parentPos.pos = BEFORE_FIRST;
 
         if ( child != null )
         {
             parentPos.page = child;
-        }
-
-        if ( parentPos.valueCursor != null )
-        {
-            parentPos.valueCursor = ( ( AbstractPage<K, V> ) parentPos.page ).getValue( 0 ).getCursor();
-            parentPos.valueCursor.beforeFirst();
         }
     }
 
@@ -225,13 +263,6 @@ public class TupleCursor<K, V>
         }
         else
         {
-            // Check if we have some more value
-            if ( ( parentPos.valueCursor != null ) && parentPos.valueCursor.hasNext() )
-            {
-                // No problem, we still have some values to read
-                return true;
-            }
-
             // Ok, here, we have reached the last value in the leaf. We have to go up and
             // see if we have some remaining values
             int currentDepth = depth - 1;
@@ -258,13 +289,15 @@ public class TupleCursor<K, V>
 
 
     /**
-     * Find the next key/value
+     * Find the next Tuple, from the current position. If we have no more new element, 
+     * a NoSuchElementException will be thrown.
      *
      * @return A Tuple containing the found key and value
      * @throws IOException
-     * @throws EndOfFileExceededException
+     * @throws NoSuchElementException When we have reached the end of the B-tree, or if 
+     * the B-tree is empty
      */
-    public Tuple<K, V> next() throws EndOfFileExceededException, IOException
+    public Tuple<K, V> next() throws NoSuchElementException
     {
         // First check that we have elements in the BTree
         if ( ( stack == null ) || ( stack.length == 0 ) )
@@ -274,46 +307,17 @@ public class TupleCursor<K, V>
 
         ParentPos<K, V> parentPos = stack[depth];
 
-        if ( ( parentPos.page == null ) || ( parentPos.pos == AFTER_LAST ) )
+        try
         {
-            // This is the end : no more value
-            throw new NoSuchElementException( "No more tuples present" );
-        }
-
-        if ( parentPos.pos == parentPos.page.getNbElems() )
-        {
-            // End of the leaf. We have to go back into the stack up to the
-            // parent, and down to the leaf
-            parentPos = findNextParentPos();
-
-            // we also need to check for the type of page cause
-            // findNextParentPos will never return a null ParentPos
-            if ( ( parentPos == null ) || ( parentPos.page == null ) )
+            if ( parentPos.pos == parentPos.page.getNbElems() )
             {
-                // This is the end : no more value
-                throw new NoSuchElementException( "No more tuples present" );
-            }
-        }
-
-        V value = null;
-
-        if ( parentPos.valueCursor.hasNext() )
-        {
-            // Deal with the BeforeFirst case
-            if ( parentPos.pos == BEFORE_FIRST )
-            {
-                parentPos.pos++;
-            }
-
-            value = parentPos.valueCursor.next();
-        }
-        else
-        {
-            if ( parentPos.pos == parentPos.page.getNbElems() - 1 )
-            {
+                // End of the leaf. We have to go back into the stack up to the
+                // parent, and down to the leaf
                 parentPos = findNextParentPos();
-
-                if ( ( parentPos == null ) || ( parentPos.page == null ) )
+    
+                // we also need to check for the type of page cause
+                // findNextParentPos will never return a null ParentPos
+                if ( parentPos == null )
                 {
                     // This is the end : no more value
                     throw new NoSuchElementException( "No more tuples present" );
@@ -323,142 +327,25 @@ public class TupleCursor<K, V>
             {
                 parentPos.pos++;
             }
-
-            try
-            {
-                ValueHolder<V> valueHolder = ( ( AbstractPage<K, V> ) parentPos.page ).getValue( parentPos.pos );
-
-                parentPos.valueCursor = valueHolder.getCursor();
-
-                value = parentPos.valueCursor.next();
-            }
-            catch ( IllegalArgumentException e )
-            {
-                e.printStackTrace();
-            }
+        }
+        catch ( IOException ioe )
+        {
+            throw new NoSuchElementException( ioe.getMessage());
         }
 
+        // Get the value
+        ValueHolder<V> valueHolder = ( ( AbstractPage<K, V> ) parentPos.page ).getValue( parentPos.pos );
+
+        V value = valueHolder.get();
+
+        // Get the key
         AbstractPage<K, V> leaf = ( AbstractPage<K, V> ) ( parentPos.page );
-        Tuple<K, V> tuple = new Tuple<K, V>( leaf.getKey( parentPos.pos ), value );
+        K key = leaf.getKey( parentPos.pos );
+        
+        // Build the Tuple
+        Tuple<K, V> tuple = new Tuple<K, V>( key, value );
 
         return tuple;
-    }
-
-
-    /**
-     * Get the next non-duplicate key.
-     * If the BTree contains :
-     *
-     *  <ul>
-     *    <li><1,0></li>
-     *    <li><1,1></li>
-     *    <li><1,2></li>
-     *    <li><2,0></li>
-     *    <li><2,1></li>
-     *  </ul>
-     *
-     *  and cursor is present at <1,1> then the returned tuple will be <2,0> (not <1,2>)
-     *
-     * @return A Tuple containing the found key and value
-     * @throws EndOfFileExceededException
-     * @throws IOException
-     */
-    public Tuple<K, V> nextKey() throws EndOfFileExceededException, IOException
-    {
-        // First check that we have elements in the BTree
-        if ( ( stack == null ) || ( stack.length == 0 ) )
-        {
-            // This is the end : no more value
-            throw new NoSuchElementException( "No more tuples present" );
-        }
-
-        ParentPos<K, V> parentPos = stack[depth];
-
-        if ( parentPos.page == null )
-        {
-            // This is the end : no more value
-            throw new NoSuchElementException( "No more tuples present" );
-        }
-
-        if ( parentPos.pos == ( parentPos.page.getNbElems() - 1 ) )
-        {
-            // End of the leaf. We have to go back into the stack up to the
-            // parent, and down to the next leaf
-            ParentPos<K, V> newParentPos = findNextParentPos();
-
-            // we also need to check the result of the call to
-            // findNextParentPos as it will return a null ParentPos
-            if ( ( newParentPos == null ) || ( newParentPos.page == null ) )
-            {
-                // This is the end : no more value
-                AbstractPage<K, V> leaf = ( AbstractPage<K, V> ) ( parentPos.page );
-                ValueHolder<V> valueHolder = leaf.getValue( parentPos.pos );
-                parentPos.pos = AFTER_LAST;
-                parentPos.valueCursor = valueHolder.getCursor();
-                parentPos.valueCursor.afterLast();
-
-                return null;
-            }
-            else
-            {
-                parentPos = newParentPos;
-            }
-        }
-        else
-        {
-            // Get the next key
-            parentPos.pos++;
-        }
-
-        // The key
-        AbstractPage<K, V> leaf = ( AbstractPage<K, V> ) ( parentPos.page );
-        Tuple<K, V> tuple = new Tuple<K, V>();
-        tuple.setKey( leaf.getKey( parentPos.pos ) );
-
-        // The value
-        ValueHolder<V> valueHolder = leaf.getValue( parentPos.pos );
-        parentPos.valueCursor = valueHolder.getCursor();
-        V value = parentPos.valueCursor.next();
-        tuple.setValue( value );
-
-        return tuple;
-    }
-
-
-    /**
-     * Tells if the cursor can return a next key
-     *
-     * @return true if there are some more keys
-     * @throws IOException
-     * @throws EndOfFileExceededException
-     */
-    public boolean hasNextKey() throws EndOfFileExceededException, IOException
-    {
-        // First check that we have elements in the BTree
-        if ( ( stack == null ) || ( stack.length == 0 ) )
-        {
-            // This is the end : no more key
-            return false;
-        }
-
-        ParentPos<K, V> parentPos = stack[depth];
-
-        if ( parentPos.page == null )
-        {
-            // This is the end : no more key
-            return false;
-        }
-
-        if ( parentPos.pos == ( parentPos.page.getNbElems() - 1 ) )
-        {
-            // End of the leaf. We have to go back into the stack up to the
-            // parent, and down to the next leaf
-            return hasNextParentPos();
-        }
-        else
-        {
-            return true;
-        }
     }
 
 
@@ -499,12 +386,6 @@ public class TupleCursor<K, V>
                 return false;
             }
 
-            // Check if we have some more value
-            if ( parentPos.valueCursor.hasPrev() )
-            {
-                return true;
-            }
-
             // Ok, here, we have reached the first value in the leaf. We have to go up and
             // see if we have some remaining values
             int currentDepth = depth - 1;
@@ -530,11 +411,13 @@ public class TupleCursor<K, V>
 
 
     /**
-     * Find the previous key/value
+     * Get the previous Tuple, from the current position. If we have no more new element, 
+     * a NoMoreElementException will be thrown.
      *
      * @return A Tuple containing the found key and value
      * @throws IOException
-     * @throws EndOfFileExceededException
+     * @throws NoSuchElementException When we have reached the beginning of the B-tree, or if 
+     * the B-tree is empty
      */
     public Tuple<K, V> prev() throws EndOfFileExceededException, IOException
     {
@@ -546,193 +429,54 @@ public class TupleCursor<K, V>
 
         ParentPos<K, V> parentPos = stack[depth];
 
-        if ( ( parentPos.page == null ) || ( parentPos.pos == BEFORE_FIRST ) )
+        switch( parentPos.pos )
         {
-            // This is the end : no more value
-            throw new NoSuchElementException( "No more tuples present" );
-        }
-
-        if ( ( parentPos.pos == 0 ) && ( !parentPos.valueCursor.hasPrev() ) )
-        {
-            // End of the leaf. We have to go back into the stack up to the
-            // parent, and down to the leaf
-            parentPos = findPrevParentPos();
-
-            // we also need to check for the type of page cause
-            // findPrevParentPos will never return a null ParentPos
-            if ( ( parentPos == null ) || ( parentPos.page == null ) )
-            {
+            case BEFORE_FIRST :
                 // This is the end : no more value
                 throw new NoSuchElementException( "No more tuples present" );
-            }
-        }
 
-        V value = null;
-
-        if ( parentPos.valueCursor.hasPrev() )
-        {
-            // Deal with the AfterLast case
-            if ( parentPos.pos == AFTER_LAST )
-            {
+            case AFTER_LAST :
+                // Move the the last element
                 parentPos.pos = parentPos.page.getNbElems() - 1;
-            }
-
-            value = parentPos.valueCursor.prev();
-        }
-        else
-        {
-            if ( parentPos.pos == 0 )
-            {
+                break;
+            
+            case 0 :
+                // beginning of the leaf. We have to go back into the stack up to the
+                // parent, and down to the leaf on the left, if possible
                 parentPos = findPrevParentPos();
 
-                if ( ( parentPos == null ) || ( parentPos.page == null ) )
+                // we also need to check for the type of page cause
+                // findPrevParentPos will never return a null ParentPos
+                if ( parentPos == null )
                 {
                     // This is the end : no more value
                     throw new NoSuchElementException( "No more tuples present" );
                 }
-            }
-            else
-            {
+                else
+                {
+                    parentPos.pos--;
+                }
+                
+                break;
+                
+            default :
+                // Simply decrement the position
                 parentPos.pos--;
-
-                try
-                {
-                    ValueHolder<V> valueHolder = ( ( AbstractPage<K, V> ) parentPos.page ).getValue( parentPos.pos );
-
-                    parentPos.valueCursor = valueHolder.getCursor();
-                    parentPos.valueCursor.afterLast();
-
-                    value = parentPos.valueCursor.prev();
-                }
-                catch ( IllegalArgumentException e )
-                {
-                    e.printStackTrace();
-                }
-            }
+                break;
         }
 
+        // Get the value
+        ValueHolder<V> valueHolder = ( ( AbstractPage<K, V> ) parentPos.page ).getValue( parentPos.pos );
+        V value = valueHolder.get();
+
+        // Get the key
         AbstractPage<K, V> leaf = ( AbstractPage<K, V> ) ( parentPos.page );
-        Tuple<K, V> tuple = new Tuple<K, V>( leaf.getKey( parentPos.pos ), value );
+        K key = leaf.getKey( parentPos.pos );
+        
+        // Construct the Tuple 
+        Tuple<K, V> tuple = new Tuple<K, V>( key, value );
 
         return tuple;
-    }
-
-
-    /**
-     * Get the previous non-duplicate key.
-     * If the BTree contains :
-     *
-     *  <ul>
-     *    <li><1,0></li>
-     *    <li><1,1></li>
-     *    <li><1,2></li>
-     *    <li><2,0></li>
-     *    <li><2,1></li>
-     *  </ul>
-     *
-     *  and cursor is present at <2,1> then the returned tuple will be <1,0> (not <2,0>)
-     *
-     * @return A Tuple containing the found key and value
-     * @throws EndOfFileExceededException
-     * @throws IOException
-     */
-    public Tuple<K, V> prevKey() throws EndOfFileExceededException, IOException
-    {
-        // First check that we have elements in the BTree
-        if ( ( stack == null ) || ( stack.length == 0 ) )
-        {
-            // This is the end : no more value
-            throw new NoSuchElementException( "No more tuples present" );
-        }
-
-        ParentPos<K, V> parentPos = stack[depth];
-
-        if ( parentPos.page == null )
-        {
-            // This is the end : no more value
-            throw new NoSuchElementException( "No more tuples present" );
-        }
-
-        if ( parentPos.pos == 0 )
-        {
-            // Beginning of the leaf. We have to go back into the stack up to the
-            // parent, and down to the leaf
-            parentPos = findPrevParentPos();
-
-            if ( ( parentPos == null ) || ( parentPos.page == null ) )
-            {
-                // This is the end : no more value
-                throw new NoSuchElementException( "No more tuples present" );
-            }
-        }
-        else
-        {
-            if ( parentPos.pos == AFTER_LAST )
-            {
-                parentPos.pos = parentPos.page.getNbElems() - 1;
-            }
-            else
-            {
-                parentPos.pos--;
-            }
-        }
-
-        // Update the Tuple
-        AbstractPage<K, V> leaf = ( AbstractPage<K, V> ) ( parentPos.page );
-
-        // The key
-        Tuple<K, V> tuple = new Tuple<K, V>();
-        tuple.setKey( leaf.getKey( parentPos.pos ) );
-
-        // The value
-        ValueHolder<V> valueHolder = leaf.getValue( parentPos.pos );
-        parentPos.valueCursor = valueHolder.getCursor();
-        V value = parentPos.valueCursor.next();
-        tuple.setValue( value );
-
-        return tuple;
-    }
-
-
-    /**
-     * Tells if the cursor can return a previous key
-     *
-     * @return true if there are some more keys
-     * @throws IOException
-     * @throws EndOfFileExceededException
-     */
-    public boolean hasPrevKey() throws EndOfFileExceededException, IOException
-    {
-        // First check that we have elements in the BTree
-        if ( ( stack == null ) || ( stack.length == 0 ) )
-        {
-            // This is the end : no more key
-            return false;
-        }
-
-        ParentPos<K, V> parentPos = stack[depth];
-
-        if ( parentPos.page == null )
-        {
-            // This is the end : no more key
-            return false;
-        }
-
-        switch ( parentPos.pos )
-        {
-            case 0:
-                // Beginning of the leaf. We have to go back into the stack up to the
-                // parent, and down to the leaf
-                return hasPrevParentPos();
-
-            case -1:
-                // no previous key
-                return false;
-
-            default:
-                // we have a previous key
-                return true;
-        }
     }
 
 
@@ -836,7 +580,6 @@ public class TupleCursor<K, V>
                 parentPos = stack[depth];
                 parentPos.page = child;
                 parentPos.pos = 0;
-                parentPos.valueCursor = ( ( AbstractPage<K, V> ) child ).getValue( 0 ).getCursor();
 
                 return parentPos;
             }
@@ -847,7 +590,33 @@ public class TupleCursor<K, V>
 
 
     /**
-     * Find the leaf containing the previous elements.
+     * Find the leaf containing the previous elements. We are in
+     * 
+     * if the B-tree content is like :
+     * <pre>
+     *                    .
+     *                   |
+     *                   v
+     *           +---+---+---+---+
+     *           |///| X | Y |///|               Level N-1
+     *           +---+---+---+---+
+     *           |   |   |   |   |
+     *   <-...---+   |   |   |   +---...-> 
+     *               |   |   |
+     *       <-...---+   |   |
+     *                   |   |
+     *         +---------+   +-------+
+     *         |                     | 
+     *         v                     v
+     * +---+---+---+---+     +---+---+---+---+
+     * |///|///| T |###|     | Y |///|///|///|   Level N
+     * +---+---+---+---+     +---+---+---+---+
+     *          pos           pos 
+     *   New ParentPos       Current ParentPos
+     * </pre>
+     * 
+     * and we are on Y, then the previous ParentPos instance will contain the page
+     * on the left, teh position beoing on the last element of this page, T
      *
      * @return the new ParentPos instance, or null if we have no previous leaf
      * @throws IOException
@@ -861,6 +630,7 @@ public class TupleCursor<K, V>
             return null;
         }
 
+        // Go up one step
         int currentDepth = depth - 1;
         Page<K, V> child = null;
 
@@ -868,21 +638,21 @@ public class TupleCursor<K, V>
         while ( currentDepth >= 0 )
         {
             // We first go up the tree, until we reach a page whose current position
-            // is not the last one
+            // is not the first one
             ParentPos<K, V> parentPos = stack[currentDepth];
 
             if ( parentPos.pos == 0 )
             {
-                // No more element on the right : go up
+                // No more element on the left : go up
                 currentDepth--;
             }
             else
             {
-                // We can pick the next element at this level
+                // We can pick the previous element at this level
                 parentPos.pos--;
                 child = ( ( AbstractPage<K, V> ) parentPos.page ).getPage( parentPos.pos );
 
-                // and go down the tree through the nodes
+                // and go down the tree through the nodes, positioning on the rightmost element
                 while ( currentDepth < depth - 1 )
                 {
                     currentDepth++;
@@ -896,9 +666,6 @@ public class TupleCursor<K, V>
                 parentPos = stack[depth];
                 parentPos.pos = child.getNbElems() - 1;
                 parentPos.page = child;
-                ValueHolder<V> valueHolder = ( ( AbstractPage<K, V> ) parentPos.page ).getValue( parentPos.pos );
-                parentPos.valueCursor = valueHolder.getCursor();
-                parentPos.valueCursor.afterLast();
 
                 return parentPos;
             }
@@ -959,11 +726,81 @@ public class TupleCursor<K, V>
 
 
     /**
-     * {@inheritDoc}
+     * Checks if this Cursor is closed. Calls to this operation should not
+     * fail with exceptions if and only if the cursor is in the closed state.
+     *
+     * @return true if this Cursor is closed, false otherwise
+     */
+    public boolean isClosed()
+    {
+        return transaction.isClosed();
+    }
+
+
+    /**
+     * Closes this Cursor and frees any resources it my have allocated.
+     * Repeated calls to this method after this Cursor has already been
+     * called should not fail with exceptions.
      */
     public void close()
     {
         transaction.close();
+    }
+
+
+    /**
+     * Closes this Cursor and frees any resources it my have allocated.
+     * Repeated calls to this method after this Cursor has already been
+     * called should not fail with exceptions.  The reason argument is 
+     * the Exception instance thrown instead of the standard 
+     * CursorClosedException.
+     *
+     * @param reason exception thrown when this Cursor is accessed after close
+     */
+    public void close( Exception reason )
+    {
+        transaction.close();
+    }
+
+
+    /**
+     * Gets the object at the current position.  Cursor implementations may
+     * choose to reuse element objects by re-populating them on advances
+     * instead of creating new objects on each advance.
+     *
+     * @return the object at the current position
+     * @throws NoSuchElementException if the object at this Cursor's current position
+     * cannot be retrieved, or if this Cursor is closed
+     */
+    public Tuple<K, V> get() throws NoSuchElementException
+    {
+        // First check that we have elements in the BTree
+        if ( ( stack == null ) || ( stack.length == 0 ) )
+        {
+            throw new NoSuchElementException( "No tuple present" );
+        }
+
+        ParentPos<K, V> parentPos = stack[depth];
+        
+        if ( ( parentPos.pos != BEFORE_FIRST ) && ( parentPos.pos != AFTER_LAST ) )
+        {
+            // We have some element, build the Tuple
+            // Get the value
+            ValueHolder<V> valueHolder = ( ( AbstractPage<K, V> ) parentPos.page ).getValue( parentPos.pos );
+
+            V value = valueHolder.get();
+
+            // Get the key
+            AbstractPage<K, V> leaf = ( AbstractPage<K, V> ) ( parentPos.page );
+            K key = leaf.getKey( parentPos.pos );
+            
+            // Build the Tuple
+            Tuple<K, V> tuple = new Tuple<K, V>( key, value );
+
+            return tuple;
+        }
+        
+        throw new NoSuchElementException( "No element at this position : " + parentPos.pos );
     }
 
 

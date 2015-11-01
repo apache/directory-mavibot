@@ -39,6 +39,7 @@ import java.util.TreeSet;
 
 import org.apache.directory.mavibot.btree.BulkLoader.LevelEnum;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
+import org.apache.directory.mavibot.btree.exception.CursorException;
 import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
@@ -55,7 +56,7 @@ import org.junit.Test;
 public class BulkLoaderTest
 {
     private void checkBtree( BTree<Long, String> oldBtree, BTree<Long, String> newBtree )
-        throws EndOfFileExceededException, IOException, KeyNotFoundException
+        throws EndOfFileExceededException, IOException, KeyNotFoundException, CursorException
     {
         assertEquals( oldBtree.getNbElems(), newBtree.getNbElems() );
 
@@ -76,79 +77,12 @@ public class BulkLoaderTest
 
 
     /**
-     * Test that we can compact a btree which has no element
-     */
-    @Test
-    public void testInMemoryBulkLoadNoElement() throws IOException, KeyNotFoundException
-    {
-        BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( "test", LongSerializer.INSTANCE,
-            StringSerializer.INSTANCE );
-        btree.setPageSize( 4 );
-
-        BTree<Long, String> newBtree = ( BTree<Long, String> ) BulkLoader.compact( btree );
-
-        checkBtree( btree, newBtree );
-        TupleCursor<Long, String> cursorOld = btree.browse();
-        TupleCursor<Long, String> cursorNew = btree.browse();
-
-        assertFalse( cursorOld.hasNext() );
-        assertFalse( cursorNew.hasNext() );
-    }
-
-
-    /**
-     * Test that we can compact a btree which has a partially full leaf only
-     */
-    @Ignore
-    @Test
-    public void testInMemoryBulkLoad3Elements() throws IOException, KeyNotFoundException
-    {
-        BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( "test", LongSerializer.INSTANCE,
-            StringSerializer.INSTANCE );
-        btree.setPageSize( 4 );
-
-        for ( Long i = 0L; i < 3L; i++ )
-        {
-            String value = "V" + i;
-            btree.insert( i, value );
-        }
-
-        BTree<Long, String> newBtree = ( BTree<Long, String> ) BulkLoader.compact( btree );
-
-        checkBtree( btree, newBtree );
-    }
-
-
-    /**
-     * Test that we can compact a btree which has a 2 full leaves
-     */
-    @Ignore
-    @Test
-    public void testInMemoryBulkLoad8Elements() throws IOException, KeyNotFoundException
-    {
-        BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( "test", LongSerializer.INSTANCE,
-            StringSerializer.INSTANCE );
-        btree.setPageSize( 4 );
-
-        for ( Long i = 0L; i < 8L; i++ )
-        {
-            String value = "V" + i;
-            btree.insert( i, value );
-        }
-
-        BTree<Long, String> newBtree = ( BTree<Long, String> ) BulkLoader.compact( btree );
-
-        checkBtree( btree, newBtree );
-    }
-
-
-    /**
      * Test that we can load 100 BTrees with 0 to 1000 elements
      * @throws BTreeAlreadyManagedException 
      */
     @Test
     public void testPersistedBulkLoad1000Elements() throws IOException, KeyNotFoundException,
-        BTreeAlreadyManagedException
+        BTreeAlreadyManagedException, CursorException
     {
         for ( int i = 1000000; i < 1000001; i++ )
         {
@@ -262,146 +196,6 @@ public class BulkLoaderTest
                 file.delete();
             }
         }
-    }
-
-
-    /**
-     * Test that we can compact a btree which has a full parent node, with all the leaves full.
-     */
-    @Test
-    public void testInMemoryBulkLoad20Elements() throws IOException, KeyNotFoundException
-    {
-        BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( "test", LongSerializer.INSTANCE,
-            StringSerializer.INSTANCE );
-        btree.setPageSize( 4 );
-
-        for ( Long i = 0L; i < 20L; i++ )
-        {
-            String value = "V" + i;
-            btree.insert( i, value );
-        }
-
-        BTree<Long, String> newBtree = ( BTree<Long, String> ) BulkLoader.compact( btree );
-
-        checkBtree( btree, newBtree );
-    }
-
-
-    /**
-     * Test that we can compact a btree which has two full parent nodes, with all the leaves full.
-     * That means we have an upper node with one element.
-     */
-    @Ignore
-    @Test
-    public void testInMemoryBulkLoad40Elements() throws IOException, KeyNotFoundException
-    {
-        BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( "test", LongSerializer.INSTANCE,
-            StringSerializer.INSTANCE );
-        btree.setPageSize( 4 );
-
-        for ( Long i = 0L; i < 40L; i++ )
-        {
-            String value = "V" + i;
-            btree.insert( i, value );
-        }
-
-        BTree<Long, String> newBtree = ( BTree<Long, String> ) BulkLoader.compact( btree );
-
-        checkBtree( btree, newBtree );
-    }
-
-
-    /**
-     * Test that we can compact a btree which has two full parent nodes, with all the leaves full.
-     * That means we have an upper node with one element.
-     */
-    @Test
-    public void testInMemoryBulkLoad100Elements() throws IOException, KeyNotFoundException
-    {
-        BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( "test", LongSerializer.INSTANCE,
-            StringSerializer.INSTANCE );
-        btree.setPageSize( 4 );
-
-        for ( Long i = 0L; i < 100L; i++ )
-        {
-            String value = "V" + i;
-            btree.insert( i, value );
-        }
-
-        BTree<Long, String> newBtree = ( BTree<Long, String> ) BulkLoader.compact( btree );
-
-        checkBtree( btree, newBtree );
-    }
-
-
-    @Ignore
-    @Test
-    public void testInMemoryBulkLoadN() throws IOException, KeyNotFoundException
-    {
-        Random random = new Random( System.nanoTime() );
-        long t0 = System.currentTimeMillis();
-
-        for ( long n = 0L; n < 2500L; n++ )
-        {
-            BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( "test", LongSerializer.INSTANCE,
-                StringSerializer.INSTANCE );
-            btree.setPageSize( 4 );
-
-            for ( Long i = 0L; i < n; i++ )
-            {
-                String value = "V" + i;
-                btree.insert( i, value );
-            }
-
-            //long t1 = System.currentTimeMillis();
-
-            //System.out.println( "Delta initial load = " + ( t1 - t0 ) );
-
-            //long t2 = System.currentTimeMillis();
-
-            BTree<Long, String> newBtree = ( BTree<Long, String> ) BulkLoader.compact( btree );
-
-            //long t3 = System.currentTimeMillis();
-
-            //System.out.println( "Delta initial load = " + ( t3 - t2 ) );
-
-            //System.out.println( "Checking for N = " + n );
-            checkBtree( btree, newBtree );
-        }
-    }
-
-
-    @Ignore
-    @Test
-    public void testInMemoryBulkLoad21() throws IOException, KeyNotFoundException
-    {
-        Random random = new Random( System.nanoTime() );
-        long t0 = System.currentTimeMillis();
-
-        BTree<Long, String> btree = BTreeFactory.createInMemoryBTree( "test", LongSerializer.INSTANCE,
-            StringSerializer.INSTANCE );
-        btree.setPageSize( 4 );
-
-        for ( Long i = 0L; i < 21; i++ )
-        {
-            String value = "V" + i;
-            btree.insert( i, value );
-        }
-
-        //long t1 = System.currentTimeMillis();
-
-        //System.out.println( "Delta initial load = " + ( t1 - t0 ) );
-
-        //long t2 = System.currentTimeMillis();
-
-        BTree<Long, String> newBtree = ( BTree<Long, String> ) BulkLoader.compact( btree );
-
-        //long t3 = System.currentTimeMillis();
-
-        //System.out.println( "Delta initial load = " + ( t3 - t2 ) );
-
-        //System.out.println( "Checking for N = " + 21 );
-        checkBtree( btree, newBtree );
     }
 
 
@@ -575,7 +369,7 @@ public class BulkLoaderTest
     //@Ignore("The test is failing atm due to the sub-btree construction which is not working correctly when we have too many elements")
     @Test
     public void testPersistedBulkLoad1000ElementsMultipleValues() throws IOException, KeyNotFoundException,
-        BTreeAlreadyManagedException
+        BTreeAlreadyManagedException, CursorException
     {
         for ( int i = 1; i < 1001; i++ )
         {
@@ -709,7 +503,7 @@ public class BulkLoaderTest
      */
     @Test
     public void testPersistedBulkLoad1000ElementsMultipleValuesDebug() throws IOException, KeyNotFoundException,
-        BTreeAlreadyManagedException
+        BTreeAlreadyManagedException, CursorException
     {
         Random random = new Random( System.currentTimeMillis() );
         File file = File.createTempFile( "managedbtreebuilder", ".data" );

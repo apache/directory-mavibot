@@ -22,7 +22,7 @@ package org.apache.directory.mavibot.btree;
 
 /**
  * This class is used to store the parent page and the position in it during
- * a browse operation. We have as many ParentPos instance than the depth of the tree.
+ * a browse operation. We have as many ParentPos instance as the depth of the tree.
  * 
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
@@ -36,13 +36,6 @@ package org.apache.directory.mavibot.btree;
 
     /** The current position in the page */
     /* no qualifier */int pos;
-
-    /** The current position of the duplicate container in the page */
-    /* no qualifier */int dupPos;
-
-    /** The current position of the duplicate container in the page */
-    /* no qualifier */ValueCursor<V> valueCursor;
-
 
     /**
      * Creates a new instance of ParentPos

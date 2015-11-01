@@ -20,6 +20,7 @@
 package org.apache.directory.mavibot.btree;
 
 
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
@@ -47,7 +48,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier*/class BTreeHeader<K, V> implements Cloneable
+/* No qualifier*/class BTreeHeader<K, V> implements Cloneable, WALObject
 {
     /** The current revision */
     private long revision = 0L;
@@ -311,5 +312,87 @@ import java.util.concurrent.atomic.AtomicInteger;
         sb.append( ", nbUsers[" ).append( nbUsers.get() ).append( "]" );
 
         return sb.toString();
+    }
+
+
+    @Override
+    public long getId()
+    {
+        // TODO Auto-generated method stub
+        return 0;
+    }
+
+
+    @Override
+    public void setId( long id )
+    {
+        // TODO Auto-generated method stub
+        
+    }
+
+
+    @Override
+    public PageIO[] serialize() throws IOException
+    {
+        int bufferSize =
+            RecordManager.LONG_SIZE + // The revision
+                RecordManager.LONG_SIZE + // the number of element
+                RecordManager.LONG_SIZE + // The root page offset
+                RecordManager.LONG_SIZE; // The B-tree info page offset
+        
+        RecordManager recordManager = btree.getRecordManager();
+
+        // Get the pageIOs we need to store the data. We may need more than one.
+        PageIO[] btreeHeaderPageIos = recordManager.getFreePageIOs( bufferSize );
+
+        // Store the B-tree header Offset into the B-tree
+        long btreeHeaderOffset = btreeHeaderPageIos[0].getOffset();
+
+        // Now store the B-tree data in the pages :
+        // - the B-tree revision
+        // - the B-tree number of elements
+        // - the B-tree root page offset
+        // - the B-tree info page offset
+        // Starts at 0
+        long position = 0L;
+
+        // The B-tree current revision
+        position = recordManager.store( position, getRevision(), btreeHeaderPageIos );
+
+        // The nb elems in the tree
+        position = recordManager.store( position, getNbElems(), btreeHeaderPageIos );
+
+        // Now, we can inject the B-tree rootPage offset into the B-tree header
+        position = recordManager.store( position, getRootPageOffset(), btreeHeaderPageIos );
+
+        // The B-tree info page offset
+        position = recordManager.store( position, ( ( PersistedBTree<K, V> ) btree ).getBtreeInfoOffset(), btreeHeaderPageIos );
+
+        // And flush the pages to disk now
+        /*
+        LOG.debug( "Flushing the newly managed '{}' btree header", btree.getName() );
+
+        if ( LOG_PAGES.isDebugEnabled() )
+        {
+            LOG_PAGES.debug( "Writing BTreeHeader revision {} for {}", btreeHeader.getRevision(), btree.getName() );
+            StringBuilder sb = new StringBuilder();
+
+            sb.append( "Offset : " ).append( Long.toHexString( btreeHeaderOffset ) ).append( "\n" );
+            sb.append( "    Revision : " ).append( btreeHeader.getRevision() ).append( "\n" );
+            sb.append( "    NbElems  : " ).append( btreeHeader.getNbElems() ).append( "\n" );
+            sb.append( "    RootPage : 0x" ).append( Long.toHexString( btreeHeader.getRootPageOffset() ) )
+                .append( "\n" );
+            sb.append( "    Info     : 0x" )
+                .append( Long.toHexString( ( ( PersistedBTree<K, V> ) btree ).getBtreeInfoOffset() ) ).append( "\n" );
+
+            LOG_PAGES.debug( "Btree Header[{}]\n{}", btreeHeader.getRevision(), sb.toString() );
+        }
+        */
+
+        recordManager.storePages( btreeHeaderPageIos );
+
+        setBTreeHeaderOffset( btreeHeaderOffset );
+
+        return btreeHeaderPageIos;
     }
 }

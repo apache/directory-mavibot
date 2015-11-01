@@ -127,7 +127,7 @@ public class PageReclaimer
 
                 // no new txn is needed for the operations on BoB
                 // and also no need to traverse BoB if the tree is a sub-btree
-                if ( ( lastRemovedRev != -1 ) && !tree.isAllowDuplicates() )
+                if ( ( lastRemovedRev != -1 ) )
                 {
                     // we SHOULD NOT delete the latest revision from BoB
                     NameRevision nr = new NameRevision( name, latestRev );
@@ -176,10 +176,10 @@ public class PageReclaimer
         }
         catch ( Exception e )
         {
-        	running = false;
-        	rm.rollback();
-        	LOG.warn( "Errors while reclaiming", e );
-        	throw new RuntimeException( e );
+            running = false;
+            rm.rollback();
+            LOG.warn( "Errors while reclaiming", e );
+            throw new RuntimeException( e );
         }
     }
 

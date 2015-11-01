@@ -843,49 +843,6 @@ public class RecordManagerTest
     }
 
 
-    /**
-     * Test with BTrees containing duplicate keys
-     */
-    @Test
-    public void testBTreesDuplicateKeys() throws IOException, BTreeAlreadyManagedException,
-        KeyNotFoundException
-    {
-        int pageSize = 16;
-        int numKeys = 1;
-        String name = "duplicateTree";
-        String[] testValues = new String[]
-            { "00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "0A", "0B", "0C", "0D", "0E", "0F", "10" };
-
-        BTree<Long, String> dupsTree = BTreeFactory.createPersistedBTree( name, LongSerializer.INSTANCE,
-            StringSerializer.INSTANCE, pageSize, true );
-
-        recordManager.manage( dupsTree );
-
-        for ( long i = 0; i < numKeys; i++ )
-        {
-            for ( int k = 0; k < pageSize + 1; k++ )
-            {
-                dupsTree.insert( i, testValues[k] );
-            }
-        }
-
-        // Now, try to reload the file back
-        openRecordManagerAndBtree();
-
-        dupsTree = recordManager.getManagedTree( name );
-
-        for ( long i = 0; i < numKeys; i++ )
-        {
-            ValueCursor<String> values = dupsTree.getValues( i );
-
-            for ( int k = 0; k < pageSize + 1; k++ )
-            {
-                assertTrue( values.next().equals( testValues[k] ) );
-            }
-        }
-    }
-
-
     @Test
     public void testAdds() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {

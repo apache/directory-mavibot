@@ -53,22 +53,6 @@ public class EmptyTupleCursor<K, V> extends TupleCursor<K, V>
 
 
     /**
-     * Change the position in the current cursor to set it after the last key
-     */
-    public void afterLast() throws IOException
-    {
-    }
-
-
-    /**
-     * Change the position in the current cursor before the first key
-     */
-    public void beforeFirst() throws IOException
-    {
-    }
-
-
-    /**
      * Always return false.
      *
      * @return Always false

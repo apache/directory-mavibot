@@ -19,31 +19,29 @@
  */
 package org.apache.directory.mavibot.btree;
 
+import java.io.IOException;
 
 /**
- * An enum to describe the B-tree type. We have three possible type :
- * <ul>
- * <li>IN_MEMORY : the B-tree will remain in memory, and won't be persisted on disk</li>
- * <li>BACKED_ON_DISK : the B-tree is in memory, but will be persisted on disk</li>
- * <li>PERSISTED : the B-tree is managed by a RecordManager, and some pages may
- * be swapped out from memory on demand</li>
- * <li>PERSISTED_SUB : The B-tree is a Persisted B-tree, but a Sub B-tree one</li>
- * <li>PERSISTED_MANAGEMENT : This is a Persisted B-tree used to manage the other B-trees</li>
- * </ul>
- *
+ * A WALObject is an object stored in the TransactionContext before weing written on disk.
+ * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public enum BTreeTypeEnum
+public interface WALObject
 {
-    /** Persisted B-tree */
-    PERSISTED,
-
-    /** Persisted Management B-tree */
-    BTREE_OF_BTREES,
-
-    /** Persisted Management B-tree */
-    COPIED_PAGES_BTREE,
-
-    /** In-memory B-tree but saved on disk */
-    BACKED_ON_DISK
+    /**
+     * @return The ID associated with the Object
+     */
+    long getId();
+    
+    
+    /**
+     * @param id Set an ID to this Object
+     */
+    void setId( long id );
+    
+    
+    /**
+     * @return Serialize the Object into PageIOs
+     */
+    PageIO[] serialize() throws IOException;
 }

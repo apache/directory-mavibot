@@ -263,7 +263,6 @@ public class PageReclaimerTest
         config.setName( "dump-tree" );
         config.setKeySerializer( IntSerializer.INSTANCE );
         config.setValueSerializer( StringSerializer.INSTANCE );
-        config.setAllowDuplicates( false );
         config.setPageSize( 4 );
 
         BTree btree = new PersistedBTree( config );

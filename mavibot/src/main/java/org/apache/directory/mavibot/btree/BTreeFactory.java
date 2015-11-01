@@ -113,7 +113,6 @@ public class BTreeFactory<K, V>
         configuration.setKeySerializer( keySerializer );
         configuration.setValueSerializer( valueSerializer );
         configuration.setPageSize( BTree.DEFAULT_PAGE_SIZE );
-        configuration.setAllowDuplicates( BTree.FORBID_DUPLICATES );
         configuration.setCacheSize( PersistedBTree.DEFAULT_CACHE_SIZE );
         configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
 
@@ -142,7 +141,6 @@ public class BTreeFactory<K, V>
         configuration.setKeySerializer( keySerializer );
         configuration.setValueSerializer( valueSerializer );
         configuration.setPageSize( BTree.DEFAULT_PAGE_SIZE );
-        configuration.setAllowDuplicates( allowDuplicates );
         configuration.setCacheSize( PersistedBTree.DEFAULT_CACHE_SIZE );
         configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
 
@@ -172,7 +170,6 @@ public class BTreeFactory<K, V>
         configuration.setKeySerializer( keySerializer );
         configuration.setValueSerializer( valueSerializer );
         configuration.setPageSize( BTree.DEFAULT_PAGE_SIZE );
-        configuration.setAllowDuplicates( allowDuplicates );
         configuration.setCacheSize( cacheSize );
         configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
 
@@ -201,7 +198,6 @@ public class BTreeFactory<K, V>
         configuration.setKeySerializer( keySerializer );
         configuration.setValueSerializer( valueSerializer );
         configuration.setPageSize( pageSize );
-        configuration.setAllowDuplicates( BTree.FORBID_DUPLICATES );
         configuration.setCacheSize( PersistedBTree.DEFAULT_CACHE_SIZE );
         configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
 
@@ -231,7 +227,6 @@ public class BTreeFactory<K, V>
         configuration.setKeySerializer( keySerializer );
         configuration.setValueSerializer( valueSerializer );
         configuration.setPageSize( pageSize );
-        configuration.setAllowDuplicates( allowDuplicates );
         configuration.setCacheSize( PersistedBTree.DEFAULT_CACHE_SIZE );
         configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
 
@@ -262,217 +257,10 @@ public class BTreeFactory<K, V>
         configuration.setKeySerializer( keySerializer );
         configuration.setValueSerializer( valueSerializer );
         configuration.setPageSize( pageSize );
-        configuration.setAllowDuplicates( allowDuplicates );
         configuration.setCacheSize( cacheSize );
         configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
 
         BTree<K, V> btree = new PersistedBTree<K, V>( configuration );
-
-        return btree;
-    }
-
-
-    //--------------------------------------------------------------------------------------------
-    // Create in-memory B-trees
-    //--------------------------------------------------------------------------------------------
-    /**
-     * Creates a new in-memory B-tree, with no initialization.
-     *
-     * @return a new B-tree instance
-     */
-    public static <K, V> BTree<K, V> createInMemoryBTree()
-    {
-        BTree<K, V> btree = new InMemoryBTree<K, V>();
-
-        return btree;
-    }
-
-
-    /**
-     * Creates a new in-memory B-tree using the BTreeConfiguration to initialize the
-     * B-tree
-     *
-     * @param configuration The configuration to use
-     * @return a new B-tree instance
-     */
-    public static <K, V> BTree<K, V> createInMemoryBTree( InMemoryBTreeConfiguration<K, V> configuration )
-    {
-        BTree<K, V> btree = new InMemoryBTree<K, V>( configuration );
-
-        return btree;
-    }
-
-
-    /**
-     * Creates a new in-memory B-tree using the parameters to initialize the
-     * B-tree
-     *
-     * @param name The B-tree's name
-     * @param keySerializer Key serializer
-     * @param valueSerializer Value serializer
-     * @return a new B-tree instance
-     */
-    public static <K, V> BTree<K, V> createInMemoryBTree( String name, ElementSerializer<K> keySerializer,
-        ElementSerializer<V> valueSerializer )
-    {
-        InMemoryBTreeConfiguration<K, V> configuration = new InMemoryBTreeConfiguration<K, V>();
-
-        configuration.setName( name );
-        configuration.setKeySerializer( keySerializer );
-        configuration.setValueSerializer( valueSerializer );
-        configuration.setPageSize( BTree.DEFAULT_PAGE_SIZE );
-        configuration.setAllowDuplicates( BTree.FORBID_DUPLICATES );
-        configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
-
-        BTree<K, V> btree = new InMemoryBTree<K, V>( configuration );
-
-        return btree;
-    }
-
-
-    /**
-     * Creates a new in-memory B-tree using the parameters to initialize the
-     * B-tree
-     *
-     * @param name The B-tree's name
-     * @param keySerializer Key serializer
-     * @param valueSerializer Value serializer
-     * @param allowDuplicates Tells if the B-tree allows multiple value for a given key
-     * @return a new B-tree instance
-     */
-    public static <K, V> BTree<K, V> createInMemoryBTree( String name, ElementSerializer<K> keySerializer,
-        ElementSerializer<V> valueSerializer, boolean allowDuplicates )
-    {
-        InMemoryBTreeConfiguration<K, V> configuration = new InMemoryBTreeConfiguration<K, V>();
-
-        configuration.setName( name );
-        configuration.setKeySerializer( keySerializer );
-        configuration.setValueSerializer( valueSerializer );
-        configuration.setPageSize( BTree.DEFAULT_PAGE_SIZE );
-        configuration.setAllowDuplicates( allowDuplicates );
-        configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
-
-        BTree<K, V> btree = new InMemoryBTree<K, V>( configuration );
-
-        return btree;
-    }
-
-
-    /**
-     * Creates a new in-memory B-tree using the parameters to initialize the
-     * B-tree
-     *
-     * @param name The B-tree's name
-     * @param keySerializer Key serializer
-     * @param valueSerializer Value serializer
-     * @param pageSize Size of the page
-     * @return a new B-tree instance
-     */
-    public static <K, V> BTree<K, V> createInMemoryBTree( String name, ElementSerializer<K> keySerializer,
-        ElementSerializer<V> valueSerializer, int pageSize )
-    {
-        InMemoryBTreeConfiguration<K, V> configuration = new InMemoryBTreeConfiguration<K, V>();
-
-        configuration.setName( name );
-        configuration.setKeySerializer( keySerializer );
-        configuration.setValueSerializer( valueSerializer );
-        configuration.setPageSize( pageSize );
-        configuration.setAllowDuplicates( BTree.FORBID_DUPLICATES );
-        configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
-
-        BTree<K, V> btree = new InMemoryBTree<K, V>( configuration );
-
-        return btree;
-    }
-
-
-    /**
-     * Creates a new in-memory B-tree using the parameters to initialize the
-     * B-tree
-     *
-     * @param name The B-tree's name
-     * @param filePath The name of the data directory with absolute path
-     * @param keySerializer Key serializer
-     * @param valueSerializer Value serializer
-     * @return a new B-tree instance
-     */
-    public static <K, V> BTree<K, V> createInMemoryBTree( String name, String filePath,
-        ElementSerializer<K> keySerializer,
-        ElementSerializer<V> valueSerializer )
-    {
-        InMemoryBTreeConfiguration<K, V> configuration = new InMemoryBTreeConfiguration<K, V>();
-
-        configuration.setName( name );
-        configuration.setFilePath( filePath );
-        configuration.setKeySerializer( keySerializer );
-        configuration.setValueSerializer( valueSerializer );
-        configuration.setPageSize( BTree.DEFAULT_PAGE_SIZE );
-        configuration.setAllowDuplicates( BTree.FORBID_DUPLICATES );
-        configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
-
-        BTree<K, V> btree = new InMemoryBTree<K, V>( configuration );
-
-        return btree;
-    }
-
-
-    /**
-     * Creates a new in-memory B-tree using the parameters to initialize the
-     * B-tree
-     *
-     * @param name The B-tree's name
-     * @param filePath The name of the data directory with absolute path
-     * @param keySerializer Key serializer
-     * @param valueSerializer Value serializer
-     * @param pageSize Size of the page
-     * @return a new B-tree instance
-     */
-    public static <K, V> BTree<K, V> createInMemoryBTree( String name, String filePath,
-        ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer, int pageSize )
-    {
-        InMemoryBTreeConfiguration<K, V> configuration = new InMemoryBTreeConfiguration<K, V>();
-
-        configuration.setName( name );
-        configuration.setFilePath( filePath );
-        configuration.setKeySerializer( keySerializer );
-        configuration.setValueSerializer( valueSerializer );
-        configuration.setPageSize( pageSize );
-        configuration.setAllowDuplicates( BTree.FORBID_DUPLICATES );
-        configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
-
-        BTree<K, V> btree = new InMemoryBTree<K, V>( configuration );
-
-        return btree;
-    }
-
-
-    /**
-     * Creates a new in-memory B-tree using the parameters to initialize the
-     * B-tree
-     *
-     * @param name The B-tree's name
-     * @param filePath The name of the data directory with absolute path
-     * @param keySerializer Key serializer
-     * @param valueSerializer Value serializer
-     * @param pageSize Size of the page
-     * @param allowDuplicates Tells if the B-tree allows multiple value for a given key
-     * @return a new B-tree instance
-     */
-    public static <K, V> BTree<K, V> createInMemoryBTree( String name, String filePath,
-        ElementSerializer<K> keySerializer,
-        ElementSerializer<V> valueSerializer, int pageSize, boolean allowDuplicates )
-    {
-        InMemoryBTreeConfiguration<K, V> configuration = new InMemoryBTreeConfiguration<K, V>();
-
-        configuration.setName( name );
-        configuration.setFilePath( filePath );
-        configuration.setKeySerializer( keySerializer );
-        configuration.setValueSerializer( valueSerializer );
-        configuration.setPageSize( pageSize );
-        configuration.setAllowDuplicates( allowDuplicates );
-        configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
-
-        BTree<K, V> btree = new InMemoryBTree<K, V>( configuration );
 
         return btree;
     }
@@ -492,14 +280,7 @@ public class BTreeFactory<K, V>
      */
     /* no qualifier*/static <K, V> Page<K, V> createLeaf( BTree<K, V> btree, long revision, int nbElems )
     {
-        if ( btree.getType() != BTreeTypeEnum.IN_MEMORY )
-        {
-            return new PersistedLeaf<K, V>( btree, revision, nbElems );
-        }
-        else
-        {
-            return new InMemoryLeaf<K, V>( btree, revision, nbElems );
-        }
+        return new PersistedLeaf<K, V>( btree, revision, nbElems );
     }
 
 
@@ -513,15 +294,8 @@ public class BTreeFactory<K, V>
      */
     /* no qualifier*/static <K, V> Page<K, V> createNode( BTree<K, V> btree, long revision, int nbElems )
     {
-        if ( btree.getType() != BTreeTypeEnum.IN_MEMORY )
-        {
-            //System.out.println( "Creating a node with nbElems : " + nbElems );
-            return new PersistedNode<K, V>( btree, revision, nbElems );
-        }
-        else
-        {
-            return new InMemoryNode<K, V>( btree, revision, nbElems );
-        }
+        //System.out.println( "Creating a node with nbElems : " + nbElems );
+        return new PersistedNode<K, V>( btree, revision, nbElems );
     }
 
 
@@ -538,16 +312,7 @@ public class BTreeFactory<K, V>
      */
     /* no qualifier*/static <K, V> void setKey( BTree<K, V> btree, Page<K, V> page, int pos, K key )
     {
-        KeyHolder<K> keyHolder;
-
-        if ( btree.getType() != BTreeTypeEnum.IN_MEMORY )
-        {
-            keyHolder = new PersistedKeyHolder<K>( btree.getKeySerializer(), key );
-        }
-        else
-        {
-            keyHolder = new KeyHolder<K>( key );
-        }
+        KeyHolder<K> keyHolder = new PersistedKeyHolder<K>( btree.getKeySerializer(), key );
 
         ( ( AbstractPage<K, V> ) page ).setKey( pos, keyHolder );
     }
@@ -563,14 +328,7 @@ public class BTreeFactory<K, V>
      */
     /* no qualifier*/static <K, V> void setValue( BTree<K, V> btree, Page<K, V> page, int pos, ValueHolder<V> value )
     {
-        if ( btree.getType() != BTreeTypeEnum.IN_MEMORY )
-        {
-            ( ( PersistedLeaf<K, V> ) page ).setValue( pos, value );
-        }
-        else
-        {
-            ( ( InMemoryLeaf<K, V> ) page ).setValue( pos, value );
-        }
+        ( ( PersistedLeaf<K, V> ) page ).setValue( pos, value );
     }
 
 
@@ -584,14 +342,7 @@ public class BTreeFactory<K, V>
      */
     /* no qualifier*/static <K, V> void setPage( BTree<K, V> btree, Page<K, V> page, int pos, Page<K, V> child )
     {
-        if ( btree.getType() != BTreeTypeEnum.IN_MEMORY )
-        {
-            ( ( PersistedNode<K, V> ) page ).setValue( pos, new PersistedPageHolder<K, V>( btree, child ) );
-        }
-        else
-        {
-            ( ( InMemoryNode<K, V> ) page ).setPageHolder( pos, new PageHolder<K, V>( btree, child ) );
-        }
+        ( ( PersistedNode<K, V> ) page ).setValue( pos, new PersistedPageHolder<K, V>( btree, child ) );
     }
 
 
@@ -765,7 +516,6 @@ public class BTreeFactory<K, V>
         {
             Page<K, V> leaf = btree.getRootPage();
             ValueHolder<V> valueHolder = ( ( AbstractPage<K, V> ) leaf ).getValue( last.pos );
-            last.valueCursor = valueHolder.getCursor();
         }
         else
         {
@@ -782,7 +532,6 @@ public class BTreeFactory<K, V>
                 {
                     Page<K, V> leaf = last.page;
                     ValueHolder<V> valueHolder = ( ( AbstractPage<K, V> ) leaf ).getValue( last.pos );
-                    last.valueCursor = valueHolder.getCursor();
                     break;
                 }
             }
@@ -870,29 +619,18 @@ public class BTreeFactory<K, V>
             ParentPos<K, V> first = new ParentPos<K, V>( btree.getRootPage(), 0 );
             stack.push( first );
 
-            if ( btree.getRootPage().isLeaf() )
-            {
-                Page<K, V> leaf = btree.getRootPage();
-                ValueHolder<V> valueHolder = ( ( AbstractPage<K, V> ) leaf ).getValue( first.pos );
-                first.valueCursor = valueHolder.getCursor();
-            }
-            else
-            {
-                Page<K, V> node = btree.getRootPage();
+            Page<K, V> node = btree.getRootPage();
 
-                while ( true )
+            while ( true )
+            {
+                Page<K, V> page = ( ( AbstractPage<K, V> ) node ).getPage( 0 );
+
+                first = new ParentPos<K, V>( page, 0 );
+                stack.push( first );
+
+                if ( page.isLeaf() )
                 {
-                    Page<K, V> page = ( ( AbstractPage<K, V> ) node ).getPage( 0 );
-
-                    first = new ParentPos<K, V>( page, 0 );
-                    stack.push( first );
-
-                    if ( page.isLeaf() )
-                    {
-                        ValueHolder<V> valueHolder = ( ( AbstractPage<K, V> ) page ).getValue( first.pos );
-                        first.valueCursor = valueHolder.getCursor();
-                        break;
-                    }
+                    break;
                 }
             }
 

@@ -37,29 +37,17 @@ package org.apache.directory.mavibot.btree;
 
 
     /**
-     * @return the number of stored values
+     * @return the value stored in the ValueHolder
      */
-    int size();
+    V get();
 
 
     /**
-     * @return a cursor on top of the values
-     */
-    ValueCursor<V> getCursor();
-
-
-    /**
-     * @return true if we store the values in a sub btree
-     */
-    boolean isSubBtree();
-
-
-    /**
-     * Add a new value in the ValueHolder
+     * Set a new value in the ValueHolder
      * 
      * @param newValue The added value
      */
-    void add( V newValue );
+    void set( V newValue );
 
 
     /**
@@ -68,18 +56,6 @@ package org.apache.directory.mavibot.btree;
      * @param removedValue The value to remove
      */
     V remove( V removedValue );
-
-    
-    /**
-     * Replaces the single value present in the array.
-     * 
-     * This is only applicable for B-Trees that don't
-     * support duplicate values.
-     *
-     * @param newValue the new value
-     * @return the value that was replaced
-     */
-    V replaceValueArray( V newValue );
     
 
     /**

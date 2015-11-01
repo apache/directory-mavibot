@@ -440,10 +440,10 @@ public class MavibotInspector
 
         checkOffset( recordManager, btreeInfoOffset );
 
-        BtreeInfo<K, V> btreeInfo = checkBtreeInfo( recordManager, checkedPages, btreeInfoOffset, btreeRevision );
+        BTreeInfo<K, V> btreeInfo = checkBtreeInfo( recordManager, checkedPages, btreeInfoOffset, btreeRevision );
 
         // Update the checked pages
-        updateCheckedPages( checkedPages.get( btreeInfo.btreeName ), recordManager.pageSize, btreeHeaderPageIos );
+        updateCheckedPages( checkedPages.get( btreeInfo.getBtreeName() ), recordManager.pageSize, btreeHeaderPageIos );
         updateCheckedPages( checkedPages.get( GLOBAL_PAGES_NAME ), recordManager.pageSize, btreeHeaderPageIos );
 
         // And now, process the rootPage
@@ -454,13 +454,13 @@ public class MavibotInspector
     /**
      * Check the Btree of Btrees rootPage
      */
-    private static <K, V> void checkBtreePage( RecordManager recordManager, BtreeInfo<K, V> btreeInfo,
+    private static <K, V> void checkBtreePage( RecordManager recordManager, BTreeInfo<K, V> btreeInfo,
         Map<String, int[]> checkedPages, long pageOffset ) throws Exception
     {
         PageIO[] pageIos = recordManager.readPageIOs( pageOffset, Long.MAX_VALUE );
 
         // Update the checkedPages array
-        updateCheckedPages( checkedPages.get( btreeInfo.btreeName ), recordManager.pageSize, pageIos );
+        updateCheckedPages( checkedPages.get( btreeInfo.getBtreeName() ), recordManager.pageSize, pageIos );
         updateCheckedPages( checkedPages.get( GLOBAL_PAGES_NAME ), recordManager.pageSize, pageIos );
 
         // Deserialize the page now
@@ -507,10 +507,10 @@ public class MavibotInspector
      * Check the Btree info page
      * @throws ClassNotFoundException 
      */
-    private static <K, V> BtreeInfo<K, V> checkBtreeInfo( RecordManager recordManager, Map<String, int[]> checkedPages,
+    private static <K, V> BTreeInfo<K, V> checkBtreeInfo( RecordManager recordManager, Map<String, int[]> checkedPages,
         long btreeInfoOffset, long btreeRevision ) throws IOException
     {
-        BtreeInfo<K, V> btreeInfo = new BtreeInfo<K, V>();
+        BTreeInfo<K, V> btreeInfo = new BTreeInfo<K, V>();
 
         PageIO[] btreeInfoPagesIos = recordManager.readPageIOs( btreeInfoOffset, Long.MAX_VALUE );
 
@@ -532,7 +532,7 @@ public class MavibotInspector
         {
             String keySerializerFqcn = Strings.utf8ToString( keySerializerBytes );
 
-            btreeInfo.keySerializer = getSerializer( keySerializerFqcn );
+            btreeInfo.setKeySerializer( ( ( ElementSerializer<K> ) getSerializer( keySerializerFqcn ) ) );
         }
 
         dataPos += RecordManager.INT_SIZE + keySerializerBytes.limit();
@@ -544,7 +544,7 @@ public class MavibotInspector
         {
             String valueSerializerFqcn = Strings.utf8ToString( valueSerializerBytes );
 
-            btreeInfo.valueSerializer = getSerializer( valueSerializerFqcn );
+            btreeInfo.setValueSerializer( ( ( ElementSerializer<V> ) getSerializer( valueSerializerFqcn ) ) );
         }
 
         dataPos += RecordManager.INT_SIZE + valueSerializerBytes.limit();
@@ -560,7 +560,7 @@ public class MavibotInspector
             //btreeName = btreeName + "<" + btreeRevision + ">";
         }
 
-        btreeInfo.btreeName = btreeName;
+        btreeInfo.setBtreeName( btreeName );
 
         // Update the checkedPages
         int[] checkedPagesArray = checkedPages.get( btreeName );
@@ -754,7 +754,7 @@ public class MavibotInspector
     /**
      * Check a Btree leaf.
      */
-    private static <K, V> void checkBtreeLeaf( RecordManager recordManager, BtreeInfo<K, V> btreeInfo,
+    private static <K, V> void checkBtreeLeaf( RecordManager recordManager, BTreeInfo<K, V> btreeInfo,
         Map<String, int[]> checkedPages, int nbElems, long revision, ByteBuffer byteBuffer, PageIO[] pageIos )
         throws Exception
     {
@@ -779,19 +779,19 @@ public class MavibotInspector
                     byteBuffer.getInt();
 
                     // The key itself
-                    btreeInfo.keySerializer.deserialize( byteBuffer );
+                    btreeInfo.getKeySerializer().deserialize( byteBuffer );
                 }
                 else
                 {
                     // just deserialize the keys and values
                     // The value
                     byteBuffer.getInt();
-                    btreeInfo.valueSerializer.deserialize( byteBuffer );
+                    btreeInfo.getValueSerializer().deserialize( byteBuffer );
 
                     // the key
                     byteBuffer.getInt();
 
-                    btreeInfo.keySerializer.deserialize( byteBuffer );
+                    btreeInfo.getKeySerializer().deserialize( byteBuffer );
                 }
             }
             catch ( BufferUnderflowException bue )
@@ -872,7 +872,7 @@ public class MavibotInspector
     /**
      * Check a Btree node.
      */
-    private static <K, V> long[] checkBtreeNode( RecordManager recordManager, BtreeInfo<K, V> btreeInfo,
+    private static <K, V> long[] checkBtreeNode( RecordManager recordManager, BTreeInfo<K, V> btreeInfo,
         Map<String, int[]> checkedPages, int nbElems, long revision, ByteBuffer byteBuffer, PageIO[] pageIos )
         throws Exception
     {
@@ -899,7 +899,7 @@ public class MavibotInspector
                 byteBuffer.getInt();
 
                 // The key itself
-                btreeInfo.keySerializer.deserialize( byteBuffer );
+                btreeInfo.getKeySerializer().deserialize( byteBuffer );
             }
             catch ( BufferUnderflowException bue )
             {
@@ -1428,30 +1428,3 @@ public class MavibotInspector
     }
 }
 
-/**
- * A class used to store some information about the Btree 
- */
-final class BtreeInfo<K, V>
-{
-    // The btree name
-    /* no qualifier */String btreeName;
-
-    // The key serializer
-    /* no qualifier */ElementSerializer<K> keySerializer;
-
-    // The value serializer
-    /* no qualifier */ElementSerializer<V> valueSerializer;
-
-
-    public String toString()
-    {
-        StringBuilder sb = new StringBuilder();
-
-        sb.append( "B-tree Info :" );
-        sb.append( "\n    name              : " ).append( btreeName );
-        sb.append( "\n    key serializer    : " ).append( keySerializer.getClass().getName() );
-        sb.append( "\n    value serializer  : " ).append( valueSerializer.getClass().getName() );
-
-        return sb.toString();
-    }
-}

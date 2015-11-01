@@ -184,8 +184,8 @@ public class BulkLoader<K, V>
      * sorted and merged elements.
      * @throws IOException 
      */
-    private static <K, V> Tuple<Iterator<Tuple<K, Set<V>>>, SortedFile> processFiles( BTree<K, V> btree,
-        Iterator<Tuple<K, Set<V>>> dataIterator ) throws IOException
+    private static <K, V> Tuple<Iterator<Tuple<K, V>>, SortedFile> processFiles( BTree<K, V> btree,
+        Iterator<Tuple<K, V>> dataIterator ) throws IOException
     {
         File file = File.createTempFile( "sortedUnique", "data" );
         file.deleteOnExit();
@@ -200,36 +200,31 @@ public class BulkLoader<K, V>
             nbReads++;
 
             // grab a tuple
-            Tuple<K, Set<V>> tuple = dataIterator.next();
+            Tuple<K, V> tuple = dataIterator.next();
 
             // Serialize the key
             byte[] bytesKey = btree.getKeySerializer().serialize( tuple.key );
             fos.write( IntSerializer.serialize( bytesKey.length ) );
             fos.write( bytesKey );
 
-            // Serialize the number of values
-            int nbValues = tuple.getValue().size();
-            fos.write( IntSerializer.serialize( nbValues ) );
-
             // Serialize the values
-            for ( V value : tuple.getValue() )
-            {
-                byte[] bytesValue = btree.getValueSerializer().serialize( value );
+            V value = tuple.getValue();
 
-                // Serialize the value
-                fos.write( IntSerializer.serialize( bytesValue.length ) );
-                fos.write( bytesValue );
-            }
+            byte[] bytesValue = btree.getValueSerializer().serialize( value );
+
+            // Serialize the value
+            fos.write( IntSerializer.serialize( bytesValue.length ) );
+            fos.write( bytesValue );
         }
 
         fos.flush();
         fos.close();
 
         FileInputStream fis = new FileInputStream( file );
-        Iterator<Tuple<K, Set<V>>> uniqueIterator = createUniqueFileIterator( btree, fis );
+        Iterator<Tuple<K, V>> uniqueIterator = createUniqueFileIterator( btree, fis );
         SortedFile sortedFile = new SortedFile( file, nbReads );
 
-        Tuple<Iterator<Tuple<K, Set<V>>>, SortedFile> result = new Tuple<Iterator<Tuple<K, Set<V>>>, SortedFile>(
+        Tuple<Iterator<Tuple<K, V>>, SortedFile> result = new Tuple<Iterator<Tuple<K, V>>, SortedFile>(
             uniqueIterator, sortedFile );
 
         return result;
@@ -278,7 +273,7 @@ public class BulkLoader<K, V>
         }
 
         // Now that we have processed all the data, we can start storing them in the btree
-        Iterator<Tuple<K, Set<V>>> dataIterator = null;
+        Iterator<Tuple<K, V>> dataIterator = null;
         FileInputStream[] streams = null;
         BTree<K, V> resultBTree = null;
 
@@ -303,7 +298,7 @@ public class BulkLoader<K, V>
             dataIterator = createIterator( btree, streams );
 
             // Process the files, and construct one single file with an iterator
-            Tuple<Iterator<Tuple<K, Set<V>>>, SortedFile> result = processFiles( btree, dataIterator );
+            Tuple<Iterator<Tuple<K, V>>, SortedFile> result = processFiles( btree, dataIterator );
             resultBTree = bulkLoad( btree, result.key, result.value.nbValues );
             result.value.file.delete();
         }
@@ -467,18 +462,12 @@ public class BulkLoader<K, V>
     /**
      * Inject a tuple into a leaf
      */
-    private static <K, V> void injectInLeaf( BTree<K, V> btree, Tuple<K, Set<V>> tuple, LevelInfo<K, V> leafLevel )
+    private static <K, V> void injectInLeaf( BTree<K, V> btree, Tuple<K, V> tuple, LevelInfo<K, V> leafLevel )
     {
         PersistedLeaf<K, V> leaf = ( PersistedLeaf<K, V> ) leafLevel.getCurrentPage();
 
         KeyHolder<K> keyHolder = new PersistedKeyHolder<K>( btree.getKeySerializer(), tuple.getKey() );
         leaf.setKey( leafLevel.getCurrentPos(), keyHolder );
-
-        if ( btree.getType() != BTreeTypeEnum.PERSISTED_SUB )
-        {
-            ValueHolder<V> valueHolder = new PersistedValueHolder<V>( btree, ( V[] ) tuple.getValue().toArray() );
-            leaf.setValue( leafLevel.getCurrentPos(), valueHolder );
-        }
 
         leafLevel.incCurrentPos();
     }
@@ -783,7 +772,7 @@ public class BulkLoader<K, V>
     }
 
 
-    private static <K, V> BTree<K, V> bulkLoadSinglePage( BTree<K, V> btree, Iterator<Tuple<K, Set<V>>> dataIterator,
+    private static <K, V> BTree<K, V> bulkLoadSinglePage( BTree<K, V> btree, Iterator<Tuple<K, V>> dataIterator,
         int nbElems ) throws IOException
     {
         // Use the root page
@@ -796,10 +785,6 @@ public class BulkLoader<K, V>
 
         switch ( btree.getType() )
         {
-            case IN_MEMORY:
-                ( ( InMemoryLeaf<K, V> ) rootPage ).values = values;
-                break;
-
             default:
                 ( ( PersistedLeaf<K, V> ) rootPage ).values = values;
         }
@@ -809,25 +794,14 @@ public class BulkLoader<K, V>
 
         while ( dataIterator.hasNext() )
         {
-            Tuple<K, Set<V>> tuple = dataIterator.next();
+            Tuple<K, V> tuple = dataIterator.next();
 
             // Store the current element in the rootPage
             KeyHolder<K> keyHolder = new PersistedKeyHolder<K>( btree.getKeySerializer(), tuple.getKey() );
             keys[pos] = keyHolder;
 
-            switch ( btree.getType() )
-            {
-                case IN_MEMORY:
-                    ValueHolder<V> valueHolder = new InMemoryValueHolder<V>( btree, ( V[] ) tuple.getValue()
-                        .toArray() );
-                    ( ( InMemoryLeaf<K, V> ) rootPage ).values[pos] = valueHolder;
-                    break;
-
-                default:
-                    valueHolder = new PersistedValueHolder<V>( btree, ( V[] ) tuple.getValue()
-                        .toArray() );
-                    ( ( PersistedLeaf<K, V> ) rootPage ).values[pos] = valueHolder;
-            }
+            ValueHolder<V>valueHolder = new PersistedValueHolder<V>( btree, ( V )tuple.getValue() );
+            ( ( PersistedLeaf<K, V> ) rootPage ).values[pos] = valueHolder;
 
             pos++;
         }
@@ -847,7 +821,7 @@ public class BulkLoader<K, V>
      * Construct the target BTree from the sorted data. We will use the nb of elements
      * to determinate the structure of the BTree, as it must be balanced
      */
-    private static <K, V> BTree<K, V> bulkLoad( BTree<K, V> btree, Iterator<Tuple<K, Set<V>>> dataIterator, int nbElems )
+    private static <K, V> BTree<K, V> bulkLoad( BTree<K, V> btree, Iterator<Tuple<K, V>> dataIterator, int nbElems )
         throws IOException
     {
         int pageSize = btree.getPageSize();
@@ -872,7 +846,7 @@ public class BulkLoader<K, V>
             if ( leafLevel.getNbAddedElems() < leafLevel.getNbElemsLimit() )
             {
                 // grab a tuple
-                Tuple<K, Set<V>> tuple = dataIterator.next();
+                Tuple<K, V> tuple = dataIterator.next();
 
                 injectInLeaf( btree, tuple, leafLevel );
                 leafLevel.incNbAddedElems();
@@ -909,7 +883,7 @@ public class BulkLoader<K, V>
                     while ( nbToAdd > 0 )
                     {
                         // grab a tuple
-                        Tuple<K, Set<V>> tuple = dataIterator.next();
+                        Tuple<K, V> tuple = dataIterator.next();
 
                         injectInLeaf( btree, tuple, leafLevel );
                         leafLevel.incNbAddedElems();
@@ -928,7 +902,7 @@ public class BulkLoader<K, V>
                     while ( nbToAdd > 0 )
                     {
                         // grab a tuple
-                        Tuple<K, Set<V>> tuple = dataIterator.next();
+                        Tuple<K, V> tuple = dataIterator.next();
 
                         injectInLeaf( btree, tuple, leafLevel );
                         leafLevel.incNbAddedElems();
@@ -951,7 +925,7 @@ public class BulkLoader<K, V>
                     while ( nbToAdd > 0 )
                     {
                         // grab a tuple
-                        Tuple<K, Set<V>> tuple = dataIterator.next();
+                        Tuple<K, V> tuple = dataIterator.next();
 
                         injectInLeaf( btree, tuple, leafLevel );
                         leafLevel.incNbAddedElems();
@@ -984,33 +958,27 @@ public class BulkLoader<K, V>
         throws IOException
     {
         // Sort the tuples. 
-        Tuple<K, Set<V>>[] sortedTuples = sort( btree, tuples );
+        Tuple<K, V>[] sortedTuples = sort( btree, tuples );
 
         File file = File.createTempFile( "sorted", Integer.toString( fileNb ) );
         file.deleteOnExit();
         FileOutputStream fos = new FileOutputStream( file );
 
         // Flush the tuples on disk
-        for ( Tuple<K, Set<V>> tuple : sortedTuples )
+        for ( Tuple<K, V> tuple : sortedTuples )
         {
             // Serialize the key
             byte[] bytesKey = btree.getKeySerializer().serialize( tuple.key );
             fos.write( IntSerializer.serialize( bytesKey.length ) );
             fos.write( bytesKey );
 
-            // Serialize the number of values
-            int nbValues = tuple.getValue().size();
-            fos.write( IntSerializer.serialize( nbValues ) );
-
             // Serialize the values
-            for ( V value : tuple.getValue() )
-            {
-                byte[] bytesValue = btree.getValueSerializer().serialize( value );
+            V value = tuple.getValue();
+            byte[] bytesValue = btree.getValueSerializer().serialize( value );
 
-                // Serialize the value
-                fos.write( IntSerializer.serialize( bytesValue.length ) );
-                fos.write( bytesValue );
-            }
+            // Serialize the value
+            fos.write( IntSerializer.serialize( bytesValue.length ) );
+            fos.write( bytesValue );
         }
 
         fos.flush();
@@ -1024,9 +992,9 @@ public class BulkLoader<K, V>
      * Sort a list of tuples, eliminating the duplicate keys and storing the values in a set when we 
      * have a duplicate key
      */
-    private static <K, V> Tuple<K, Set<V>>[] sort( BTree<K, V> btree, List<Tuple<K, V>> tuples )
+    private static <K, V> Tuple<K, V>[] sort( BTree<K, V> btree, List<Tuple<K, V>> tuples )
     {
-        Comparator<Tuple<K, Set<V>>> tupleComparator = new TupleComparator( btree.getKeyComparator(), btree
+        Comparator<Tuple<K, V>> tupleComparator = new TupleComparator( btree.getKeyComparator(), btree
             .getValueComparator() );
 
         // Sort the list
@@ -1034,12 +1002,12 @@ public class BulkLoader<K, V>
             {} );
 
         // First, eliminate the equals keys. We use a map for that
-        Map<K, Set<V>> mapTuples = new HashMap<K, Set<V>>();
+        Map<K, V> mapTuples = new HashMap<K, V>();
 
         for ( Tuple<K, V> tuple : tuplesArray )
         {
             // Is the key present in the map ?
-            Set<V> foundSet = mapTuples.get( tuple.key );
+            V foundSet = mapTuples.get( tuple.key );
 
             if ( foundSet != null )
             {
@@ -1050,7 +1018,7 @@ public class BulkLoader<K, V>
             {
                 // No such key present in the map : create a new set to store the values,
                 // and add it in the map associated with the new key
-                Set<V> set = new TreeSet<V>();
+                V set = new TreeV();
                 set.add( tuple.value );
                 mapTuples.put( tuple.key, set );
             }
@@ -1058,13 +1026,13 @@ public class BulkLoader<K, V>
 
         // Now, sort the map, by extracting all the key/values from the map
         int size = mapTuples.size();
-        Tuple<K, Set<V>>[] sortedTuples = new Tuple[size];
+        Tuple<K, V>[] sortedTuples = new Tuple[size];
         int pos = 0;
 
         // We create an array containing all the elements
-        for ( Map.Entry<K, Set<V>> entry : mapTuples.entrySet() )
+        for ( Map.Entry<K, V> entry : mapTuples.entrySet() )
         {
-            sortedTuples[pos] = new Tuple<K, Set<V>>();
+            sortedTuples[pos] = new Tuple<K, V>();
             sortedTuples[pos].key = entry.getKey();
             sortedTuples[pos].value = entry.getValue();
             pos++;
@@ -1080,22 +1048,22 @@ public class BulkLoader<K, V>
     /**
      * Build an iterator over an array of sorted tuples, in memory
      */
-    private static <K, V> Iterator<Tuple<K, Set<V>>> createTupleIterator( BTree<K, V> btree, List<Tuple<K, V>> tuples )
+    private static <K, V> Iterator<Tuple<K, V>> createTupleIterator( BTree<K, V> btree, List<Tuple<K, V>> tuples )
     {
-        final Tuple<K, Set<V>>[] sortedTuples = sort( btree, tuples );
+        final Tuple<K, V>[] sortedTuples = sort( btree, tuples );
 
-        Iterator<Tuple<K, Set<V>>> tupleIterator = new Iterator<Tuple<K, Set<V>>>()
+        Iterator<Tuple<K, V>> tupleIterator = new Iterator<Tuple<K, V>>()
         {
             private int pos = 0;
 
 
             @Override
-            public Tuple<K, Set<V>> next()
+            public Tuple<K, V> next()
             {
                 // Return the current tuple, if any
                 if ( pos < sortedTuples.length )
                 {
-                    Tuple<K, Set<V>> tuple = sortedTuples[pos];
+                    Tuple<K, V> tuple = sortedTuples[pos];
                     pos++;
 
                     return tuple;
@@ -1122,7 +1090,7 @@ public class BulkLoader<K, V>
     }
 
 
-    private static <K, V> Tuple<K, Set<V>> fetchTuple( BTree<K, V> btree, FileInputStream fis )
+    private static <K, V> Tuple<K, V> fetchTuple( BTree<K, V> btree, FileInputStream fis )
     {
         try
         {
@@ -1131,8 +1099,8 @@ public class BulkLoader<K, V>
                 return null;
             }
 
-            Tuple<K, Set<V>> tuple = new Tuple<K, Set<V>>();
-            tuple.value = new TreeSet<V>();
+            Tuple<K, V> tuple = new Tuple<K, V>();
+            tuple.value = new TreeV();
 
             byte[] intBytes = new byte[4];
 
@@ -1177,7 +1145,7 @@ public class BulkLoader<K, V>
      * Build an iterator over an array of sorted tuples, from files on the disk
      * @throws FileNotFoundException 
      */
-    private static <K, V> Iterator<Tuple<K, Set<V>>> createIterator( final BTree<K, V> btree,
+    private static <K, V> Iterator<Tuple<K, V>> createIterator( final BTree<K, V> btree,
         final FileInputStream[] streams )
         throws FileNotFoundException
     {
@@ -1185,9 +1153,9 @@ public class BulkLoader<K, V>
         final int nbFiles = streams.length;
 
         // We will read only one element at a time from each file
-        final Tuple<K, Set<V>>[] readTuples = new Tuple[nbFiles];
-        final TreeMap<Tuple<K, Integer>, Set<V>> candidates =
-            new TreeMap<Tuple<K, Integer>, Set<V>>(
+        final Tuple<K, V>[] readTuples = new Tuple[nbFiles];
+        final TreeMap<Tuple<K, Integer>, V> candidates =
+            new TreeMap<Tuple<K, Integer>, V>(
                 new TupleComparator<K, Integer>( btree.getKeyComparator(), IntComparator.INSTANCE ) );
 
         // Read the tuple from each files
@@ -1210,7 +1178,7 @@ public class BulkLoader<K, V>
                     else
                     {
                         // We have to merge the pulled tuple with the existing one, and read one more tuple
-                        Set<V> oldValues = candidates.get( candidate );
+                        V oldValues = candidates.get( candidate );
                         oldValues.addAll( readTuples[i].getValue() );
                     }
                 }
@@ -1221,10 +1189,10 @@ public class BulkLoader<K, V>
             }
         }
 
-        Iterator<Tuple<K, Set<V>>> tupleIterator = new Iterator<Tuple<K, Set<V>>>()
+        Iterator<Tuple<K, V>> tupleIterator = new Iterator<Tuple<K, V>>()
         {
             @Override
-            public Tuple<K, Set<V>> next()
+            public Tuple<K, V> next()
             {
                 // Get the first candidate
                 Tuple<K, Integer> tupleCandidate = candidates.firstKey();
@@ -1233,7 +1201,7 @@ public class BulkLoader<K, V>
                 candidates.remove( tupleCandidate );
 
                 // Get the the next tuple from the stream we just got the tuple from
-                Tuple<K, Set<V>> tuple = readTuples[tupleCandidate.value];
+                Tuple<K, V> tuple = readTuples[tupleCandidate.value];
 
                 // fetch the next tuple from the file we just read teh candidate from 
                 while ( true )
@@ -1250,7 +1218,7 @@ public class BulkLoader<K, V>
                     if ( readTuples[tupleCandidate.value] != null )
                     {
                         // And store it into the candidate set
-                        Set<V> oldValues = candidates.get( readTuples[tupleCandidate.value] );
+                        V oldValues = candidates.get( readTuples[tupleCandidate.value] );
 
                         if ( oldValues != null )
                         {
@@ -1297,20 +1265,20 @@ public class BulkLoader<K, V>
      * Build an iterator over an array of sorted tuples, from files on the disk
      * @throws FileNotFoundException 
      */
-    private static <K, V> Iterator<Tuple<K, Set<V>>> createUniqueFileIterator( final BTree<K, V> btree,
+    private static <K, V> Iterator<Tuple<K, V>> createUniqueFileIterator( final BTree<K, V> btree,
         final FileInputStream stream )
         throws FileNotFoundException
     {
-        Iterator<Tuple<K, Set<V>>> tupleIterator = new Iterator<Tuple<K, Set<V>>>()
+        Iterator<Tuple<K, V>> tupleIterator = new Iterator<Tuple<K, V>>()
         {
             boolean hasNext = true;
 
 
             @Override
-            public Tuple<K, Set<V>> next()
+            public Tuple<K, V> next()
             {
                 // Get the tuple from the stream
-                Tuple<K, Set<V>> tuple = fetchTuple( btree, stream );
+                Tuple<K, V> tuple = fetchTuple( btree, stream );
 
                 // We can now return the found value
                 return tuple;

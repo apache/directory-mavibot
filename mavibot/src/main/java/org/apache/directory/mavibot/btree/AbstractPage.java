@@ -36,7 +36,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier*/abstract class AbstractPage<K, V> implements Page<K, V>
+/* No qualifier*/abstract class AbstractPage<K, V> implements Page<K, V>, WALObject
 {
     /** Parent B+Tree. */
     protected transient BTree<K, V> btree;
@@ -58,6 +58,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
     /** The last {@link PageIO} storing the serialized Page on disk */
     protected long lastOffset = -1L;
+    
+    private long id;
 
 
     /**
@@ -651,6 +653,27 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     public BTree<K, V> getBtree()
     {
         return btree;
+    }
+
+
+    @Override
+    public long getId()
+    {
+        return id;
+    }
+
+
+    @Override
+    public void setId( long id )
+    {
+        this.id = id;
+    }
+
+
+    @Override
+    public PageIO[] serialize() throws IOException
+    {
+        return null;
     }
 
 

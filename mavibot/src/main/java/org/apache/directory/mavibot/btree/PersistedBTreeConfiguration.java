@@ -63,9 +63,6 @@ public class PersistedBTreeConfiguration<K, V>
      */
     private long readTimeOut = PersistedBTree.DEFAULT_READ_TIMEOUT;
 
-    /** Flag to enable duplicate key support */
-    private boolean allowDuplicates;
-
     /** The B-tree type */
     private BTreeTypeEnum btreeType = BTreeTypeEnum.PERSISTED;
 
@@ -210,28 +207,6 @@ public class PersistedBTreeConfiguration<K, V>
     public void setName( String name )
     {
         this.name = name.trim();
-    }
-
-
-    /**
-     * @return true if duplicate key support is enabled
-     */
-    public boolean isAllowDuplicates()
-    {
-        return allowDuplicates;
-    }
-
-
-    /**
-     * enable duplicate key support
-     *
-     * @param allowDuplicates
-     * @throws IllegalStateException if the B-tree was already initialized or when tried to turn off duplicate suport on
-     * an existing B-tree containing duplicate keys
-     */
-    public void setAllowDuplicates( boolean allowDuplicates )
-    {
-        this.allowDuplicates = allowDuplicates;
     }
 
 
