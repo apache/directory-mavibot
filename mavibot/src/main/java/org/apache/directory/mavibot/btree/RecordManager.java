@@ -1557,8 +1557,8 @@ public class RecordManager extends AbstractTransactionManager
         btreeInfo.setBtree( btree );
         btreeInfo.setPageSize( btree.getPageSize() );
         btreeInfo.setBtreeName( btree.getName() );
-        btreeInfo.setKeySerializer( btree.getKeySerializerFQCN() );
-        btreeInfo.setValueSerializer( btree.getValueSerializerFQCN() );
+        btreeInfo.setKeySerializerFQCN( btree.getKeySerializerFQCN() );
+        btreeInfo.setValueSerializerFQCN( btree.getValueSerializerFQCN() );
         
         return btreeInfo;
     }
@@ -1597,8 +1597,8 @@ public class RecordManager extends AbstractTransactionManager
                 throw new BTreeAlreadyManagedException( name );
             }
 
-            // Get the B-tree header offset
-            PageIO[] btreeHeaderPageIos = getFreePageIOs( 0 );
+            // Get the B-tree header offset (reclaim a 1 byte page to get at least one page)
+            PageIO[] btreeHeaderPageIos = getFreePageIOs( 1 );
             long btreeHeaderOffset = btreeHeaderPageIos[0].getOffset();
             BTreeHeader<K, V> btreeHeader = ( ( AbstractBTree<K, V> ) btree ).getBtreeHeader();
             ( ( PersistedBTree<K, V> ) btree ).setBtreeHeaderOffset( btreeHeaderOffset );
@@ -1606,14 +1606,14 @@ public class RecordManager extends AbstractTransactionManager
 
             // Get the B-tree info offset
             BTreeInfo<K, V> btreeInfo = createBtreeInfo( btree );
-            PageIO[] btreeInfoPageIos = getFreePageIOs( 0 );
+            PageIO[] btreeInfoPageIos = getFreePageIOs( 1 );
             long btreeInfoOffset = btreeInfoPageIos[0].getOffset();
             ( ( PersistedBTree<K, V> ) btree ).setBtreeInfoOffset( btreeInfoOffset );
             context.addPage( btreeInfoOffset, btreeInfo );
 
             // Get the B-tree root page offset
             Page<K, V> rootPage = btreeHeader.getRootPage();
-            PageIO[] rootPageIos = getFreePageIOs( 0 );
+            PageIO[] rootPageIos = getFreePageIOs( 1 );
             long rootPageOffset = rootPageIos[0].getOffset();
             btreeHeader.setRootPageOffset( rootPageOffset );
             ( ( PersistedLeaf<K, V> ) rootPage ).setOffset( rootPageOffset );
@@ -1756,6 +1756,9 @@ public class RecordManager extends AbstractTransactionManager
 
         LOG.debug( "Flushing the newly managed '{}' btree rootpage", btree.getName() );
         flushPages( rootPageIos );
+        
+        // And the B-tree header
+        writeBtreeHeader( btree, btreeHeader );
 
         // Now, if this is a new B-tree, add it t        // And in the Map of currentBtreeHeaders and newBtreeHeaders
         currentBTreeHeaders.put( name, btreeHeader );
