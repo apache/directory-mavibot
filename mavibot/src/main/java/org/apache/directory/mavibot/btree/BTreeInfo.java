@@ -277,4 +277,21 @@ public class BTreeInfo<K, V> implements WALObject
     {
         this.valueSerializer = valueSerializer;
     }
+    
+    
+    /**
+     * @see Object#toString()
+     */
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+        
+        sb.append( "BtreeInfo :\n" );
+        sb.append( "    Page size        : " ).append( pageSize ).append( '\n' );
+        sb.append( "    Name             : " ).append( btreeName ).append( '\n' );
+        sb.append( "    Key serializer   : " ).append( keySerializerFQCN ).append( '\n' );
+        sb.append( "    Value serializer : " ).append( valueSerializerFQCN ).append( '\n' );
+
+        return sb.toString();
+    }
 }
