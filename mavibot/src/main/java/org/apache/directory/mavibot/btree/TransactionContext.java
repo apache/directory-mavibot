@@ -35,8 +35,11 @@ public class TransactionContext
     /** The map containing all the modified pages, using their offset as a key */
     private Map<Long, WALObject> pageMap = new HashMap<Long, WALObject>();
     
-    /** The incremental counter used to identify pages */
-    private long pageId;
+    /** The map containing all the copied pages, using their offset as a key */
+    private Map<Long, WALObject> copiedPageMap = new HashMap<Long, WALObject>();
+    
+    /** The global revision */
+    private long revision;
     
     /** The last offset on disk */
     private long lastOffset;
@@ -45,12 +48,12 @@ public class TransactionContext
      * A constructor for the TransactionContext, which initialize the last offset to
      * the file size.
      * 
-     * @param lastOffset The last offset fo the associated file
+     * @param lastOffset The last offset of the associated file
      */
-    public TransactionContext( long lastOffset )
+    public TransactionContext( long lastOffset, long revision )
     {
         this.lastOffset = lastOffset;
-        pageId = RecordManager.NO_PAGE;
+        this.revision = revision;
     }
 
 
@@ -85,6 +88,38 @@ public class TransactionContext
         return pageMap.values();
     }
 
+
+    /**
+     * Retrieve a Page if it has been copied in the context
+     * @param offset the offset of the Page we are looking for
+     * @return The found Page, or null if it does not exist
+     */
+    public WALObject getCopiedPage( Long offset )
+    {
+        return copiedPageMap.get( offset );
+    }
+    
+    
+    /**
+     * Add a copied page into the TransactionContext
+     * 
+     * @param offset The Page's offset
+     * @param pageIo The copied Page to add
+     */
+    public void addCopiedPage( Long offset, WALObject page )
+    {
+        copiedPageMap.put( offset, page );
+    }
+
+    
+    /**
+     * @return The list of copied Pages 
+     */
+    public Collection<WALObject> getCopiedPages()
+    {
+        return copiedPageMap.values();
+    }
+
     
     /**
      * @return the lastOffset
@@ -114,12 +149,10 @@ public class TransactionContext
     
     
     /**
-     * @return The unique page ID
+     * @return The current revision
      */
-    public long getPageId()
+    public long getRevision()
     {
-        pageId--;
-        
-        return pageId;
+        return revision;
     }
 }

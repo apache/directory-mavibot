@@ -64,7 +64,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     PersistedLeaf( BTree<K, V> btree, long revision, int nbElems )
     {
         super( btree, revision, nbElems );
-        values = ( ValueHolder<V>[] ) Array.newInstance( PersistedValueHolder.class, nbElems );
+        values = ( ValueHolder<V>[] ) Array.newInstance( PersistedValueHolder.class, btree.getPageSize() );
     }
 
 
@@ -767,8 +767,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
 
     /**
-     * Adds a new <K, V> into a copy of the current page at a given position. We return the
-     * modified page. The new page will have one more element than the current page.
+     * Adds a new <K, V> into the current page at a given position. We return the
+     * modified page. The modified page will have one more element than the current page.
      *
      * @param revision The revision of the modified page
      * @param key The key to insert
@@ -778,35 +778,30 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      */
     private Page<K, V> addElement( long revision, K key, V value, int pos )
     {
-        // First copy the current page, but add one element in the copied page
-        PersistedLeaf<K, V> newLeaf = new PersistedLeaf<K, V>( btree, revision, nbElems + 1 );
-
         // Create the value holder
         ValueHolder<V> valueHolder = new PersistedValueHolder<V>( btree, value );
 
         // Deal with the special case of an empty page
         if ( nbElems == 0 )
         {
-            newLeaf.keys[0] = new PersistedKeyHolder<K>( btree.getKeySerializer(), key );
-
-            newLeaf.values[0] = valueHolder;
+            keys[0] = new PersistedKeyHolder<K>( btree.getKeySerializer(), key );
+            values[0] = valueHolder;
         }
         else
         {
-            // Copy the keys and the values up to the insertion position
-            System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
-            System.arraycopy( values, 0, newLeaf.values, 0, pos );
+            // Copy the keys and the values from the insertion point one position to the right
+        	int nbElementToMove = nbElems - pos;
+            System.arraycopy( keys, pos, keys, pos + 1, nbElementToMove );
+            System.arraycopy( values, pos, values, pos + 1, nbElementToMove );
 
             // Add the new element
-            newLeaf.keys[pos] = new PersistedKeyHolder<K>( btree.getKeySerializer(), key );
-            newLeaf.values[pos] = valueHolder;
-
-            // And copy the remaining elements
-            System.arraycopy( keys, pos, newLeaf.keys, pos + 1, keys.length - pos );
-            System.arraycopy( values, pos, newLeaf.values, pos + 1, values.length - pos );
+            keys[pos] = new PersistedKeyHolder<K>( btree.getKeySerializer(), key );
+            values[pos] = valueHolder;
         }
 
-        return newLeaf;
+        nbElems++;
+
+        return this;
     }
 
 

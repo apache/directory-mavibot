@@ -409,7 +409,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
         try
         {
-            InsertResult<K, V> result = insert( key, value, -1L );
+            InsertResult<K, V> result = insert( key, value, recordManager.getContext().getRevision() );
 
             if ( result instanceof ExistsResult )
             {

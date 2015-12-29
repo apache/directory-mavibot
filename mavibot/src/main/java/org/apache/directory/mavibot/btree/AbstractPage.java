@@ -83,7 +83,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         this.btree = btree;
         this.revision = revision;
         this.nbElems = nbElems;
-        this.keys = ( KeyHolder[] ) Array.newInstance( KeyHolder.class, nbElems );
+        this.keys = ( KeyHolder[] ) Array.newInstance( KeyHolder.class, btree.getPageSize() );
     }
 
 
