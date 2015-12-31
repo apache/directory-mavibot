@@ -40,10 +40,10 @@ import org.slf4j.LoggerFactory;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeable
+public class BTreeImpl<K, V> extends AbstractBTree<K, V> implements Closeable
 {
     /** The LoggerFactory used by this class */
-    protected static final Logger LOG = LoggerFactory.getLogger( PersistedBTree.class );
+    protected static final Logger LOG = LoggerFactory.getLogger( BTreeImpl.class );
 
     protected static final Logger LOG_PAGES = LoggerFactory.getLogger( "org.apache.directory.mavibot.LOG_PAGES" );
 
@@ -63,7 +63,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
     /**
      * Creates a new BTree, with no initialization.
      */
-    /* no qualifier */PersistedBTree()
+    BTreeImpl()
     {
         setType( BTreeTypeEnum.PERSISTED );
     }
@@ -75,7 +75,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
      *
      * @param configuration The configuration to use
      */
-    /* no qualifier */PersistedBTree( PersistedBTreeConfiguration<K, V> configuration )
+    BTreeImpl( BTreeConfiguration<K, V> configuration )
     {
         super();
         String name = configuration.getName();
@@ -153,8 +153,8 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
         }
         else
         {
-            this.cache = ( ( PersistedBTree<K, V> ) parentBTree ).getCache();
-            this.readTransactions = ( ( PersistedBTree<K, V> ) parentBTree ).getReadTransactions();
+            this.cache = ( ( BTreeImpl<K, V> ) parentBTree ).getCache();
+            this.readTransactions = ( ( BTreeImpl<K, V> ) parentBTree ).getReadTransactions();
         }
 
         // Initialize the txnManager thread
@@ -471,9 +471,10 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
         // Get the current B-tree header, and insert the value into it
         // Check if it's in the context
         BTreeHeader<K, V> btreeHeader = currentBtreeHeader;
+        long btreeHeaderOffset = currentBtreeHeader.getBTreeHeaderOffset();
         
         // If the current btree header has been modified, it will be in the WalObject map. 
-        WALObject walObject = ( BTreeHeader<K, V> ) recordManager.getContext().getPage( currentBtreeHeader.getBTreeHeaderOffset() );
+        WALObject walObject = ( BTreeHeader<K, V> ) recordManager.getContext().getPage( btreeHeaderOffset );
         
         if ( walObject != null )
         {
@@ -483,20 +484,22 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
         {
             // Create a new BTreeHeader
             BTreeHeader<K, V> newBtreeHeader = btreeHeader.copy();
+            
+            // Get an offset for this newly created page
+            newBtreeHeader.serialize();
 
             // Store the btreeHeader into the context
-            recordManager.getContext().addPage( newBtreeHeader.getBTreeHeaderOffset(),  newBtreeHeader );
+            recordManager.getContext().addPage( newBtreeHeader.getBTreeHeaderOffset(), newBtreeHeader );
     
             // Store the old BtreeHeader in the copied page map in the context
-            recordManager.getContext().addCopiedPage( btreeHeader.getBTreeHeaderOffset(),  btreeHeader );
-    
-            btreeHeader = newBtreeHeader;
+            recordManager.getContext().addCopiedPage( btreeHeaderOffset,  btreeHeader );
         }
         
         // Get the rootPage
         Page<K, V> rootPage = null;
+        long rootPageOffset = btreeHeader.getRootPageOffset();
         
-        walObject = recordManager.getContext().getPage( btreeHeader.getRootPageOffset() );
+        walObject = recordManager.getContext().getPage( rootPageOffset );
         
         if ( walObject != null )
         {
@@ -504,7 +507,8 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
         }
         else
         {
-        	rootPage = btreeHeader.getRootPage();
+            // We need to copy the page
+            rootPage = btreeHeader.getRootPage();
         }
         
         InsertResult<K, V> result = rootPage.insert( key, value, revision );
@@ -545,7 +549,7 @@ public class PersistedBTree<K, V> extends AbstractBTree<K, V> implements Closeab
             PageHolder<K, V> holderRight = writePage( rightPage, revision );
 
             // Create the new rootPage
-            newRootPage = new PersistedNode<K, V>( this, revision, pivot, holderLeft, holderRight );
+            newRootPage = new Node<K, V>( this, revision, pivot, holderLeft, holderRight );
 
             // Always increment the counter : we have added a new value
             btreeHeader.incrementNbElems();

@@ -31,13 +31,13 @@ import org.slf4j.LoggerFactory;
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  * @param <V> The value type
  */
-/* No qualifier */class PersistedValueHolder<V> extends AbstractValueHolder<V>
+/* No qualifier */class ValueHolderImpl<V> extends AbstractValueHolder<V>
 {
     /** The LoggerFactory used by this class */
-    protected static final Logger LOG = LoggerFactory.getLogger( PersistedValueHolder.class );
+    protected static final Logger LOG = LoggerFactory.getLogger( ValueHolderImpl.class );
 
     /** The parent BTree */
-    protected PersistedBTree<V, V> parentBtree;
+    protected BTreeImpl<V, V> parentBtree;
 
     /** The serialized value */
     private byte[] raw;
@@ -57,9 +57,9 @@ import org.slf4j.LoggerFactory;
      * @param nbValues the number of stored values
      * @param raw the byte[] containing either the serialized array of values or the sub-btree offset
      */
-    PersistedValueHolder( BTree<?, V> parentBtree, byte[] raw )
+    ValueHolderImpl( BTree<?, V> parentBtree, byte[] raw )
     {
-        this.parentBtree = ( PersistedBTree<V, V> ) parentBtree;
+        this.parentBtree = ( BTreeImpl<V, V> ) parentBtree;
         this.valueSerializer = parentBtree.getValueSerializer();
         this.raw = raw;
         isRawUpToDate = true;
@@ -73,9 +73,9 @@ import org.slf4j.LoggerFactory;
      * @param parentBtree The parent BTree
      * @param values The Value stored in the ValueHolder
      */
-    PersistedValueHolder( BTree<?, V> parentBtree, V value )
+    ValueHolderImpl( BTree<?, V> parentBtree, V value )
     {
-        this.parentBtree = ( PersistedBTree<V, V> ) parentBtree;
+        this.parentBtree = ( BTreeImpl<V, V> ) parentBtree;
         this.valueSerializer = parentBtree.getValueSerializer();
         set( value );
 
@@ -207,7 +207,7 @@ import org.slf4j.LoggerFactory;
      */
     public ValueHolder<V> clone() throws CloneNotSupportedException
     {
-        PersistedValueHolder<V> copy = ( PersistedValueHolder<V> ) super.clone();
+        ValueHolderImpl<V> copy = ( ValueHolderImpl<V> ) super.clone();
 
         // Also clone the raw value if its up to date
         if ( isRawUpToDate )

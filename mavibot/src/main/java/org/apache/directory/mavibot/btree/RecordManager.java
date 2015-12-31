@@ -409,11 +409,11 @@ public class RecordManager extends AbstractTransactionManager
         {
             beginTransaction();
             writeManagementTree( btreeOfBtrees );
-            currentBtreeOfBtreesOffset = ((PersistedBTree<NameRevision, Long>)btreeOfBtrees).getBtreeOffset();
+            currentBtreeOfBtreesOffset = ((BTreeImpl<NameRevision, Long>)btreeOfBtrees).getBtreeOffset();
 
             // The Copied Pages B-tree
             writeManagementTree( copiedPageBtree );
-            currentCopiedPagesBtreeOffset = ((PersistedBTree<RevisionName, long[]>)copiedPageBtree).getBtreeOffset();
+            currentCopiedPagesBtreeOffset = ((BTreeImpl<RevisionName, long[]>)copiedPageBtree).getBtreeOffset();
 
             // And finally, commit the transaction
             commit();
@@ -437,12 +437,12 @@ public class RecordManager extends AbstractTransactionManager
      */
     private void createBtreeOfBtrees()
     {
-        PersistedBTreeConfiguration<NameRevision, Long> configuration = new PersistedBTreeConfiguration<NameRevision, Long>();
+        BTreeConfiguration<NameRevision, Long> configuration = new BTreeConfiguration<NameRevision, Long>();
         configuration.setKeySerializer( NameRevisionSerializer.INSTANCE );
         configuration.setName( BTREE_OF_BTREES_NAME );
         configuration.setValueSerializer( LongSerializer.INSTANCE );
         configuration.setBtreeType( BTreeTypeEnum.BTREE_OF_BTREES );
-        configuration.setCacheSize( PersistedBTree.DEFAULT_CACHE_SIZE );
+        configuration.setCacheSize( BTreeImpl.DEFAULT_CACHE_SIZE );
 
         btreeOfBtrees = BTreeFactory.createPersistedBTree( configuration );
     }
@@ -453,12 +453,12 @@ public class RecordManager extends AbstractTransactionManager
      */
     private void createCopiedPagesBtree()
     {
-        PersistedBTreeConfiguration<RevisionName, long[]> configuration = new PersistedBTreeConfiguration<RevisionName, long[]>();
+        BTreeConfiguration<RevisionName, long[]> configuration = new BTreeConfiguration<RevisionName, long[]>();
         configuration.setKeySerializer( RevisionNameSerializer.INSTANCE );
         configuration.setName( COPIED_PAGE_BTREE_NAME );
         configuration.setValueSerializer( LongArraySerializer.INSTANCE );
         configuration.setBtreeType( BTreeTypeEnum.COPIED_PAGES_BTREE );
-        configuration.setCacheSize( PersistedBTree.DEFAULT_CACHE_SIZE );
+        configuration.setCacheSize( BTreeImpl.DEFAULT_CACHE_SIZE );
 
         copiedPageBtree = BTreeFactory.createPersistedBTree( configuration );
     }
@@ -1050,7 +1050,7 @@ public class RecordManager extends AbstractTransactionManager
 
         // Now, process the common informations
         PageIO[] infoPageIos = readPageIOs( btreeInfoOffset, Long.MAX_VALUE );
-        ( ( PersistedBTree<K, V> ) btree ).setBtreeInfoOffset( infoPageIos[0].getOffset() );
+        ( ( BTreeImpl<K, V> ) btree ).setBtreeInfoOffset( infoPageIos[0].getOffset() );
         dataPos = 0L;
 
         // The B-tree page size
@@ -1092,19 +1092,19 @@ public class RecordManager extends AbstractTransactionManager
 
         // The B-tree allowDuplicates flag
         // Set the recordManager in the btree
-        ( ( PersistedBTree<K, V> ) btree ).setRecordManager( this );
+        ( ( BTreeImpl<K, V> ) btree ).setRecordManager( this );
 
         // Set the current revision to the one stored in the B-tree header
         // Here, we have to tell the BTree to keep this revision in the
         // btreeRevisions Map, thus the 'true' parameter at the end.
-        ( ( PersistedBTree<K, V> ) btree ).storeRevision( btreeHeader, true );
+        ( ( BTreeImpl<K, V> ) btree ).storeRevision( btreeHeader, true );
 
         // Now, init the B-tree
-        ( ( PersistedBTree<K, V> ) btree ).init( parentBTree );
+        ( ( BTreeImpl<K, V> ) btree ).init( parentBTree );
 
         // Update the BtreeHeaders Maps
-        currentBTreeHeaders.put( btree.getName(), ( ( PersistedBTree<K, V> ) btree ).getBtreeHeader() );
-        newBTreeHeaders.put( btree.getName(), ( ( PersistedBTree<K, V> ) btree ).getBtreeHeader() );
+        currentBTreeHeaders.put( btree.getName(), ( ( BTreeImpl<K, V> ) btree ).getBtreeHeader() );
+        newBTreeHeaders.put( btree.getName(), ( ( BTreeImpl<K, V> ) btree ).getBtreeHeader() );
 
         // Read the rootPage pages on disk
         PageIO[] rootPageIos = readPageIOs( rootPageOffset, Long.MAX_VALUE );
@@ -1192,11 +1192,11 @@ public class RecordManager extends AbstractTransactionManager
     /**
      * Deserialize a Leaf from some PageIOs
      */
-    private <K, V> PersistedLeaf<K, V> readLeafKeysAndValues( BTree<K, V> btree, int nbElems, long revision,
+    private <K, V> Leaf<K, V> readLeafKeysAndValues( BTree<K, V> btree, int nbElems, long revision,
         ByteBuffer byteBuffer, PageIO[] pageIos )
     {
         // Its a leaf, create it
-        PersistedLeaf<K, V> leaf = ( PersistedLeaf<K, V> ) BTreeFactory.createLeaf( btree, revision, nbElems );
+        Leaf<K, V> leaf = ( Leaf<K, V> ) BTreeFactory.createLeaf( btree, revision, nbElems );
 
         // Store the page offset on disk
         leaf.setOffset( pageIos[0].getOffset() );
@@ -1209,7 +1209,7 @@ public class RecordManager extends AbstractTransactionManager
         for ( int i = 0; i < nbElems; i++ )
         {
             // Read the number of values
-            PersistedValueHolder<V> valueHolder = null;
+            ValueHolderImpl<V> valueHolder = null;
 
             // Read the value's length
             valueLength = byteBuffer.getInt();
@@ -1217,7 +1217,7 @@ public class RecordManager extends AbstractTransactionManager
             // This is a value, read the byte[] associated with it
             byte[] valuBytes = new byte[valueLength];
             byteBuffer.get( valuBytes );
-            valueHolder = new PersistedValueHolder<V>( btree, valuBytes );
+            valueHolder = new ValueHolderImpl<V>( btree, valuBytes );
 
             BTreeFactory.setValue( btree, leaf, i, valueHolder );
 
@@ -1234,10 +1234,10 @@ public class RecordManager extends AbstractTransactionManager
     /**
      * Deserialize a Node from some PageIos
      */
-    private <K, V> PersistedNode<K, V> readNodeKeysAndValues( BTree<K, V> btree, int nbElems, long revision,
+    private <K, V> Node<K, V> readNodeKeysAndValues( BTree<K, V> btree, int nbElems, long revision,
         ByteBuffer byteBuffer, PageIO[] pageIos ) throws IOException
     {
-        PersistedNode<K, V> node = ( PersistedNode<K, V> ) BTreeFactory.createNode( btree, revision, nbElems );
+        Node<K, V> node = ( Node<K, V> ) BTreeFactory.createNode( btree, revision, nbElems );
 
         // Read each value and key
         for ( int i = 0; i < nbElems; i++ )
@@ -1246,7 +1246,7 @@ public class RecordManager extends AbstractTransactionManager
             long offset = LongSerializer.INSTANCE.deserialize( byteBuffer );
             long lastOffset = LongSerializer.INSTANCE.deserialize( byteBuffer );
 
-            PersistedPageHolder<K, V> valueHolder = new PersistedPageHolder<K, V>( btree, null, offset, lastOffset );
+            PageHolderImpl<K, V> valueHolder = new PageHolderImpl<K, V>( btree, null, offset, lastOffset );
             node.setValue( i, valueHolder );
 
             // Read the key length
@@ -1267,7 +1267,7 @@ public class RecordManager extends AbstractTransactionManager
         long offset = LongSerializer.INSTANCE.deserialize( byteBuffer );
         long lastOffset = LongSerializer.INSTANCE.deserialize( byteBuffer );
 
-        PersistedPageHolder<K, V> valueHolder = new PersistedPageHolder<K, V>( btree, null, offset, lastOffset );
+        PageHolderImpl<K, V> valueHolder = new PageHolderImpl<K, V>( btree, null, offset, lastOffset );
         node.setValue( nbElems, valueHolder );
 
         return node;
@@ -1591,11 +1591,11 @@ public class RecordManager extends AbstractTransactionManager
             BTreeInfo<K, V> btreeInfo = createBtreeInfo( btree );
             PageIO[] btreeInfoPageIos = writeBtreeInfo( btree, false );
             long btreeInfoOffset = btreeInfoPageIos[0].getOffset();
-            ( ( PersistedBTree<K, V> ) btree ).setBtreeInfoOffset( btreeInfoOffset );
+            ( ( BTreeImpl<K, V> ) btree ).setBtreeInfoOffset( btreeInfoOffset );
             context.addPage( btreeInfoOffset, btreeInfo );
 
             // Create the first root page, with the context revision. It will be empty
-            Page<K, V> rootPage = new PersistedLeaf<K, V>( btree, revision, 0 );
+            Page<K, V> rootPage = new Leaf<K, V>( btree, revision, 0 );
             PageIO[] rootPageIos = serializePage( btree, revision, rootPage );
             long rootPageOffset = rootPageIos[0].getOffset();
             ( ( AbstractPage<K, V> ) rootPage ).setOffset( rootPageOffset );
@@ -1723,7 +1723,7 @@ public class RecordManager extends AbstractTransactionManager
         
         // Create the first root page, with revision 0L. It will be empty
         // and increment the revision at the same time
-        Page<K, V> rootPage = new PersistedLeaf<K, V>( btree, 0L, 0 );
+        Page<K, V> rootPage = new Leaf<K, V>( btree, 0L, 0 );
 
         // Create a B-tree header, and initialize it
         BTreeHeader<K, V> btreeHeader = new BTreeHeader<K, V>();
@@ -1736,7 +1736,7 @@ public class RecordManager extends AbstractTransactionManager
         // Get the BrtreeInfo offset
         long btreeInfoOffset = btreeHeaderPageIos[0].getOffset();
 
-        ( ( PersistedBTree<K, V> ) btree ).setBtreeInfoOffset( btreeInfoOffset );
+        ( ( BTreeImpl<K, V> ) btree ).setBtreeInfoOffset( btreeInfoOffset );
 
         // Serialize the B-tree root page
         PageIO[] rootPageIos = serializePage( btree, btreeHeader.getRevision(), rootPage );
@@ -1756,7 +1756,7 @@ public class RecordManager extends AbstractTransactionManager
         writeBtreeHeader( btree, btreeHeader, true );
         
         // Keep a track of the current BtreeHeader
-        ((PersistedBTree<K, V>)btree).storeRevision(btreeHeader);
+        ((BTreeImpl<K, V>)btree).storeRevision(btreeHeader);
 
         // And in the Map of currentBtreeHeaders and newBtreeHeaders
         currentBTreeHeaders.put( name, btreeHeader );
@@ -1832,20 +1832,20 @@ public class RecordManager extends AbstractTransactionManager
                 // Start with the value
                 if ( page.isNode() )
                 {
-                    dataSize += serializeNodeValue( ( PersistedNode<K, V> ) page, pos, serializedData );
-                    dataSize += serializeNodeKey( ( PersistedNode<K, V> ) page, pos, serializedData );
+                    dataSize += serializeNodeValue( ( Node<K, V> ) page, pos, serializedData );
+                    dataSize += serializeNodeKey( ( Node<K, V> ) page, pos, serializedData );
                 }
                 else
                 {
-                    dataSize += serializeLeafValue( ( PersistedLeaf<K, V> ) page, pos, serializedData );
-                    dataSize += serializeLeafKey( ( PersistedLeaf<K, V> ) page, pos, serializedData );
+                    dataSize += serializeLeafValue( ( Leaf<K, V> ) page, pos, serializedData );
+                    dataSize += serializeLeafKey( ( Leaf<K, V> ) page, pos, serializedData );
                 }
             }
 
             // Nodes have one more value to serialize
             if ( page.isNode() )
             {
-                dataSize += serializeNodeValue( ( PersistedNode<K, V> ) page, nbElems, serializedData );
+                dataSize += serializeNodeValue( ( Node<K, V> ) page, nbElems, serializedData );
             }
 
             // Store the data size
@@ -1874,10 +1874,10 @@ public class RecordManager extends AbstractTransactionManager
     /**
      * Serialize a Node's key
      */
-    private <K, V> int serializeNodeKey( PersistedNode<K, V> node, int pos, List<byte[]> serializedData )
+    private <K, V> int serializeNodeKey( Node<K, V> node, int pos, List<byte[]> serializedData )
     {
         KeyHolder<K> holder = node.getKeyHolder( pos );
-        byte[] buffer = ( ( PersistedKeyHolder<K> ) holder ).getRaw();
+        byte[] buffer = ( ( KeyHolderImpl<K> ) holder ).getRaw();
 
         // We have to store the serialized key length
         byte[] length = IntSerializer.serialize( buffer.length );
@@ -1896,7 +1896,7 @@ public class RecordManager extends AbstractTransactionManager
     /**
      * Serialize a Node's Value. We store the two offsets of the child page.
      */
-    private <K, V> int serializeNodeValue( PersistedNode<K, V> node, int pos, List<byte[]> serializedData )
+    private <K, V> int serializeNodeValue( Node<K, V> node, int pos, List<byte[]> serializedData )
         throws IOException
     {
         // For a node, we just store the children's offsets
@@ -1919,11 +1919,11 @@ public class RecordManager extends AbstractTransactionManager
     /**
      * Serialize a Leaf's key
      */
-    private <K, V> int serializeLeafKey( PersistedLeaf<K, V> leaf, int pos, List<byte[]> serializedData )
+    private <K, V> int serializeLeafKey( Leaf<K, V> leaf, int pos, List<byte[]> serializedData )
     {
         int dataSize = 0;
         KeyHolder<K> keyHolder = leaf.getKeyHolder( pos );
-        byte[] keyData = ( ( PersistedKeyHolder<K> ) keyHolder ).getRaw();
+        byte[] keyData = ( ( KeyHolderImpl<K> ) keyHolder ).getRaw();
 
         if ( keyData != null )
         {
@@ -1948,14 +1948,14 @@ public class RecordManager extends AbstractTransactionManager
     /**
      * Serialize a Leaf's Value.
      */
-    private <K, V> int serializeLeafValue( PersistedLeaf<K, V> leaf, int pos, List<byte[]> serializedData )
+    private <K, V> int serializeLeafValue( Leaf<K, V> leaf, int pos, List<byte[]> serializedData )
         throws IOException
     {
         ValueHolder<V> valueHolder = leaf.getValue( pos );
         int dataSize = 0;
 
         // We have a serialized value. Just flush it
-        byte[] data = ( ( PersistedValueHolder<V> ) valueHolder ).getRaw();
+        byte[] data = ( ( ValueHolderImpl<V> ) valueHolder ).getRaw();
         dataSize += data.length;
 
         // Store the data size
@@ -2326,7 +2326,7 @@ public class RecordManager extends AbstractTransactionManager
         position = store( position, btreeHeader.getRootPageOffset(), btreeHeaderPageIos );
 
         // The B-tree info page offset
-        position = store( position, ( ( PersistedBTree<K, V> ) btree ).getBtreeInfoOffset(), btreeHeaderPageIos );
+        position = store( position, ( ( BTreeImpl<K, V> ) btree ).getBtreeInfoOffset(), btreeHeaderPageIos );
 
         // And flush the pages to disk now
         LOG.debug( "Flushing the newly managed '{}' btree header", btree.getName() );
@@ -2342,7 +2342,7 @@ public class RecordManager extends AbstractTransactionManager
             sb.append( "    RootPage : 0x" ).append( Long.toHexString( btreeHeader.getRootPageOffset() ) )
                 .append( "\n" );
             sb.append( "    Info     : 0x" )
-                .append( Long.toHexString( ( ( PersistedBTree<K, V> ) btree ).getBtreeInfoOffset() ) ).append( "\n" );
+                .append( Long.toHexString( ( ( BTreeImpl<K, V> ) btree ).getBtreeInfoOffset() ) ).append( "\n" );
 
             LOG_PAGES.debug( "Btree Header[{}]\n{}", btreeHeader.getRevision(), sb.toString() );
         }
@@ -2474,7 +2474,7 @@ public class RecordManager extends AbstractTransactionManager
         // Read the pageIOs associated with this B-tree
         PageIO[] pageIos;
         long newBtreeHeaderOffset = NO_PAGE;
-        long offset = ( ( PersistedBTree<K, V> ) btree ).getBtreeOffset();
+        long offset = ( ( BTreeImpl<K, V> ) btree ).getBtreeOffset();
 
         if ( onPlace )
         {
@@ -2647,11 +2647,11 @@ public class RecordManager extends AbstractTransactionManager
                 PageIO[] pageIos = walObject.serialize();
                 flushPages( pageIos );
             }
-            else if ( walObject instanceof PersistedNode )
+            else if ( walObject instanceof Node )
             {
                 
             }
-            else if ( walObject instanceof PersistedLeaf )
+            else if ( walObject instanceof Leaf )
             {
                 // We can write pages immediately
                 PageIO[] pageIos = walObject.serialize();
@@ -3074,7 +3074,7 @@ public class RecordManager extends AbstractTransactionManager
         // Build the resulting reference
         long offset = pageIos[0].getOffset();
         long lastOffset = pageIos[pageIos.length - 1].getOffset();
-        PersistedPageHolder<K, V> pageHolder = new PersistedPageHolder<K, V>( btree, newPage, offset,
+        PageHolderImpl<K, V> pageHolder = new PageHolderImpl<K, V>( btree, newPage, offset,
             lastOffset );
 
         return pageHolder;
@@ -3858,7 +3858,7 @@ public class RecordManager extends AbstractTransactionManager
                 copiedPageBtree.insert( revisionName, pageOffsets );
 
                 // Update the RecordManager Copiedpage Offset
-                currentCopiedPagesBtreeOffset = ( ( PersistedBTree<RevisionName, long[]> ) copiedPageBtree )
+                currentCopiedPagesBtreeOffset = ( ( BTreeImpl<RevisionName, long[]> ) copiedPageBtree )
                     .getBtreeOffset();
             }
             else
@@ -3987,13 +3987,13 @@ public class RecordManager extends AbstractTransactionManager
         ElementSerializer<V> valueSerializer, boolean allowDuplicates )
         throws IOException, BTreeAlreadyManagedException
     {
-        PersistedBTreeConfiguration config = new PersistedBTreeConfiguration();
+        BTreeConfiguration config = new BTreeConfiguration();
 
         config.setName( name );
         config.setKeySerializer( keySerializer );
         config.setValueSerializer( valueSerializer );
 
-        BTree btree = new PersistedBTree( config );
+        BTree btree = new BTreeImpl( config );
         manage( btree );
 
         if ( LOG_CHECK.isDebugEnabled() )

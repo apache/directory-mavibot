@@ -77,7 +77,7 @@ public class PageReclaimer
 
             for ( String name : managed )
             {
-                PersistedBTree tree = ( PersistedBTree ) rm.getManagedTree( name );
+                BTreeImpl tree = ( BTreeImpl ) rm.getManagedTree( name );
 
                 long latestRev = tree.getRevision();
                 

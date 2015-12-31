@@ -464,9 +464,9 @@ public class BulkLoader<K, V>
      */
     private static <K, V> void injectInLeaf( BTree<K, V> btree, Tuple<K, V> tuple, LevelInfo<K, V> leafLevel )
     {
-        PersistedLeaf<K, V> leaf = ( PersistedLeaf<K, V> ) leafLevel.getCurrentPage();
+        Leaf<K, V> leaf = ( Leaf<K, V> ) leafLevel.getCurrentPage();
 
-        KeyHolder<K> keyHolder = new PersistedKeyHolder<K>( btree.getKeySerializer(), tuple.getKey() );
+        KeyHolder<K> keyHolder = new KeyHolderImpl<K>( btree.getKeySerializer(), tuple.getKey() );
         leaf.setKey( leafLevel.getCurrentPos(), keyHolder );
 
         leafLevel.incCurrentPos();
@@ -530,7 +530,7 @@ public class BulkLoader<K, V>
     private static <K, V> void injectInRoot( BTree<K, V> btree, Page<K, V> page, PageHolder<K, V> pageHolder,
         LevelInfo<K, V> level ) throws IOException
     {
-        PersistedNode<K, V> node = ( PersistedNode<K, V> ) level.getCurrentPage();
+        Node<K, V> node = ( Node<K, V> ) level.getCurrentPage();
 
         if ( ( level.getCurrentPos() == 0 ) && ( node.getPage( 0 ) == null ) )
         {
@@ -541,7 +541,7 @@ public class BulkLoader<K, V>
         {
             // Inject the pageHolder and the page leftmost key
             node.setPageHolder( level.getCurrentPos() + 1, pageHolder );
-            KeyHolder<K> keyHolder = new PersistedKeyHolder<K>( btree.getKeySerializer(), page.getLeftMostKey() );
+            KeyHolder<K> keyHolder = new KeyHolderImpl<K>( btree.getKeySerializer(), page.getLeftMostKey() );
             node.setKey( level.getCurrentPos(), keyHolder );
             level.incCurrentPos();
             level.incNbAddedElems();
@@ -550,9 +550,9 @@ public class BulkLoader<K, V>
             // we have to write the page on disk and update the btree
             if ( level.getNbAddedElems() == level.getNbElems() )
             {
-                PageHolder<K, V> rootHolder = ( ( PersistedBTree<K, V> ) btree ).getRecordManager().writePage(
+                PageHolder<K, V> rootHolder = ( ( BTreeImpl<K, V> ) btree ).getRecordManager().writePage(
                     btree, node, 0L );
-                ( ( PersistedBTree<K, V> ) btree ).setRootPage( rootHolder.getValue() );
+                ( ( BTreeImpl<K, V> ) btree ).setRootPage( rootHolder.getValue() );
             }
         }
 
@@ -569,10 +569,10 @@ public class BulkLoader<K, V>
     {
         int pageSize = btree.getPageSize();
         LevelInfo<K, V> level = levels.get( levelIndex );
-        PersistedNode<K, V> node = ( PersistedNode<K, V> ) level.getCurrentPage();
+        Node<K, V> node = ( Node<K, V> ) level.getCurrentPage();
 
         // We first have to write the page on disk
-        PageHolder<K, V> pageHolder = ( ( PersistedBTree<K, V> ) btree ).getRecordManager().writePage( btree, page, 0L );
+        PageHolder<K, V> pageHolder = ( ( BTreeImpl<K, V> ) btree ).getRecordManager().writePage( btree, page, 0L );
 
         // First deal with a node that has less than PageSize elements at this level.
         // It will become the root node.
@@ -601,7 +601,7 @@ public class BulkLoader<K, V>
             {
                 // Inject the pageHolder and the page leftmost key
                 node.setPageHolder( level.getCurrentPos(), pageHolder );
-                KeyHolder<K> keyHolder = new PersistedKeyHolder<K>( btree.getKeySerializer(), page.getLeftMostKey() );
+                KeyHolder<K> keyHolder = new KeyHolderImpl<K>( btree.getKeySerializer(), page.getLeftMostKey() );
                 node.setKey( level.getCurrentPos() - 1, keyHolder );
             }
 
@@ -673,7 +673,7 @@ public class BulkLoader<K, V>
                     {
                         // Inject the pageHolder and the page leftmost key
                         node.setPageHolder( level.getCurrentPos(), pageHolder );
-                        KeyHolder<K> keyHolder = new PersistedKeyHolder<K>( btree.getKeySerializer(),
+                        KeyHolder<K> keyHolder = new KeyHolderImpl<K>( btree.getKeySerializer(),
                             page.getLeftMostKey() );
                         node.setKey( level.getCurrentPos() - 1, keyHolder );
                     }
@@ -702,7 +702,7 @@ public class BulkLoader<K, V>
                         // Any other following elements
                         // Inject the pageHolder and the page leftmost key
                         node.setPageHolder( level.getCurrentPos(), pageHolder );
-                        KeyHolder<K> keyHolder = new PersistedKeyHolder<K>( btree.getKeySerializer(),
+                        KeyHolder<K> keyHolder = new KeyHolderImpl<K>( btree.getKeySerializer(),
                             page.getLeftMostKey() );
                         node.setKey( level.getCurrentPos() - 1, keyHolder );
                     }
@@ -745,7 +745,7 @@ public class BulkLoader<K, V>
                         // Any other following elements
                         // Inject the pageHolder and the page leftmost key
                         node.setPageHolder( level.getCurrentPos(), pageHolder );
-                        KeyHolder<K> keyHolder = new PersistedKeyHolder<K>( btree.getKeySerializer(),
+                        KeyHolder<K> keyHolder = new KeyHolderImpl<K>( btree.getKeySerializer(),
                             page.getLeftMostKey() );
                         node.setKey( level.getCurrentPos() - 1, keyHolder );
                     }
@@ -786,7 +786,7 @@ public class BulkLoader<K, V>
         switch ( btree.getType() )
         {
             default:
-                ( ( PersistedLeaf<K, V> ) rootPage ).values = values;
+                ( ( Leaf<K, V> ) rootPage ).values = values;
         }
 
         // We first have to inject data into the page
@@ -797,11 +797,11 @@ public class BulkLoader<K, V>
             Tuple<K, V> tuple = dataIterator.next();
 
             // Store the current element in the rootPage
-            KeyHolder<K> keyHolder = new PersistedKeyHolder<K>( btree.getKeySerializer(), tuple.getKey() );
+            KeyHolder<K> keyHolder = new KeyHolderImpl<K>( btree.getKeySerializer(), tuple.getKey() );
             keys[pos] = keyHolder;
 
-            ValueHolder<V>valueHolder = new PersistedValueHolder<V>( btree, ( V )tuple.getValue() );
-            ( ( PersistedLeaf<K, V> ) rootPage ).values[pos] = valueHolder;
+            ValueHolder<V>valueHolder = new ValueHolderImpl<V>( btree, ( V )tuple.getValue() );
+            ( ( Leaf<K, V> ) rootPage ).values[pos] = valueHolder;
 
             pos++;
         }

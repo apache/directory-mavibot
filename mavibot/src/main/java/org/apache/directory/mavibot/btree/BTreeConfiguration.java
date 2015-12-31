@@ -32,7 +32,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class PersistedBTreeConfiguration<K, V>
+public class BTreeConfiguration<K, V>
 {
     /** Number of entries in each Page. */
     private int pageSize = BTree.DEFAULT_PAGE_SIZE;
@@ -61,7 +61,7 @@ public class PersistedBTreeConfiguration<K, V>
      * The default value is 10000 (10 seconds). If the value is 0 or below,
      * the delay is considered as infinite
      */
-    private long readTimeOut = PersistedBTree.DEFAULT_READ_TIMEOUT;
+    private long readTimeOut = BTreeImpl.DEFAULT_READ_TIMEOUT;
 
     /** The B-tree type */
     private BTreeTypeEnum btreeType = BTreeTypeEnum.PERSISTED;

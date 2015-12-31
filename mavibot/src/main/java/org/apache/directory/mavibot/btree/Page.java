@@ -121,6 +121,15 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      */
     boolean contains( K key, V value ) throws IOException;
 
+    
+    /**
+     * Copies the current page and all its keys, with a new revision.
+     *
+     * @param revision The new revision
+     * @return The copied page
+     */
+    Page<K, V> copy( long revision );
+
 
     /**
      * Browses the tree, looking for the given key, and creates a Cursor on top

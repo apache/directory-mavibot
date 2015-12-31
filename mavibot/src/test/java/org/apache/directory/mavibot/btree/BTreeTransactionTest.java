@@ -40,7 +40,7 @@ import org.junit.rules.TemporaryFolder;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class PersistedBTreeTransactionTest
+public class BTreeTransactionTest
 {
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();

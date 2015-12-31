@@ -38,7 +38,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier */class PersistedPageHolder<K, V> extends PageHolder<K, V>
+/* No qualifier */class PageHolderImpl<K, V> extends PageHolder<K, V>
 {
     /** The RecordManager */
     private RecordManager recordManager;
@@ -58,12 +58,12 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
      *
      * @param page The element to store into a SoftReference
      */
-    public PersistedPageHolder( BTree<K, V> btree, Page<K, V> page )
+    public PageHolderImpl( BTree<K, V> btree, Page<K, V> page )
     {
         // DO NOT keep the reference to Page, it will be fetched from cache when needed 
         super( btree, null );
-        cache = ( ( PersistedBTree<K, V> ) btree ).getCache();
-        recordManager = ( ( PersistedBTree<K, V> ) btree ).getRecordManager();
+        cache = ( ( BTreeImpl<K, V> ) btree ).getCache();
+        recordManager = ( ( BTreeImpl<K, V> ) btree ).getRecordManager();
         offset = ( ( AbstractPage<K, V> ) page ).getOffset();
         lastOffset = ( ( AbstractPage<K, V> ) page ).getLastOffset();
 
@@ -79,12 +79,12 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
      *
      * @param page The element to store into a SoftReference
      */
-    public PersistedPageHolder( BTree<K, V> btree, Page<K, V> page, long offset, long lastOffset )
+    public PageHolderImpl( BTree<K, V> btree, Page<K, V> page, long offset, long lastOffset )
     {
         // DO NOT keep the reference to Page, it will be fetched from cache when needed
         super( btree, null );
-        cache = ( ( PersistedBTree<K, V> ) btree ).getCache();
-        recordManager = ( ( PersistedBTree<K, V> ) btree ).getRecordManager();
+        cache = ( ( BTreeImpl<K, V> ) btree ).getCache();
+        recordManager = ( ( BTreeImpl<K, V> ) btree ).getRecordManager();
         this.offset = offset;
         this.lastOffset = lastOffset;
 

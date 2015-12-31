@@ -32,7 +32,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
  * 
  * <K> The key type
  */
-/* No qualifier */class PersistedKeyHolder<K> extends KeyHolder<K>
+/* No qualifier */class KeyHolderImpl<K> extends KeyHolder<K>
 {
     /** The ByteBuffer storing the key */
     private byte[] raw;
@@ -46,7 +46,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      * @param keySerializer The KeySerializer instance
      * @param key The key to store
      */
-    /* no qualifier */PersistedKeyHolder( ElementSerializer<K> keySerializer, K key )
+    KeyHolderImpl( ElementSerializer<K> keySerializer, K key )
     {
         super( key );
         this.keySerializer = keySerializer;
@@ -59,7 +59,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
      * @param keySerializer The KeySerializer instance
      * @param raw the bytes representing the serialized key
      */
-    /* no qualifier */PersistedKeyHolder( ElementSerializer<K> keySerializer, byte[] raw )
+    KeyHolderImpl( ElementSerializer<K> keySerializer, byte[] raw )
     {
         super( null );
         this.keySerializer = keySerializer;

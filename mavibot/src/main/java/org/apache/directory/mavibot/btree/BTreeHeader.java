@@ -86,7 +86,7 @@ import java.util.concurrent.atomic.AtomicInteger;
      */
     public long getBTreeInfoOffset()
     {
-        return ( ( PersistedBTree<K, V> ) btree ).getBtreeInfoOffset();
+        return ( ( BTreeImpl<K, V> ) btree ).getBtreeInfoOffset();
     }
 
 
@@ -306,7 +306,7 @@ import java.util.concurrent.atomic.AtomicInteger;
         sb.append( ", name[" ).append( btree.getName() ).append( "]" );
         sb.append( ", revision[" ).append( revision ).append( "]" );
         sb.append( ", btreeInfoOffset[0x" )
-            .append( Long.toHexString( ( ( PersistedBTree<K, V> ) btree ).getBtreeInfoOffset() ) ).append( "]" );
+            .append( Long.toHexString( ( ( BTreeImpl<K, V> ) btree ).getBtreeInfoOffset() ) ).append( "]" );
         sb.append( ", rootPageOffset[0x" ).append( Long.toHexString( rootPageOffset ) ).append( "]" );
         sb.append( ", nbElems[" ).append( nbElems ).append( "]" );
         sb.append( ", nbUsers[" ).append( nbUsers.get() ).append( "]" );
@@ -366,7 +366,7 @@ import java.util.concurrent.atomic.AtomicInteger;
         position = recordManager.store( position, getRootPageOffset(), btreeHeaderPageIos );
 
         // The B-tree info page offset
-        position = recordManager.store( position, ( ( PersistedBTree<K, V> ) btree ).getBtreeInfoOffset(), btreeHeaderPageIos );
+        position = recordManager.store( position, ( ( BTreeImpl<K, V> ) btree ).getBtreeInfoOffset(), btreeHeaderPageIos );
 
         // And flush the pages to disk now
         /*

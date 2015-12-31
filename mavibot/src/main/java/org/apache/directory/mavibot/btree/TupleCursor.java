@@ -103,7 +103,7 @@ public class TupleCursor<K, V> //implements Iterator<Tuple<K,V>>
         parentPos.pos = parentPos.page.getNbElems();
         Page<K, V> childPage = null;
 
-        if ( parentPos.page instanceof PersistedNode )
+        if ( parentPos.page instanceof Node )
         {
             childPage = ( ( AbstractPage<K, V> ) parentPos.page ).getPage( parentPos.pos );
         }
@@ -183,7 +183,7 @@ public class TupleCursor<K, V> //implements Iterator<Tuple<K,V>>
         parentPos.pos = 0;
         Page<K, V> child = null;
         
-        if ( parentPos.page instanceof PersistedNode )
+        if ( parentPos.page instanceof Node )
         {
             child = ( ( AbstractPage<K, V> ) parentPos.page ).getPage( 0 );
         }

@@ -34,7 +34,7 @@ import java.util.List;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier */class PersistedNode<K, V> extends AbstractPage<K, V>
+/* No qualifier */class Node<K, V> extends AbstractPage<K, V>
 {
     /**
      * Creates a new Node which will contain only one key, with references to
@@ -46,12 +46,12 @@ import java.util.List;
      * @param nbElems The number of elements in this Node
      */
     @SuppressWarnings("unchecked")
-    PersistedNode( BTree<K, V> btree, long revision, int nbElems )
+    Node( BTree<K, V> btree, long revision, int nbElems )
     {
         super( btree, revision, nbElems );
 
         // Create the children array
-        children = ( PersistedPageHolder<K, V>[] ) Array.newInstance( PersistedPageHolder.class, nbElems + 1 );
+        children = ( PageHolderImpl<K, V>[] ) Array.newInstance( PageHolderImpl.class, nbElems + 1 );
     }
 
 
@@ -67,23 +67,23 @@ import java.util.List;
      * @param rightPage The right page
      */
     @SuppressWarnings("unchecked")
-    PersistedNode( BTree<K, V> btree, long revision, K key, Page<K, V> leftPage, Page<K, V> rightPage )
+    Node( BTree<K, V> btree, long revision, K key, Page<K, V> leftPage, Page<K, V> rightPage )
     {
         super( btree, revision, 1 );
 
         // Create the children array, and store the left and right children
-        children = ( PersistedPageHolder<K, V>[] ) Array.newInstance( PersistedPageHolder.class,
+        children = ( PageHolderImpl<K, V>[] ) Array.newInstance( PageHolderImpl.class,
             btree.getPageSize() + 1 );
 
-        children[0] = new PersistedPageHolder<K, V>( btree, leftPage );
-        children[1] = new PersistedPageHolder<K, V>( btree, rightPage );
+        children[0] = new PageHolderImpl<K, V>( btree, leftPage );
+        children[1] = new PageHolderImpl<K, V>( btree, rightPage );
 
         // Create the keys array and store the pivot into it
         // We get the type of array to create from the btree
         // Yes, this is an hack...
-        keys = ( KeyHolder<K>[] ) Array.newInstance( PersistedKeyHolder.class, btree.getPageSize() );
+        keys = ( KeyHolder<K>[] ) Array.newInstance( KeyHolderImpl.class, btree.getPageSize() );
 
-        keys[0] = new PersistedKeyHolder<K>( btree.getKeySerializer(), key );
+        keys[0] = new KeyHolderImpl<K>( btree.getKeySerializer(), key );
     }
 
 
@@ -99,7 +99,7 @@ import java.util.List;
      * @param rightPage The right page
      */
     @SuppressWarnings("unchecked")
-    PersistedNode( BTree<K, V> btree, long revision, K key, PageHolder<K, V> leftPage, PageHolder<K, V> rightPage )
+    Node( BTree<K, V> btree, long revision, K key, PageHolder<K, V> leftPage, PageHolder<K, V> rightPage )
     {
         super( btree, revision, 1 );
 
@@ -113,7 +113,7 @@ import java.util.List;
         // Create the keys array and store the pivot into it
         keys = ( KeyHolder[] ) Array.newInstance( KeyHolder.class, btree.getPageSize() );
 
-        keys[0] = new PersistedKeyHolder<K>( btree.getKeySerializer(), key );
+        keys[0] = new KeyHolderImpl<K>( btree.getKeySerializer(), key );
     }
 
 
@@ -194,7 +194,7 @@ import java.util.List;
         // Simplest case : the element has been removed from the underlying page,
         // we just have to copy the current page an modify the reference to link to
         // the modified page.
-        PersistedNode<K, V> newPage = copy( revision );
+        Node<K, V> newPage = copy( revision );
 
         Page<K, V> modifiedPage = removeResult.getModifiedPage();
 
@@ -266,10 +266,10 @@ import java.util.List;
      * @throws IOException If we have an error while trying to access the page
      */
     private DeleteResult<K, V> borrowFromRight( long revision, MergedWithSiblingResult<K, V> mergedResult,
-        PersistedNode<K, V> sibling, int pos ) throws IOException
+        Node<K, V> sibling, int pos ) throws IOException
     {
         // Create the new sibling, with one less element at the beginning
-        PersistedNode<K, V> newSibling = new PersistedNode<K, V>( btree, revision, sibling.getNbElems() - 1 );
+        Node<K, V> newSibling = new Node<K, V>( btree, revision, sibling.getNbElems() - 1 );
 
         K siblingKey = sibling.children[0].getValue().getLeftMostKey();
 
@@ -279,13 +279,13 @@ import java.util.List;
 
         // Create the new page and add the new element at the end
         // First copy the current node, with the same size
-        PersistedNode<K, V> newNode = new PersistedNode<K, V>( btree, revision, nbElems );
+        Node<K, V> newNode = new Node<K, V>( btree, revision, nbElems );
 
         // Copy the keys and the values up to the insertion position
         int index = Math.abs( pos );
 
         // Copy the key and children from sibling
-        newNode.keys[nbElems - 1] = new PersistedKeyHolder<K>( btree.getKeySerializer(), siblingKey ); // 1
+        newNode.keys[nbElems - 1] = new KeyHolderImpl<K>( btree.getKeySerializer(), siblingKey ); // 1
         newNode.children[nbElems] = sibling.children[0]; // 8
 
         if ( index < 2 )
@@ -309,7 +309,7 @@ import java.util.List;
             }
 
             // Inject the new modified page key
-            newNode.keys[index - 2] = new PersistedKeyHolder<K>( btree.getKeySerializer(), mergedResult
+            newNode.keys[index - 2] = new KeyHolderImpl<K>( btree.getKeySerializer(), mergedResult
                 .getModifiedPage()
                 .getLeftMostKey() ); // 2
 
@@ -353,13 +353,13 @@ import java.util.List;
      * @throws IOException If we have an error while trying to access the page
      */
     private DeleteResult<K, V> borrowFromLeft( long revision, MergedWithSiblingResult<K, V> mergedResult,
-        PersistedNode<K, V> sibling, int pos ) throws IOException
+        Node<K, V> sibling, int pos ) throws IOException
     {
         // The sibling is on the left, borrow the rightmost element
         Page<K, V> siblingChild = sibling.children[sibling.nbElems].getValue();
 
         // Create the new sibling, with one less element at the end
-        PersistedNode<K, V> newSibling = new PersistedNode<K, V>( btree, revision, sibling.getNbElems() - 1 );
+        Node<K, V> newSibling = new Node<K, V>( btree, revision, sibling.getNbElems() - 1 );
 
         // Copy the keys and children of the old sibling in the new sibling
         System.arraycopy( sibling.keys, 0, newSibling.keys, 0, newSibling.getNbElems() );
@@ -367,7 +367,7 @@ import java.util.List;
 
         // Create the new page and add the new element at the beginning
         // First copy the current node, with the same size
-        PersistedNode<K, V> newNode = new PersistedNode<K, V>( btree, revision, nbElems );
+        Node<K, V> newNode = new Node<K, V>( btree, revision, nbElems );
 
         // Sets the first children
         newNode.children[0] = createHolder( siblingChild ); //1
@@ -376,7 +376,7 @@ import java.util.List;
 
         if ( index < 2 )
         {
-            newNode.keys[0] = new PersistedKeyHolder<K>( btree.getKeySerializer(), mergedResult.getModifiedPage()
+            newNode.keys[0] = new KeyHolderImpl<K>( btree.getKeySerializer(), mergedResult.getModifiedPage()
                 .getLeftMostKey() );
             System.arraycopy( keys, 1, newNode.keys, 1, nbElems - 1 );
 
@@ -387,7 +387,7 @@ import java.util.List;
         else
         {
             // Set the first key
-            newNode.keys[0] = new PersistedKeyHolder<K>( btree.getKeySerializer(), children[0].getValue()
+            newNode.keys[0] = new KeyHolderImpl<K>( btree.getKeySerializer(), children[0].getValue()
                 .getLeftMostKey() ); //2
 
             if ( index > 2 )
@@ -397,7 +397,7 @@ import java.util.List;
             }
 
             // Inject the modified key
-            newNode.keys[index - 1] = new PersistedKeyHolder<K>( btree.getKeySerializer(), mergedResult
+            newNode.keys[index - 1] = new KeyHolderImpl<K>( btree.getKeySerializer(), mergedResult
                 .getModifiedPage()
                 .getLeftMostKey() ); // 3
 
@@ -443,11 +443,11 @@ import java.util.List;
      * @throws IOException If we have an error while trying to access the page
      */
     private DeleteResult<K, V> mergeWithSibling( long revision, MergedWithSiblingResult<K, V> mergedResult,
-        PersistedNode<K, V> sibling, boolean isLeft, int pos ) throws IOException
+        Node<K, V> sibling, boolean isLeft, int pos ) throws IOException
     {
         // Create the new node. It will contain N - 1 elements (the maximum number)
         // as we merge two nodes that contain N/2 elements minus the one we remove
-        PersistedNode<K, V> newNode = new PersistedNode<K, V>( btree, revision, btree.getPageSize() );
+        Node<K, V> newNode = new Node<K, V>( btree, revision, btree.getPageSize() );
         Tuple<K, V> removedElement = mergedResult.getRemovedElement();
         int half = btree.getPageSize() / 2;
         int index = Math.abs( pos );
@@ -461,7 +461,7 @@ import java.util.List;
             // Then copy all the elements up to the deletion point
             if ( index < 2 )
             {
-                newNode.keys[half] = new PersistedKeyHolder<K>( btree.getKeySerializer(), mergedResult
+                newNode.keys[half] = new KeyHolderImpl<K>( btree.getKeySerializer(), mergedResult
                     .getModifiedPage()
                     .getLeftMostKey() );
                 System.arraycopy( keys, 1, newNode.keys, half + 1, half - 1 );
@@ -474,7 +474,7 @@ import java.util.List;
             {
                 // Copy the left part of the node keys up to the deletion point
                 // Insert the new key
-                newNode.keys[half] = new PersistedKeyHolder<K>( btree.getKeySerializer(), children[0].getValue()
+                newNode.keys[half] = new KeyHolderImpl<K>( btree.getKeySerializer(), children[0].getValue()
                     .getLeftMostKey() ); // 3
 
                 if ( index > 2 )
@@ -483,7 +483,7 @@ import java.util.List;
                 }
 
                 // Inject the new merged key
-                newNode.keys[half + index - 1] = new PersistedKeyHolder<K>( btree.getKeySerializer(), mergedResult
+                newNode.keys[half + index - 1] = new KeyHolderImpl<K>( btree.getKeySerializer(), mergedResult
                     .getModifiedPage().getLeftMostKey() ); //5
 
                 if ( index < half )
@@ -528,7 +528,7 @@ import java.util.List;
                 System.arraycopy( children, 0, newNode.children, 0, index - 1 ); //6
 
                 // Inject the modified key
-                newNode.keys[index - 2] = new PersistedKeyHolder<K>( btree.getKeySerializer(), mergedResult
+                newNode.keys[index - 2] = new KeyHolderImpl<K>( btree.getKeySerializer(), mergedResult
                     .getModifiedPage()
                     .getLeftMostKey() ); //2
 
@@ -547,7 +547,7 @@ import java.util.List;
             }
 
             // Inject the new key from sibling
-            newNode.keys[half - 1] = new PersistedKeyHolder<K>( btree.getKeySerializer(), sibling.findLeftMost()
+            newNode.keys[half - 1] = new KeyHolderImpl<K>( btree.getKeySerializer(), sibling.findLeftMost()
                 .getKey() ); //3
 
             // Copy the sibling keys
@@ -654,7 +654,7 @@ import java.util.List;
                 // a sibling, or we will have to merge two pages
                 int siblingPos = selectSibling( parent, parentPos );
 
-                PersistedNode<K, V> sibling = ( PersistedNode<K, V> ) ( ( ( PersistedNode<K, V> ) parent ).children[siblingPos]
+                Node<K, V> sibling = ( Node<K, V> ) ( ( ( Node<K, V> ) parent ).children[siblingPos]
                     .getValue() );
 
                 if ( sibling.getNbElems() > halfSize )
@@ -705,7 +705,7 @@ import java.util.List;
         Page<K, V> modifiedPage = borrowedResult.getModifiedPage();
         Page<K, V> modifiedSibling = borrowedResult.getModifiedSibling();
 
-        PersistedNode<K, V> newPage = copy( revision );
+        Node<K, V> newPage = copy( revision );
 
         if ( pos < 0 )
         {
@@ -714,9 +714,9 @@ import java.util.List;
             if ( borrowedResult.isFromRight() )
             {
                 // Update the keys
-                newPage.keys[pos] = new PersistedKeyHolder<K>( btree.getKeySerializer(), modifiedPage.findLeftMost()
+                newPage.keys[pos] = new KeyHolderImpl<K>( btree.getKeySerializer(), modifiedPage.findLeftMost()
                     .getKey() );
-                newPage.keys[pos + 1] = new PersistedKeyHolder<K>( btree.getKeySerializer(), modifiedSibling
+                newPage.keys[pos + 1] = new KeyHolderImpl<K>( btree.getKeySerializer(), modifiedSibling
                     .findLeftMost()
                     .getKey() );
 
@@ -727,7 +727,7 @@ import java.util.List;
             else
             {
                 // Update the keys
-                newPage.keys[pos] = new PersistedKeyHolder<K>( btree.getKeySerializer(), modifiedPage.findLeftMost()
+                newPage.keys[pos] = new KeyHolderImpl<K>( btree.getKeySerializer(), modifiedPage.findLeftMost()
                     .getKey() );
 
                 // Update the children
@@ -740,7 +740,7 @@ import java.util.List;
             if ( borrowedResult.isFromRight() )
             {
                 // Update the keys
-                newPage.keys[pos] = new PersistedKeyHolder<K>( btree.getKeySerializer(), modifiedSibling.findLeftMost()
+                newPage.keys[pos] = new KeyHolderImpl<K>( btree.getKeySerializer(), modifiedSibling.findLeftMost()
                     .getKey() );
 
                 // Update the children
@@ -750,7 +750,7 @@ import java.util.List;
             else
             {
                 // Update the keys
-                newPage.keys[pos - 1] = new PersistedKeyHolder<K>( btree.getKeySerializer(), modifiedPage
+                newPage.keys[pos - 1] = new KeyHolderImpl<K>( btree.getKeySerializer(), modifiedPage
                     .findLeftMost()
                     .getKey() );
 
@@ -783,7 +783,7 @@ import java.util.List;
         throws IOException
     {
         // First copy the current page, but remove one element in the copied page
-        PersistedNode<K, V> newNode = new PersistedNode<K, V>( btree, revision, nbElems - 1 );
+        Node<K, V> newNode = new Node<K, V>( btree, revision, nbElems - 1 );
 
         int index = Math.abs( pos ) - 2;
 
@@ -804,7 +804,7 @@ import java.util.List;
                 System.arraycopy( keys, 0, newNode.keys, 0, index );
             }
 
-            newNode.keys[index] = new PersistedKeyHolder<K>( btree.getKeySerializer(), mergedResult.getModifiedPage()
+            newNode.keys[index] = new KeyHolderImpl<K>( btree.getKeySerializer(), mergedResult.getModifiedPage()
                 .findLeftMost().getKey() );
 
             if ( index < nbElems - 2 )
@@ -856,7 +856,7 @@ import java.util.List;
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    /* no qualifier */void setValue( int pos, PersistedPageHolder<K, V> value )
+    /* no qualifier */void setValue( int pos, PageHolderImpl<K, V> value )
     {
         children[pos] = value;
     }
@@ -882,7 +882,7 @@ import java.util.List;
         // to point on the modified child
         Page<K, V> modifiedPage = result.getModifiedPage();
 
-        ( ( PersistedNode<K, V> ) newPage ).children[pos] = createHolder( modifiedPage );
+        ( ( Node<K, V> ) newPage ).children[pos] = createHolder( modifiedPage );
 
         // We can return the result, where we update the modifiedPage,
         // to avoid the creation of a new object
@@ -903,7 +903,7 @@ import java.util.List;
      */
     private PageHolder<K, V> createHolder( Page<K, V> page ) throws IOException
     {
-        PageHolder<K, V> holder = ( ( PersistedBTree<K, V> ) btree ).getRecordManager().writePage( btree,
+        PageHolder<K, V> holder = ( ( BTreeImpl<K, V> ) btree ).getRecordManager().writePage( btree,
             page,
             revision );
 
@@ -929,7 +929,7 @@ import java.util.List;
         throws IOException
     {
         // First copy the current page, but add one element in the copied page
-        PersistedNode<K, V> newNode = new PersistedNode<K, V>( btree, revision, nbElems + 1 );
+        Node<K, V> newNode = new Node<K, V>( btree, revision, nbElems + 1 );
 
         // Copy the keys and the children up to the insertion position
         if ( nbElems > 0 )
@@ -939,7 +939,7 @@ import java.util.List;
         }
 
         // Add the new key and children
-        newNode.keys[pos] = new PersistedKeyHolder<K>( btree.getKeySerializer(), key );
+        newNode.keys[pos] = new KeyHolderImpl<K>( btree.getKeySerializer(), key );
 
         // If the BTree is managed, we now have to write the modified page on disk
         // and to add this page to the list of modified pages
@@ -985,8 +985,8 @@ import java.util.List;
         int middle = btree.getPageSize() >> 1;
 
         // Create two new pages
-        PersistedNode<K, V> newLeftPage = new PersistedNode<K, V>( btree, revision, middle );
-        PersistedNode<K, V> newRightPage = new PersistedNode<K, V>( btree, revision, middle );
+        Node<K, V> newLeftPage = new Node<K, V>( btree, revision, middle );
+        Node<K, V> newRightPage = new Node<K, V>( btree, revision, middle );
 
         // Determinate where to store the new value
         // If it's before the middle, insert the value on the left,
@@ -998,7 +998,7 @@ import java.util.List;
             System.arraycopy( children, 0, newLeftPage.children, 0, pos );
 
             // Add the new element
-            newLeftPage.keys[pos] = new PersistedKeyHolder<K>( btree.getKeySerializer(), pivot );
+            newLeftPage.keys[pos] = new KeyHolderImpl<K>( btree.getKeySerializer(), pivot );
             newLeftPage.children[pos] = createHolder( leftPage );
             newLeftPage.children[pos + 1] = createHolder( rightPage );
 
@@ -1055,7 +1055,7 @@ import java.util.List;
             System.arraycopy( children, middle + 1, newRightPage.children, 0, pos - middle - 1 );
 
             // Add the new element
-            newRightPage.keys[pos - middle - 1] = new PersistedKeyHolder<K>( btree.getKeySerializer(), pivot );
+            newRightPage.keys[pos - middle - 1] = new KeyHolderImpl<K>( btree.getKeySerializer(), pivot );
             newRightPage.children[pos - middle - 1] = createHolder( leftPage );
             newRightPage.children[pos - middle] = createHolder( rightPage );
 
@@ -1086,9 +1086,9 @@ import java.util.List;
      * @param revision The new revision
      * @return The copied page
      */
-    protected PersistedNode<K, V> copy( long revision )
+    public Node<K, V> copy( long revision )
     {
-        PersistedNode<K, V> newPage = new PersistedNode<K, V>( btree, revision, nbElems );
+        Node<K, V> newPage = new Node<K, V>( btree, revision, nbElems );
 
         // Copy the keys
         System.arraycopy( keys, 0, newPage.keys, 0, nbElems );

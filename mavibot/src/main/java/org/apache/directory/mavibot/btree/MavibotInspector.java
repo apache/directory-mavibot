@@ -203,7 +203,7 @@ public class MavibotInspector
         System.out.print( "BTree Name: " );
         String name = readLine();
 
-        PersistedBTree<?, ?> pb = ( PersistedBTree<?, ?> ) rm.getManagedTree( name );
+        BTreeImpl<?, ?> pb = ( BTreeImpl<?, ?> ) rm.getManagedTree( name );
 
         if ( pb == null )
         {

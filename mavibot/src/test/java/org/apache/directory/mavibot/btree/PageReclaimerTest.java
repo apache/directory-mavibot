@@ -54,7 +54,7 @@ public class PageReclaimerTest
 
     private RecordManager rm;
 
-    private PersistedBTree<Integer, String> uidTree;
+    private BTreeImpl<Integer, String> uidTree;
     
     @Rule
     public TemporaryFolder tmpDir;
@@ -74,7 +74,7 @@ public class PageReclaimerTest
         rm = new RecordManager( dbFile.getAbsolutePath() );
         rm.setPageReclaimerThreshold( 10 );
         
-        uidTree = ( PersistedBTree<Integer, String> ) rm.addBTree( TREE_NAME, IntSerializer.INSTANCE, StringSerializer.INSTANCE, false );
+        uidTree = ( BTreeImpl<Integer, String> ) rm.addBTree( TREE_NAME, IntSerializer.INSTANCE, StringSerializer.INSTANCE, false );
     }
 
 
@@ -92,7 +92,7 @@ public class PageReclaimerTest
         uidTree.close();
         rm.close();
         rm = new RecordManager( dbFile.getAbsolutePath() );
-        uidTree = ( PersistedBTree ) rm.getManagedTree( TREE_NAME );
+        uidTree = ( BTreeImpl ) rm.getManagedTree( TREE_NAME );
     }
 
     
@@ -258,14 +258,14 @@ public class PageReclaimerTest
         manager.setPageReclaimerThreshold(17);
         //manager._disableReclaimer( true );
         
-        PersistedBTreeConfiguration config = new PersistedBTreeConfiguration();
+        BTreeConfiguration config = new BTreeConfiguration();
 
         config.setName( "dump-tree" );
         config.setKeySerializer( IntSerializer.INSTANCE );
         config.setValueSerializer( StringSerializer.INSTANCE );
         config.setPageSize( 4 );
 
-        BTree btree = new PersistedBTree( config );
+        BTree btree = new BTreeImpl( config );
         manager.manage( btree );
         
         // insert 5 so that we get 1 root and 2 child nodes

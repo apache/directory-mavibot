@@ -38,7 +38,7 @@ import org.junit.Test;
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 @Ignore("until ApacheDS works with mavibot")
-public class PersistedBTreeBuilderTest
+public class BTreeBuilderTest
 {
 
     @Test
@@ -60,7 +60,7 @@ public class PersistedBTreeBuilderTest
             RecordManager rm = new RecordManager( file.getAbsolutePath() );
 
             IntSerializer ser = IntSerializer.INSTANCE;
-            PersistedBTreeBuilder<Integer, Integer> bb = new PersistedBTreeBuilder<Integer, Integer>( rm, "master", 4,
+            BTreeBuilder<Integer, Integer> bb = new BTreeBuilder<Integer, Integer>( rm, "master", 4,
                 ser,
                 ser );
 

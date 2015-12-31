@@ -36,7 +36,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class PersistedBTreeBuilder<K, V>
+public class BTreeBuilder<K, V>
 {
     private String name;
 
@@ -49,7 +49,7 @@ public class PersistedBTreeBuilder<K, V>
     private RecordManager rm;
 
 
-    public PersistedBTreeBuilder( RecordManager rm, String name, int numKeysInNode, ElementSerializer<K> keySerializer,
+    public BTreeBuilder( RecordManager rm, String name, int numKeysInNode, ElementSerializer<K> keySerializer,
         ElementSerializer<V> valueSerializer )
     {
         this.rm = rm;
@@ -71,7 +71,7 @@ public class PersistedBTreeBuilder<K, V>
 
         int totalTupleCount = 0;
 
-        PersistedLeaf<K, V> leaf1 = ( PersistedLeaf<K, V> ) BTreeFactory.createLeaf( btree, 0, numKeysInNode );
+        Leaf<K, V> leaf1 = ( Leaf<K, V> ) BTreeFactory.createLeaf( btree, 0, numKeysInNode );
         lstLeaves.add( leaf1 );
 
         int leafIndex = 0;
@@ -82,7 +82,7 @@ public class PersistedBTreeBuilder<K, V>
 
             BTreeFactory.setKey( btree, leaf1, leafIndex, tuple.getKey() );
 
-            PersistedValueHolder<V> eh = new PersistedValueHolder<V>( btree, tuple.getValue() );
+            ValueHolderImpl<V> eh = new ValueHolderImpl<V>( btree, tuple.getValue() );
 
             BTreeFactory.setValue( btree, leaf1, leafIndex, eh );
 
@@ -94,7 +94,7 @@ public class PersistedBTreeBuilder<K, V>
 
                 PageHolder<K, V> pageHolder = rm.writePage( btree, leaf1, 1 );
 
-                leaf1 = ( PersistedLeaf<K, V> ) BTreeFactory.createLeaf( btree, 0, numKeysInNode );
+                leaf1 = ( Leaf<K, V> ) BTreeFactory.createLeaf( btree, 0, numKeysInNode );
                 lstLeaves.add( leaf1 );
             }
 
@@ -107,7 +107,7 @@ public class PersistedBTreeBuilder<K, V>
         }
 
         // remove null keys and values from the last leaf and resize
-        PersistedLeaf<K, V> lastLeaf = ( PersistedLeaf<K, V> ) lstLeaves.get( lstLeaves.size() - 1 );
+        Leaf<K, V> lastLeaf = ( Leaf<K, V> ) lstLeaves.get( lstLeaves.size() - 1 );
         for ( int i = 0; i < lastLeaf.getNbElems(); i++ )
         {
             if ( lastLeaf.getKey( i ) == null )
@@ -116,11 +116,11 @@ public class PersistedBTreeBuilder<K, V>
                 lastLeaf.setNbElems( n );
                 KeyHolder<K>[] keys = lastLeaf.getKeys();
 
-                lastLeaf.setKeys( ( KeyHolder[] ) Array.newInstance( PersistedKeyHolder.class, n ) );
+                lastLeaf.setKeys( ( KeyHolder[] ) Array.newInstance( KeyHolderImpl.class, n ) );
                 System.arraycopy( keys, 0, lastLeaf.getKeys(), 0, n );
 
                 ValueHolder<V>[] values = lastLeaf.values;
-                lastLeaf.values = ( PersistedValueHolder<V>[] ) Array.newInstance( PersistedValueHolder.class, n );
+                lastLeaf.values = ( ValueHolderImpl<V>[] ) Array.newInstance( ValueHolderImpl.class, n );
                 System.arraycopy( values, 0, lastLeaf.values, 0, n );
 
                 PageHolder<K, V> pageHolder = rm.writePage( btree, lastLeaf, 1 );
@@ -134,7 +134,7 @@ public class PersistedBTreeBuilder<K, V>
         Page<K, V> rootPage = attachNodes( lstLeaves, btree );
 
         //System.out.println("built rootpage : " + rootPage);
-        ( ( PersistedBTree<K, V> ) btree ).setNbElems( totalTupleCount );
+        ( ( BTreeImpl<K, V> ) btree ).setNbElems( totalTupleCount );
 
         rm.updateBtreeHeader( btree, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
 
@@ -158,7 +158,7 @@ public class PersistedBTreeBuilder<K, V>
 
         int numChildren = numKeysInNode + 1;
 
-        PersistedNode<K, V> node = ( PersistedNode<K, V> ) BTreeFactory.createNode( btree, 0, numKeysInNode );
+        Node<K, V> node = ( Node<K, V> ) BTreeFactory.createNode( btree, 0, numKeysInNode );
         lstNodes.add( node );
         int i = 0;
         int totalNodes = 0;
@@ -181,7 +181,7 @@ public class PersistedBTreeBuilder<K, V>
 
                 rm.writePage( btree, node, 1 );
 
-                node = ( PersistedNode<K, V> ) BTreeFactory.createNode( btree, 0, numKeysInNode );
+                node = ( Node<K, V> ) BTreeFactory.createNode( btree, 0, numKeysInNode );
                 lstNodes.add( node );
             }
         }
