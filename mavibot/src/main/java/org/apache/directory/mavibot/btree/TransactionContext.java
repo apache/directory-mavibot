@@ -25,8 +25,10 @@ import java.util.Map;
 
 /**
  * The TransactionContext class holds all the modified pages in memory, up to the
- * moment we have to flush them on disk, when a cmmit is applied, or discard them,
- * if a rallback is called.
+ * moment we have to flush them on disk, when a commit is applied, or discard them,
+ * if a rollback is called.
+ * We also store the BOB Header and the CPB Header, as we will copy them to create a 
+ * new version, and we don't want any read to be impacted by such change.
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
@@ -44,16 +46,24 @@ public class TransactionContext
     /** The last offset on disk */
     private long lastOffset;
     
+    /** The BOB header */
+    private BTreeHeader btreeOfBtreeHeader;
+    
+    /** The CPB header */
+    private BTreeHeader copiedPageBtreeHeader;
+    
     /**
      * A constructor for the TransactionContext, which initialize the last offset to
      * the file size.
      * 
      * @param lastOffset The last offset of the associated file
      */
-    public TransactionContext( long lastOffset, long revision )
+    public TransactionContext( long lastOffset, long revision, BTreeHeader btreeOfBtreeHeader, BTreeHeader copiedPageBtreeHeader )
     {
         this.lastOffset = lastOffset;
         this.revision = revision;
+        this.btreeOfBtreeHeader = btreeOfBtreeHeader;
+        this.copiedPageBtreeHeader = copiedPageBtreeHeader;
     }
 
 
@@ -120,7 +130,39 @@ public class TransactionContext
         return copiedPageMap.values();
     }
 
+
+    /**
+     * @return the copiedPageBtreeHeader
+     */
+    public BTreeHeader getCopiedPageBtreeHeader() {
+        return copiedPageBtreeHeader;
+    }
+
+
+    /**
+     * @param copiedPageBtreeHeader the copiedPageBtreeHeader to set
+     */
+    public void setCopiedPageBtreeHeader(BTreeHeader copiedPageBtreeHeader) {
+        this.copiedPageBtreeHeader = copiedPageBtreeHeader;
+    }
+
     
+    /**
+     * @return the btreeOfBtreeHeader
+     */
+    public BTreeHeader getBtreeOfBtreeHeader() {
+        return btreeOfBtreeHeader;
+    }
+
+
+    /**
+     * @param btreeOfBtreeHeader the btreeOfBtreeHeader to set
+     */
+    public void setBtreeOfBtreeHeader(BTreeHeader btreeOfBtreeHeader) {
+        this.btreeOfBtreeHeader = btreeOfBtreeHeader;
+    }
+
+
     /**
      * @return the lastOffset
      */
@@ -154,5 +196,63 @@ public class TransactionContext
     public long getRevision()
     {
         return revision;
+    }
+    
+    
+    /**
+     * @see Object#toString()
+     */
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+        
+        sb.append( "Context[" ).append( revision ).append( "]\n" );
+        sb.append( "    Pages in context : {" );
+        
+        if ( pageMap.size() > 0 )
+        {
+            boolean isFirst = true;
+            
+            for ( long offset : pageMap.keySet() )
+            {
+                if ( isFirst )
+                {
+                    isFirst = false;
+                }
+                else
+                {
+                    sb.append( ", " );
+                }
+                
+                sb.append( "0x" ).append( Long.toHexString( offset ) );
+            }
+        }
+        
+        sb.append( "}\n" );
+        
+        sb.append( "    CopiedPages : {" );
+        
+        if ( pageMap.size() > 0 )
+        {
+            boolean isFirst = true;
+            
+            for ( long offset : copiedPageMap.keySet() )
+            {
+                if ( isFirst )
+                {
+                    isFirst = false;
+                }
+                else
+                {
+                    sb.append( ", " );
+                }
+                
+                sb.append( "0x" ).append( Long.toHexString( offset ) );
+            }
+        }
+        
+        sb.append( "}\n" );
+
+        return sb.toString();
     }
 }
