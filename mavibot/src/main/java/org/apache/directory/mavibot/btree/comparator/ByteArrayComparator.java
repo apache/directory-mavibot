@@ -57,14 +57,7 @@ public class ByteArrayComparator implements Comparator<byte[]>
 
         if ( byteArray1 == null )
         {
-            if ( byteArray2 == null )
-            {
-                return 0;
-            }
-            else
-            {
-                return -1;
-            }
+            return -1;
         }
         else
         {
