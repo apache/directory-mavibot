@@ -122,6 +122,7 @@ public class CharSerializer extends AbstractElementSerializer<Character>
      * @param in The byte array containing the Character
      * @return A Character
      */
+    @Override
     public Character fromBytes( byte[] in )
     {
         return deserialize( in, 0 );
@@ -131,9 +132,10 @@ public class CharSerializer extends AbstractElementSerializer<Character>
     /**
      * A static method used to deserialize a Character from a byte array.
      * @param in The byte array containing the Character
-    * @param start the position in the byte[] we will deserialize the char from
+     * @param start the position in the byte[] we will deserialize the char from
      * @return A Character
      */
+    @Override
     public Character fromBytes( byte[] in, int start )
     {
         if ( ( in == null ) || ( in.length < 2 + start ) )
@@ -149,6 +151,7 @@ public class CharSerializer extends AbstractElementSerializer<Character>
     /**
      * {@inheritDoc}
      */
+    @Override
     public Character deserialize( ByteBuffer buffer ) throws IOException
     {
         return buffer.getChar();
@@ -158,6 +161,7 @@ public class CharSerializer extends AbstractElementSerializer<Character>
     /**
      * {@inheritDoc}
      */
+    @Override
     public Character deserialize( BufferHandler bufferHandler ) throws IOException
     {
         byte[] in = bufferHandler.read( 2 );

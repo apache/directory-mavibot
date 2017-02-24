@@ -51,16 +51,16 @@ public class CharArraySerializer extends AbstractElementSerializer<char[]>
      */
     public byte[] serialize( char[] element )
     {
-        int len = -1;
+        int nbChars = -1;
 
         if ( element != null )
         {
-            len = element.length;
+            nbChars = element.length;
         }
 
-        byte[] bytes = null;
+        byte[] bytes;
 
-        switch ( len )
+        switch ( nbChars )
         {
             case 0:
                 bytes = new byte[4];
@@ -83,13 +83,13 @@ public class CharArraySerializer extends AbstractElementSerializer<char[]>
                 break;
 
             default:
-                bytes = new byte[len * 2 + 4];
+                bytes = new byte[nbChars * 2 + 4];
                 int pos = 4;
 
-                bytes[0] = ( byte ) ( len >>> 24 );
-                bytes[1] = ( byte ) ( len >>> 16 );
-                bytes[2] = ( byte ) ( len >>> 8 );
-                bytes[3] = ( byte ) ( len );
+                bytes[0] = ( byte ) ( nbChars >>> 24 );
+                bytes[1] = ( byte ) ( nbChars >>> 16 );
+                bytes[2] = ( byte ) ( nbChars >>> 8 );
+                bytes[3] = ( byte ) ( nbChars );
 
                 for ( char c : element )
                 {
@@ -115,9 +115,9 @@ public class CharArraySerializer extends AbstractElementSerializer<char[]>
             throw new SerializerCreationException( "Cannot extract a byte[] from a buffer with not enough bytes" );
         }
 
-        int len = IntSerializer.deserialize( in );
+        int nbChars = IntSerializer.deserialize( in );
 
-        switch ( len )
+        switch ( nbChars )
         {
             case 0:
                 return new char[]
@@ -127,12 +127,11 @@ public class CharArraySerializer extends AbstractElementSerializer<char[]>
                 return null;
 
             default:
-                char[] result = new char[len];
+                char[] result = new char[nbChars];
 
-                for ( int i = 4; i < len * 2 + 4; i += 2 )
+                for ( int i = 4; i < nbChars * 2 + 4; i += 2 )
                 {
-                    result[i] = Character.valueOf( ( char ) ( ( in[i] << 8 ) +
-                        ( in[i + 1] & 0xFF ) ) );
+                    result[i] = ( char ) ( ( in[i] << 8 ) + ( in[i + 1] & 0xFF ) );
                 }
 
                 return result;
@@ -146,6 +145,7 @@ public class CharArraySerializer extends AbstractElementSerializer<char[]>
      * @param in The byte array containing the char array
      * @return A char[]
      */
+    @Override
     public char[] fromBytes( byte[] in, int start )
     {
         if ( ( in == null ) || ( in.length - start < 4 ) )
@@ -153,9 +153,9 @@ public class CharArraySerializer extends AbstractElementSerializer<char[]>
             throw new SerializerCreationException( "Cannot extract a byte[] from a buffer with not enough bytes" );
         }
 
-        int len = IntSerializer.deserialize( in, start );
+        int nbChars = IntSerializer.deserialize( in, start );
 
-        switch ( len )
+        switch ( nbChars )
         {
             case 0:
                 return new char[]
@@ -165,12 +165,11 @@ public class CharArraySerializer extends AbstractElementSerializer<char[]>
                 return null;
 
             default:
-                char[] result = new char[len];
+                char[] result = new char[nbChars];
 
-                for ( int i = 4; i < len * 2 + 4; i += 2 )
+                for ( int i = 4; i < nbChars * 2 + 4; i += 2 )
                 {
-                    result[i] = Character.valueOf( ( char ) ( ( in[i] << 8 ) +
-                        ( in[i + 1] & 0xFF ) ) );
+                    result[i] = ( char ) ( ( in[i] << 8 ) + ( in[i + 1] & 0xFF ) );
                 }
 
                 return result;
@@ -184,6 +183,7 @@ public class CharArraySerializer extends AbstractElementSerializer<char[]>
      * @param in The byte array containing the char array
      * @return A char[]
      */
+    @Override
     public char[] fromBytes( byte[] in )
     {
         if ( ( in == null ) || ( in.length < 4 ) )
@@ -191,9 +191,9 @@ public class CharArraySerializer extends AbstractElementSerializer<char[]>
             throw new SerializerCreationException( "Cannot extract a byte[] from a buffer with not enough bytes" );
         }
 
-        int len = IntSerializer.deserialize( in );
+        int nbChars = IntSerializer.deserialize( in );
 
-        switch ( len )
+        switch ( nbChars )
         {
             case 0:
                 return new char[]
@@ -203,12 +203,11 @@ public class CharArraySerializer extends AbstractElementSerializer<char[]>
                 return null;
 
             default:
-                char[] result = new char[len];
+                char[] result = new char[nbChars];
 
-                for ( int i = 4; i < len * 2 + 4; i += 2 )
+                for ( int i = 4; i < nbChars * 2 + 4; i += 2 )
                 {
-                    result[i] = Character.valueOf( ( char ) ( ( in[i] << 8 ) +
-                        ( in[i + 1] & 0xFF ) ) );
+                    result[i] = ( char ) ( ( in[i] << 8 ) + ( in[i + 1] & 0xFF ) );
                 }
 
                 return result;
@@ -219,13 +218,14 @@ public class CharArraySerializer extends AbstractElementSerializer<char[]>
     /**
      * {@inheritDoc}
      */
+    @Override
     public char[] deserialize( BufferHandler bufferHandler ) throws IOException
     {
         byte[] in = bufferHandler.read( 4 );
 
-        int len = IntSerializer.deserialize( in );
+        int nbChars = IntSerializer.deserialize( in );
 
-        switch ( len )
+        switch ( nbChars )
         {
             case 0:
                 return new char[]
@@ -235,13 +235,12 @@ public class CharArraySerializer extends AbstractElementSerializer<char[]>
                 return null;
 
             default:
-                char[] result = new char[len];
-                byte[] buffer = bufferHandler.read( len * 2 );
+                char[] result = new char[nbChars];
+                byte[] buffer = bufferHandler.read( nbChars * 2 );
 
-                for ( int i = 0; i < len * 2; i += 2 )
+                for ( int i = 0; i < nbChars * 2; i += 2 )
                 {
-                    result[i] = Character.valueOf( ( char ) ( ( buffer[i] << 8 ) +
-                        ( buffer[i + 1] & 0xFF ) ) );
+                    result[i] = ( char ) ( ( buffer[i] << 8 ) + ( buffer[i + 1] & 0xFF ) );
                 }
 
                 return result;
@@ -252,11 +251,12 @@ public class CharArraySerializer extends AbstractElementSerializer<char[]>
     /**
      * {@inheritDoc}
      */
+    @Override
     public char[] deserialize( ByteBuffer buffer ) throws IOException
     {
-        int len = buffer.getInt();
+        int nbChars = buffer.getInt();
 
-        switch ( len )
+        switch ( nbChars )
         {
             case 0:
                 return new char[]
@@ -266,9 +266,9 @@ public class CharArraySerializer extends AbstractElementSerializer<char[]>
                 return null;
 
             default:
-                char[] result = new char[len];
+                char[] result = new char[nbChars];
 
-                for ( int i = 0; i < len; i++ )
+                for ( int i = 0; i < nbChars; i++ )
                 {
                     result[i] = buffer.getChar();
                 }

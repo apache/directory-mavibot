@@ -29,7 +29,7 @@ import java.util.Comparator;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* no qualifier*/class RevisionOffsetComparator implements Comparator<RevisionOffset>
+/* no qualifier*/class RevisionOffsetComparator implements Comparator<RevisionOffsets>
 {
     /** A static instance of a RevisionOffsetComparator */
     public static final RevisionOffsetComparator INSTANCE = new RevisionOffsetComparator();
@@ -55,7 +55,7 @@ import java.util.Comparator;
     /**
      * {@inheritDoc}
      */
-    public int compare( RevisionOffset rn1, RevisionOffset rn2 )
+    public int compare( RevisionOffsets rn1, RevisionOffsets rn2 )
     {
         if ( rn1 == rn2 )
         {

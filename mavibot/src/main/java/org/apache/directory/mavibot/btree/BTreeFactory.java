@@ -26,50 +26,172 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 
 /**
- * This class construct a B-tree from a serialized version of a B-tree. We need it
- * to avoid exposing all the methods of the B-tree class.<br>
+ * This class construct a b-tree from a serialized version of a b-tree. We need it
+ * to avoid exposing all the methods of the b-tree class.<br>
  *
  * All its methods are static.
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  *
- * @param <K> The B-tree key type
- * @param <V> The B-tree value type
+ * @param <K> The b-tree key type
+ * @param <V> The b-tree value type
  */
 public class BTreeFactory<K, V>
 {
+    /**
+     * Private constructor to forbid the creation of an instance
+     */
+    private BTreeFactory()
+    {
+        // Does nothing
+    }
+    
+    
     //--------------------------------------------------------------------------------------------
-    // Create persisted btrees
+    // Create b-tree
     //--------------------------------------------------------------------------------------------
     /**
-     * Creates a new persisted B-tree, with no initialization.
+     * Creates a new b-tree, with no initialization.
      *
-     * @return a new B-tree instance
+     * @return a new b-tree instance
      */
-    public static <K, V> BTree<K, V> createPersistedBTree()
+    public static <K, V> BTree<K, V> createBTree()
     {
-        BTree<K, V> btree = new BTreeImpl<K, V>();
+        return new BTreeImpl<>();
+    }
+
+
+    /**
+     * Creates a new typed b-tree, with no initialization. The type is one
+     * of {@link BTreeTypeEnum}
+     *
+     * @return a new b-tree instance
+     */
+    public static <K, V> BTree<K, V> createBTree( BTreeTypeEnum type )
+    {
+        BTree<K, V> btree = new BTreeImpl<>();
+        ( ( BTreeImpl<K, V> ) btree ).setType( type );
 
         return btree;
     }
 
 
     /**
-     * Creates a new persisted B-tree, with no initialization.
+     * Creates a new b-tree using the BTreeConfiguration to initialize the
+     * b-tree
      *
-     * @return a new B-tree instance
+     * @param configuration The configuration to use
+     * @return a new b-tree instance
      */
-    public static <K, V> BTree<K, V> createPersistedBTree( BTreeTypeEnum type )
+    public static <K, V> BTree<K, V> createBTree( Transaction transaction, BTreeConfiguration<K, V> configuration )
     {
-        BTree<K, V> btree = new BTreeImpl<K, V>();
-        ( ( AbstractBTree<K, V> ) btree ).setType( type );
-
-        return btree;
+        return new BTreeImpl<>( transaction, configuration );
     }
 
 
     /**
-     * Sets the btreeHeader offset for a Persisted BTree
+     * Creates a new b-tree using the parameters to initialize the b-tree
+     *
+     * @param name The b-tree's name
+     * @param keySerializer Key serializer
+     * @param valueSerializer Value serializer
+     * @return a new b-tree instance
+     */
+    public static <K, V> BTree<K, V> createBTree( Transaction transaction, String name, ElementSerializer<K> keySerializer,
+        ElementSerializer<V> valueSerializer )
+    {
+        BTreeConfiguration<K, V> configuration = new BTreeConfiguration<>();
+
+        configuration.setName( name );
+        configuration.setKeySerializer( keySerializer );
+        configuration.setValueSerializer( valueSerializer );
+        configuration.setPageNbElem( BTree.DEFAULT_PAGE_NBELEM );
+        configuration.setCacheSize( BTreeImpl.DEFAULT_CACHE_SIZE );
+        configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
+
+        return new BTreeImpl<>( transaction, configuration );
+    }
+
+
+    /**
+     * Creates a new b-tree using the parameters to initialize the b-tree
+     *
+     * @param name The b-tree's name
+     * @param keySerializer Key serializer
+     * @param valueSerializer Value serializer
+     * @param allowDuplicates Tells if the b-tree allows multiple value for a given key
+     * @param cacheSize The size to be used for this b-tree cache
+     * @return a new b-tree instance
+     */
+    public static <K, V> BTree<K, V> createBTree( Transaction transaction, String name, ElementSerializer<K> keySerializer,
+        ElementSerializer<V> valueSerializer, int cacheSize )
+    {
+        BTreeConfiguration<K, V> configuration = new BTreeConfiguration<>();
+
+        configuration.setName( name );
+        configuration.setKeySerializer( keySerializer );
+        configuration.setValueSerializer( valueSerializer );
+        configuration.setPageNbElem( BTree.DEFAULT_PAGE_NBELEM );
+        configuration.setCacheSize( cacheSize );
+        configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
+
+        return new BTreeImpl<>( transaction, configuration );
+    }
+
+
+    /**
+     * Creates a new b-tree using the parameters to initialize the b-tree
+     *
+     * @param name The b-tree's name
+     * @param pageNbElem Number of elements per page
+     * @param keySerializer Key serializer
+     * @param valueSerializer Value serializer
+     * @return a new b-tree instance
+     */
+    public static <K, V> BTree<K, V> createBTree( Transaction transaction, String name, int pageNbElem, ElementSerializer<K> keySerializer,
+        ElementSerializer<V> valueSerializer )
+    {
+        BTreeConfiguration<K, V> configuration = new BTreeConfiguration<>();
+
+        configuration.setName( name );
+        configuration.setKeySerializer( keySerializer );
+        configuration.setValueSerializer( valueSerializer );
+        configuration.setPageNbElem( pageNbElem );
+        configuration.setCacheSize( BTreeImpl.DEFAULT_CACHE_SIZE );
+        configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
+
+        return new BTreeImpl<>( transaction, configuration );
+    }
+
+
+    /**
+     * Creates a new b-tree using the parameters to initialize the b-tree
+     *
+     * @param name The b-tree's name
+     * @param pageNbElem Number of elements per page
+     * @param keySerializer Key serializer
+     * @param valueSerializer Value serializer
+     * @param cacheSize The size to be used for this b-tree cache
+     * @return a new b-tree instance
+     */
+    public static <K, V> BTree<K, V> createBTree( Transaction transaction, String name, int pageNbElem, 
+        ElementSerializer<K> keySerializer, ElementSerializer<V> valueSerializer, int cacheSize )
+    {
+        BTreeConfiguration<K, V> configuration = new BTreeConfiguration<>();
+
+        configuration.setName( name );
+        configuration.setKeySerializer( keySerializer );
+        configuration.setValueSerializer( valueSerializer );
+        configuration.setPageNbElem( pageNbElem );
+        configuration.setCacheSize( cacheSize );
+        configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
+
+        return new BTreeImpl<>( transaction, configuration );
+    }
+
+
+    /**
+     * Sets the btreeHeader offset for a BTree
      *
      * @param btree The btree to update
      * @param btreeHeaderOffset The offset
@@ -80,199 +202,13 @@ public class BTreeFactory<K, V>
     }
 
 
-    /**
-     * Creates a new persisted B-tree using the BTreeConfiguration to initialize the
-     * B-tree
-     *
-     * @param configuration The configuration to use
-     * @return a new B-tree instance
-     */
-    public static <K, V> BTree<K, V> createPersistedBTree( BTreeConfiguration<K, V> configuration )
-    {
-        BTree<K, V> btree = new BTreeImpl<K, V>( configuration );
-
-        return btree;
-    }
-
-
-    /**
-     * Creates a new persisted B-tree using the parameters to initialize the
-     * B-tree
-     *
-     * @param name The B-tree's name
-     * @param keySerializer Key serializer
-     * @param valueSerializer Value serializer
-     * @return a new B-tree instance
-     */
-    public static <K, V> BTree<K, V> createPersistedBTree( String name, ElementSerializer<K> keySerializer,
-        ElementSerializer<V> valueSerializer )
-    {
-        BTreeConfiguration<K, V> configuration = new BTreeConfiguration<K, V>();
-
-        configuration.setName( name );
-        configuration.setKeySerializer( keySerializer );
-        configuration.setValueSerializer( valueSerializer );
-        configuration.setPageSize( BTree.DEFAULT_PAGE_SIZE );
-        configuration.setCacheSize( BTreeImpl.DEFAULT_CACHE_SIZE );
-        configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
-
-        BTree<K, V> btree = new BTreeImpl<K, V>( configuration );
-
-        return btree;
-    }
-
-
-    /**
-     * Creates a new persisted B-tree using the parameters to initialize the
-     * B-tree
-     *
-     * @param name The B-tree's name
-     * @param keySerializer Key serializer
-     * @param valueSerializer Value serializer
-     * @param allowDuplicates Tells if the B-tree allows multiple value for a given key
-     * @return a new B-tree instance
-     */
-    public static <K, V> BTree<K, V> createPersistedBTree( String name, ElementSerializer<K> keySerializer,
-        ElementSerializer<V> valueSerializer, boolean allowDuplicates )
-    {
-        BTreeConfiguration<K, V> configuration = new BTreeConfiguration<K, V>();
-
-        configuration.setName( name );
-        configuration.setKeySerializer( keySerializer );
-        configuration.setValueSerializer( valueSerializer );
-        configuration.setPageSize( BTree.DEFAULT_PAGE_SIZE );
-        configuration.setCacheSize( BTreeImpl.DEFAULT_CACHE_SIZE );
-        configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
-
-        BTree<K, V> btree = new BTreeImpl<K, V>( configuration );
-
-        return btree;
-    }
-
-
-    /**
-     * Creates a new persisted B-tree using the parameters to initialize the
-     * B-tree
-     *
-     * @param name The B-tree's name
-     * @param keySerializer Key serializer
-     * @param valueSerializer Value serializer
-     * @param allowDuplicates Tells if the B-tree allows multiple value for a given key
-     * @param cacheSize The size to be used for this B-tree cache
-     * @return a new B-tree instance
-     */
-    public static <K, V> BTree<K, V> createPersistedBTree( String name, ElementSerializer<K> keySerializer,
-        ElementSerializer<V> valueSerializer, boolean allowDuplicates, int cacheSize )
-    {
-        BTreeConfiguration<K, V> configuration = new BTreeConfiguration<K, V>();
-
-        configuration.setName( name );
-        configuration.setKeySerializer( keySerializer );
-        configuration.setValueSerializer( valueSerializer );
-        configuration.setPageSize( BTree.DEFAULT_PAGE_SIZE );
-        configuration.setCacheSize( cacheSize );
-        configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
-
-        BTree<K, V> btree = new BTreeImpl<K, V>( configuration );
-
-        return btree;
-    }
-
-
-    /**
-     * Creates a new persisted B-tree using the parameters to initialize the
-     * B-tree
-     *
-     * @param name The B-tree's name
-     * @param keySerializer Key serializer
-     * @param valueSerializer Value serializer
-     * @param pageSize Size of the page
-     * @return a new B-tree instance
-     */
-    public static <K, V> BTree<K, V> createPersistedBTree( String name, ElementSerializer<K> keySerializer,
-        ElementSerializer<V> valueSerializer, int pageSize )
-    {
-        BTreeConfiguration<K, V> configuration = new BTreeConfiguration<K, V>();
-
-        configuration.setName( name );
-        configuration.setKeySerializer( keySerializer );
-        configuration.setValueSerializer( valueSerializer );
-        configuration.setPageSize( pageSize );
-        configuration.setCacheSize( BTreeImpl.DEFAULT_CACHE_SIZE );
-        configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
-
-        BTree<K, V> btree = new BTreeImpl<K, V>( configuration );
-
-        return btree;
-    }
-
-
-    /**
-     * Creates a new persisted B-tree using the parameters to initialize the
-     * B-tree
-     *
-     * @param name The B-tree's name
-     * @param keySerializer Key serializer
-     * @param valueSerializer Value serializer
-     * @param pageSize Size of the page
-     * @param allowDuplicates Tells if the B-tree allows multiple value for a given key
-     * @return a new B-tree instance
-     */
-    public static <K, V> BTree<K, V> createPersistedBTree( String name, ElementSerializer<K> keySerializer,
-        ElementSerializer<V> valueSerializer, int pageSize, boolean allowDuplicates )
-    {
-        BTreeConfiguration<K, V> configuration = new BTreeConfiguration<K, V>();
-
-        configuration.setName( name );
-        configuration.setKeySerializer( keySerializer );
-        configuration.setValueSerializer( valueSerializer );
-        configuration.setPageSize( pageSize );
-        configuration.setCacheSize( BTreeImpl.DEFAULT_CACHE_SIZE );
-        configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
-
-        BTree<K, V> btree = new BTreeImpl<K, V>( configuration );
-
-        return btree;
-    }
-
-
-    /**
-     * Creates a new persisted B-tree using the parameters to initialize the
-     * B-tree
-     *
-     * @param name The B-tree's name
-     * @param keySerializer Key serializer
-     * @param valueSerializer Value serializer
-     * @param pageSize Size of the page
-     * @param allowDuplicates Tells if the B-tree allows multiple value for a given key
-     * @param cacheSize The size to be used for this B-tree cache
-     * @return a new B-tree instance
-     */
-    public static <K, V> BTree<K, V> createPersistedBTree( String name, ElementSerializer<K> keySerializer,
-        ElementSerializer<V> valueSerializer, int pageSize, boolean allowDuplicates, int cacheSize )
-    {
-        BTreeConfiguration<K, V> configuration = new BTreeConfiguration<K, V>();
-
-        configuration.setName( name );
-        configuration.setKeySerializer( keySerializer );
-        configuration.setValueSerializer( valueSerializer );
-        configuration.setPageSize( pageSize );
-        configuration.setCacheSize( cacheSize );
-        configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
-
-        BTree<K, V> btree = new BTreeImpl<K, V>( configuration );
-
-        return btree;
-    }
-
-
     //--------------------------------------------------------------------------------------------
     // Create Pages
     //--------------------------------------------------------------------------------------------
     /**
-     * Create a new Leaf for the given B-tree.
+     * Create a new Leaf for the given b-tree.
      *
-     * @param btree The B-tree which will contain this leaf
+     * @param btree The b-tree which will contain this leaf
      * @param revision The Leaf's revision
      * @param nbElems The number or elements in this leaf
      *
@@ -280,14 +216,14 @@ public class BTreeFactory<K, V>
      */
     /* no qualifier*/static <K, V> Page<K, V> createLeaf( BTree<K, V> btree, long revision, int nbElems )
     {
-        return new Leaf<K, V>( btree, revision, nbElems );
+        return new Leaf<>( btree, revision, nbElems );
     }
 
 
     /**
-     * Create a new Node for the given B-tree.
+     * Create a new Node for the given b-tree.
      *
-     * @param btree The B-tree which will contain this node
+     * @param btree The b-tree which will contain this node
      * @param revision The Node's revision
      * @param nbElems The number or elements in this node
      * @return A Node instance
@@ -295,7 +231,7 @@ public class BTreeFactory<K, V>
     /* no qualifier*/static <K, V> Page<K, V> createNode( BTree<K, V> btree, long revision, int nbElems )
     {
         //System.out.println( "Creating a node with nbElems : " + nbElems );
-        return new Node<K, V>( btree, revision, nbElems );
+        return new Node<>( btree, revision, nbElems );
     }
 
 
@@ -305,14 +241,14 @@ public class BTreeFactory<K, V>
     /**
      * Set the key at a give position
      *
-     * @param btree The B-tree to update
+     * @param btree The b-tree to update
      * @param page The page to update
      * @param pos The position in the keys array
      * @param key The key to inject
      */
     /* no qualifier*/static <K, V> void setKey( BTree<K, V> btree, Page<K, V> page, int pos, K key )
     {
-        KeyHolder<K> keyHolder = new KeyHolderImpl<K>( btree.getKeySerializer(), key );
+        KeyHolder<K> keyHolder = new KeyHolder<>( btree.getKeySerializer(), key );
 
         ( ( AbstractPage<K, V> ) page ).setKey( pos, keyHolder );
     }
@@ -321,7 +257,7 @@ public class BTreeFactory<K, V>
     /**
      * Set the value at a give position
      *
-     * @param btree The B-tree to update
+     * @param btree The b-tree to update
      * @param page The page to update
      * @param pos The position in the values array
      * @param value the value to inject
@@ -335,24 +271,24 @@ public class BTreeFactory<K, V>
     /**
      * Set the page at a give position
      *
-     * @param btree The B-tree to update
+     * @param btree The b-tree to update
      * @param page The page to update
      * @param pos The position in the values array
      * @param child the child page to inject
      */
     /* no qualifier*/static <K, V> void setPage( BTree<K, V> btree, Page<K, V> page, int pos, Page<K, V> child )
     {
-        ( ( Node<K, V> ) page ).setValue( pos, new PageHolderImpl<K, V>( btree, child ) );
+        ( ( Node<K, V> ) page ).setValue( pos, new PageHolder<K, V>( btree, child ) );
     }
 
 
     //--------------------------------------------------------------------------------------------
-    // Update B-tree
+    // Update b-tree
     //--------------------------------------------------------------------------------------------
     /**
-     * Sets the KeySerializer into the B-tree
+     * Sets the KeySerializer into the b-tree
      *
-     * @param btree The B-tree to update
+     * @param btree The b-tree to update
      * @param keySerializerFqcn the Key serializer FQCN to set
      * @throws ClassNotFoundException If the key serializer class cannot be found
      * @throws InstantiationException If the key serializer class cannot be instanciated
@@ -387,9 +323,9 @@ public class BTreeFactory<K, V>
 
 
     /**
-     * Sets the ValueSerializer into the B-tree
+     * Sets the ValueSerializer into the b-tree
      *
-     * @param btree The B-tree to update
+     * @param btree The b-tree to update
      * @param valueSerializerFqcn the Value serializer FQCN to set
      * @throws ClassNotFoundException If the value serializer class cannot be found
      * @throws InstantiationException If the value serializer class cannot be instanciated
@@ -427,55 +363,55 @@ public class BTreeFactory<K, V>
      * Set the new root page for this tree. Used for debug purpose only. The revision
      * will always be 0;
      *
-     * @param btree The B-tree to update
+     * @param btree The b-tree to update
      * @param root the new root page.
      */
     /* no qualifier*/static <K, V> void setRootPage( BTree<K, V> btree, Page<K, V> root )
     {
-        ( ( AbstractBTree<K, V> ) btree ).setRootPage( root );
+        ( ( BTreeImpl<K, V> ) btree ).setRootPage( root );
     }
 
 
     /**
-     * Return the B-tree root page
+     * Return the b-tree root page
      *
-     * @param btree The B-tree we want to root page from
+     * @param btree The b-tree we want to root page from
      * @return The root page
      */
     /* no qualifier */static <K, V> Page<K, V> getRootPage( BTree<K, V> btree )
     {
-        return btree.getRootPage();
+        return (( BTreeImpl<K, V> ) btree ).getRootPage();
     }
 
 
     /**
-     * Update the B-tree number of elements
+     * Update the b-tree number of elements
      *
-     * @param btree The B-tree to update
+     * @param btree The b-tree to update
      * @param nbElems the nbElems to set
      */
     /* no qualifier */static <K, V> void setNbElems( BTree<K, V> btree, long nbElems )
     {
-        ( ( AbstractBTree<K, V> ) btree ).setNbElems( nbElems );
+        ( ( BTreeImpl<K, V> ) btree ).setNbElems( nbElems );
     }
 
 
     /**
-     * Update the B-tree revision
+     * Update the b-tree revision
      *
-     * @param btree The B-tree to update
+     * @param btree The b-tree to update
      * @param revision the revision to set
      */
     /* no qualifier*/static <K, V> void setRevision( BTree<K, V> btree, long revision )
     {
-        ( ( AbstractBTree<K, V> ) btree ).setRevision( revision );
+        ( ( BTreeImpl<K, V> ) btree ).setRevision( revision );
     }
 
 
     /**
-     * Set the B-tree name
+     * Set the b-tree name
      *
-     * @param btree The B-tree to update
+     * @param btree The b-tree to update
      * @param name the name to set
      */
     /* no qualifier */static <K, V> void setName( BTree<K, V> btree, String name )
@@ -487,12 +423,12 @@ public class BTreeFactory<K, V>
     /**
      * Set the maximum number of elements we can store in a page.
      *
-     * @param btree The B-tree to update
+     * @param btree The b-tree to update
      * @param pageSize The requested page size
      */
-    /* no qualifier */static <K, V> void setPageSize( BTree<K, V> btree, int pageSize )
+    /* no qualifier */static <K, V> void setPageNbElem( BTree<K, V> btree, int pageNbElem )
     {
-        btree.setPageSize( pageSize );
+        btree.setPageNbElem( pageNbElem );
     }
 
 
@@ -502,20 +438,20 @@ public class BTreeFactory<K, V>
     /**
      * Includes the intermediate nodes in the path up to and including the right most leaf of the tree
      *
-     * @param btree the B-tree
+     * @param btree the b-tree
      * @return a LinkedList of all the nodes and the final leaf
      */
     /* no qualifier*/static <K, V> LinkedList<ParentPos<K, V>> getPathToRightMostLeaf( BTree<K, V> btree )
     {
         LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
 
-        ParentPos<K, V> last = new ParentPos<K, V>( btree.getRootPage(), btree.getRootPage().getNbElems() );
+        ParentPos<K, V> last = new ParentPos<K, V>( btree.getRootPage(), btree.getRootPage().getNbPageElems() );
         stack.push( last );
 
         if ( btree.getRootPage().isLeaf() )
         {
             Page<K, V> leaf = btree.getRootPage();
-            ValueHolder<V> valueHolder = ( ( AbstractPage<K, V> ) leaf ).getValue( last.pos );
+            //ValueHolder<V> valueHolder = ( ( Leaf<K, V> ) leaf ).getValue( last.pos );
         }
         else
         {
@@ -523,15 +459,15 @@ public class BTreeFactory<K, V>
 
             while ( true )
             {
-                Page<K, V> p = ( ( AbstractPage<K, V> ) node ).getPage( node.getNbElems() );
+                Page<K, V> p = ( ( AbstractPage<K, V> ) node ).getPage( node.getNbPageElems() );
 
-                last = new ParentPos<K, V>( p, p.getNbElems() );
+                last = new ParentPos<>( p, p.getNbPageElems() );
                 stack.push( last );
 
                 if ( p.isLeaf() )
                 {
                     Page<K, V> leaf = last.page;
-                    ValueHolder<V> valueHolder = ( ( AbstractPage<K, V> ) leaf ).getValue( last.pos );
+                    //ValueHolder<V> valueHolder = ( ( Leaf<K, V> ) leaf ).getValue( last.pos );
                     break;
                 }
             }
@@ -542,12 +478,12 @@ public class BTreeFactory<K, V>
 
 
     //--------------------------------------------------------------------------------------------
-    // Persisted B-tree methods
+    // Persisted b-tree methods
     //--------------------------------------------------------------------------------------------
     /**
-     * Set the rootPage offset of the B-tree
+     * Set the rootPage offset of the b-tree
      *
-     * @param btree The B-tree to update
+     * @param btree The b-tree to update
      * @param rootPageOffset The rootPageOffset to set
      */
     /* no qualifier*/static <K, V> void setRootPageOffset( BTree<K, V> btree, long rootPageOffset )
@@ -558,7 +494,7 @@ public class BTreeFactory<K, V>
         }
         else
         {
-            throw new IllegalArgumentException( "The B-tree must be a PersistedBTree" );
+            throw new IllegalArgumentException( "The b-tree must be a PersistedBTree" );
         }
     }
 
@@ -566,7 +502,7 @@ public class BTreeFactory<K, V>
     /**
      * Set the RecordManager
      *
-     * @param btree The B-tree to update
+     * @param btree The b-tree to update
      * @param recordManager The injected RecordManager
      */
     /* no qualifier*/static <K, V> void setRecordManager( BTree<K, V> btree, RecordManager recordManager )
@@ -577,7 +513,7 @@ public class BTreeFactory<K, V>
         }
         else
         {
-            throw new IllegalArgumentException( "The B-tree must be a PersistedBTree" );
+            throw new IllegalArgumentException( "The b-tree must be a PersistedBTree" );
         }
     }
 
@@ -585,7 +521,7 @@ public class BTreeFactory<K, V>
     /**
      * Set the key at a give position
      *
-     * @param btree The B-tree to update
+     * @param btree The b-tree to update
      * @param page The page to update
      * @param pos The position of this key in the page
      * @param buffer The byte[] containing the serialized key
@@ -594,12 +530,12 @@ public class BTreeFactory<K, V>
     {
         if ( btree instanceof BTreeImpl )
         {
-            KeyHolder<K> keyHolder = new KeyHolderImpl<K>( btree.getKeySerializer(), buffer );
+            KeyHolder<K> keyHolder = new KeyHolder<K>( btree.getKeySerializer(), buffer );
             ( ( AbstractPage<K, V> ) page ).setKey( pos, keyHolder );
         }
         else
         {
-            throw new IllegalArgumentException( "The B-tree must be a PersistedBTree" );
+            throw new IllegalArgumentException( "The b-tree must be a PersistedBTree" );
         }
     }
 
@@ -607,7 +543,7 @@ public class BTreeFactory<K, V>
     /**
      * Includes the intermediate nodes in the path up to and including the left most leaf of the tree
      *
-     * @param btree The B-tree to process
+     * @param btree The b-tree to process
      * @return a LinkedList of all the nodes and the final leaf
      */
     /* no qualifier*/static <K, V> LinkedList<ParentPos<K, V>> getPathToLeftMostLeaf( BTree<K, V> btree )
@@ -638,7 +574,7 @@ public class BTreeFactory<K, V>
         }
         else
         {
-            throw new IllegalArgumentException( "The B-tree must be a PersistedBTree" );
+            throw new IllegalArgumentException( "The b-tree must be a PersistedBTree" );
         }
     }
 }

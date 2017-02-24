@@ -22,7 +22,6 @@ package org.apache.directory.mavibot.btree;
 
 import java.io.IOException;
 
-import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 
 
 /**
@@ -48,7 +47,7 @@ public interface Cursor<K>
      * @throws IOException 
      * @throws EndOfFileExceededException 
      */
-    boolean hasNext() throws EndOfFileExceededException, IOException;
+    boolean hasNext() throws IOException;
 
 
     /**
@@ -57,7 +56,7 @@ public interface Cursor<K>
      * @throws IOException 
      * @throws EndOfFileExceededException 
      */
-    boolean hasPrev() throws EndOfFileExceededException, IOException;
+    boolean hasPrev() throws IOException;
 
 
     /**

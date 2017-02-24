@@ -19,6 +19,9 @@
  */
 package org.apache.directory.mavibot.btree;
 
+import java.io.IOException;
+
+import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 
 /**
  * The data structure holding a key and the way to access it
@@ -30,43 +33,104 @@ package org.apache.directory.mavibot.btree;
 /* No qualifier*/class KeyHolder<K>
 {
     /** The deserialized key */
-    protected K key;
+    private K key;
 
+    /** The ByteBuffer storing the key */
+    private byte[] raw;
+
+    /** The Key serializer */
+    private ElementSerializer<K> keySerializer;
 
     /**
      * Create a new KeyHolder instance
      * 
+     * @param keySerializer The KeySerializer instance
      * @param key The key to store
      */
-    /* no qualifier */KeyHolder( K key )
+    /* no qualifier */KeyHolder( ElementSerializer<K> keySerializer, K key )
     {
         this.key = key;
+        this.keySerializer = keySerializer;
+        raw = keySerializer.serialize( key );
+    }
+
+    
+    /**
+     * Create a new KeyHolder instance
+     * 
+     * @param keySerializer The KeySerializer instance
+     * @param raw the bytes representing the serialized key
+     */
+    KeyHolder( ElementSerializer<K> keySerializer, byte[] raw )
+    {
+        this.key = null;
+        this.keySerializer = keySerializer;
+        this.raw = raw;
     }
 
 
     /**
-     * {@inheritDoc}
+     * @param key the Key to store in into the KeyHolder
      */
     /* no qualifier */void setKey( K key )
     {
         this.key = key;
+        raw = keySerializer.serialize( key );
     }
 
 
     /**
-     * {@inheritDoc}
+     * @return the key
      */
     /* no qualifier */K getKey()
     {
+        if ( key == null )
+        {
+            try
+            {
+                key = keySerializer.fromBytes( raw );
+            }
+            catch ( IOException ioe )
+            {
+                // Nothing we can do here...
+            }
+        }
+
         return key;
+    }
+    
+    
+    /**
+     * @return The internal serialized byte[]
+     */
+    /* No qualifier */byte[] getRaw()
+    {
+        return raw;
     }
 
 
     /**
      * @see Object#toString()
      */
+    @Override
     public String toString()
     {
-        return key.toString();
+        StringBuilder sb = new StringBuilder();
+
+        if ( key != null )
+        {
+            sb.append( key );
+        }
+        else if ( raw != null )
+        {
+            K key = getKey();
+            sb.append( ":" ).append( key ).append( ":," );
+        }
+        else
+        {
+            sb.append( "null," );
+        }
+
+        return sb.toString();
     }
 }

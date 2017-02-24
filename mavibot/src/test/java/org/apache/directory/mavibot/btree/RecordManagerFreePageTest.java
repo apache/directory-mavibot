@@ -86,7 +86,6 @@ public class RecordManagerFreePageTest
         btree.close();
 
         recordManager1.close();
-        assertTrue( recordManager1.isContextOk() );
 
         if ( dataDir.exists() )
         {
@@ -110,7 +109,7 @@ public class RecordManagerFreePageTest
             // load the last created btree
             if ( btree != null )
             {
-                btree = recordManager1.getManagedTree( btree.getName() );
+                btree = recordManager1.getBtree( btree.getName() );
             }
         }
         catch ( Exception e )

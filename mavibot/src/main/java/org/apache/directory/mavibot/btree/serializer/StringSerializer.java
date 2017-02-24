@@ -97,6 +97,7 @@ public class StringSerializer extends AbstractElementSerializer<String>
      * @param in The byte array containing the String
      * @return A String
      */
+    @Override
     public String fromBytes( byte[] in )
     {
         return deserialize( in, 0 );
@@ -108,6 +109,7 @@ public class StringSerializer extends AbstractElementSerializer<String>
      * @param in The byte array containing the String
      * @return A String
      */
+    @Override
     public String fromBytes( byte[] in, int start )
     {
         int length = IntSerializer.deserialize( in, start );
@@ -134,13 +136,13 @@ public class StringSerializer extends AbstractElementSerializer<String>
      * @param value the value to serialize
      * @return The byte[] containing the serialized String
      */
-    public static byte[] serialize( byte[] buffer, int start, String element )
+    public static byte[] serialize( byte[] buffer, int start, String string )
     {
         int len = -1;
 
-        if ( element != null )
+        if ( string != null )
         {
-            len = element.length();
+            len = string.length();
         }
 
         switch ( len )
@@ -164,7 +166,7 @@ public class StringSerializer extends AbstractElementSerializer<String>
             default:
                 try
                 {
-                    byte[] strBytes = element.getBytes( "UTF-8" );
+                    byte[] strBytes = string.getBytes( "UTF-8" );
 
                     buffer = new byte[strBytes.length + 4];
 
@@ -189,16 +191,16 @@ public class StringSerializer extends AbstractElementSerializer<String>
     /**
      * {@inheritDoc}
      */
-    public byte[] serialize( String element )
+    public byte[] serialize( String string )
     {
         int len = -1;
 
-        if ( element != null )
+        if ( string != null )
         {
-            len = element.length();
+            len = string.length();
         }
 
-        byte[] bytes = null;
+        byte[] bytes;
 
         switch ( len )
         {
@@ -223,11 +225,10 @@ public class StringSerializer extends AbstractElementSerializer<String>
                 break;
 
             default:
-                char[] chars = element.toCharArray();
+                char[] chars = string.toCharArray();
                 byte[] tmpBytes = new byte[chars.length * 2];
 
                 int pos = 0;
-                len = 0;
 
                 for ( char c : chars )
                 {
@@ -266,6 +267,7 @@ public class StringSerializer extends AbstractElementSerializer<String>
      * {@inheritDoc}
      * @throws IOException
      */
+    @Override
     public String deserialize( BufferHandler bufferHandler ) throws IOException
     {
         byte[] in = bufferHandler.read( 4 );
@@ -291,6 +293,7 @@ public class StringSerializer extends AbstractElementSerializer<String>
     /**
      * {@inheritDoc}
      */
+    @Override
     public String deserialize( ByteBuffer buffer ) throws IOException
     {
         int len = buffer.getInt();
@@ -357,14 +360,7 @@ public class StringSerializer extends AbstractElementSerializer<String>
 
         if ( type1 == null )
         {
-            if ( type2 == null )
-            {
-                return 0;
-            }
-            else
-            {
-                return -1;
-            }
+            return -1;
         }
         else
         {

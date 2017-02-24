@@ -39,7 +39,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 public interface BTree<K, V>
 {
     /** Default page size (number of entries per node) */
-    int DEFAULT_PAGE_SIZE = 16;
+    int DEFAULT_PAGE_NBELEM = 16;
 
     /** Default size of the buffer used to write data on disk. Around 1Mb */
     int DEFAULT_WRITE_BUFFER_SIZE = 4096 * 250;
@@ -64,19 +64,19 @@ public interface BTree<K, V>
      * Set the maximum number of elements we can store in a page. This must be a
      * number greater than 1, and a power of 2. The default page size is 16.
      * <br/>
-     * If the provided size is below 2, we will default to DEFAULT_PAGE_SIZE.<br/>
+     * If the provided size is below 2, we will default to DEFAULT_PAGE_NB_ELEM.<br/>
      * If the provided size is not a power of 2, we will select the closest power of 2
      * higher than the given number<br/>
      *
-     * @param pageSize The requested page size
+     * @param pageNbElem The number of element per page
      */
-    void setPageSize( int pageSize );
+    void setPageNbElem( int pageNbElem );
 
 
     /**
      * @return the number of elements per page
      */
-    int getPageSize();
+    int getPageNbElem();
 
 
     /**
@@ -90,7 +90,7 @@ public interface BTree<K, V>
      * @return Existing value, if any.
      * @throws IOException TODO
      */
-    V insert( K key, V value ) throws IOException;
+    InsertResult<K, V> insert( WriteTransaction transaction, K key, V value ) throws IOException;
 
 
     /**
@@ -100,7 +100,7 @@ public interface BTree<K, V>
      * @param key The key for the entry we try to remove
      * @return A Tuple<K, V> containing the removed entry, or null if it's not found.
      */
-    Tuple<K, V> delete( K key ) throws IOException;
+    Tuple<K, V> delete( WriteTransaction transaction, K key ) throws IOException;
 
 
     /**
@@ -113,7 +113,7 @@ public interface BTree<K, V>
      * @param value The value to delete (can be null)
      * @return A Tuple<K, V> containing the removed entry, or null if it's not found.
      */
-    Tuple<K, V> delete( K key, V value ) throws IOException;
+    Tuple<K, V> delete( WriteTransaction transaction, K key, V value ) throws IOException;
 
 
     /**
@@ -126,18 +126,7 @@ public interface BTree<K, V>
      * @throws KeyNotFoundException If the key is not found in the B-tree
      * @throws IOException TODO
      */
-    V get( K key ) throws IOException, KeyNotFoundException;
-
-
-    /**
-     * Get the rootPage associated to a given revision.
-     *
-     * @param revision The revision we are looking for
-     * @return The rootPage associated to this revision
-     * @throws IOException If we had an issue while accessing the underlying file
-     * @throws KeyNotFoundException If the revision does not exist for this B-tree
-     */
-    Page<K, V> getRootPage( long revision ) throws IOException, KeyNotFoundException;
+    V get( Transaction transaction, K key ) throws IOException, KeyNotFoundException;
 
 
     /**
@@ -146,26 +135,18 @@ public interface BTree<K, V>
      * @return The current rootPage
      */
     Page<K, V> getRootPage();
-
-
+    
+    
     /**
-     * @see Page#getValues(Object)
+     * @return The RecordManager instance
      */
-    ValueCursor<V> getValues( K key ) throws IOException, KeyNotFoundException;
-
-
+    RecordManager getRecordManager();
+    
+    
     /**
-     * Find a value in the tree, given its key, at a specific revision. If the key is not found,
-     * it will throw a KeyNotFoundException. <br/>
-     * Note that we can get a null value stored, or many values.
-     *
-     * @param revision The revision for which we want to find a key
-     * @param key The key we are looking at
-     * @return The found value, or null if the key is not present in the tree
-     * @throws KeyNotFoundException If the key is not found in the B-tree
-     * @throws IOException If there was an issue while fetching data from the disk
+     * @return The RecordManagerHeader instance
      */
-    V get( long revision, K key ) throws IOException, KeyNotFoundException;
+    RecordManagerHeader getRecordManagerHeader();
 
 
     /**
@@ -176,19 +157,7 @@ public interface BTree<K, V>
      * @throws IOException If we have an error while trying to access the page
      * @throws KeyNotFoundException If the key is not found in the B-tree
      */
-    boolean hasKey( K key ) throws IOException, KeyNotFoundException;
-
-
-    /**
-     * Checks if the given key exists for a given revision.
-     *
-     * @param revision The revision for which we want to find a key
-     * @param key The key we are looking at
-     * @return true if the key is present, false otherwise
-     * @throws IOException If we have an error while trying to access the page
-     * @throws KeyNotFoundException If the key is not found in the B-tree
-     */
-    boolean hasKey( long revision, K key ) throws IOException, KeyNotFoundException;
+    boolean hasKey( Transaction transaction, K key ) throws IOException, KeyNotFoundException;
 
 
     /**
@@ -198,39 +167,17 @@ public interface BTree<K, V>
      * @param value The value associated with the given key
      * @return true if the key and value are associated with each other, false otherwise
      */
-    boolean contains( K key, V value ) throws IOException;
-
-
-    /**
-     * Checks if the B-tree contains the given key with the given value for a given revision
-     *
-     * @param revision The revision we would like to browse
-     * @param key The key we are looking for
-     * @param value The value associated with the given key
-     * @return true if the key and value are associated with each other, false otherwise
-     * @throws KeyNotFoundException If the key is not found in the B-tree
-     */
-    boolean contains( long revision, K key, V value ) throws IOException, KeyNotFoundException;
+    boolean contains( Transaction transaction, K key, V value ) throws IOException;
 
 
     /**
      * Creates a cursor starting at the beginning of the tree
      *
+     * @param transaction The Transaction we are running in 
      * @return A cursor on the B-tree
      * @throws IOException
      */
-    TupleCursor<K, V> browse() throws IOException, KeyNotFoundException, CursorException;
-
-
-    /**
-     * Creates a cursor starting at the beginning of the tree, for a given revision
-     *
-     * @param revision The revision we would like to browse
-     * @return A cursor on the B-tree
-     * @throws IOException If we had an issue while fetching data from the disk
-     * @throws KeyNotFoundException If the key is not found in the B-tree
-     */
-    TupleCursor<K, V> browse( long revision ) throws IOException, KeyNotFoundException;
+    TupleCursor<K, V> browse( Transaction transaction ) throws IOException, KeyNotFoundException, CursorException;
 
 
     /**
@@ -241,20 +188,7 @@ public interface BTree<K, V>
      * @return A cursor on the B-tree
      * @throws IOException
      */
-    TupleCursor<K, V> browseFrom( K key ) throws IOException;
-
-
-    /**
-     * Creates a cursor starting on the given key at the given revision
-     *
-     * @param The revision we are looking for
-     * @param key The key which is the starting point. If the key is not found,
-     * then the cursor will always return null.
-     * @return A cursor on the B-tree
-     * @throws IOException If wxe had an issue reading the B-tree from disk
-     * @throws KeyNotFoundException  If we can't find a rootPage for this revision
-     */
-    TupleCursor<K, V> browseFrom( long revision, K key ) throws IOException, KeyNotFoundException;
+    TupleCursor<K, V> browseFrom( Transaction transaction, K key ) throws IOException;
 
 
     /**
@@ -263,7 +197,7 @@ public interface BTree<K, V>
      * @return A cursor on the B-tree keys
      * @throws IOException
      */
-    KeyCursor<K> browseKeys() throws IOException, KeyNotFoundException;
+    //KeyCursor<K> browseKeys( Transaction transaction ) throws IOException, KeyNotFoundException;
 
 
     /**
@@ -291,25 +225,6 @@ public interface BTree<K, V>
 
 
     /**
-     * Flush the latest revision to disk. We will replace the current file by the new one, as
-     * we flush in a temporary file.
-     */
-    void flush() throws IOException;
-
-
-    /**
-     * @return the readTimeOut
-     */
-    long getReadTimeOut();
-
-
-    /**
-     * @param readTimeOut the readTimeOut to set
-     */
-    void setReadTimeOut( long readTimeOut );
-
-
-    /**
      * @return the name
      */
     String getName();
@@ -319,18 +234,6 @@ public interface BTree<K, V>
      * @param name the name to set
      */
     void setName( String name );
-
-
-    /**
-     * @return the writeBufferSize
-     */
-    int getWriteBufferSize();
-
-
-    /**
-     * @param writeBufferSize the writeBufferSize to set
-     */
-    void setWriteBufferSize( int writeBufferSize );
 
 
     /**
@@ -358,25 +261,13 @@ public interface BTree<K, V>
 
 
     /**
-     * @return The current B-tree revision
-     */
-    long getRevision();
-
-
-    /**
      * @return The current number of elements in the B-tree
      */
-    long getNbElems();
+    long getNbElems( RecordManagerHeader recordManagerHeader );
 
 
     /**
      * @return the type
      */
     BTreeTypeEnum getType();
-    
-    
-    /**
-     * @return The recordManager reference
-     */
-    RecordManager getRecordManager();
 }

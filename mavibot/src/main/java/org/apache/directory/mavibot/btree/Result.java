@@ -26,8 +26,7 @@ import java.util.List;
 /**
  * The result of an insert or delete operation.
  * 
- * @param <K> The type for the Key
- * @param <V> The type for the stored value
+ * @param <P> The type of Page
 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */

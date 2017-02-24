@@ -28,7 +28,11 @@ import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Random;
+import java.util.TreeMap;
 import java.util.UUID;
 
 import org.apache.commons.io.FileUtils;
@@ -56,6 +60,8 @@ public class BTreeBrowseTest
     private BTree<Long, String> btree = null;
 
     private RecordManager recordManager = null;
+    
+    private Transaction transaction;
 
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
@@ -73,13 +79,14 @@ public class BTreeBrowseTest
 
         openRecordManagerAndBtree();
 
-        try
+        // Create a new BTree which allows duplicate values
+        try ( WriteTransaction transaction = recordManager.beginWriteTransaction() )
         {
-            // Create a new BTree which allows duplicate values
-            btree = recordManager.addBTree( "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE, true );
+            btree = recordManager.addBTree( transaction, "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE, true );
         }
         catch ( Exception e )
         {
+            transaction.abort();
             throw new RuntimeException( e );
         }
     }
@@ -90,15 +97,12 @@ public class BTreeBrowseTest
     {
         dataDir = new File( System.getProperty( "java.io.tmpdir" ) + "/recordman" );
 
-        btree.close();
-
         if ( dataDir.exists() )
         {
             FileUtils.deleteDirectory( dataDir );
         }
 
         recordManager.close();
-        assertTrue( recordManager.isContextOk() );
     }
 
 
@@ -118,9 +122,17 @@ public class BTreeBrowseTest
             recordManager = new RecordManager( dataDir.getAbsolutePath() );
 
             // load the last created btree
-            if ( btree != null )
+            try (Transaction transaction = recordManager.beginReadTransaction() )
             {
-                btree = recordManager.getManagedTree( btree.getName() );
+                if ( btree != null )
+                {
+                    btree = recordManager.getBtree( transaction, btree.getName() );
+                }
+            }
+            catch ( Exception e )
+            {
+                transaction.abort();
+                throw e;
             }
         }
         catch ( Exception e )
@@ -199,38 +211,43 @@ public class BTreeBrowseTest
     //----------------------------------------------------------------------------------------
     /**
      * Test the browse methods on an empty btree
+     * 
      * @throws KeyNotFoundException 
      * @throws CursorException 
      */
     @Test
     public void testBrowseEmptyBTree() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException, CursorException
     {
-        TupleCursor<Long, String> cursor = btree.browse();
-
-        assertFalse( cursor.hasNext() );
-        assertFalse( cursor.hasPrev() );
-
-        try
+        try ( Transaction transaction  = recordManager.beginReadTransaction() )
         {
-            cursor.next();
-            fail();
+            btree = recordManager.getBtree( transaction, "test" );
+            TupleCursor<Long, String> cursor = btree.browse( transaction );
+    
+            assertFalse( cursor.hasNext() );
+            assertFalse( cursor.hasPrev() );
+    
+            try
+            {
+                cursor.next();
+                fail();
+            }
+            catch ( NoSuchElementException nsee )
+            {
+                // Expected
+            }
+    
+            try
+            {
+                cursor.prev();
+                fail();
+            }
+            catch ( NoSuchElementException nsee )
+            {
+                // Expected
+            }
+    
+            assertEquals( 2L, cursor.getRevision() );
         }
-        catch ( NoSuchElementException nsee )
-        {
-            // Expected
-        }
-
-        try
-        {
-            cursor.prev();
-            fail();
-        }
-        catch ( NoSuchElementException nsee )
-        {
-            // Expected
-        }
-
-        assertEquals( 0L, cursor.getRevision() );
     }
 
 
@@ -238,31 +255,40 @@ public class BTreeBrowseTest
      * Test the browse methods on a btree containing just a leaf
      */
     @Test
-    public void testBrowseBTreeLeafNext() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException, CursorException
+    public void testBrowseBTreeLeafNext() throws Exception
     {
         // Inject some data
-        recordManager.beginTransaction();
-        btree.insert( 1L, "1" );
-        btree.insert( 4L, "4" );
-        btree.insert( 2L, "2" );
-        btree.insert( 3L, "3" );
-        btree.insert( 5L, "5" );
-        recordManager.commit();
+        try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+        {
+            btree.insert( writeTxn, 1L, "1" );
+            btree.insert( writeTxn, 4L, "4" );
+            btree.insert( writeTxn, 2L, "2" );
+            btree.insert( writeTxn, 3L, "3" );
+            btree.insert( writeTxn, 5L, "5" );
+        }
+        
+        try ( Transaction transaction = recordManager.beginReadTransaction() )
+        {
+            MavibotInspector.dumpInfos( recordManager, transaction.getRecordManagerHeader() );
+        }
 
         // Create the cursor
-        TupleCursor<Long, String> cursor = btree.browse();
-
-        // Move forward
-        cursor.beforeFirst();
-
-        assertFalse( cursor.hasPrev() );
-        assertTrue( cursor.hasNext() );
-
-        checkNext( cursor, 1L, "1", true, false );
-        checkNext( cursor, 2L, "2", true, true );
-        checkNext( cursor, 3L, "3", true, true );
-        checkNext( cursor, 4L, "4", true, true );
-        checkNext( cursor, 5L, "5", false, true );
+        try ( Transaction transaction = recordManager.beginReadTransaction() )
+        {
+            TupleCursor<Long, String> cursor = btree.browse( transaction );
+    
+            // Move forward
+            cursor.beforeFirst();
+    
+            assertFalse( cursor.hasPrev() );
+            assertTrue( cursor.hasNext() );
+    
+            checkNext( cursor, 1L, "1", true, false );
+            checkNext( cursor, 2L, "2", true, true );
+            checkNext( cursor, 3L, "3", true, true );
+            checkNext( cursor, 4L, "4", true, true );
+            checkNext( cursor, 5L, "5", false, true );
+        }
     }
 
 
@@ -273,23 +299,29 @@ public class BTreeBrowseTest
     public void testBrowseBTreeLeafPrev() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException, CursorException
     {
         // Inject some data
-        btree.insert( 1L, "1" );
-        btree.insert( 4L, "4" );
-        btree.insert( 2L, "2" );
-        btree.insert( 3L, "3" );
-        btree.insert( 5L, "5" );
+        try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+        {
+            btree.insert( writeTxn, 1L, "1" );
+            btree.insert( writeTxn, 4L, "4" );
+            btree.insert( writeTxn, 2L, "2" );
+            btree.insert( writeTxn, 3L, "3" );
+            btree.insert( writeTxn, 5L, "5" );
+        }
 
         // Create the cursor
-        TupleCursor<Long, String> cursor = btree.browse();
-
-        // Move backward
-        cursor.afterLast();
-
-        checkPrev( cursor, 5L, "5", false, true );
-        checkPrev( cursor, 4L, "4", true, true );
-        checkPrev( cursor, 3L, "3", true, true );
-        checkPrev( cursor, 2L, "2", true, true );
-        checkPrev( cursor, 1L, "1", true, false );
+        try ( Transaction readTxn = recordManager.beginReadTransaction() )
+        {
+            TupleCursor<Long, String> cursor = btree.browse( readTxn );
+    
+            // Move backward
+            cursor.afterLast();
+    
+            checkPrev( cursor, 5L, "5", false, true );
+            checkPrev( cursor, 4L, "4", true, true );
+            checkPrev( cursor, 3L, "3", true, true );
+            checkPrev( cursor, 2L, "2", true, true );
+            checkPrev( cursor, 1L, "1", true, false );
+        }
     }
 
 
@@ -301,77 +333,83 @@ public class BTreeBrowseTest
     public void testBrowseBTreeLeafFirstLast() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException, CursorException
     {
         // Inject some data
-        btree.insert( 1L, "1" );
-        btree.insert( 4L, "4" );
-        btree.insert( 2L, "2" );
-        btree.insert( 3L, "3" );
-        btree.insert( 5L, "5" );
+        try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+        {
+            btree.insert( writeTxn, 1L, "1" );
+            btree.insert( writeTxn, 4L, "4" );
+            btree.insert( writeTxn, 2L, "2" );
+            btree.insert( writeTxn, 3L, "3" );
+            btree.insert( writeTxn, 5L, "5" );
+        }
 
         // Create the cursor
-        TupleCursor<Long, String> cursor = btree.browse();
-
-        // We should not be able to move backward
-        try
+        try ( Transaction readTxn = recordManager.beginReadTransaction() )
         {
-            cursor.prev();
-            fail();
+            TupleCursor<Long, String> cursor = btree.browse( readTxn );
+    
+            // We should not be able to move backward
+            try
+            {
+                cursor.prev();
+                fail();
+            }
+            catch ( NoSuchElementException nsee )
+            {
+                // Expected
+            }
+
+            // Start browsing three elements
+            assertFalse( cursor.hasPrev() );
+            assertTrue( cursor.hasNext() );
+            Tuple<Long, String> tuple = cursor.next();
+            tuple = cursor.next();
+            tuple = cursor.next();
+    
+            // We should be at 3 now
+            assertTrue( cursor.hasPrev() );
+            assertTrue( cursor.hasNext() );
+            assertEquals( 3L, ( long ) tuple.getKey() );
+            assertEquals( "3", tuple.getValue() );
+    
+            // Move to the end
+            cursor.afterLast();
+    
+            assertTrue( cursor.hasPrev() );
+            assertFalse( cursor.hasNext() );
+    
+            // We should not be able to move forward
+            try
+            {
+                cursor.next();
+                fail();
+            }
+            catch ( NoSuchElementException nsee )
+            {
+                // Expected
+            }
+    
+            // We should be at 5
+            tuple = cursor.prev();
+            assertEquals( 5L, ( long ) tuple.getKey() );
+            assertEquals( "5", tuple.getValue() );
+    
+            assertTrue( cursor.hasPrev() );
+            assertFalse( cursor.hasNext() );
+    
+            // Move back to the origin
+            cursor.beforeFirst();
+    
+            assertFalse( cursor.hasPrev() );
+            assertTrue( cursor.hasNext() );
+    
+            // We should be at 1
+            tuple = cursor.next();
+            assertEquals( 1L, ( long ) tuple.getKey() );
+            assertEquals( "1", tuple.getValue() );
+    
+            assertFalse( cursor.hasPrev() );
+            assertTrue( cursor.hasNext() );
         }
-        catch ( NoSuchElementException nsee )
-        {
-            // Expected
-        }
-
-        // Start browsing three elements
-        assertFalse( cursor.hasPrev() );
-        assertTrue( cursor.hasNext() );
-        Tuple<Long, String> tuple = cursor.next();
-        tuple = cursor.next();
-        tuple = cursor.next();
-
-        // We should be at 3 now
-        assertTrue( cursor.hasPrev() );
-        assertTrue( cursor.hasNext() );
-        assertEquals( 3L, ( long ) tuple.getKey() );
-        assertEquals( "3", tuple.getValue() );
-
-        // Move to the end
-        cursor.afterLast();
-
-        assertTrue( cursor.hasPrev() );
-        assertFalse( cursor.hasNext() );
-
-        // We should not be able to move forward
-        try
-        {
-            cursor.next();
-            fail();
-        }
-        catch ( NoSuchElementException nsee )
-        {
-            // Expected
-        }
-
-        // We should be at 5
-        tuple = cursor.prev();
-        assertEquals( 5L, ( long ) tuple.getKey() );
-        assertEquals( "5", tuple.getValue() );
-
-        assertTrue( cursor.hasPrev() );
-        assertFalse( cursor.hasNext() );
-
-        // Move back to the origin
-        cursor.beforeFirst();
-
-        assertFalse( cursor.hasPrev() );
-        assertTrue( cursor.hasNext() );
-
-        // We should be at 1
-        tuple = cursor.next();
-        assertEquals( 1L, ( long ) tuple.getKey() );
-        assertEquals( "1", tuple.getValue() );
-
-        assertFalse( cursor.hasPrev() );
-        assertTrue( cursor.hasNext() );
     }
 
 
@@ -383,48 +421,105 @@ public class BTreeBrowseTest
     public void testBrowseBTreeLeafNextPrev() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException, CursorException
     {
         // Inject some data
-        btree.insert( 1L, "1" );
-        btree.insert( 4L, "4" );
-        btree.insert( 2L, "2" );
-        btree.insert( 3L, "3" );
-        btree.insert( 5L, "5" );
+        try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+        {
+            btree.insert( writeTxn, 1L, "1" );
+            btree.insert( writeTxn, 4L, "4" );
+            btree.insert( writeTxn, 2L, "2" );
+            btree.insert( writeTxn, 3L, "3" );
+            btree.insert( writeTxn, 5L, "5" );
+        }
 
         // Create the cursor
-        TupleCursor<Long, String> cursor = btree.browse();
-
-        // We should not be able to move backward
-        try
+        try ( Transaction readTxn = recordManager.beginReadTransaction() )
         {
-            cursor.prev();
-            fail();
+            TupleCursor<Long, String> cursor = btree.browse( readTxn );
+    
+            // We should not be able to move backward
+            try
+            {
+                cursor.prev();
+                fail();
+            }
+            catch ( NoSuchElementException nsee )
+            {
+                // Expected
+            }
+    
+            // Start browsing three elements
+            assertFalse( cursor.hasPrev() );
+            assertTrue( cursor.hasNext() );
+            Tuple<Long, String> tuple = cursor.next();
+            tuple = cursor.next();
+            tuple = cursor.next();
+    
+            // We should be at 3 now
+            assertTrue( cursor.hasPrev() );
+            assertTrue( cursor.hasNext() );
+            assertEquals( 3L, ( long ) tuple.getKey() );
+            assertEquals( "3", tuple.getValue() );
+    
+            // Now, move to the prev value
+            tuple = cursor.prev();
+            assertEquals( 2L, ( long ) tuple.getKey() );
+            assertEquals( "2", tuple.getValue() );
+    
+            // And to the next value
+            tuple = cursor.next();
+            assertEquals( 3L, ( long ) tuple.getKey() );
+            assertEquals( "3", tuple.getValue() );
         }
-        catch ( NoSuchElementException nsee )
+    }
+    
+    
+    @Test
+    public void testPerf()
+    {
+        Random r = new Random( System.nanoTime() );
+        long[] values = new long[24];
+        
+        for ( int i = 0; i < 24; )
         {
-            // Expected
+            long v = r.nextLong();
+            boolean found = false;
+            
+            for ( long old : values )
+            {
+                if ( old == v )
+                {
+                    found = true;
+                    break;
+                }
+            }
+            
+            if ( !found )
+            {
+                values[i] = v;
+                i++;
+            }
         }
+        
+        
+        long t0 = System.currentTimeMillis();
+        
+        for ( int i = 0; i < 50000000; i++ )
+        {
+            //TreeMap<Long, Long> treeMap = new TreeMap<>();
+            List<Long> list = new ArrayList<>();
 
-        // Start browsing three elements
-        assertFalse( cursor.hasPrev() );
-        assertTrue( cursor.hasNext() );
-        Tuple<Long, String> tuple = cursor.next();
-        tuple = cursor.next();
-        tuple = cursor.next();
-
-        // We should be at 3 now
-        assertTrue( cursor.hasPrev() );
-        assertTrue( cursor.hasNext() );
-        assertEquals( 3L, ( long ) tuple.getKey() );
-        assertEquals( "3", tuple.getValue() );
-
-        // Now, move to the prev value
-        tuple = cursor.prev();
-        assertEquals( 2L, ( long ) tuple.getKey() );
-        assertEquals( "2", tuple.getValue() );
-
-        // And to the next value
-        tuple = cursor.next();
-        assertEquals( 3L, ( long ) tuple.getKey() );
-        assertEquals( "3", tuple.getValue() );
+            for ( long v : values )
+            {
+                //treeMap.put( v, v );
+                if ( !list.contains( v ) )
+                {
+                    list.add( v );
+                }
+            }
+        }
+        
+        long t1 = System.currentTimeMillis();
+        
+        System.out.println( "Delta = " + ( t1 - t0) );
     }
 
 
@@ -432,31 +527,77 @@ public class BTreeBrowseTest
      * Test the browse methods on a btree containing many nodes
      */
     @Test
-    public void testBrowseBTreeNodesNext() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException, CursorException
+    public void testBrowseBTreeNodesNext() throws Exception
     {
         // Inject some data
-        for ( long i = 1; i < 1000L; i++ )
+        long increment = 10L;
+        long nbRound = 100_000L;
+        long t0 = System.currentTimeMillis();
+        for ( long i = 0; i < nbRound/increment; i++ )
         {
-            btree.insert( i, Long.toString( i ) );
+            //System.out.println( "\nInserting " + i + " in the tree ---->" );
+            try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+            {
+                for ( long j = 0; j < increment; j++ )
+                {
+                    long val = i*increment + j;
+                    //System.out.println( "Injecting " + val );
+                    //MavibotInspector.check( recordManager, recordManager.getRecordManagerHeader() );
+                    btree.insert( writeTxn, val, Long.toString( val ) );
+                }
+            }
         }
+        long t1 = System.currentTimeMillis();
+        
+        System.out.println( "Delta add    : " + ( t1 - t0 ) );
+        System.out.println( "File name    : " + dataDir );
+        
+        //MavibotInspector.check( recordManager, recordManager.getRecordManagerHeader() );
 
         // Create the cursor
-        TupleCursor<Long, String> cursor = btree.browse();
-
-        // Move forward
-        cursor.beforeFirst();
-
-        assertFalse( cursor.hasPrev() );
-        assertTrue( cursor.hasNext() );
-
-        checkNext( cursor, 1L, "1", true, false );
-
-        for ( long i = 2L; i < 999L; i++ )
+        try ( Transaction readTxn = recordManager.beginReadTransaction() )
         {
-            checkNext( cursor, i, Long.toString( i ), true, true );
-        }
+            TupleCursor<Long, String> cursor = btree.browse( readTxn );
 
-        checkNext( cursor, 999L, "999", false, true );
+            // Move forward
+            cursor.afterLast();
+            cursor.beforeFirst();
+    
+            assertFalse( cursor.hasPrev() );
+            assertTrue( cursor.hasNext() );
+    
+            t0 = System.currentTimeMillis();
+            
+            for ( int loop = 0; loop < 1_000L; loop++ )
+            {
+                cursor.beforeFirst();
+
+                //assertFalse( cursor.hasPrev() );
+                //assertTrue( cursor.hasNext() );
+                //Tuple<Long, String> tuple = cursor.next();
+                checkNext( cursor, 0L, "0", true, false );
+                
+                assertFalse( cursor.hasPrev() );
+                assertTrue( cursor.hasNext() );
+        
+                for ( long i = 1L; i < nbRound - 1; i++ )
+                {
+                    //assertTrue( cursor.hasNext() );
+                    //tuple = cursor.next();
+                    //assertTrue( cursor.hasPrev() );
+                    checkNext( cursor, i, Long.toString( i ), true, true );
+                }
+        
+                assertTrue( cursor.hasNext() );
+                //tuple = cursor.next();
+                //assertFalse( cursor.hasNext() );
+                checkNext( cursor, nbRound - 1L, Long.toString( nbRound - 1L ), false, true );
+            }
+            
+            t1 = System.currentTimeMillis();
+            
+            System.out.println( "Delta browse : " + ( t1 - t0 ) );
+        }
     }
 
 
@@ -467,58 +608,38 @@ public class BTreeBrowseTest
     public void testBrowseBTreeNodesPrev() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException, CursorException
     {
         // Inject some data
-        for ( long i = 1; i < 1000L; i++ )
+        try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
         {
-            btree.insert( i, Long.toString( i ) );
+            for ( long i = 1; i < 1_000L; i++ )
+            {
+                btree.insert( writeTxn, i, Long.toString( i ) );
+            }
         }
 
+        MavibotInspector.check( recordManager, recordManager.getRecordManagerHeader() );
+
         // Create the cursor
-        TupleCursor<Long, String> cursor = btree.browse();
-
-        // Move backward
-        cursor.afterLast();
-
-        assertTrue( cursor.hasPrev() );
-        assertFalse( cursor.hasNext() );
-
-        checkPrev( cursor, 999L, "999", false, true );
-
-        for ( long i = 998L; i > 1L; i-- )
+        try ( Transaction readTxn = recordManager.beginReadTransaction() )
         {
-            checkPrev( cursor, i, Long.toString( i ), true, true );
+            TupleCursor<Long, String> cursor = btree.browse( readTxn );
+
+            // Move backward
+            cursor.afterLast();
+    
+            assertTrue( cursor.hasPrev() );
+            assertFalse( cursor.hasNext() );
+    
+            checkPrev( cursor, 999L, "999", false, true );
+    
+            for ( long i = 998L; i > 1L; i-- )
+            {
+                checkPrev( cursor, i, Long.toString( i ), true, true );
+            }
+    
+            assertTrue( cursor.hasPrev() );
+
+            checkPrev( cursor, 1L, "1", true, false );
         }
-
-        checkPrev( cursor, 1L, "1", true, false );
-    }
-
-
-    /**
-     * Test the browse methods on a btree containing just a leaf with duplicate values
-     */
-    @Test
-    public void testBrowseBTreeLeafNextDups1() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException, CursorException
-    {
-        // Inject some duplicate data
-        btree.insert( 1L, "1" );
-        btree.insert( 1L, "4" );
-        btree.insert( 1L, "2" );
-        btree.insert( 1L, "3" );
-        btree.insert( 1L, "5" );
-
-        // Create the cursor
-        TupleCursor<Long, String> cursor = btree.browse();
-
-        // Move forward
-        cursor.beforeFirst();
-
-        assertFalse( cursor.hasPrev() );
-        assertTrue( cursor.hasNext() );
-
-        checkNext( cursor, 1L, "1", true, false );
-        checkNext( cursor, 1L, "2", true, true );
-        checkNext( cursor, 1L, "3", true, true );
-        checkNext( cursor, 1L, "4", true, true );
-        checkNext( cursor, 1L, "5", false, true );
     }
 
 
@@ -529,30 +650,32 @@ public class BTreeBrowseTest
     public void testBrowseBTreeLeafNextDupsN() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException, CursorException
     {
         // Inject some duplicate data
-        btree.insert( 1L, "1" );
-        btree.insert( 1L, "4" );
-        btree.insert( 1L, "2" );
-        btree.insert( 2L, "3" );
-        btree.insert( 3L, "5" );
-        btree.insert( 3L, "7" );
-        btree.insert( 3L, "6" );
+        try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+        {
+            btree.insert( writeTxn, 1L, "1" );
+            btree.insert( writeTxn, 1L, "4" );
+            btree.insert( writeTxn, 1L, "2" );
+            btree.insert( writeTxn, 2L, "3" );
+            btree.insert( writeTxn, 3L, "5" );
+            btree.insert( writeTxn, 3L, "7" );
+            btree.insert( writeTxn, 3L, "6" );
+        }
 
         // Create the cursor
-        TupleCursor<Long, String> cursor = btree.browse();
-
-        // Move forward
-        cursor.beforeFirst();
-
-        assertFalse( cursor.hasPrev() );
-        assertTrue( cursor.hasNext() );
-
-        checkNext( cursor, 1L, "1", true, false );
-        checkNext( cursor, 1L, "2", true, true );
-        checkNext( cursor, 1L, "4", true, true );
-        checkNext( cursor, 2L, "3", true, true );
-        checkNext( cursor, 3L, "5", true, true );
-        checkNext( cursor, 3L, "6", true, true );
-        checkNext( cursor, 3L, "7", false, true );
+        try ( Transaction readTxn = recordManager.beginReadTransaction() )
+        {
+            TupleCursor<Long, String> cursor = btree.browse( readTxn );
+    
+            // Move forward
+            cursor.beforeFirst();
+    
+            assertFalse( cursor.hasPrev() );
+            assertTrue( cursor.hasNext() );
+    
+            checkNext( cursor, 1L, "2", true, false );
+            checkNext( cursor, 2L, "3", true, true );
+            checkNext( cursor, 3L, "6", false, true );
+        }
     }
 
 
@@ -565,32 +688,35 @@ public class BTreeBrowseTest
     @Test
     public void testBrowseFromEmptyBTree() throws IOException, BTreeAlreadyManagedException
     {
-        TupleCursor<Long, String> cursor = btree.browseFrom( 1L );
-
-        assertFalse( cursor.hasNext() );
-        assertFalse( cursor.hasPrev() );
-
-        try
+        try ( Transaction readTxn = recordManager.beginReadTransaction() )
         {
-            cursor.next();
-            fail();
+            TupleCursor<Long, String> cursor = btree.browseFrom( readTxn, 1L );
+    
+            assertFalse( cursor.hasNext() );
+            assertFalse( cursor.hasPrev() );
+    
+            try
+            {
+                cursor.next();
+                fail();
+            }
+            catch ( NoSuchElementException nsee )
+            {
+                // Expected
+            }
+    
+            try
+            {
+                cursor.prev();
+                fail();
+            }
+            catch ( NoSuchElementException nsee )
+            {
+                // Expected
+            }
+    
+            assertEquals( -1L, cursor.getRevision() );
         }
-        catch ( NoSuchElementException nsee )
-        {
-            // Expected
-        }
-
-        try
-        {
-            cursor.prev();
-            fail();
-        }
-        catch ( NoSuchElementException nsee )
-        {
-            // Expected
-        }
-
-        assertEquals( -1L, cursor.getRevision() );
     }
 
 
@@ -601,79 +727,84 @@ public class BTreeBrowseTest
     public void testBrowseFromBTreeLeaf() throws IOException, BTreeAlreadyManagedException
     {
         // Inject some data
-        btree.insert( 1L, "1" );
-        btree.insert( 7L, "7" );
-        btree.insert( 3L, "3" );
-        btree.insert( 5L, "5" );
-        btree.insert( 9L, "9" );
+        try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+        {
+            btree.insert( writeTxn, 1L, "1" );
+            btree.insert( writeTxn, 7L, "7" );
+            btree.insert( writeTxn, 3L, "3" );
+            btree.insert( writeTxn, 5L, "5" );
+            btree.insert( writeTxn, 9L, "9" );
+        }
 
         // Create the cursor, starting at 5
-        TupleCursor<Long, String> cursor = btree.browseFrom( 5L );
-
-        assertTrue( cursor.hasPrev() );
-        assertTrue( cursor.hasNext() );
-
-        // Move forward
-        checkNext( cursor, 5L, "5", true, true );
-        checkNext( cursor, 7L, "7", true, true );
-        checkNext( cursor, 9L, "9", false, true );
-
-        cursor.close();
-
-        // now, start at 5 and move backward
-        cursor = btree.browseFrom( 5L );
-
-        assertTrue( cursor.hasPrev() );
-        assertTrue( cursor.hasNext() );
-
-        // Move backward
-        checkPrev( cursor, 3L, "3", true, true );
-        checkPrev( cursor, 1L, "1", true, false );
-        cursor.close();
-
-        // Start at the first key
-        cursor = btree.browseFrom( 1L );
-        assertFalse( cursor.hasPrev() );
-        assertTrue( cursor.hasNext() );
-
-        checkNext( cursor, 1L, "1", true, false );
-        checkNext( cursor, 3L, "3", true, true );
-
-        // Start before the first key
-        cursor = btree.browseFrom( 0L );
-        assertFalse( cursor.hasPrev() );
-        assertTrue( cursor.hasNext() );
-
-        checkNext( cursor, 1L, "1", true, false );
-        checkNext( cursor, 3L, "3", true, true );
-
-        // Start at the last key
-        cursor = btree.browseFrom( 9L );
-        assertTrue( cursor.hasPrev() );
-        assertTrue( cursor.hasNext() );
-
-        checkNext( cursor, 9L, "9", false, true );
-        checkPrev( cursor, 7L, "7", true, true );
-
-        // Start after the last key
-        cursor = btree.browseFrom( 10L );
-        assertTrue( cursor.hasPrev() );
-        assertFalse( cursor.hasNext() );
-
-        checkPrev( cursor, 9L, "9", false, true );
-        checkPrev( cursor, 7L, "7", true, true );
-
-        // Start in the middle with a non existent key
-        cursor = btree.browseFrom( 4L );
-        assertTrue( cursor.hasPrev() );
-        assertTrue( cursor.hasNext() );
-
-        checkNext( cursor, 5L, "5", true, true );
-
-        // Start in the middle with a non existent key
-        cursor = btree.browseFrom( 4L );
-
-        checkPrev( cursor, 3L, "3", true, true );
+        try ( Transaction readTxn = recordManager.beginReadTransaction() )
+        {
+            TupleCursor<Long, String> cursor = btree.browseFrom( readTxn, 5L );
+    
+            assertTrue( cursor.hasPrev() );
+            assertTrue( cursor.hasNext() );
+            
+            assertEquals( 5L, cursor.get().key.longValue() );
+    
+            // Move forward
+            checkNext( cursor, 7L, "7", true, true );
+            checkNext( cursor, 9L, "9", false, true );
+    
+            cursor.close();
+    
+            // now, start at 5 and move backward
+            cursor = btree.browseFrom( readTxn, 5L );
+    
+            assertTrue( cursor.hasPrev() );
+            assertTrue( cursor.hasNext() );
+    
+            // Move backward
+            checkPrev( cursor, 3L, "3", true, true );
+            checkPrev( cursor, 1L, "1", true, false );
+            cursor.close();
+    
+            // Start at the first key
+            cursor = btree.browseFrom( readTxn, 1L );
+            assertFalse( cursor.hasPrev() );
+            assertTrue( cursor.hasNext() );
+    
+            checkNext( cursor, 3L, "3", true, true );
+    
+            // Start before the first key
+            cursor = btree.browseFrom( readTxn, 0L );
+            assertFalse( cursor.hasPrev() );
+            assertTrue( cursor.hasNext() );
+    
+            checkNext( cursor, 1L, "1", true, false );
+            checkNext( cursor, 3L, "3", true, true );
+    
+            // Start at the last key
+            cursor = btree.browseFrom( readTxn, 9L );
+            assertTrue( cursor.hasPrev() );
+            assertFalse( cursor.hasNext() );
+    
+            checkPrev( cursor, 7L, "7", true, true );
+    
+            // Start after the last key
+            cursor = btree.browseFrom( readTxn, 10L );
+            assertTrue( cursor.hasPrev() );
+            assertFalse( cursor.hasNext() );
+    
+            checkPrev( cursor, 9L, "9", false, true );
+            checkPrev( cursor, 7L, "7", true, true );
+    
+            // Start in the middle with a non existent key
+            cursor = btree.browseFrom( readTxn, 4L );
+            assertTrue( cursor.hasPrev() );
+            assertTrue( cursor.hasNext() );
+    
+            checkNext( cursor, 7L, "7", true, true );
+    
+            // Start in the middle with a non existent key
+            cursor = btree.browseFrom( readTxn, 4L );
+    
+            checkPrev( cursor, 3L, "3", true, true );
+        }
     }
 
 
@@ -684,114 +815,73 @@ public class BTreeBrowseTest
     public void testBrowseFromBTreeNodesNotExistingKey() throws IOException, BTreeAlreadyManagedException
     {
         // Inject some data
-        for ( long i = 0; i <= 1000L; i += 2 )
+        try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
         {
-            btree.insert( i, Long.toString( i ) );
-        }
-
-        // Create the cursor
-        TupleCursor<Long, String> cursor = btree.browseFrom( 1500L );
-
-        assertFalse( cursor.hasNext() );
-        assertTrue( cursor.hasPrev() );
-        assertEquals( 1000L, cursor.prev().getKey().longValue() );
-    }
-
-
-    //----------------------------------------------------------------------------------------
-    // The TupleCursor.moveToNext/PrevNonDuplicateKey method tests
-    //----------------------------------------------------------------------------------------
-    /**
-      * Test the TupleCursor.nextKey method on a btree containing nodes
-      * with duplicate values.
-      */
-    @Test
-    public void testNextKey() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException, CursorException
-    {
-        // Inject some data
-        for ( long i = 1; i < 1000L; i++ )
-        {
-            for ( long j = 1; j < 10; j++ )
+            for ( long i = 0; i <= 1000L; i += 2 )
             {
-                btree.insert( i, Long.toString( j ) );
+                btree.insert( writeTxn, i, Long.toString( i ) );
             }
         }
 
         // Create the cursor
-        TupleCursor<Long, String> cursor = btree.browse();
-
-        // Move forward
-        cursor.beforeFirst();
-
-        assertFalse( cursor.hasPrev() );
-        assertTrue( cursor.hasNext() );
-        boolean next = true;
-        boolean prev = false;
-
-        for ( long i = 1L; i < 999L; i++ )
+        try ( Transaction readTxn = recordManager.beginReadTransaction() )
         {
-            Tuple<Long, String> tuple = cursor.next();
-
-            checkTuple( tuple, i, "1" );
-
-            if ( i == 999L )
-            {
-                next = false;
-            }
-
-            assertEquals( next, cursor.hasNext() );
-            assertEquals( prev, cursor.hasPrev() );
-
-            if ( i == 1L )
-            {
-                prev = true;
-            }
+            TupleCursor<Long, String> cursor = btree.browseFrom( readTxn, 1500L );
+    
+            assertFalse( cursor.hasNext() );
+            assertTrue( cursor.hasPrev() );
+            assertEquals( 1000L, cursor.prev().getKey().longValue() );
         }
     }
 
 
+
+
     /**
-     * Test the TupleCursor.moveToPrevNonDuplicateKey method on a btree containing nodes
-     * with duplicate values.
+     * Test the TupleCursor.moveToPrevNonDuplicateKey method on a B-tree containing nodes
      */
     @Test
     public void testPrevKey() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException, CursorException
     {
         // Inject some data
-        for ( long i = 1; i < 1000L; i++ )
+        try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
         {
-            recordManager.beginTransaction();
-            btree.insert( i, Long.toString( i ) );
-            recordManager.commit();
+            for ( long i = 1; i < 1000L; i++ )
+            {
+                btree.insert( writeTxn, i, Long.toString( i ) );
+            }
         }
 
         // Create the cursor
-        TupleCursor<Long, String> cursor = btree.browse();
-
-        // Move backward
-        cursor.afterLast();
-
-        assertTrue( cursor.hasPrev() );
-        assertFalse( cursor.hasNext() );
-        boolean next = false;
-        boolean prev = true;
-
-        for ( long i = 999L; i > 0L; i-- )
+        try ( Transaction readTxn = recordManager.beginReadTransaction() )
         {
-            Tuple<Long, String> tuple = cursor.prev();
-
-            if ( i == 1L )
+            TupleCursor<Long, String> cursor = btree.browse( readTxn );
+    
+            // Move backward
+            cursor.afterLast();
+    
+            assertTrue( cursor.hasPrev() );
+            assertFalse( cursor.hasNext() );
+            boolean next = false;
+            boolean prev = true;
+    
+            for ( long i = 999L; i > 0L; i-- )
             {
-                prev = false;
-            }
-
-            checkTuple( tuple, i, Long.toString( i ) );
-            assertEquals( next, cursor.hasNext() );
-            assertEquals( prev, cursor.hasPrev() );
-
-            if ( i == 999L )
-            {
-                next = true;
+                Tuple<Long, String> tuple = cursor.prev();
+    
+                if ( i == 1L )
+                {
+                    prev = false;
+                }
+    
+                checkTuple( tuple, i, Long.toString( i ) );
+                assertEquals( next, cursor.hasNext() );
+                assertEquals( prev, cursor.hasPrev() );
+    
+                if ( i == 999L )
+                {
+                    next = true;
+                }
             }
         }
     }
@@ -803,17 +893,26 @@ public class BTreeBrowseTest
     @Test
     public void testOverwrite() throws Exception
     {
-        btree.insert( 1L, "1" );
+        try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+        {
+            btree.insert( writeTxn, 1L, "1" );
+        }
 
-        assertTrue( btree.hasKey( 1L ) );
-
-        assertEquals( "1", btree.get( 1L ) );
-
-        btree.insert( 1L, "10" );
-
-        assertTrue( btree.hasKey( 1L ) );
-        assertEquals( "10", btree.get( 1L ) );
-
+        try ( Transaction readTxn = recordManager.beginReadTransaction() )
+        {
+            assertTrue( btree.hasKey( readTxn, 1L ) );
+    
+            assertEquals( "1", btree.get( readTxn, 1L ) );
+    
+            try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+            {
+                btree.insert( writeTxn, 1L, "10" );
+            }
+    
+            assertTrue( btree.hasKey( readTxn, 1L ) );
+            assertEquals( "10", btree.get( readTxn, 1L ) );
+        }
+    
         btree.close();
     }
 
@@ -828,19 +927,26 @@ public class BTreeBrowseTest
                 40, 33, 21, 18, 9, 30, 45, 36, 12, 8
         };
 
-        btree.setPageSize( 4 );
+        btree.setPageNbElem( 4 );
+
         // Inject some data
-        for ( long value : values )
+        try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
         {
-            btree.insert( value, Long.toString( value ) );
-            System.out.println( btree );
+            for ( long value : values )
+            {
+                btree.insert( writeTxn, value, Long.toString( value ) );
+                System.out.println( btree );
+            }
         }
 
-        TupleCursor<Long, String> cursor = btree.browse();
-
-        while ( cursor.hasNext() )
+        try ( Transaction readTxn = recordManager.beginReadTransaction() )
         {
-            System.out.println( cursor.next() );
+            TupleCursor<Long, String> cursor = btree.browse( readTxn );
+    
+            while ( cursor.hasNext() )
+            {
+                System.out.println( cursor.next() );
+            }
         }
     }
 }

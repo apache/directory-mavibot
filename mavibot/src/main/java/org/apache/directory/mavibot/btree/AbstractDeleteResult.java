@@ -74,6 +74,7 @@ import java.util.List;
     /**
      * {@inheritDoc}
      */
+    @Override
     public Page<K, V> getModifiedPage()
     {
         return modifiedPage;
@@ -83,6 +84,7 @@ import java.util.List;
     /**
      * {@inheritDoc}
      */
+    @Override
     public Tuple<K, V> getRemovedElement()
     {
         return removedElement;

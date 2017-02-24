@@ -42,7 +42,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
 /* no qualifier*/class NameRevisionSerializer extends AbstractElementSerializer<NameRevision>
 {
     /** A static instance of a NameRevisionSerializer */
-    /*No qualifier*/ final static NameRevisionSerializer INSTANCE = new NameRevisionSerializer();
+    /*No qualifier*/ static final NameRevisionSerializer INSTANCE = new NameRevisionSerializer();
 
     /**
      * Create a new instance of a NameRevisionSerializer
@@ -83,9 +83,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
         long revision = LongSerializer.deserialize( in, start );
         String name = StringSerializer.deserialize( in, 8 + start );
 
-        NameRevision revisionName = new NameRevision( name, revision );
-
-        return revisionName;
+        return new NameRevision( name, revision );
     }
 
 
@@ -95,6 +93,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
      * @param in The byte array containing the NameRevision
      * @return A NameRevision instance
      */
+    @Override
     public NameRevision fromBytes( byte[] in )
     {
         return deserialize( in, 0 );
@@ -108,6 +107,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
      * @param start the position in the byte[] we will deserialize the NameRevision from
      * @return A NameRevision instance
      */
+    @Override
     public NameRevision fromBytes( byte[] in, int start )
     {
         // The buffer must be 8 bytes plus 4 bytes long (the revision is a long, and the name is a String
@@ -119,9 +119,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
         long revision = LongSerializer.deserialize( in, start );
         String name = StringSerializer.deserialize( in, 8 + start );
 
-        NameRevision revisionName = new NameRevision( name, revision );
-
-        return revisionName;
+        return new NameRevision( name, revision );
     }
 
 
@@ -136,25 +134,36 @@ import org.apache.directory.mavibot.btree.util.Strings;
             throw new SerializerCreationException( "The revisionName instance should not be null " );
         }
 
-        byte[] result = null;
+        byte[] result;
 
         if ( revisionName.getName() != null )
         {
             byte[] stringBytes = Strings.getBytesUtf8( revisionName.getName() );
-            int stringLen = stringBytes.length;
             result = new byte[8 + 4 + stringBytes.length];
+            
+            // The revision
             LongSerializer.serialize( result, 0, revisionName.getRevision() );
 
-            if ( stringLen > 0 )
+            if ( stringBytes.length > 0 )
             {
+                // The name
                 ByteArraySerializer.serialize( result, 8, stringBytes );
+            }
+            else
+            {
+                // The empty name
+                IntSerializer.serialize( result, 4, 0 );
             }
         }
         else
         {
             result = new byte[8 + 4];
+            
+            // The revision
             LongSerializer.serialize( result, 0, revisionName.getRevision() );
-            StringSerializer.serialize( result, 8, null );
+            
+            // The null name
+            IntSerializer.serialize( result, 4, 0xFFFFFFFF );
         }
 
         return result;

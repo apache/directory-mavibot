@@ -50,17 +50,17 @@ public class LongArraySerializer extends AbstractElementSerializer<long[]>
      */
     public byte[] serialize( long[] element )
     {
-        int len = -1;
+        int nbLongs = -1;
 
         if ( element != null )
         {
-            len = element.length;
+            nbLongs = element.length;
         }
 
-        byte[] bytes = null;
+        byte[] bytes;
         int pos = 0;
 
-        switch ( len )
+        switch ( nbLongs )
         {
             case 0:
                 bytes = new byte[4];
@@ -69,7 +69,7 @@ public class LongArraySerializer extends AbstractElementSerializer<long[]>
                 bytes[pos++] = 0x00;
                 bytes[pos++] = 0x00;
                 bytes[pos++] = 0x00;
-                bytes[pos++] = 0x00;
+                bytes[pos] = 0x00;
 
                 break;
 
@@ -80,19 +80,19 @@ public class LongArraySerializer extends AbstractElementSerializer<long[]>
                 bytes[pos++] = ( byte ) 0xFF;
                 bytes[pos++] = ( byte ) 0xFF;
                 bytes[pos++] = ( byte ) 0xFF;
-                bytes[pos++] = ( byte ) 0xFF;
+                bytes[pos] = ( byte ) 0xFF;
 
                 break;
 
             default:
-                int dataLen = len * 8 + 4;
+                int dataLen = nbLongs * 8 + 4;
                 bytes = new byte[dataLen];
 
                 // The number of longs
-                bytes[pos++] = ( byte ) ( len >>> 24 );
-                bytes[pos++] = ( byte ) ( len >>> 16 );
-                bytes[pos++] = ( byte ) ( len >>> 8 );
-                bytes[pos++] = ( byte ) ( len );
+                bytes[pos++] = ( byte ) ( nbLongs >>> 24 );
+                bytes[pos++] = ( byte ) ( nbLongs >>> 16 );
+                bytes[pos++] = ( byte ) ( nbLongs >>> 8 );
+                bytes[pos++] = ( byte ) ( nbLongs );
 
                 // Serialize the longs now
                 for ( long value : element )
@@ -115,15 +115,11 @@ public class LongArraySerializer extends AbstractElementSerializer<long[]>
     /**
      * {@inheritDoc}
      */
+    @Override
     public long[] deserialize( BufferHandler bufferHandler ) throws IOException
     {
-        // Read the DataLength first. Note that we don't use it here.
-        byte[] in = bufferHandler.read( 4 );
-
-        IntSerializer.deserialize( in );
-
         // Now, read the number of Longs
-        in = bufferHandler.read( 4 );
+        byte[] in = bufferHandler.read( 4 );
 
         int nbLongs = IntSerializer.deserialize( in );
 
@@ -162,11 +158,9 @@ public class LongArraySerializer extends AbstractElementSerializer<long[]>
     /**
      * {@inheritDoc}
      */
+    @Override
     public long[] deserialize( ByteBuffer buffer ) throws IOException
     {
-        // Read the dataLength. Note that we don't use it here.
-        buffer.getInt();
-        
         // The number of longs
         int nbLongs = buffer.getInt();
 
@@ -275,13 +269,16 @@ public class LongArraySerializer extends AbstractElementSerializer<long[]>
     }
 
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public long[] fromBytes( byte[] buffer ) throws IOException
     {
-        int len = IntSerializer.deserialize( buffer );
+        int nbLongs = IntSerializer.deserialize( buffer );
         int pos = 4;
 
-        switch ( len )
+        switch ( nbLongs )
         {
             case 0:
                 return new long[]
@@ -291,9 +288,9 @@ public class LongArraySerializer extends AbstractElementSerializer<long[]>
                 return null;
 
             default:
-                long[] longs = new long[len];
+                long[] longs = new long[nbLongs];
 
-                for ( int i = 0; i < len; i++ )
+                for ( int i = 0; i < nbLongs; i++ )
                 {
                     longs[i] = LongSerializer.deserialize( buffer, pos );
                     pos += 8;
@@ -304,13 +301,16 @@ public class LongArraySerializer extends AbstractElementSerializer<long[]>
     }
 
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public long[] fromBytes( byte[] buffer, int pos ) throws IOException
     {
-        int len = IntSerializer.deserialize( buffer, pos );
+        int nbLongs = IntSerializer.deserialize( buffer, pos );
         int newPos = pos + 4;
 
-        switch ( len )
+        switch ( nbLongs )
         {
             case 0:
                 return new long[]
@@ -320,9 +320,9 @@ public class LongArraySerializer extends AbstractElementSerializer<long[]>
                 return null;
 
             default:
-                long[] longs = new long[len];
+                long[] longs = new long[nbLongs];
 
-                for ( int i = 0; i < len; i++ )
+                for ( int i = 0; i < nbLongs; i++ )
                 {
                     longs[i] = LongSerializer.deserialize( buffer, newPos );
                     newPos += 8;

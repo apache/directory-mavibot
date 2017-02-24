@@ -21,12 +21,11 @@ package org.apache.directory.mavibot.btree;
 
 /**
  * The result of an insert operation, returned when the given <key,value> tuple 
- * already exists in the btree that doesn't support duplicates, or while inserting
- * a <key, null> in a sub-btree that is used to hold the values of a key. 
+ * already exists in the B-tree. That means the page has't been changed.
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 /* No qualifier*/ class ExistsResult<K, V> extends AbstractResult<K, V> implements InsertResult<K, V>
 {
-    public static final ExistsResult EXISTS = new ExistsResult();
+    public static final ExistsResult EXISTS = new ExistsResult<>();
 }

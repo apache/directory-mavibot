@@ -35,7 +35,7 @@ import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 public class BTreeConfiguration<K, V>
 {
     /** Number of entries in each Page. */
-    private int pageSize = BTree.DEFAULT_PAGE_SIZE;
+    private int pageNbElem = BTree.DEFAULT_PAGE_NBELEM;
 
     /** The size of the buffer used to write data in disk */
     private int writeBufferSize = BTree.DEFAULT_WRITE_BUFFER_SIZE;
@@ -54,15 +54,6 @@ public class BTreeConfiguration<K, V>
      */
     private String filePath;
 
-    /**
-     * The maximum delay to wait before a revision is considered as unused.
-     * This delay is necessary so that a read that does not ends does not
-     * hold a revision in memory forever.
-     * The default value is 10000 (10 seconds). If the value is 0 or below,
-     * the delay is considered as infinite
-     */
-    private long readTimeOut = BTreeImpl.DEFAULT_READ_TIMEOUT;
-
     /** The B-tree type */
     private BTreeTypeEnum btreeType = BTreeTypeEnum.PERSISTED;
 
@@ -74,20 +65,20 @@ public class BTreeConfiguration<K, V>
 
 
     /**
-     * @return the pageSize
+     * @return the number of elements per page
      */
-    public int getPageSize()
+    public int getPageNbElem()
     {
-        return pageSize;
+        return pageNbElem;
     }
 
 
     /**
-     * @param pageSize the pageSize to set
+     * @param pageNbElem the number of elements per page to set
      */
-    public void setPageSize( int pageSize )
+    public void setPageNbElem( int pageNbElem )
     {
-        this.pageSize = pageSize;
+        this.pageNbElem = pageNbElem;
     }
 
 
@@ -135,24 +126,6 @@ public class BTreeConfiguration<K, V>
     public void setValueSerializer( ElementSerializer<V> valueSerializer )
     {
         this.valueSerializer = valueSerializer;
-    }
-
-
-    /**
-     * @return the readTimeOut
-     */
-    public long getReadTimeOut()
-    {
-        return readTimeOut;
-    }
-
-
-    /**
-     * @param readTimeOut the readTimeOut to set
-     */
-    public void setReadTimeOut( long readTimeOut )
-    {
-        this.readTimeOut = readTimeOut;
     }
 
 

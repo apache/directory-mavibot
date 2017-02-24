@@ -22,7 +22,6 @@ package org.apache.directory.mavibot.btree;
 
 import java.io.IOException;
 
-import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
 
@@ -37,12 +36,12 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier*/interface Page<K, V> extends WALObject
+/* No qualifier*/interface Page<K, V> extends WALObject<K, V>
 {
     /**
-     * @return The number of keys present in this page
+     * @return The number of elements present in this page
      */
-    int getNbElems();
+    int getNbPageElems();
 
 
     /**
@@ -57,30 +56,28 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * </ul>
      * <p>
      *
+     * @param transaction The on going transaction
      * @param key Inserted key
      * @param value Inserted value
-     * @param revision The new revision for the modified pages
-     * @return Either a modified Page or an Overflow element if the Page was full
+     * @return An instance of a {@InsertResult}
      * @throws IOException If we have an error while trying to access the page
      */
-    InsertResult<K, V> insert( K key, V value, long revision ) throws IOException;
+    InsertResult<K, V> insert( WriteTransaction transaction, K key, V value ) throws IOException;
 
 
     /**
-     * Deletes the value from an entry associated with the given key in this page. We first find
+     * Deletes the key and its associated value from this page. We first find
      * the place were to remove the <K,V> into the tree, by recursively browsing the pages.
-     * If the value is present, it will be deleted first, later if there are no other values associated with
-     * this key(which can happen when duplicates are enabled), we will remove the key from the tree.
+     * If the key is present, it will be deleted and we will remove the key from the tree.
      *
      * @param revision The new revision for the modified pages
      * @param key The key to delete
-     * @param value The value to delete (can be null)
      * @param parent The parent page
      * @param parentPos The position of the current page in it's parent
      * @return Either a modified Page if the key has been removed from the page, or a NotPresentResult.
      * @throws IOException If we have an error while trying to access the page
      */
-    DeleteResult<K, V> delete( K key, V value, long revision /*, Page<K, V> parent, int parentPos*/ ) throws IOException;
+    DeleteResult<K, V> delete( WriteTransaction transaction, K key ) throws IOException;
 
 
     /**
@@ -95,21 +92,6 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @throws IOException If we have an error while trying to access the page
      */
     V get( K key ) throws KeyNotFoundException, IOException;
-
-
-    /**
-     * Gets the values associated with the given key, if any. If we don't have
-     * the key, this method will throw a KeyNotFoundException.<br/>
-     * Note that we may get back null if a null value has been associated
-     * with the key.
-     *
-     * @param key The key we are looking for
-     * @return The associated value, which can be null
-     * @throws KeyNotFoundException If no entry with the given key can be found
-     * @throws IOException If we have an error while trying to access the page
-     * @throws IllegalArgumentException If duplicates are not enabled
-     */
-    ValueCursor<V> getValues( K key ) throws KeyNotFoundException, IOException, IllegalArgumentException;
 
 
     /**
@@ -128,7 +110,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @param revision The new revision
      * @return The copied page
      */
-    Page<K, V> copy( long revision );
+    Page<K, V> copy( WriteTransaction transaction );
 
 
     /**
@@ -141,7 +123,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @return A Cursor to browse the next elements
      * @throws IOException If we have an error while trying to access the page
      */
-    TupleCursor<K, V> browse( K key, ReadTransaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
+    TupleCursor<K, V> browse( Transaction transaction, K key, ParentPos<K, V>[] stack, int depth )
         throws IOException;
 
 
@@ -153,8 +135,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @return A Cursor to browse the next elements
      * @throws IOException If we have an error while trying to access the page
      */
-    TupleCursor<K, V> browse( ReadTransaction<K, V> transaction, ParentPos<K, V>[] stack, int depth )
-        throws EndOfFileExceededException, IOException;
+    TupleCursor<K, V> browse( Transaction transaction, ParentPos<K, V>[] stack, int depth )
+        throws IOException;
 
 
     /**
@@ -165,13 +147,14 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @return A Cursor to browse the keys
      * @throws IOException If we have an error while trying to access the page
      */
-    KeyCursor<K> browseKeys( ReadTransaction<K, K> transaction, ParentPos<K, K>[] stack, int depth )
-        throws EndOfFileExceededException, IOException;
+    KeyCursor<K> browseKeys( Transaction transaction, ParentPos<K, K>[] stack, int depth )
+        throws IOException;
 
     
     /**
      * @return the revision
      */
+    @Override
     long getRevision();
 
 
@@ -219,7 +202,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @return The rightmost element in the tree
      * @throws IOException If we have an error while trying to access the page
      */
-    Tuple<K, V> findRightMost() throws EndOfFileExceededException, IOException;
+    Tuple<K, V> findRightMost() throws IOException;
 
 
     /**
@@ -261,7 +244,6 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * <li>'h' will return -4</li>
      * <li>'i' will return 4</li>
      * </ul>
-     *
      *
      * @param key The key to find
      * @return The position in the page.

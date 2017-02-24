@@ -37,7 +37,7 @@ import org.junit.Test;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-@Ignore("until ApacheDS works with mavibot")
+//@Ignore("until ApacheDS works with mavibot")
 public class BTreeBuilderTest
 {
 
@@ -60,36 +60,80 @@ public class BTreeBuilderTest
             RecordManager rm = new RecordManager( file.getAbsolutePath() );
 
             IntSerializer ser = IntSerializer.INSTANCE;
+            /*
             BTreeBuilder<Integer, Integer> bb = new BTreeBuilder<Integer, Integer>( rm, "master", 4,
                 ser,
                 ser );
+                */
+
+            System.out.println( "Init" );
+            System.out.println( "-----------------------------------------------------------" );
+
+            MavibotInspector.dumpInfos( rm, rm.getRecordManagerHeader() );
+
+            System.out.println( "-----------------------------------------------------------" );
+            System.out.println();
+            System.out.println( "Adding the master b-tree" );
+            System.out.println( "-----------------------------------------------------------" );
 
             // contains 1, 2, 3, 4, 5, 6, 7
-            BTree<Integer, Integer> btree = bb.build( sortedTuple.iterator() );
+            BTree<Integer, Integer> btree = null;
+            
+            try ( WriteTransaction writeTxn = rm.beginWriteTransaction() )
+            {
+                btree = rm.addBTree( writeTxn, "master", IntSerializer.INSTANCE, IntSerializer.INSTANCE, true );
+            }
 
+            MavibotInspector.dumpInfos( rm, rm.getRecordManagerHeader() );
+            
+            System.out.println( "-----------------------------------------------------------" );
+            System.out.println();
+            System.out.println( "Inserting 7 values in master" );
+            System.out.println( "-----------------------------------------------------------" );
+            
+            try ( WriteTransaction writeTxn = rm.beginWriteTransaction() )
+            {
+                for ( Tuple<Integer, Integer> tuple : sortedTuple )
+                {
+                    btree.insert( writeTxn, tuple.key, tuple.value );
+                }
+                
+                //btree = bb.build( writeTxn, sortedTuple.iterator() );
+            }
+
+            MavibotInspector.dumpInfos( rm, rm.getRecordManagerHeader() );
+            
+            System.out.println( "-----------------------------------------------------------" );
             rm.close();
 
             rm = new RecordManager( file.getAbsolutePath() );
-            btree = rm.getManagedTree( "master" );
-
-            assertEquals( 1, btree.getRootPage().getNbElems() );
-
-            assertEquals( 7, btree.getRootPage().findRightMost().getKey().intValue() );
-
-            assertEquals( 1, btree.getRootPage().findLeftMost().getKey().intValue() );
-
-            TupleCursor<Integer, Integer> cursor = btree.browse();
-            int i = 0;
-
-            while ( cursor.hasNext() )
+            
+            MavibotInspector.dumpInfos( rm, rm.getRecordManagerHeader() );
+            
+            try ( Transaction txn = rm.beginReadTransaction() )
             {
-                Tuple<Integer, Integer> expected = sortedTuple.get( i++ );
-                Tuple<Integer, Integer> actual = cursor.next();
-                assertEquals( expected.getKey(), actual.getKey() );
-                assertEquals( expected.getValue(), actual.getValue() );
+                btree = rm.getBtree( txn, "master" );
+    
+                assertEquals( 7, btree.getRootPage().getNbPageElems() );
+    
+                assertEquals( 7, btree.getRootPage().findRightMost().getKey().intValue() );
+    
+                assertEquals( 1, btree.getRootPage().findLeftMost().getKey().intValue() );
+    
+                TupleCursor<Integer, Integer> cursor = btree.browse( txn );
+                int i = 0;
+    
+                while ( cursor.hasNext() )
+                {
+                    Tuple<Integer, Integer> expected = sortedTuple.get( i++ );
+                    Tuple<Integer, Integer> actual = cursor.next();
+                    assertEquals( expected.getKey(), actual.getKey() );
+                    assertEquals( expected.getValue(), actual.getValue() );
+                }
+    
+                cursor.close();
             }
-
-            cursor.close();
+            
             btree.close();
         }
         finally

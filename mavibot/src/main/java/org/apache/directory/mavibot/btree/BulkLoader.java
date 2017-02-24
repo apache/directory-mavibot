@@ -57,7 +57,7 @@ public class BulkLoader<K, V>
 {
     private BulkLoader()
     {
-    };
+    }
 
     static enum LevelEnum
     {
@@ -259,7 +259,7 @@ public class BulkLoader<K, V>
         // The list of files we will use to store the sorted chunks
         List<File> sortedFiles = new ArrayList<File>();
 
-        // An array of chukSize tuple max
+        // An array of chunkSize tuple max
         List<Tuple<K, V>> tuples = new ArrayList<Tuple<K, V>>( chunkSize );
 
         // Now, start to read all the tuples to sort them. We may use intermediate files
@@ -466,7 +466,7 @@ public class BulkLoader<K, V>
     {
         Leaf<K, V> leaf = ( Leaf<K, V> ) leafLevel.getCurrentPage();
 
-        KeyHolder<K> keyHolder = new KeyHolderImpl<K>( btree.getKeySerializer(), tuple.getKey() );
+        KeyHolder<K> keyHolder = new KeyHolder<K>( btree.getKeySerializer(), tuple.getKey() );
         leaf.setKey( leafLevel.getCurrentPos(), keyHolder );
 
         leafLevel.incCurrentPos();
@@ -541,7 +541,7 @@ public class BulkLoader<K, V>
         {
             // Inject the pageHolder and the page leftmost key
             node.setPageHolder( level.getCurrentPos() + 1, pageHolder );
-            KeyHolder<K> keyHolder = new KeyHolderImpl<K>( btree.getKeySerializer(), page.getLeftMostKey() );
+            KeyHolder<K> keyHolder = new KeyHolder<K>( btree.getKeySerializer(), page.getLeftMostKey() );
             node.setKey( level.getCurrentPos(), keyHolder );
             level.incCurrentPos();
             level.incNbAddedElems();
@@ -601,7 +601,7 @@ public class BulkLoader<K, V>
             {
                 // Inject the pageHolder and the page leftmost key
                 node.setPageHolder( level.getCurrentPos(), pageHolder );
-                KeyHolder<K> keyHolder = new KeyHolderImpl<K>( btree.getKeySerializer(), page.getLeftMostKey() );
+                KeyHolder<K> keyHolder = new KeyHolder<K>( btree.getKeySerializer(), page.getLeftMostKey() );
                 node.setKey( level.getCurrentPos() - 1, keyHolder );
             }
 
@@ -673,7 +673,7 @@ public class BulkLoader<K, V>
                     {
                         // Inject the pageHolder and the page leftmost key
                         node.setPageHolder( level.getCurrentPos(), pageHolder );
-                        KeyHolder<K> keyHolder = new KeyHolderImpl<K>( btree.getKeySerializer(),
+                        KeyHolder<K> keyHolder = new KeyHolder<K>( btree.getKeySerializer(),
                             page.getLeftMostKey() );
                         node.setKey( level.getCurrentPos() - 1, keyHolder );
                     }
@@ -702,7 +702,7 @@ public class BulkLoader<K, V>
                         // Any other following elements
                         // Inject the pageHolder and the page leftmost key
                         node.setPageHolder( level.getCurrentPos(), pageHolder );
-                        KeyHolder<K> keyHolder = new KeyHolderImpl<K>( btree.getKeySerializer(),
+                        KeyHolder<K> keyHolder = new KeyHolder<K>( btree.getKeySerializer(),
                             page.getLeftMostKey() );
                         node.setKey( level.getCurrentPos() - 1, keyHolder );
                     }
@@ -712,7 +712,7 @@ public class BulkLoader<K, V>
                     level.incNbAddedElems();
 
                     // Check if we are done with the page
-                    if ( level.getCurrentPos() == node.getNbElems() + 1 )
+                    if ( level.getCurrentPos() == node.getNbPageElems() + 1 )
                     {
                         // Yes, we have to update the parent
                         injectInNode( btree, node, levels, levelIndex + 1 );
@@ -745,7 +745,7 @@ public class BulkLoader<K, V>
                         // Any other following elements
                         // Inject the pageHolder and the page leftmost key
                         node.setPageHolder( level.getCurrentPos(), pageHolder );
-                        KeyHolder<K> keyHolder = new KeyHolderImpl<K>( btree.getKeySerializer(),
+                        KeyHolder<K> keyHolder = new KeyHolder<K>( btree.getKeySerializer(),
                             page.getLeftMostKey() );
                         node.setKey( level.getCurrentPos() - 1, keyHolder );
                     }
@@ -755,7 +755,7 @@ public class BulkLoader<K, V>
                     level.incNbAddedElems();
 
                     // Check if we are done with the page
-                    if ( level.getCurrentPos() == node.getNbElems() + 1 )
+                    if ( level.getCurrentPos() == node.getNbPageElems() + 1 )
                     {
                         // Yes, we have to update the parent
                         injectInNode( btree, node, levels, levelIndex + 1 );
@@ -779,14 +779,14 @@ public class BulkLoader<K, V>
         Page<K, V> rootPage = btree.getRootPage();
 
         // Initialize the root page
-        ( ( AbstractPage<K, V> ) rootPage ).setNbElems( nbElems );
+        ( ( AbstractPage<K, V> ) rootPage ).setNbPageElems( nbElems );
         KeyHolder<K>[] keys = new KeyHolder[nbElems];
         ValueHolder<V>[] values = new ValueHolder[nbElems];
 
         switch ( btree.getType() )
         {
             default:
-                ( ( Leaf<K, V> ) rootPage ).values = values;
+                ( ( Leaf<K, V> ) rootPage ).setValues( values );
         }
 
         // We first have to inject data into the page
@@ -797,10 +797,10 @@ public class BulkLoader<K, V>
             Tuple<K, V> tuple = dataIterator.next();
 
             // Store the current element in the rootPage
-            KeyHolder<K> keyHolder = new KeyHolderImpl<K>( btree.getKeySerializer(), tuple.getKey() );
+            KeyHolder<K> keyHolder = new KeyHolder<K>( btree.getKeySerializer(), tuple.getKey() );
             keys[pos] = keyHolder;
 
-            ValueHolder<V>valueHolder = new ValueHolderImpl<V>( btree, ( V )tuple.getValue() );
+            ValueHolder<V>valueHolder = new ValueHolder<V>( btree, ( V )tuple.getValue() );
             ( ( Leaf<K, V> ) rootPage ).values[pos] = valueHolder;
 
             pos++;
@@ -810,7 +810,7 @@ public class BulkLoader<K, V>
         ( ( AbstractPage<K, V> ) rootPage ).setKeys( keys );
 
         // Update the btree with the nb of added elements, and write it$
-        BTreeHeader<K, V> btreeHeader = ( ( AbstractBTree<K, V> ) btree ).getBtreeHeader();
+        BTreeHeader<K, V> btreeHeader = ( ( BTreeImpl<K, V> ) btree ).getBtreeHeader();
         btreeHeader.setNbElems( nbElems );
 
         return btree;
@@ -942,7 +942,7 @@ public class BulkLoader<K, V>
         }
 
         // Update the btree with the nb of added elements, and write it$
-        BTreeHeader<K, V> btreeHeader = ( ( AbstractBTree<K, V> ) btree ).getBtreeHeader();
+        BTreeHeader<K, V> btreeHeader = ( ( BTreeImpl<K, V> ) btree ).getBtreeHeader();
         btreeHeader.setNbElems( nbElems );
 
         return btree;

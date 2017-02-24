@@ -87,6 +87,7 @@ import java.util.List;
     /**
      * {@inheritDoc}
      */
+    @Override
     public Page<K, V> getModifiedSibling()
     {
         return modifiedSibling;
@@ -96,6 +97,7 @@ import java.util.List;
     /**
      * {@inheritDoc}
      */
+    @Override
     public boolean isFromLeft()
     {
         return position == SiblingPosition.LEFT;
@@ -105,6 +107,7 @@ import java.util.List;
     /**
      * {@inheritDoc}
      */
+    @Override
     public boolean isFromRight()
     {
         return position == SiblingPosition.RIGHT;
@@ -114,6 +117,7 @@ import java.util.List;
     /**
      * @see Object#toString()
      */
+    @Override
     public String toString()
     {
         StringBuilder sb = new StringBuilder();

@@ -121,6 +121,7 @@ public class ShortSerializer extends AbstractElementSerializer<Short>
      * @param in The byte array containing the Short
      * @return A Short
      */
+    @Override
     public Short fromBytes( byte[] in )
     {
         return deserialize( in, 0 );
@@ -133,6 +134,7 @@ public class ShortSerializer extends AbstractElementSerializer<Short>
      * @param start the position in the byte[] we will deserialize the short from
      * @return A Short
      */
+    @Override
     public Short fromBytes( byte[] in, int start )
     {
         if ( ( in == null ) || ( in.length < 2 + start ) )
@@ -147,6 +149,7 @@ public class ShortSerializer extends AbstractElementSerializer<Short>
     /**
      * {@inheritDoc}
      */
+    @Override
     public Short deserialize( ByteBuffer buffer ) throws IOException
     {
         return buffer.getShort();
@@ -156,6 +159,7 @@ public class ShortSerializer extends AbstractElementSerializer<Short>
     /**
      * {@inheritDoc}
      */
+    @Override
     public Short deserialize( BufferHandler bufferHandler ) throws IOException
     {
         byte[] in = bufferHandler.read( 2 );

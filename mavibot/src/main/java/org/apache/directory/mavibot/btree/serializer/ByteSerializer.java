@@ -120,6 +120,7 @@ public class ByteSerializer extends AbstractElementSerializer<Byte>
      * @param in The byte array containing the Byte
      * @return A Byte
      */
+    @Override
     public Byte fromBytes( byte[] in )
     {
         return deserialize( in, 0 );
@@ -132,6 +133,7 @@ public class ByteSerializer extends AbstractElementSerializer<Byte>
      * @param start the position in the byte[] we will deserialize the byte from
      * @return A Byte
      */
+    @Override
     public Byte fromBytes( byte[] in, int start )
     {
         if ( ( in == null ) || ( in.length < 1 + start ) )
@@ -146,6 +148,7 @@ public class ByteSerializer extends AbstractElementSerializer<Byte>
     /**
      * {@inheritDoc}
      */
+    @Override
     public Byte deserialize( ByteBuffer buffer ) throws IOException
     {
         return buffer.get();
@@ -155,6 +158,7 @@ public class ByteSerializer extends AbstractElementSerializer<Byte>
     /**
      * {@inheritDoc}
      */
+    @Override
     public Byte deserialize( BufferHandler bufferHandler ) throws IOException
     {
         byte[] in = bufferHandler.read( 1 );

@@ -61,16 +61,16 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
      */
     public byte[] serialize( byte[] element )
     {
-        int len = -1;
+        int nbBytes = -1;
 
         if ( element != null )
         {
-            len = element.length;
+            nbBytes = element.length;
         }
 
-        byte[] bytes = null;
+        byte[] bytes;
 
-        switch ( len )
+        switch ( nbBytes )
         {
             case 0:
                 bytes = new byte[4];
@@ -93,14 +93,14 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
                 break;
 
             default:
-                bytes = new byte[len + 4];
+                bytes = new byte[nbBytes + 4];
 
-                System.arraycopy( element, 0, bytes, 4, len );
+                System.arraycopy( element, 0, bytes, 4, nbBytes );
 
-                bytes[0] = ( byte ) ( len >>> 24 );
-                bytes[1] = ( byte ) ( len >>> 16 );
-                bytes[2] = ( byte ) ( len >>> 8 );
-                bytes[3] = ( byte ) ( len );
+                bytes[0] = ( byte ) ( nbBytes >>> 24 );
+                bytes[1] = ( byte ) ( nbBytes >>> 16 );
+                bytes[2] = ( byte ) ( nbBytes >>> 8 );
+                bytes[3] = ( byte ) ( nbBytes );
         }
 
         return bytes;
@@ -117,14 +117,14 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
      */
     public static byte[] serialize( byte[] buffer, int start, byte[] element )
     {
-        int len = -1;
+        int nbBytes = -1;
 
         if ( element != null )
         {
-            len = element.length;
+            nbBytes = element.length;
         }
 
-        switch ( len )
+        switch ( nbBytes )
         {
             case 0:
                 buffer[start] = 0x00;
@@ -144,12 +144,12 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
 
             default:
 
-                buffer[start] = ( byte ) ( len >>> 24 );
-                buffer[start + 1] = ( byte ) ( len >>> 16 );
-                buffer[start + 2] = ( byte ) ( len >>> 8 );
-                buffer[start + 3] = ( byte ) ( len );
+                buffer[start] = ( byte ) ( nbBytes >>> 24 );
+                buffer[start + 1] = ( byte ) ( nbBytes >>> 16 );
+                buffer[start + 2] = ( byte ) ( nbBytes >>> 8 );
+                buffer[start + 3] = ( byte ) ( nbBytes );
 
-                System.arraycopy( element, 0, buffer, 4 + start, len );
+                System.arraycopy( element, 0, buffer, 4 + start, nbBytes );
         }
 
         return buffer;
@@ -170,9 +170,9 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
             throw new SerializerCreationException( "Cannot extract a byte[] from a buffer with not enough bytes" );
         }
 
-        int len = IntSerializer.deserialize( in );
+        int nbBytes = IntSerializer.deserialize( in );
 
-        switch ( len )
+        switch ( nbBytes )
         {
             case 0:
                 return new byte[]
@@ -182,8 +182,8 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
                 return null;
 
             default:
-                byte[] result = new byte[len];
-                System.arraycopy( in, 4, result, 0, len );
+                byte[] result = new byte[nbBytes];
+                System.arraycopy( in, 4, result, 0, nbBytes );
 
                 return result;
         }
@@ -204,9 +204,9 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
             throw new SerializerCreationException( "Cannot extract a byte[] from a buffer with not enough bytes" );
         }
 
-        int len = IntSerializer.deserialize( in, start );
+        int nbBytes = IntSerializer.deserialize( in, start );
 
-        switch ( len )
+        switch ( nbBytes )
         {
             case 0:
                 return new byte[]
@@ -216,8 +216,8 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
                 return null;
 
             default:
-                byte[] result = new byte[len];
-                System.arraycopy( in, 4 + start, result, 0, len );
+                byte[] result = new byte[nbBytes];
+                System.arraycopy( in, 4 + start, result, 0, nbBytes );
 
                 return result;
         }
@@ -230,6 +230,7 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
      * @param in The byte array containing the byte array
      * @return A byte[]
      */
+    @Override
     public byte[] fromBytes( byte[] in )
     {
         if ( ( in == null ) || ( in.length < 4 ) )
@@ -237,9 +238,9 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
             throw new SerializerCreationException( "Cannot extract a byte[] from a buffer with not enough bytes" );
         }
 
-        int len = IntSerializer.deserialize( in );
+        int nbBytes = IntSerializer.deserialize( in );
 
-        switch ( len )
+        switch ( nbBytes )
         {
             case 0:
                 return new byte[]
@@ -249,8 +250,8 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
                 return null;
 
             default:
-                byte[] result = new byte[len];
-                System.arraycopy( in, 4, result, 0, len );
+                byte[] result = new byte[nbBytes];
+                System.arraycopy( in, 4, result, 0, nbBytes );
 
                 return result;
         }
@@ -264,6 +265,7 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
      * @param start the position in the byte[] we will deserialize the byte[] from
      * @return A byte[]
      */
+    @Override
     public byte[] fromBytes( byte[] in, int start )
     {
         if ( ( in == null ) || ( in.length < 4 + start ) )
@@ -271,9 +273,9 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
             throw new SerializerCreationException( "Cannot extract a byte[] from a buffer with not enough bytes" );
         }
 
-        int len = IntSerializer.deserialize( in, start );
+        int nbBytes = IntSerializer.deserialize( in, start );
 
-        switch ( len )
+        switch ( nbBytes )
         {
             case 0:
                 return new byte[]
@@ -283,8 +285,8 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
                 return null;
 
             default:
-                byte[] result = new byte[len];
-                System.arraycopy( in, 4 + start, result, 0, len );
+                byte[] result = new byte[nbBytes];
+                System.arraycopy( in, 4 + start, result, 0, nbBytes );
 
                 return result;
         }
@@ -294,13 +296,14 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
     /**
      * {@inheritDoc}
      */
+    @Override
     public byte[] deserialize( BufferHandler bufferHandler ) throws IOException
     {
         byte[] in = bufferHandler.read( 4 );
 
-        int len = IntSerializer.deserialize( in );
+        int nbBytes = IntSerializer.deserialize( in );
 
-        switch ( len )
+        switch ( nbBytes )
         {
             case 0:
                 return new byte[]
@@ -310,7 +313,7 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
                 return null;
 
             default:
-                in = bufferHandler.read( len );
+                in = bufferHandler.read( nbBytes );
 
                 return in;
         }
@@ -320,11 +323,12 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
     /**
      * {@inheritDoc}
      */
+    @Override
     public byte[] deserialize( ByteBuffer buffer ) throws IOException
     {
-        int len = buffer.getInt();
+        int nbBytes = buffer.getInt();
 
-        switch ( len )
+        switch ( nbBytes )
         {
             case 0:
                 return new byte[]
@@ -334,7 +338,7 @@ public class ByteArraySerializer extends AbstractElementSerializer<byte[]>
                 return null;
 
             default:
-                byte[] bytes = new byte[len];
+                byte[] bytes = new byte[nbBytes];
 
                 buffer.get( bytes );
 

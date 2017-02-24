@@ -35,7 +35,7 @@ import org.apache.directory.mavibot.btree.exception.SerializerCreationException;
 public class LongSerializer extends AbstractElementSerializer<Long>
 {
     /** A static instance of a LongSerializer */
-    public final static LongSerializer INSTANCE = new LongSerializer();
+    public static final LongSerializer INSTANCE = new LongSerializer();
 
     /**
      * Create a new instance of LongSerializer
@@ -117,7 +117,7 @@ public class LongSerializer extends AbstractElementSerializer<Long>
             throw new SerializerCreationException( "Cannot extract a Long from a buffer with not enough bytes" );
         }
 
-        long result = ( ( long ) in[start] << 56 ) +
+        return ( ( long ) in[start] << 56 ) +
             ( ( in[start + 1] & 0x00FFL ) << 48 ) +
             ( ( in[start + 2] & 0x00FFL ) << 40 ) +
             ( ( in[start + 3] & 0x00FFL ) << 32 ) +
@@ -125,8 +125,6 @@ public class LongSerializer extends AbstractElementSerializer<Long>
             ( ( in[start + 5] & 0x00FFL ) << 16 ) +
             ( ( in[start + 6] & 0x00FFL ) << 8 ) +
             ( in[start + 7] & 0x00FFL );
-
-        return result;
     }
 
 
@@ -136,6 +134,7 @@ public class LongSerializer extends AbstractElementSerializer<Long>
      * @param start the position in the byte[] we will deserialize the long from
      * @return A Long
      */
+    @Override
     public Long fromBytes( byte[] in )
     {
         return deserialize( in, 0 );
@@ -148,6 +147,7 @@ public class LongSerializer extends AbstractElementSerializer<Long>
      * @param start the position in the byte[] we will deserialize the long from
      * @return An Integer
      */
+    @Override
     public Long fromBytes( byte[] in, int start )
     {
         if ( ( in == null ) || ( in.length < 8 + start ) )
@@ -155,7 +155,7 @@ public class LongSerializer extends AbstractElementSerializer<Long>
             throw new SerializerCreationException( "Cannot extract a Long from a buffer with not enough bytes" );
         }
 
-        long result = ( ( long ) in[start] << 56 ) +
+        return ( ( long ) in[start] << 56 ) +
             ( ( in[start + 1] & 0xFFL ) << 48 ) +
             ( ( in[start + 2] & 0xFFL ) << 40 ) +
             ( ( in[start + 3] & 0xFFL ) << 32 ) +
@@ -163,14 +163,13 @@ public class LongSerializer extends AbstractElementSerializer<Long>
             ( ( in[start + 5] & 0xFFL ) << 16 ) +
             ( ( in[start + 6] & 0xFFL ) << 8 ) +
             ( in[start + 7] & 0xFFL );
-
-        return result;
     }
 
 
     /**
      * {@inheritDoc}
      */
+    @Override
     public Long deserialize( BufferHandler bufferHandler ) throws IOException
     {
         byte[] in = bufferHandler.read( 8 );
@@ -182,6 +181,7 @@ public class LongSerializer extends AbstractElementSerializer<Long>
     /**
      * {@inheritDoc}
      */
+    @Override
     public Long deserialize( ByteBuffer buffer ) throws IOException
     {
         return buffer.getLong();

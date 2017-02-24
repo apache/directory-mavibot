@@ -35,8 +35,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.InvalidBTreeException;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
+import org.apache.directory.mavibot.btree.serializer.LongArraySerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
 import org.apache.directory.mavibot.btree.util.Strings;
@@ -152,13 +154,13 @@ public class MavibotInspector
     /**
      * Print the number of B-trees
      */
-    public void printNumberOfBTrees()
+    public void printNumberOfBTrees( RecordManagerHeader recordManagerHeader )
     {
         int nbBtrees = 0;
 
         if ( rm != null )
         {
-            nbBtrees = rm.getNbManagedTrees();
+            nbBtrees = rm.getNbManagedTrees( recordManagerHeader );
         }
 
         // The number of trees. It must be at least 2 and > 0
@@ -192,7 +194,7 @@ public class MavibotInspector
     /**
      * Check a B-tree
      */
-    public void inspectBTree()
+    public void inspectBTree( RecordManagerHeader recordManagerHeader )
     {
         if ( rm == null )
         {
@@ -203,7 +205,7 @@ public class MavibotInspector
         System.out.print( "BTree Name: " );
         String name = readLine();
 
-        BTreeImpl<?, ?> pb = ( BTreeImpl<?, ?> ) rm.getManagedTree( name );
+        BTreeImpl<?, ?> pb = ( BTreeImpl<?, ?> ) rm.getBtree( recordManagerHeader, name );
 
         if ( pb == null )
         {
@@ -214,9 +216,9 @@ public class MavibotInspector
         System.out.println( "\nBTree offset: " + String.format( "0x%1$08x", pb.getBtreeOffset() ) );
         System.out.println( "BTree _info_ offset: " + String.format( "0x%1$08x", pb.getBtreeInfoOffset() ) );
         System.out.println( "BTree root page offset: " + String.format( "0x%1$08x", pb.getRootPageOffset() ) );
-        System.out.println( "Number of elements present: " + pb.getNbElems() );
-        System.out.println( "BTree Page size: " + pb.getPageSize() );
-        System.out.println( "BTree revision: " + pb.getRevision() );
+        System.out.println( "Number of elements present: " + pb.getNbElems( recordManagerHeader ) );
+        System.out.println( "BTree Page size: " + pb.getNbElems( recordManagerHeader ) );
+        System.out.println( "BTree revision: " + pb.getRevision( recordManagerHeader ) );
         System.out.println( "Key serializer: " + pb.getKeySerializerFQCN() );
         System.out.println( "Value serializer: " + pb.getValueSerializerFQCN() );
         System.out.println();
@@ -252,52 +254,64 @@ public class MavibotInspector
     /**
      * Check the whole file
      */
-    /* no qualifier */static void check( RecordManager recordManager )
+    /* no qualifier */static void check( RecordManager recordManager, RecordManagerHeader recordManagerHeader )
     {
         try
         {
-            rm = recordManager;
+            // Dump the infos
+            //dumpInfos( recordManager, recordManagerHeader );
             
+            rm = recordManager;
+
             // First check the RMheader
-            ByteBuffer recordManagerHeader = ByteBuffer.allocate( RecordManager.RECORD_MANAGER_HEADER_SIZE );
+            ByteBuffer recordManagerHeaderBuffer = ByteBuffer.allocate( RecordManager.recordManagerHeaderSize );
+            
             long fileSize = recordManager.fileChannel.size();
 
-            if ( fileSize < RecordManager.RECORD_MANAGER_HEADER_SIZE )
+            if ( fileSize < RecordManager.recordManagerHeaderSize )
             {
                 throw new InvalidBTreeException( "File size too small : " + fileSize );
             }
 
             // Read the RMHeader
-            recordManager.fileChannel.read( recordManagerHeader, 0L );
-            recordManagerHeader.flip();
+            recordManager.fileChannel.read( recordManagerHeaderBuffer, 0L );
+            recordManagerHeaderBuffer.flip();
 
             // The page size. It must be a power of 2, and above 16.
-            int pageSize = recordManagerHeader.getInt();
+            int pageSize = recordManagerHeaderBuffer.getInt();
 
-            if ( ( pageSize != recordManager.pageSize ) || ( pageSize < 32 )
+            if ( ( pageSize != recordManager.getPageSize( recordManagerHeader ) ) || ( pageSize < 32 )
                 || ( ( pageSize & ( ~pageSize + 1 ) ) != pageSize ) )
             {
                 throw new InvalidBTreeException( "Wrong page size : " + pageSize );
             }
 
             // Compute the number of pages in this file
-            long nbPages = ( fileSize - RecordManager.RECORD_MANAGER_HEADER_SIZE ) / pageSize;
+            long nbPages = ( fileSize - RecordManager.recordManagerHeaderSize ) / pageSize;
 
             // The number of trees. It must be at least >= 2
-            int nbBtrees = recordManagerHeader.getInt();
+            int nbBtrees = recordManagerHeaderBuffer.getInt();
 
-            if ( ( nbBtrees < 0 ) || ( nbBtrees != recordManager.nbBtree ) )
+            if ( ( nbBtrees < 0 ) || ( nbBtrees != recordManager.getNbManagedTrees( recordManagerHeader ) ) )
             {
                 throw new InvalidBTreeException( "Wrong nb trees : " + nbBtrees );
+            }
+            
+            // The current revision
+            long revision = recordManagerHeaderBuffer.getLong();
+            
+            if ( revision != recordManagerHeader.getRevision() )
+            {
+                throw new InvalidBTreeException( "Wrong revision number : " + revision );
             }
 
             // The first free page offset. It must be either -1 or below file size
             // and its value must be a modulo of pageSize
-            long firstFreePage = recordManagerHeader.getLong();
+            long firstFreePage = recordManagerHeaderBuffer.getLong();
 
             if ( firstFreePage != RecordManager.NO_PAGE )
             {
-                checkOffset( recordManager, firstFreePage );
+                checkOffset( recordManager, recordManagerHeader, firstFreePage );
             }
 
             int nbPageBits = ( int ) ( nbPages / 32 );
@@ -315,44 +329,26 @@ public class MavibotInspector
             checkedPages.put( RecordManager.COPIED_PAGE_BTREE_NAME, new int[nbPageBits + 1] );
 
             // Check the free files
-            checkFreePages( recordManager, checkedPages );
+            checkFreePages( recordManager, recordManagerHeader, checkedPages );
 
             // The B-trees offsets
-            long currentBtreeOfBtreesOffset = recordManagerHeader.getLong();
-            long previousBtreeOfBtreesOffset = recordManagerHeader.getLong();
-            long currentCopiedPagesBtreeOffset = recordManagerHeader.getLong();
-            long previousCopiedPagesBtreeOffset = recordManagerHeader.getLong();
-
-            // Check that the previous BOB offset is not pointing to something
-            if ( previousBtreeOfBtreesOffset != RecordManager.NO_PAGE )
-            {
-                System.out.println( "The previous Btree of Btrees offset is not valid : "
-                    + previousBtreeOfBtreesOffset );
-                return;
-            }
-
-            // Check that the previous CPB offset is not pointing to something
-            if ( previousCopiedPagesBtreeOffset != RecordManager.NO_PAGE )
-            {
-                System.out.println( "The previous Copied Pages Btree offset is not valid : "
-                    + previousCopiedPagesBtreeOffset );
-                return;
-            }
+            long currentBtreeOfBtreesOffset = recordManagerHeaderBuffer.getLong();
+            long currentCopiedPagesBtreeOffset = recordManagerHeaderBuffer.getLong();
 
             // Check that the current BOB offset is valid
-            checkOffset( recordManager, currentBtreeOfBtreesOffset );
+            checkOffset( recordManager, recordManagerHeader, currentBtreeOfBtreesOffset );
 
             // Check that the current CPB offset is valid
-            checkOffset( recordManager, currentCopiedPagesBtreeOffset );
+            checkOffset( recordManager, recordManagerHeader, currentCopiedPagesBtreeOffset );
 
             // Now, check the BTree of Btrees
-            checkBtreeOfBtrees( recordManager, checkedPages );
+            checkBtreeOfBtrees( recordManager, recordManagerHeader, checkedPages );
 
             // And the Copied Pages BTree
-            checkBtree( recordManager, currentCopiedPagesBtreeOffset, checkedPages );
+            checkBtree( recordManager, recordManagerHeader, currentCopiedPagesBtreeOffset, checkedPages );
 
             // We can now dump the checked pages
-            dumpCheckedPages( recordManager, checkedPages );
+            //dumpCheckedPages( recordManager, recordManagerHeader, checkedPages );
         }
         catch ( Exception e )
         {
@@ -362,123 +358,985 @@ public class MavibotInspector
             throw new InvalidBTreeException( "Error : " + e.getMessage() );
         }
     }
+    
+    
+    public static void dumpInfos( RecordManager recordManager, RecordManagerHeader recordManagerHeader ) throws Exception
+    {
+        StringBuilder sb = new StringBuilder();
+        long nbPages = recordManagerHeader.lastOffset/recordManagerHeader.pageSize;
+        String[] pages = new String[(int)nbPages];
+        
+        // RMH
+        sb.append( String.format( "0x%04X", 0L ) ).append( " RMH : " );
+        sb.append( "<BOB h[" ).append( recordManagerHeader.getRevision() ).append( "] : " ).append( String.format( "0x%04X",recordManagerHeader.currentBtreeOfBtreesOffset ) );
+        sb.append( ">, " );
+        sb.append( "<CPB h[" ).append( recordManagerHeader.getRevision() ).append( "] : " ).append( String.format( "0x%04X",recordManagerHeader.currentCopiedPagesBtreeOffset ) );
+        sb.append( '>' );
+        
+        pages[0] = sb.toString();
+        
+        // The CPB
+        dumpCopiedPagesBtree( recordManager, recordManagerHeader, pages );
+
+        // The BOB
+        dumpBtreeOfBtrees( recordManager, recordManagerHeader, pages );
+
+        boolean previousEmpty = false;
+        
+        for ( String page : pages )
+        {
+            if ( page == null ) 
+            {
+                if ( !previousEmpty )
+                {
+                    previousEmpty = true;
+                    System.out.println();
+                }
+                
+                System.out.print( "." );
+            }
+            else
+            {
+                System.out.println();
+                System.out.print( page );
+                previousEmpty = false;
+            }
+        }
+        
+        System.out.println();
+    }
 
 
     /**
      * Check the Btree of Btrees
      */
-    private static <K, V> void checkBtreeOfBtrees( RecordManager recordManager, Map<String, int[]> checkedPages )
+    private static void checkBtreeOfBtrees( RecordManager recordManager, RecordManagerHeader recordManagerHeader, Map<String, int[]> checkedPages )
         throws Exception
     {
+            
         // Read the BOB header
         PageIO[] bobHeaderPageIos = recordManager
-            .readPageIOs( recordManager.currentBtreeOfBtreesOffset, Long.MAX_VALUE );
+            .readPageIOs( recordManagerHeader, recordManagerHeader.currentBtreeOfBtreesOffset, Long.MAX_VALUE );
 
         // update the checkedPages
-        updateCheckedPages( checkedPages.get( RecordManager.BTREE_OF_BTREES_NAME ), recordManager.pageSize,
+        updateCheckedPages( recordManagerHeader, checkedPages.get( RecordManager.BTREE_OF_BTREES_NAME ), recordManager.getPageSize( recordManagerHeader ),
             bobHeaderPageIos );
-        updateCheckedPages( checkedPages.get( GLOBAL_PAGES_NAME ), recordManager.pageSize, bobHeaderPageIos );
+        updateCheckedPages( recordManagerHeader, checkedPages.get( GLOBAL_PAGES_NAME ), recordManager.getPageSize( recordManagerHeader ), bobHeaderPageIos );
 
         long dataPos = 0L;
 
+        // The B-tree header page ID
+        recordManager.readLong( recordManagerHeader, bobHeaderPageIos, dataPos );
+        dataPos += RecordManager.LONG_SIZE;
+
         // The B-tree current revision
-        recordManager.readLong( bobHeaderPageIos, dataPos );
+        recordManager.readLong( recordManagerHeader, bobHeaderPageIos, dataPos );
         dataPos += RecordManager.LONG_SIZE;
 
         // The nb elems in the tree
-        recordManager.readLong( bobHeaderPageIos, dataPos );
+        recordManager.readLong( recordManagerHeader, bobHeaderPageIos, dataPos );
         dataPos += RecordManager.LONG_SIZE;
 
         // The B-tree rootPage offset
-        long rootPageOffset = recordManager.readLong( bobHeaderPageIos, dataPos );
+        long rootPageOffset = recordManager.readLong( recordManagerHeader, bobHeaderPageIos, dataPos );
 
-        checkOffset( recordManager, rootPageOffset );
+        checkOffset( recordManager, recordManagerHeader, rootPageOffset );
 
         dataPos += RecordManager.LONG_SIZE;
 
         // The B-tree info offset
-        long btreeInfoOffset = recordManager.readLong( bobHeaderPageIos, dataPos );
+        long btreeInfoOffset = recordManager.readLong( recordManagerHeader, bobHeaderPageIos, dataPos );
 
-        checkOffset( recordManager, btreeInfoOffset );
+        checkOffset( recordManager, recordManagerHeader, btreeInfoOffset );
 
-        checkBtreeInfo( recordManager, checkedPages, btreeInfoOffset, -1L );
+        checkBtreeInfo( recordManager, recordManagerHeader, checkedPages, btreeInfoOffset, -1L );
 
         // Check the elements in the btree itself
         // We will read every single page
-        checkBtreeOfBtreesPage( recordManager, checkedPages, rootPageOffset );
+        checkBtreeOfBtreesPage( recordManager, recordManagerHeader, checkedPages, rootPageOffset );
+    }
+
+
+    /**
+     * Dump the Btree of Btrees
+     */
+    private static void dumpBtreeOfBtrees( RecordManager recordManager, RecordManagerHeader recordManagerHeader, String[] pages ) throws Exception
+    {
+        StringBuilder sb = new StringBuilder();
+        
+        // Read the BOB header
+        PageIO[] bobHeaderPageIos = recordManager
+            .readPageIOs( recordManagerHeader, recordManagerHeader.currentBtreeOfBtreesOffset, Long.MAX_VALUE );
+
+        // Get the offset
+        long bobHeaderOffset = bobHeaderPageIos[0].getOffset();
+
+        long dataPos = 0L;
+
+        // The B-tree header page ID
+        long id = recordManager.readLong( recordManagerHeader, bobHeaderPageIos, dataPos );
+        dataPos += RecordManager.LONG_SIZE;
+
+        // The B-tree current revision
+        long revision = recordManager.readLong( recordManagerHeader, bobHeaderPageIos, dataPos );
+        dataPos += RecordManager.LONG_SIZE;
+
+        // The nb elems in the tree
+        recordManager.readLong( recordManagerHeader, bobHeaderPageIos, dataPos );
+        dataPos += RecordManager.LONG_SIZE;
+
+        // The B-tree rootPage offset
+        long rootPageOffset = recordManager.readLong( recordManagerHeader, bobHeaderPageIos, dataPos );
+
+        dataPos += RecordManager.LONG_SIZE;
+
+        // The B-tree info offset
+        long infoOffset = recordManager.readLong( recordManagerHeader, bobHeaderPageIos, dataPos );
+        
+        // Dump the header
+        sb.append( String.format( "0x%04X", bobHeaderOffset ) ).append( " BOB H[" ).append( revision ).append( "] : " );
+        sb.append( "<RP[" ).append( revision ).append( "] : " ).append( String.format( "0x%04X", rootPageOffset ) ).append( ">, " );
+        sb.append( "<Info:" ).append( String.format( "0x%04X", infoOffset ) ).append( '>' );
+        pages[(int)bobHeaderOffset/recordManagerHeader.pageSize] = sb.toString();
+        
+        // Dump the info
+        sb = new StringBuilder();
+        sb.append( String.format( "0x%04X", infoOffset ) ).append( " BOB Info" );
+        pages[(int)infoOffset/recordManagerHeader.pageSize] = sb.toString();
+        
+        // Dump the info
+        dumpBtreeInfo( recordManager, recordManagerHeader, infoOffset, "BOB", pages );
+        
+        // Dump the BOB content
+        dumpBtreeOfBtreesContent( recordManager, recordManagerHeader, rootPageOffset, NameRevisionSerializer.INSTANCE, LongSerializer.INSTANCE, pages );
+    }
+
+
+    /**
+     * Dump the Copied Pages B-tree
+     */
+    private static void dumpCopiedPagesBtree( RecordManager recordManager, RecordManagerHeader recordManagerHeader, String[] pages ) throws Exception
+    {
+        StringBuilder sb = new StringBuilder();
+        
+        // Read the CPB header
+        PageIO[] cpbbHeaderPageIos = recordManager
+            .readPageIOs( recordManagerHeader, recordManagerHeader.currentCopiedPagesBtreeOffset, Long.MAX_VALUE );
+
+        // Get the offset
+        long cpbHeaderOffset = cpbbHeaderPageIos[0].getOffset();
+
+        long dataPos = 0L;
+
+        // The B-tree page ID
+        long id = recordManager.readLong( recordManagerHeader, cpbbHeaderPageIos, dataPos );
+        dataPos += RecordManager.LONG_SIZE;
+
+        // The B-tree current revision
+        long revision = recordManager.readLong( recordManagerHeader, cpbbHeaderPageIos, dataPos );
+        dataPos += RecordManager.LONG_SIZE;
+
+        // The nb elems in the tree
+        recordManager.readLong( recordManagerHeader, cpbbHeaderPageIos, dataPos );
+        dataPos += RecordManager.LONG_SIZE;
+
+        // The B-tree rootPage offset
+        long rootPageOffset = recordManager.readLong( recordManagerHeader, cpbbHeaderPageIos, dataPos );
+
+        dataPos += RecordManager.LONG_SIZE;
+
+        // The B-tree info offset
+        long infoOffset = recordManager.readLong( recordManagerHeader, cpbbHeaderPageIos, dataPos );
+        
+        // Dump the header
+        sb.append( String.format( "0x%04X", cpbHeaderOffset ) ).append( " CPB H[" ).append( revision ).append( "] : " );
+        sb.append( "<RP[" ).append( revision ).append( "] : " ).append( String.format( "0x%04X", rootPageOffset ) ).append( ">, " );
+        sb.append( "<Info:" ).append( String.format( "0x%04X", infoOffset ) ).append( '>' );
+        pages[(int)cpbHeaderOffset/recordManagerHeader.pageSize] = sb.toString();
+        
+        // Dump the info
+        dumpBtreeInfo( recordManager, recordManagerHeader, infoOffset, "CPB", pages );
+        
+        // Dump the CPB content
+        dumpCopiedPagesBtreeContent( recordManager, recordManagerHeader, rootPageOffset, RevisionNameSerializer.INSTANCE, LongArraySerializer.INSTANCE, pages );
+    }
+    
+    
+    /**
+     * Dump a BTree info
+     */
+    private static <K, V> BTreeInfo<K, V> dumpBtreeInfo( RecordManager recordManager, RecordManagerHeader recordManagerHeader, long offset, String btreeName, String[] pages ) throws EndOfFileExceededException, IOException
+    {
+        PageIO[] infoPageIos = recordManager .readPageIOs( recordManagerHeader, offset, Long.MAX_VALUE );
+        StringBuilder sb = new StringBuilder();
+        sb.append( String.format( "0x%04X", offset ) ).append( ' ' ).append( btreeName ).append( " Info" );
+        BTreeInfo<K, V> btreeInfo = new BTreeInfo<>();
+        
+        // The info page may contain more than one PageIO
+        int nbPage = 0;
+        
+        for ( PageIO pageIO : infoPageIos )
+        {
+            if ( nbPage > 0 )
+            {
+                sb.append( '-' ).append( nbPage );
+            }
+            
+            nbPage++;
+            
+            int pos = (int)(pageIO.getOffset()/recordManagerHeader.pageSize);
+            
+            if ( ( pages[pos] != null ) && pages[pos].contains( "---copied page at" ) )
+            {
+                pages[pos] = new StringBuilder().append( pages[pos] ).append( ' ' ).append( sb.toString() ).toString();
+            }
+            else
+            {
+                pages[pos] = sb.toString();
+            }
+        }
+        
+        // The B-tree page size
+        int dataPos = 0;
+        btreeInfo.setPageNbElem( recordManager.readInt( recordManagerHeader, infoPageIos, dataPos ) );
+        dataPos += RecordManager.INT_SIZE;
+
+        // The tree name
+        ByteBuffer btreeNameBytes = recordManager.readBytes( recordManagerHeader, infoPageIos, dataPos );
+        dataPos += RecordManager.INT_SIZE + btreeNameBytes.limit();
+        btreeInfo.setBtreeName( Strings.utf8ToString( btreeNameBytes ) );
+
+        // The keySerializer FQCN
+        ByteBuffer keySerializerBytes = recordManager.readBytes( recordManagerHeader, infoPageIos, dataPos );
+
+        if ( keySerializerBytes != null )
+        {
+            String keySerializerFqcn = Strings.utf8ToString( keySerializerBytes );
+            btreeInfo.setKeySerializerFQCN( keySerializerFqcn );
+
+            btreeInfo.setKeySerializer( ( ( ElementSerializer<K> ) getSerializer( keySerializerFqcn ) ) );
+        }
+
+        dataPos += RecordManager.INT_SIZE + keySerializerBytes.limit();
+
+        // The valueSerialier FQCN
+        ByteBuffer valueSerializerBytes = recordManager.readBytes( recordManagerHeader, infoPageIos, dataPos );
+
+        if ( valueSerializerBytes != null )
+        {
+            String valueSerializerFqcn = Strings.utf8ToString( valueSerializerBytes );
+            btreeInfo.setValueSerializerFQCN( valueSerializerFqcn );
+
+            btreeInfo.setValueSerializer( ( ( ElementSerializer<V> ) getSerializer( valueSerializerFqcn ) ) );
+        }
+
+        return btreeInfo;
+    }
+
+    
+    /**
+     * Dump a CPB content
+     */
+    private static void dumpCopiedPagesBtreeContent( RecordManager recordManager, RecordManagerHeader recordManagerHeader, long rootPageOffset, RevisionNameSerializer keySerializer, 
+        LongArraySerializer valueSerializer, String[] pages ) throws IOException
+    {
+        // Process the rootPage
+        PageIO[] pageIos = recordManager.readPageIOs( recordManagerHeader, rootPageOffset, Long.MAX_VALUE );
+
+        // Deserialize the page now
+        long position = 0L;
+
+        // The page ID
+        long id = recordManager.readLong( recordManagerHeader, pageIos, position );
+        position += RecordManager.LONG_SIZE;
+
+        // The revision
+        long revision = recordManager.readLong( recordManagerHeader, pageIos, position );
+        position += RecordManager.LONG_SIZE;
+
+        // The number of elements in the page
+        int nbElems = recordManager.readInt( recordManagerHeader, pageIos, position );
+        position += RecordManager.INT_SIZE;
+        
+        if ( nbElems == 0 )
+        {
+            // No elems, we are done
+            StringBuilder sb = new StringBuilder();
+            
+            sb.append( String.format( "0x%04X", rootPageOffset ) ).append( " CPB RP[" ).append( revision ).append( "] : {}" );
+            pages[(int)(rootPageOffset/recordManagerHeader.pageSize)] = sb.toString();
+            
+            return;
+        }
+
+        // The size of the data containing the keys and values
+        // Reads the bytes containing all the keys and values, if we have some
+        // We read  big blob of data into  ByteBuffer, then we will process
+        // this ByteBuffer
+        ByteBuffer byteBuffer = recordManager.readBytes( recordManagerHeader, pageIos, position );
+
+        // Now, deserialize the data block. If the number of elements
+        // is positive, it's a Leaf, otherwise it's a Node
+        // Note that only a leaf can have 0 elements, and it's the root page then.
+        if ( nbElems > 0 )
+        {
+            // It's a leaf, process it as we may have sub-btrees
+            dumpCopiedPagesBtreeLeaf( recordManager, recordManagerHeader, keySerializer, valueSerializer, nbElems, revision, byteBuffer, pageIos[0].getOffset(), pages );
+            
+            // Update the attached PageIOS
+            if ( pageIos.length > 0 )
+            {
+                for ( int i = 1; i < pageIos.length; i++ )
+                {
+                    PageIO pageIo = pageIos[i];
+                    StringBuilder sb = new StringBuilder();
+                    
+                    sb.append( String.format( "0x%04X", pageIo.getOffset() ) ).append( " CPB RP[" ).append( revision ).append( "]-" ).append( i );
+                    pages[(int)(pageIo.getOffset()/recordManagerHeader.pageSize)] = sb.toString();
+                }
+            }
+        }
+        else
+        {
+            // It's a node, dump its content, and iterate on the children
+            dumpCopiedPagesBtreeNode( recordManager, recordManagerHeader, keySerializer, valueSerializer, -nbElems, revision, byteBuffer, pageIos[0].getOffset(), pages );
+            
+            // Update the attached PageIOS
+            if ( pageIos.length > 0 )
+            {
+                for ( int i = 1; i < pageIos.length; i++ )
+                {
+                    PageIO pageIo = pageIos[i];
+                    StringBuilder sb = new StringBuilder();
+                    
+                    sb.append( String.format( "0x%04X", pageIo.getOffset() ) ).append( " CPB RP[" ).append( revision ).append( "]-" ).append( i );
+                    pages[(int)(pageIo.getOffset()/recordManagerHeader.pageSize)] = sb.toString();
+                }
+            }
+        }
+    }
+
+    
+    /**
+     * Dump a BOB content
+     */
+    private static void dumpBtreeOfBtreesContent( RecordManager recordManager, RecordManagerHeader recordManagerHeader, long rootPageOffset, NameRevisionSerializer keySerializer, 
+        LongSerializer valueSerializer, String[] pages ) throws IOException
+    {
+        // Process the rootPage
+        PageIO[] pageIos = recordManager.readPageIOs( recordManagerHeader, rootPageOffset, Long.MAX_VALUE );
+
+        // Deserialize the page now
+        long position = 0L;
+
+        // The page ID
+        long id = recordManager.readLong( recordManagerHeader, pageIos, position );
+        position += RecordManager.LONG_SIZE;
+
+        // The revision
+        long revision = recordManager.readLong( recordManagerHeader, pageIos, position );
+        position += RecordManager.LONG_SIZE;
+
+        // The number of elements in the page
+        int nbElems = recordManager.readInt( recordManagerHeader, pageIos, position );
+        position += RecordManager.INT_SIZE;
+        
+        if ( nbElems == 0 )
+        {
+            // No elems, we are done
+            StringBuilder sb = new StringBuilder();
+            
+            sb.append( String.format( "0x%04X", rootPageOffset ) ).append( " BOB RP[" ).append( revision ).append( "] : {}" );
+            pages[(int)(rootPageOffset/recordManagerHeader.pageSize)] = sb.toString();
+            
+            return;
+        }
+
+        // The size of the data containing the keys and values
+        // Reads the bytes containing all the keys and values, if we have some
+        // We read  big blob of data into  ByteBuffer, then we will process
+        // this ByteBuffer
+        ByteBuffer byteBuffer = recordManager.readBytes( recordManagerHeader, pageIos, position );
+
+        // Now, deserialize the data block. If the number of elements
+        // is positive, it's a Leaf, otherwise it's a Node
+        // Note that only a leaf can have 0 elements, and it's the root page then.
+        if ( nbElems > 0 )
+        {
+            // It's a leaf, process it as we may have sub-btrees
+            dumpBtreeOfBtreesLeaf( recordManager, recordManagerHeader, keySerializer, valueSerializer, nbElems, revision, byteBuffer, pageIos[0].getOffset(), pages );
+            
+            // Update the attached PageIOS
+            if ( pageIos.length > 0 )
+            {
+                for ( int i = 1; i < pageIos.length; i++ )
+                {
+                    PageIO pageIo = pageIos[i];
+                    StringBuilder sb = new StringBuilder();
+                    
+                    sb.append( String.format( "0x%04X", pageIo.getOffset() ) ).append( " BOB RP[" ).append( revision ).append( "]-" ).append( i );
+                    int pos = (int)(pageIo.getOffset()/recordManagerHeader.pageSize);
+                    
+                    if ( pages[pos] != null )
+                    {
+                        pages[pos] = new StringBuilder().append( pages[pos] ).append( ' ' ).append( sb.toString() ).toString();
+                    }
+                    else
+                    {
+                        pages[pos] = sb.toString();
+                    }
+                }
+            }
+        }
+        else
+        {
+            // It's a node, dump its content, and iterate on the children
+            dumpBtreeOfBtreesNode( recordManager, recordManagerHeader, keySerializer, valueSerializer, -nbElems, revision, byteBuffer, pageIos[0].getOffset(), pages );
+            
+            // Update the attached PageIOS
+            if ( pageIos.length > 0 )
+            {
+                for ( int i = 1; i < pageIos.length; i++ )
+                {
+                    PageIO pageIo = pageIos[i];
+                    StringBuilder sb = new StringBuilder();
+                    
+                    sb.append( String.format( "0x%04X", pageIo.getOffset() ) ).append( " BOB RP[" ).append( revision ).append( "]-" ).append( i );
+                    pages[(int)(pageIo.getOffset()/recordManagerHeader.pageSize)] = sb.toString();
+                }
+            }
+        }
+    }
+
+    
+    /**
+     * Dump a BOB Btree leaf.
+     */
+    private static void dumpBtreeOfBtreesLeaf( RecordManager recordManager, RecordManagerHeader recordManagerHeader, NameRevisionSerializer keySerializer,
+        LongSerializer valueSerializer, int nbElems, long revision, ByteBuffer byteBuffer, long cpbOffset, String[] pages ) throws IOException
+    {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append( String.format( "0x%04X", cpbOffset ) ).append( " BOB RP[" ).append( revision ).append( "](l) : " );
+        
+        // Read each key and value
+        for ( int i = 0; i < nbElems; i++ )
+        {
+            try
+            {
+                // just deserialize the keys and values
+                // The value
+                long btreeOffset = valueSerializer.deserialize( byteBuffer );
+
+                // the key
+                NameRevision key = keySerializer.deserialize( byteBuffer );;
+                String btreeName = key.getName();
+                
+                if ( i > 0 )
+                {
+                    sb.append( ", " );
+                }
+
+                sb.append( key ).append( "->" ).append( String.format( "0x%04X", btreeOffset ) );
+                
+                // Dump the user btree
+                dumpUserBtree( recordManager, recordManagerHeader, btreeName, btreeOffset, pages );
+            }
+            catch ( BufferUnderflowException bue )
+            {
+                throw new InvalidBTreeException( "The BOB leaf byte buffer is too short : " + bue.getMessage() );
+            }
+        }
+
+        pages[(int)(cpbOffset/recordManagerHeader.pageSize)] = sb.toString();
+    }
+    
+    
+    /**
+     * Dump a BOB Btree Node.
+     */
+    private static void dumpBtreeOfBtreesNode( RecordManager recordManager, RecordManagerHeader recordManagerHeader, NameRevisionSerializer keySerializer,
+        LongSerializer valueSerializer, int nbElems, long revision, ByteBuffer byteBuffer, long cpbOffset, String[] pages ) throws IOException
+    {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append( String.format( "0x%04X", cpbOffset ) ).append( " BOB RP[" ).append( revision ).append( "](n) : " );
+        
+        long[] children = new long[nbElems + 1];
+        int i = 0;
+
+        // Read each key and value
+        for ( ; i < nbElems; i++ )
+        {
+            try
+            {
+                // The offsets of the child
+                children[i] = LongSerializer.INSTANCE.deserialize( byteBuffer );
+
+                // the key
+                NameRevision key = keySerializer.deserialize( byteBuffer );
+                
+                if ( i > 0 )
+                {
+                    sb.append( " | " );
+                }
+
+                sb.append( String.format( "0x%04X", children[i] ) ).append( " | " ).append( key );
+            }
+            catch ( BufferUnderflowException bue )
+            {
+                throw new InvalidBTreeException( "The BOB leaf byte buffer is too short : " + bue.getMessage() );
+            }
+        }
+
+        // The last child
+        children[i] = LongSerializer.INSTANCE.deserialize( byteBuffer );
+        sb.append( " | " ).append( String.format( "0x%04X", children[i] ) );
+
+        pages[(int)(cpbOffset/recordManagerHeader.pageSize)] = sb.toString();
+        
+        // Now iterate on each children
+        for ( long child : children )
+        {
+            dumpBtreeOfBtreesContent( recordManager, recordManagerHeader, child, keySerializer, valueSerializer, pages );
+        }
+    }
+
+    
+    /**
+     * Dump a user Btree
+     */
+    private static <K, V> void dumpUserBtree( RecordManager recordManager, RecordManagerHeader recordManagerHeader, String btreeName, long headerOffset, String[] pages ) 
+        throws EndOfFileExceededException, IOException
+    {
+        StringBuilder sb = new StringBuilder();
+        
+        // Read the CPB header
+        PageIO[] btreeOffsetPageIos = recordManager.readPageIOs( recordManagerHeader, headerOffset, Long.MAX_VALUE );
+
+        long dataPos = 0L;
+
+        // The B-tree header page ID
+        long id = recordManager.readLong( recordManagerHeader, btreeOffsetPageIos, dataPos );
+        dataPos += RecordManager.LONG_SIZE;
+
+        // The B-tree current revision
+        long revision = recordManager.readLong( recordManagerHeader, btreeOffsetPageIos, dataPos );
+        dataPos += RecordManager.LONG_SIZE;
+
+        // The nb elems in the tree
+        recordManager.readLong( recordManagerHeader, btreeOffsetPageIos, dataPos );
+        dataPos += RecordManager.LONG_SIZE;
+
+        // The B-tree rootPage offset
+        long rootPageOffset = recordManager.readLong( recordManagerHeader, btreeOffsetPageIos, dataPos );
+
+        dataPos += RecordManager.LONG_SIZE;
+
+        // The B-tree info offset
+        long infoOffset = recordManager.readLong( recordManagerHeader, btreeOffsetPageIos, dataPos );
+        
+        // Dump the header
+        sb.append( String.format( "0x%04X", headerOffset ) ).append( ' ' ).append( btreeName ).append( " H[" ).append( revision ).append( "] : " );
+        sb.append( "<RP[" ).append( revision ).append( "] : " ).append( String.format( "0x%04X", rootPageOffset ) ).append( ">, " );
+        sb.append( "<Info:" ).append( String.format( "0x%04X", infoOffset ) ).append( '>' );
+
+        int pos = (int)headerOffset/recordManagerHeader.pageSize;
+        
+        if ( pages[pos] != null )
+        {
+            pages[pos] = new StringBuilder().append( pages[pos] ).append( ' ' ).append( sb.toString() ).toString();
+        }
+        else
+        {
+            pages[pos] = sb.toString();
+        }
+        
+        // Dump the info
+        BTreeInfo<K,V> btreeInfo = dumpBtreeInfo( recordManager, recordManagerHeader, infoOffset, btreeName, pages );
+        
+        // Dump the user B-tree content
+        dumpUserBtreeContent( recordManager, recordManagerHeader, btreeInfo, rootPageOffset, pages );
+    }
+
+    
+    /**
+     * Dump a User B-tree content
+     */
+    private static <K, V> void dumpUserBtreeContent( RecordManager recordManager, RecordManagerHeader recordManagerHeader, BTreeInfo<K, V> btreeInfo, long rootPageOffset, 
+        String[] pages ) throws IOException
+    {
+        // Process the rootPage
+        PageIO[] pageIos = recordManager.readPageIOs( recordManagerHeader, rootPageOffset, Long.MAX_VALUE );
+
+        // Deserialize the page now
+        long position = 0L;
+
+        // The pageID
+        long id = recordManager.readLong( recordManagerHeader, pageIos, position );
+        position += RecordManager.LONG_SIZE;
+
+        // The revision
+        long revision = recordManager.readLong( recordManagerHeader, pageIos, position );
+        position += RecordManager.LONG_SIZE;
+
+        // The number of elements in the page
+        int nbElems = recordManager.readInt( recordManagerHeader, pageIos, position );
+        position += RecordManager.INT_SIZE;
+        
+        if ( nbElems == 0 )
+        {
+            // No elems, we are done
+            StringBuilder sb = new StringBuilder();
+            
+            sb.append( String.format( "0x%04X", rootPageOffset ) ).append( ' ' ).append( btreeInfo.getBtreeName() ).append( " RP[" ).append( revision ).append( "] : {}" );
+            pages[(int)(rootPageOffset/recordManagerHeader.pageSize)] = sb.toString();
+            
+            return;
+        }
+
+        // The size of the data containing the keys and values
+        // Reads the bytes containing all the keys and values, if we have some
+        // We read  big blob of data into  ByteBuffer, then we will process
+        // this ByteBuffer
+        ByteBuffer byteBuffer = recordManager.readBytes( recordManagerHeader, pageIos, position );
+
+        // Now, deserialize the data block. If the number of elements
+        // is positive, it's a Leaf, otherwise it's a Node
+        // Note that only a leaf can have 0 elements, and it's the root page then.
+        if ( nbElems > 0 )
+        {
+            // It's a leaf, process it as we may have sub-btrees
+            dumpUserBtreeLeaf( recordManager, recordManagerHeader, btreeInfo, nbElems, revision, byteBuffer, pageIos[0].getOffset(), pages );
+            
+            // Update the attached PageIOS
+            if ( pageIos.length > 0 )
+            {
+                for ( int i = 1; i < pageIos.length; i++ )
+                {
+                    PageIO pageIo = pageIos[i];
+                    StringBuilder sb = new StringBuilder();
+                    
+                    sb.append( String.format( "0x%04X", pageIo.getOffset() ) ).append( ' ' ).append( btreeInfo.getBtreeName() );
+                    sb.append( " RP[" ).append( revision ).append( "]-" ).append( i );
+                    int pos = (int)(pageIo.getOffset()/recordManagerHeader.pageSize);
+                    
+                    if ( pages[pos] != null )
+                    {
+                        pages[pos] = new StringBuilder().append( pages[pos] ).append( ' ' ).append( sb.toString() ).toString();
+                    }
+                    else
+                    {
+                        pages[pos] = sb.toString();
+                    }
+                }
+            }
+        }
+        else
+        {
+            // It's a node, dump its content, and iterate on the children
+            dumpUserBtreeNode( recordManager, recordManagerHeader, btreeInfo, -nbElems, revision, byteBuffer, pageIos[0].getOffset(), pages );
+            
+            // Update the attached PageIOS
+            if ( pageIos.length > 0 )
+            {
+                for ( int i = 1; i < pageIos.length; i++ )
+                {
+                    PageIO pageIo = pageIos[i];
+                    StringBuilder sb = new StringBuilder();
+                    
+                    sb.append( String.format( "0x%04X", pageIo.getOffset() ) ).append( ' ' ).append( btreeInfo.getBtreeName() );
+                    sb.append( " RP[" ).append( revision ).append( "]-" ).append( i );
+                    pages[(int)(pageIo.getOffset()/recordManagerHeader.pageSize)] = sb.toString();
+                }
+            }
+        }
+    }
+    
+    
+    /**
+     * Dump a User Btree leaf.
+     */
+    private static <K, V> void dumpUserBtreeLeaf( RecordManager recordManager, RecordManagerHeader recordManagerHeader, BTreeInfo<K, V> btreeInfo,
+        int nbElems, long revision, ByteBuffer byteBuffer, long cpbOffset, String[] pages ) throws IOException
+    {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append( String.format( "0x%04X", cpbOffset ) ).append( ' ' ).append( btreeInfo.getBtreeName() ).append( " RP[" ).append( revision ).append( "](l) : " );
+        
+        // Read each key and value
+        for ( int i = 0; i < nbElems; i++ )
+        {
+            try
+            {
+                // just deserialize the keys and values
+                // The value
+                V value = btreeInfo.getValueSerializer().deserialize( byteBuffer );
+
+                // the key
+                K key = btreeInfo.getKeySerializer().deserialize( byteBuffer );
+                
+                if ( i > 0 )
+                {
+                    sb.append( ", " );
+                }
+
+                sb.append( '<' ).append( key ).append( ", " ).append( value ).append( '>' );
+            }
+            catch ( BufferUnderflowException bue )
+            {
+                throw new InvalidBTreeException( "The user leaf byte buffer is too short : " + bue.getMessage() );
+            }
+        }
+
+        pages[(int)(cpbOffset/recordManagerHeader.pageSize)] = sb.toString();
+    }
+    
+    
+    /**
+     * Dump a User Btree Node.
+     */
+    private static <K, V> void dumpUserBtreeNode( RecordManager recordManager, RecordManagerHeader recordManagerHeader, BTreeInfo<K, V> btreeInfo,
+        int nbElems, long revision, ByteBuffer byteBuffer, long pageOffset, String[] pages ) throws IOException
+    {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append( String.format( "0x%04X", pageOffset ) ).append( ' ' ).append( btreeInfo.getBtreeName() ).append( " RP[" ).append( revision ).append( "](n) : " );
+        
+        long[] children = new long[nbElems + 1];
+        int i = 0;
+
+        // Read each key and value
+        for ( ; i < nbElems; i++ )
+        {
+            try
+            {
+                // The offsets of the child
+                children[i] = LongSerializer.INSTANCE.deserialize( byteBuffer );
+
+                // the key
+                K key = btreeInfo.getKeySerializer().deserialize( byteBuffer );
+                
+                if ( i > 0 )
+                {
+                    sb.append( " | " );
+                }
+
+                sb.append( String.format( "0x%04X", children[i] ) ).append( " | " ).append( key );
+            }
+            catch ( BufferUnderflowException bue )
+            {
+                throw new InvalidBTreeException( "The User leaf byte buffer is too short : " + bue.getMessage() );
+            }
+        }
+
+        // The last child
+        children[i] = LongSerializer.INSTANCE.deserialize( byteBuffer );
+        sb.append( " | " ).append( String.format( "0x%04X", children[i] ) );
+
+        pages[(int)(pageOffset/recordManagerHeader.pageSize)] = sb.toString();
+        
+        // Now iterate on each children
+        for ( long child : children )
+        {
+            dumpUserBtreeContent( recordManager, recordManagerHeader, btreeInfo, child, pages );
+        }
+    }
+
+    
+    /**
+     * Dump a CPB Btree leaf.
+     */
+    private static void dumpCopiedPagesBtreeLeaf( RecordManager recordManager, RecordManagerHeader recordManagerHeader, RevisionNameSerializer keySerializer,
+        LongArraySerializer valueSerializer, int nbElems, long revision, ByteBuffer byteBuffer, long cpbOffset, String[] pages ) throws IOException
+    {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append( String.format( "0x%04X", cpbOffset ) ).append( " CPB RP[" ).append( revision ).append( "](l) : " );
+        
+        // Read each key and value
+        for ( int i = 0; i < nbElems; i++ )
+        {
+            try
+            {
+                // just deserialize the keys and values
+                // The value
+                long[] value = valueSerializer.deserialize( byteBuffer );
+
+                // the key
+                RevisionName key = keySerializer.deserialize( byteBuffer );
+                
+                if ( i > 0 )
+                {
+                    sb.append( ", " );
+                }
+
+                sb.append( key ).append( "->{" );
+                
+                boolean isFirst = true;
+                
+                for ( long offset : value )
+                {
+                    if ( isFirst )
+                    {
+                        isFirst = false;
+                    }
+                    else
+                    {
+                        sb.append( ", " );
+                    }
+                    
+                    sb.append( String.format( "0x%04X", offset ) );
+                    
+                    // Process the copied pages offset now
+                    StringBuilder sb1 = new StringBuilder();
+                    
+                    sb1.append( String.format( "0x%04X", offset ) );
+                    sb1.append( " ---copied page at r" ).append( key.getRevision() ).append( "---" );
+                    pages[(int)(offset/recordManagerHeader.pageSize)] = sb1.toString();
+                }
+                
+                sb.append( '}' );
+            }
+            catch ( BufferUnderflowException bue )
+            {
+                throw new InvalidBTreeException( "The BOB leaf byte buffer is too short : " + bue.getMessage() );
+            }
+        }
+
+        pages[(int)(cpbOffset/recordManagerHeader.pageSize)] = sb.toString();
+    }
+    
+    
+    /**
+     * Dump a CPB Btree Node.
+     */
+    private static void dumpCopiedPagesBtreeNode( RecordManager recordManager, RecordManagerHeader recordManagerHeader, RevisionNameSerializer keySerializer,
+        LongArraySerializer valueSerializer, int nbElems, long revision, ByteBuffer byteBuffer, long cpbOffset, String[] pages ) throws IOException
+    {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append( String.format( "0x%04X", cpbOffset ) ).append( " CPB RP[" ).append( revision ).append( "](n) : " );
+        
+        long[] children = new long[nbElems + 1];
+        int i = 0;
+
+        // Read each key and value
+        for ( ; i < nbElems; i++ )
+        {
+            try
+            {
+                // The offsets of the child
+                children[i] = LongSerializer.INSTANCE.deserialize( byteBuffer );
+
+                // the key
+                RevisionName key = keySerializer.deserialize( byteBuffer );
+                
+                if ( i > 0 )
+                {
+                    sb.append( " | " );
+                }
+
+                sb.append( String.format( "0x%04X", children[i] ) ).append( " | " ).append( key );
+            }
+            catch ( BufferUnderflowException bue )
+            {
+                throw new InvalidBTreeException( "The CPB leaf byte buffer is too short : " + bue.getMessage() );
+            }
+        }
+
+        // The last child
+        children[i] = LongSerializer.INSTANCE.deserialize( byteBuffer );
+        sb.append( " | " ).append( String.format( "0x%04X", children[i] ) );
+
+        pages[(int)(cpbOffset/recordManagerHeader.pageSize)] = sb.toString();
+        
+        // Now iterate on each children
+        for ( long child : children )
+        {
+            dumpCopiedPagesBtreeContent( recordManager, recordManagerHeader, child, keySerializer, valueSerializer, pages );
+        }
     }
 
 
     /**
      * Check a user's B-tree
      */
-    private static <K, V> void checkBtree( RecordManager recordManager, long btreeOffset,
+    private static <K, V> void checkBtree( RecordManager recordManager, RecordManagerHeader recordManagerHeader, long btreeOffset,
         Map<String, int[]> checkedPages ) throws Exception
     {
         // Read the B-tree header
-        PageIO[] btreeHeaderPageIos = recordManager.readPageIOs( btreeOffset, Long.MAX_VALUE );
+        PageIO[] btreeHeaderPageIos = recordManager.readPageIOs( recordManagerHeader, btreeOffset, Long.MAX_VALUE );
 
         long dataPos = 0L;
 
+        // The B-tree page ID
+        long id = recordManager.readLong( recordManagerHeader, btreeHeaderPageIos, dataPos );
+        dataPos += RecordManager.LONG_SIZE;
+
         // The B-tree current revision
-        long btreeRevision = recordManager.readLong( btreeHeaderPageIos, dataPos );
+        long btreeRevision = recordManager.readLong( recordManagerHeader, btreeHeaderPageIos, dataPos );
         dataPos += RecordManager.LONG_SIZE;
 
         // The nb elems in the tree
-        recordManager.readLong( btreeHeaderPageIos, dataPos );
+        recordManager.readLong( recordManagerHeader, btreeHeaderPageIos, dataPos );
         dataPos += RecordManager.LONG_SIZE;
 
         // The B-tree rootPage offset
-        long rootPageOffset = recordManager.readLong( btreeHeaderPageIos, dataPos );
+        long rootPageOffset = recordManager.readLong( recordManagerHeader, btreeHeaderPageIos, dataPos );
 
-        checkOffset( recordManager, rootPageOffset );
+        checkOffset( recordManager, recordManagerHeader, rootPageOffset );
 
         dataPos += RecordManager.LONG_SIZE;
 
         // The B-tree info offset
-        long btreeInfoOffset = recordManager.readLong( btreeHeaderPageIos, dataPos );
+        long btreeInfoOffset = recordManager.readLong( recordManagerHeader, btreeHeaderPageIos, dataPos );
 
-        checkOffset( recordManager, btreeInfoOffset );
+        checkOffset( recordManager, recordManagerHeader, btreeInfoOffset );
 
-        BTreeInfo<K, V> btreeInfo = checkBtreeInfo( recordManager, checkedPages, btreeInfoOffset, btreeRevision );
+        BTreeInfo<K, V> btreeInfo = checkBtreeInfo( recordManager, recordManagerHeader, checkedPages, btreeInfoOffset, btreeRevision );
 
         // Update the checked pages
-        updateCheckedPages( checkedPages.get( btreeInfo.getBtreeName() ), recordManager.pageSize, btreeHeaderPageIos );
-        updateCheckedPages( checkedPages.get( GLOBAL_PAGES_NAME ), recordManager.pageSize, btreeHeaderPageIos );
+        updateCheckedPages( recordManagerHeader, checkedPages.get( btreeInfo.getBtreeName() ), recordManager.getPageSize( recordManagerHeader ), btreeHeaderPageIos );
+        updateCheckedPages( recordManagerHeader, checkedPages.get( GLOBAL_PAGES_NAME ), recordManager.getPageSize( recordManagerHeader ), btreeHeaderPageIos );
 
         // And now, process the rootPage
-        checkBtreePage( recordManager, btreeInfo, checkedPages, rootPageOffset );
+        checkBtreePage( recordManager, recordManagerHeader, btreeInfo, checkedPages, rootPageOffset );
     }
 
 
     /**
      * Check the Btree of Btrees rootPage
      */
-    private static <K, V> void checkBtreePage( RecordManager recordManager, BTreeInfo<K, V> btreeInfo,
+    private static <K, V> void checkBtreePage( RecordManager recordManager, RecordManagerHeader recordManagerHeader, BTreeInfo<K, V> btreeInfo,
         Map<String, int[]> checkedPages, long pageOffset ) throws Exception
     {
-        PageIO[] pageIos = recordManager.readPageIOs( pageOffset, Long.MAX_VALUE );
+        PageIO[] pageIos = recordManager.readPageIOs( recordManagerHeader, pageOffset, Long.MAX_VALUE );
 
         // Update the checkedPages array
-        updateCheckedPages( checkedPages.get( btreeInfo.getBtreeName() ), recordManager.pageSize, pageIos );
-        updateCheckedPages( checkedPages.get( GLOBAL_PAGES_NAME ), recordManager.pageSize, pageIos );
+        updateCheckedPages( recordManagerHeader, checkedPages.get( btreeInfo.getBtreeName() ), recordManager.getPageSize( recordManagerHeader ), pageIos );
+        updateCheckedPages( recordManagerHeader, checkedPages.get( GLOBAL_PAGES_NAME ), recordManager.getPageSize( recordManagerHeader ), pageIos );
 
         // Deserialize the page now
         long position = 0L;
 
+        // The page ID
+        long id = recordManager.readLong( recordManagerHeader, pageIos, position );
+        position += RecordManager.LONG_SIZE;
+
         // The revision
-        long revision = recordManager.readLong( pageIos, position );
+        long revision = recordManager.readLong( recordManagerHeader, pageIos, position );
         position += RecordManager.LONG_SIZE;
 
         // The number of elements in the page
-        int nbElems = recordManager.readInt( pageIos, position );
+        int nbElems = recordManager.readInt( recordManagerHeader, pageIos, position );
         position += RecordManager.INT_SIZE;
 
         // The size of the data containing the keys and values
         // Reads the bytes containing all the keys and values, if we have some
         // We read  big blob of data into  ByteBuffer, then we will process
         // this ByteBuffer
-        ByteBuffer byteBuffer = recordManager.readBytes( pageIos, position );
+        ByteBuffer byteBuffer = recordManager.readBytes( recordManagerHeader, pageIos, position );
 
         // Now, deserialize the data block. If the number of elements
         // is positive, it's a Leaf, otherwise it's a Node
@@ -486,18 +1344,18 @@ public class MavibotInspector
         if ( nbElems >= 0 )
         {
             // It's a leaf, process it as we may have sub-btrees
-            checkBtreeLeaf( recordManager, btreeInfo, checkedPages, nbElems, revision, byteBuffer, pageIos );
+            checkBtreeLeaf( recordManager, recordManagerHeader, btreeInfo, checkedPages, nbElems, revision, byteBuffer, pageIos );
         }
         else
         {
             // It's a node
-            long[] children = checkBtreeNode( recordManager, btreeInfo, checkedPages, -nbElems, revision, byteBuffer,
+            long[] children = checkBtreeNode( recordManager, recordManagerHeader, btreeInfo, checkedPages, -nbElems, revision, byteBuffer,
                 pageIos );
 
             for ( int pos = 0; pos <= -nbElems; pos++ )
             {
                 // Recursively check the children
-                checkBtreePage( recordManager, btreeInfo, checkedPages, children[pos] );
+                checkBtreePage( recordManager, recordManagerHeader, btreeInfo, checkedPages, children[pos] );
             }
         }
     }
@@ -507,26 +1365,26 @@ public class MavibotInspector
      * Check the Btree info page
      * @throws ClassNotFoundException 
      */
-    private static <K, V> BTreeInfo<K, V> checkBtreeInfo( RecordManager recordManager, Map<String, int[]> checkedPages,
+    private static <K, V> BTreeInfo<K, V> checkBtreeInfo( RecordManager recordManager, RecordManagerHeader recordManagerHeader, Map<String, int[]> checkedPages,
         long btreeInfoOffset, long btreeRevision ) throws IOException
     {
-        BTreeInfo<K, V> btreeInfo = new BTreeInfo<K, V>();
+        BTreeInfo<K, V> btreeInfo = new BTreeInfo<>();
 
-        PageIO[] btreeInfoPagesIos = recordManager.readPageIOs( btreeInfoOffset, Long.MAX_VALUE );
+        PageIO[] btreeInfoPagesIos = recordManager.readPageIOs( recordManagerHeader, btreeInfoOffset, Long.MAX_VALUE );
 
         long dataPos = 0L;
 
         // The B-tree page size
-        recordManager.readInt( btreeInfoPagesIos, dataPos );
+        recordManager.readInt( recordManagerHeader, btreeInfoPagesIos, dataPos );
         dataPos += RecordManager.INT_SIZE;
 
         // The tree name
-        ByteBuffer btreeNameBytes = recordManager.readBytes( btreeInfoPagesIos, dataPos );
+        ByteBuffer btreeNameBytes = recordManager.readBytes( recordManagerHeader, btreeInfoPagesIos, dataPos );
         dataPos += RecordManager.INT_SIZE + btreeNameBytes.limit();
         String btreeName = Strings.utf8ToString( btreeNameBytes );
 
         // The keySerializer FQCN
-        ByteBuffer keySerializerBytes = recordManager.readBytes( btreeInfoPagesIos, dataPos );
+        ByteBuffer keySerializerBytes = recordManager.readBytes( recordManagerHeader, btreeInfoPagesIos, dataPos );
 
         if ( keySerializerBytes != null )
         {
@@ -538,7 +1396,7 @@ public class MavibotInspector
         dataPos += RecordManager.INT_SIZE + keySerializerBytes.limit();
 
         // The valueSerialier FQCN
-        ByteBuffer valueSerializerBytes = recordManager.readBytes( btreeInfoPagesIos, dataPos );
+        ByteBuffer valueSerializerBytes = recordManager.readBytes( recordManagerHeader, btreeInfoPagesIos, dataPos );
 
         if ( valueSerializerBytes != null )
         {
@@ -550,7 +1408,7 @@ public class MavibotInspector
         dataPos += RecordManager.INT_SIZE + valueSerializerBytes.limit();
 
         // The B-tree allowDuplicates flag
-        recordManager.readInt( btreeInfoPagesIos, dataPos );
+        recordManager.readInt( recordManagerHeader, btreeInfoPagesIos, dataPos );
         dataPos += RecordManager.INT_SIZE;
 
         // update the checkedPages
@@ -568,12 +1426,12 @@ public class MavibotInspector
         if ( checkedPagesArray == null )
         {
             // Add the new name in the checkedPage name if it's not already there
-            checkedPagesArray = createPageArray( recordManager );
+            checkedPagesArray = createPageArray( recordManager, recordManagerHeader );
             checkedPages.put( btreeName, checkedPagesArray );
         }
 
-        updateCheckedPages( checkedPagesArray, recordManager.pageSize, btreeInfoPagesIos );
-        updateCheckedPages( checkedPages.get( GLOBAL_PAGES_NAME ), recordManager.pageSize, btreeInfoPagesIos );
+        updateCheckedPages( recordManagerHeader, checkedPagesArray, recordManager.getPageSize( recordManagerHeader ), btreeInfoPagesIos );
+        updateCheckedPages( recordManagerHeader, checkedPages.get( GLOBAL_PAGES_NAME ), recordManager.getPageSize( recordManagerHeader ), btreeInfoPagesIos );
 
         return btreeInfo;
     }
@@ -616,31 +1474,35 @@ public class MavibotInspector
     /**
      * Check the Btree of Btrees rootPage
      */
-    private static <K, V> void checkBtreeOfBtreesPage( RecordManager recordManager, Map<String, int[]> checkedPages,
+    private static <K, V> void checkBtreeOfBtreesPage( RecordManager recordManager, RecordManagerHeader recordManagerHeader, Map<String, int[]> checkedPages,
         long pageOffset ) throws Exception
     {
-        PageIO[] pageIos = recordManager.readPageIOs( pageOffset, Long.MAX_VALUE );
+        PageIO[] pageIos = recordManager.readPageIOs( recordManagerHeader, pageOffset, Long.MAX_VALUE );
 
         // Update the checkedPages array
-        updateCheckedPages( checkedPages.get( RecordManager.BTREE_OF_BTREES_NAME ), recordManager.pageSize, pageIos );
-        updateCheckedPages( checkedPages.get( GLOBAL_PAGES_NAME ), recordManager.pageSize, pageIos );
+        updateCheckedPages( recordManagerHeader, checkedPages.get( RecordManager.BTREE_OF_BTREES_NAME ), recordManager.getPageSize( recordManagerHeader ), pageIos );
+        updateCheckedPages( recordManagerHeader, checkedPages.get( GLOBAL_PAGES_NAME ), recordManager.getPageSize( recordManagerHeader ), pageIos );
 
         // Deserialize the page now
         long position = 0L;
 
+        // The page ID
+        long id = recordManager.readLong( recordManagerHeader, pageIos, position );
+        position += RecordManager.LONG_SIZE;
+
         // The revision
-        long revision = recordManager.readLong( pageIos, position );
+        long revision = recordManager.readLong( recordManagerHeader, pageIos, position );
         position += RecordManager.LONG_SIZE;
 
         // The number of elements in the page
-        int nbElems = recordManager.readInt( pageIos, position );
+        int nbElems = recordManager.readInt( recordManagerHeader, pageIos, position );
         position += RecordManager.INT_SIZE;
 
         // The size of the data containing the keys and values
         // Reads the bytes containing all the keys and values, if we have some
         // We read  big blob of data into  ByteBuffer, then we will process
         // this ByteBuffer
-        ByteBuffer byteBuffer = recordManager.readBytes( pageIos, position );
+        ByteBuffer byteBuffer = recordManager.readBytes( recordManagerHeader, pageIos, position );
 
         // Now, deserialize the data block. If the number of elements
         // is positive, it's a Leaf, otherwise it's a Node
@@ -648,18 +1510,18 @@ public class MavibotInspector
         if ( nbElems >= 0 )
         {
             // It's a leaf, process it as we may have sub-btrees
-            checkBtreeOfBtreesLeaf( recordManager, checkedPages, nbElems, revision, byteBuffer, pageIos );
+            checkBtreeOfBtreesLeaf( recordManager, recordManagerHeader, checkedPages, nbElems, revision, byteBuffer, pageIos );
         }
         else
         {
             // It's a node
-            long[] children = checkBtreeOfBtreesNode( recordManager, checkedPages, -nbElems, revision, byteBuffer,
+            long[] children = checkBtreeOfBtreesNode( recordManager, recordManagerHeader, checkedPages, -nbElems, revision, byteBuffer,
                 pageIos );
 
             for ( int pos = 0; pos <= -nbElems; pos++ )
             {
                 // Recursively check the children
-                checkBtreeOfBtreesPage( recordManager, checkedPages, children[pos] );
+                checkBtreeOfBtreesPage( recordManager, recordManagerHeader, checkedPages, children[pos] );
             }
         }
     }
@@ -668,7 +1530,7 @@ public class MavibotInspector
     /**
      * Check a Btree of Btrees leaf. It contains <revision, name> -> offset.
      */
-    private static <K, V> void checkBtreeOfBtreesLeaf( RecordManager recordManager, Map<String, int[]> checkedPages,
+    private static void checkBtreeOfBtreesLeaf( RecordManager recordManager, RecordManagerHeader recordManagerHeader, Map<String, int[]> checkedPages,
         int nbElems, long revision, ByteBuffer byteBuffer, PageIO[] pageIos ) throws Exception
     {
         // Read each key and value
@@ -676,70 +1538,20 @@ public class MavibotInspector
         {
             try
             {
-                // Read the number of values
-                int nbValues = byteBuffer.getInt();
-
-                if ( nbValues != 1 )
-                {
-                    throw new InvalidBTreeException( "We should have only one value for a BOB " + nbValues );
-                }
-
-                // This is a normal value
-                // First, the value, which is an offset, which length should be 12
-                int valueLength = byteBuffer.getInt();
-
-                if ( valueLength != RecordManager.LONG_SIZE + RecordManager.INT_SIZE )
-                {
-                    throw new InvalidBTreeException( "The BOB value length is invalid " + valueLength );
-                }
-
-                // Second, the offset length, which should be 8
-                int offsetLength = byteBuffer.getInt();
-
-                if ( offsetLength != RecordManager.LONG_SIZE )
-                {
-                    throw new InvalidBTreeException( "The BOB value offset length is invalid " + offsetLength );
-                }
-
-                // Then the offset
+                // This is a normal value, an offset
                 long btreeOffset = byteBuffer.getLong();
 
-                checkOffset( recordManager, btreeOffset );
+                checkOffset( recordManager, recordManagerHeader , btreeOffset );
 
                 // Now, process the key
-                // First the key length
-                int keyLength = byteBuffer.getInt();
-
-                // The length should be at least 12 bytes long
-                if ( keyLength < RecordManager.LONG_SIZE + RecordManager.INT_SIZE )
-                {
-                    throw new InvalidBTreeException( "The BOB key length is invalid " + keyLength );
-                }
-
-                // Read the revision
-                long btreeRevision = byteBuffer.getLong();
-
-                // read the btreeName
-                int btreeNameLength = byteBuffer.getInt();
-
-                // The length should be equals to the btreeRevision + btreeNameLength + 4
-                if ( keyLength != RecordManager.LONG_SIZE + RecordManager.INT_SIZE + btreeNameLength )
-                {
-                    throw new InvalidBTreeException( "The BOB key length is not the expected value " +
-                        ( RecordManager.LONG_SIZE + RecordManager.INT_SIZE + btreeNameLength ) + ", expected "
-                        + keyLength );
-                }
-
-                byte[] bytes = new byte[btreeNameLength];
-                byteBuffer.get( bytes );
-                String btreeName = Strings.utf8ToString( bytes );
+                RevisionName revisionName = RevisionNameSerializer.INSTANCE.deserialize( byteBuffer );
 
                 // Add the new name in the checkedPage name if it's not already there
-                int[] btreePagesArray = createPageArray( recordManager );
-                checkedPages.put( btreeName, btreePagesArray );
+                int[] btreePagesArray = createPageArray( recordManager, recordManagerHeader );
+                checkedPages.put( revisionName.getName(), btreePagesArray );
 
                 // Now, we can check the Btree we just found
-                checkBtree( recordManager, btreeOffset, checkedPages );
+                checkBtree( recordManager, recordManagerHeader, btreeOffset, checkedPages );
 
                 //System.out.println( "read <" + btreeName + "," + btreeRevision + "> : 0x" + Long.toHexString( btreeOffset ) );
             }
@@ -754,7 +1566,7 @@ public class MavibotInspector
     /**
      * Check a Btree leaf.
      */
-    private static <K, V> void checkBtreeLeaf( RecordManager recordManager, BTreeInfo<K, V> btreeInfo,
+    private static <K, V> void checkBtreeLeaf( RecordManager recordManager, RecordManagerHeader recordManagerHeader, BTreeInfo<K, V> btreeInfo,
         Map<String, int[]> checkedPages, int nbElems, long revision, ByteBuffer byteBuffer, PageIO[] pageIos )
         throws Exception
     {
@@ -763,39 +1575,16 @@ public class MavibotInspector
         {
             try
             {
-                // Read the number of values
-                int nbValues = byteBuffer.getInt();
+                // just deserialize the keys and values
+                // The value
+                btreeInfo.getValueSerializer().deserialize( byteBuffer );
 
-                if ( nbValues < 0 )
-                {
-                    // This is a sub-btree. Read the offset
-                    long subBtreeOffset = byteBuffer.getLong();
-
-                    // And process the sub-btree
-                    checkBtree( recordManager, subBtreeOffset, checkedPages );
-
-                    // Now, process the key
-                    // The key length
-                    byteBuffer.getInt();
-
-                    // The key itself
-                    btreeInfo.getKeySerializer().deserialize( byteBuffer );
-                }
-                else
-                {
-                    // just deserialize the keys and values
-                    // The value
-                    byteBuffer.getInt();
-                    btreeInfo.getValueSerializer().deserialize( byteBuffer );
-
-                    // the key
-                    byteBuffer.getInt();
-
-                    btreeInfo.getKeySerializer().deserialize( byteBuffer );
-                }
+                // the key
+                btreeInfo.getKeySerializer().deserialize( byteBuffer );
             }
             catch ( BufferUnderflowException bue )
             {
+                bue.printStackTrace();
                 throw new InvalidBTreeException( "The BOB leaf byte buffer is too short : " + bue.getMessage() );
             }
         }
@@ -805,7 +1594,7 @@ public class MavibotInspector
     /**
      * Check a Btree of Btrees Node
      */
-    private static <K, V> long[] checkBtreeOfBtreesNode( RecordManager recordManager, Map<String, int[]> checkedPages,
+    private static <K, V> long[] checkBtreeOfBtreesNode( RecordManager recordManager, RecordManagerHeader recordManagerHeader, Map<String, int[]> checkedPages,
         int nbElems, long revision,
         ByteBuffer byteBuffer, PageIO[] pageIos ) throws IOException
     {
@@ -817,35 +1606,15 @@ public class MavibotInspector
             // The offsets of the child
             long firstOffset = LongSerializer.INSTANCE.deserialize( byteBuffer );
 
-            checkOffset( recordManager, firstOffset );
-
-            long lastOffset = LongSerializer.INSTANCE.deserialize( byteBuffer );
-
-            checkOffset( recordManager, lastOffset );
+            checkOffset( recordManager, recordManagerHeader, firstOffset );
 
             children[i] = firstOffset;
-
-            // Read the key length
-            int keyLength = byteBuffer.getInt();
-
-            // The length should be at least 12 bytes long
-            if ( keyLength < RecordManager.LONG_SIZE + RecordManager.INT_SIZE )
-            {
-                throw new InvalidBTreeException( "The BOB key length is invalid " + keyLength );
-            }
 
             // Read the revision
             byteBuffer.getLong();
 
             // read the btreeName
             int btreeNameLength = byteBuffer.getInt();
-
-            // The length should be equals to the btreeRevision + btreeNameLength + 4
-            if ( keyLength != RecordManager.LONG_SIZE + RecordManager.INT_SIZE + btreeNameLength )
-            {
-                throw new InvalidBTreeException( "The BOB key length is not the expected value " +
-                    ( RecordManager.LONG_SIZE + RecordManager.INT_SIZE + btreeNameLength ) + ", expected " + keyLength );
-            }
 
             // Read the Btree name
             byte[] bytes = new byte[btreeNameLength];
@@ -856,11 +1625,7 @@ public class MavibotInspector
         // The offsets of the child
         long firstOffset = LongSerializer.INSTANCE.deserialize( byteBuffer );
 
-        checkOffset( recordManager, firstOffset );
-
-        long lastOffset = LongSerializer.INSTANCE.deserialize( byteBuffer );
-
-        checkOffset( recordManager, lastOffset );
+        checkOffset( recordManager, recordManagerHeader, firstOffset );
 
         children[nbElems] = firstOffset;
 
@@ -872,7 +1637,7 @@ public class MavibotInspector
     /**
      * Check a Btree node.
      */
-    private static <K, V> long[] checkBtreeNode( RecordManager recordManager, BTreeInfo<K, V> btreeInfo,
+    private static <K, V> long[] checkBtreeNode( RecordManager recordManager, RecordManagerHeader recordManagerHeader, BTreeInfo<K, V> btreeInfo,
         Map<String, int[]> checkedPages, int nbElems, long revision, ByteBuffer byteBuffer, PageIO[] pageIos )
         throws Exception
     {
@@ -886,19 +1651,11 @@ public class MavibotInspector
                 // The offsets of the child
                 long firstOffset = LongSerializer.INSTANCE.deserialize( byteBuffer );
 
-                checkOffset( recordManager, firstOffset );
-
-                long lastOffset = LongSerializer.INSTANCE.deserialize( byteBuffer );
-
-                checkOffset( recordManager, lastOffset );
+                checkOffset( recordManager, recordManagerHeader, firstOffset );
 
                 children[i] = firstOffset;
 
                 // Now, read the key
-                // The key lenth
-                byteBuffer.getInt();
-
-                // The key itself
                 btreeInfo.getKeySerializer().deserialize( byteBuffer );
             }
             catch ( BufferUnderflowException bue )
@@ -911,11 +1668,7 @@ public class MavibotInspector
         // The offsets of the child
         long firstOffset = LongSerializer.INSTANCE.deserialize( byteBuffer );
 
-        checkOffset( recordManager, firstOffset );
-
-        long lastOffset = LongSerializer.INSTANCE.deserialize( byteBuffer );
-
-        checkOffset( recordManager, lastOffset );
+        checkOffset( recordManager, recordManagerHeader, firstOffset );
 
         children[nbElems] = firstOffset;
 
@@ -926,11 +1679,11 @@ public class MavibotInspector
     /**
      * Create an array of bits for pages 
      */
-    private static int[] createPageArray( RecordManager recordManager ) throws IOException
+    private static int[] createPageArray( RecordManager recordManager, RecordManagerHeader recordManagerHeader ) throws IOException
     {
         long fileSize = recordManager.fileChannel.size();
-        int pageSize = recordManager.pageSize;
-        long nbPages = ( fileSize - RecordManager.RECORD_MANAGER_HEADER_SIZE ) / pageSize;
+        int pageSize = recordManager.getPageSize( recordManagerHeader );
+        long nbPages = ( fileSize - RecordManager.recordManagerHeaderSize ) / pageSize;
         int nbPageBits = ( int ) ( nbPages / 32 );
 
         return new int[nbPageBits + 1];
@@ -940,13 +1693,13 @@ public class MavibotInspector
     /**
      * Update the array of seen pages.
      */
-    private static void updateCheckedPages( int[] checkedPages, int pageSize, PageIO... pageIos )
+    private static void updateCheckedPages( RecordManagerHeader recordManagerHeader, int[] checkedPages, int pageSize, PageIO... pageIos )
     {
         for ( PageIO pageIO : pageIos )
         {
             long offset = pageIO.getOffset();
 
-            setCheckedPage( rm, checkedPages, offset );
+            setCheckedPage( rm, recordManagerHeader, checkedPages, offset );
         }
     }
 
@@ -959,10 +1712,10 @@ public class MavibotInspector
      * <li>It's a multiple of the pageSize
      * </ul>
      */
-    private static void checkOffset( RecordManager recordManager, long offset ) throws IOException
+    private static void checkOffset( RecordManager recordManager, RecordManagerHeader recordManagerHeader, long offset ) throws IOException
     {
         if ( ( offset == RecordManager.NO_PAGE ) ||
-            ( ( ( offset - RecordManager.RECORD_MANAGER_HEADER_SIZE ) % recordManager.pageSize ) != 0 ) ||
+            ( ( ( offset - RecordManager.recordManagerHeaderSize ) % recordManager.getPageSize( recordManagerHeader ) ) != 0 ) ||
             ( offset > recordManager.fileChannel.size() ) )
         {
             throw new InvalidBTreeException( "Invalid Offset : " + offset );
@@ -973,16 +1726,16 @@ public class MavibotInspector
     /**
      * Check the free pages
      */
-    private static void checkFreePages( RecordManager recordManager, Map<String, int[]> checkedPages )
+    private static void checkFreePages( RecordManager recordManager, RecordManagerHeader recordManagerHeader, Map<String, int[]> checkedPages )
         throws IOException
     {
-        if ( recordManager.firstFreePage == RecordManager.NO_PAGE )
+        if ( recordManagerHeader.firstFreePage == RecordManager.NO_PAGE )
         {
             return;
         }
 
         // Now, read all the free pages
-        long currentOffset = recordManager.firstFreePage;
+        long currentOffset = recordManagerHeader.firstFreePage;
         long fileSize = recordManager.fileChannel.size();
 
         while ( currentOffset != RecordManager.NO_PAGE )
@@ -995,7 +1748,7 @@ public class MavibotInspector
 
             try
             {
-                PageIO pageIo = recordManager.fetchPage( currentOffset );
+                PageIO pageIo = recordManager.fetchPage( recordManagerHeader, currentOffset );
 
                 if ( currentOffset != pageIo.getOffset() )
                 {
@@ -1004,8 +1757,8 @@ public class MavibotInspector
                     return;
                 }
 
-                setCheckedPage( recordManager, checkedPages.get( GLOBAL_PAGES_NAME ), currentOffset );
-                setCheckedPage( recordManager, checkedPages.get( FREE_PAGES_NAME ), currentOffset );
+                setCheckedPage( recordManager, recordManagerHeader, checkedPages.get( GLOBAL_PAGES_NAME ), currentOffset );
+                setCheckedPage( recordManager, recordManagerHeader, checkedPages.get( FREE_PAGES_NAME ), currentOffset );
 
                 long newOffset = pageIo.getNextPage();
                 currentOffset = newOffset;
@@ -1021,9 +1774,9 @@ public class MavibotInspector
     /**
      * Update the CheckedPages array
      */
-    private static void setCheckedPage( RecordManager recordManager, int[] checkedPages, long offset )
+    private static void setCheckedPage( RecordManager recordManager, RecordManagerHeader recordManagerHeader, int[] checkedPages, long offset )
     {
-        int pageNumber = ( int ) offset / recordManager.pageSize;
+        int pageNumber = ( int ) offset / recordManager.getPageSize( recordManagerHeader );
         int nbBitsPage = ( RecordManager.INT_SIZE << 3 );
         long pageMask = checkedPages[pageNumber / nbBitsPage];
         long mask = 1L << pageNumber % nbBitsPage;
@@ -1043,33 +1796,33 @@ public class MavibotInspector
      * Output the pages that has been seen ('1') and those which has not been seen ('0'). The '.' represent non-pages
      * at the end of the file.
      */
-    private static void dumpCheckedPages( RecordManager recordManager, Map<String, int[]> checkedPages )
+    private static void dumpCheckedPages( RecordManager recordManager, RecordManagerHeader recordManagerHeader, Map<String, int[]> checkedPages )
         throws IOException
     {
         // First dump the global array
         int[] globalArray = checkedPages.get( GLOBAL_PAGES_NAME );
-        String result = dumpPageArray( recordManager, globalArray );
+        String result = dumpPageArray( recordManager, recordManagerHeader, globalArray );
 
         String dump = String.format( "%1$-40s : %2$s", GLOBAL_PAGES_NAME, result );
         System.out.println( dump );
 
         // The free pages array
         int[] freePagesArray = checkedPages.get( FREE_PAGES_NAME );
-        result = dumpPageArray( recordManager, freePagesArray );
+        result = dumpPageArray( recordManager, recordManagerHeader, freePagesArray );
 
         dump = String.format( "%1$-40s : %2$s", FREE_PAGES_NAME, result );
         System.out.println( dump );
 
         // The B-tree of B-trees pages array
         int[] btreeOfBtreesArray = checkedPages.get( RecordManager.BTREE_OF_BTREES_NAME );
-        result = dumpPageArray( recordManager, btreeOfBtreesArray );
+        result = dumpPageArray( recordManager, recordManagerHeader, btreeOfBtreesArray );
 
         dump = String.format( "%1$-40s : %2$s", RecordManager.BTREE_OF_BTREES_NAME, result );
         System.out.println( dump );
 
         // The Copied page B-tree pages array
         int[] copiedPagesArray = checkedPages.get( RecordManager.COPIED_PAGE_BTREE_NAME );
-        result = dumpPageArray( recordManager, copiedPagesArray );
+        result = dumpPageArray( recordManager, recordManagerHeader, copiedPagesArray );
 
         dump = String.format( "%1$-40s : %2$s", RecordManager.COPIED_PAGE_BTREE_NAME, result );
         System.out.println( dump );
@@ -1084,7 +1837,7 @@ public class MavibotInspector
             }
 
             int[] btreePagesArray = checkedPages.get( btreeName );
-            result = dumpPageArray( recordManager, btreePagesArray );
+            result = dumpPageArray( recordManager, recordManagerHeader, btreePagesArray );
 
             dump = String.format( "%1$-40s : %2$s", btreeName, result );
             System.out.println( dump );
@@ -1095,18 +1848,18 @@ public class MavibotInspector
     /**
      * @see #getPageOffsets()
      */
-    public static List<Long> getFreePages() throws IOException
+    public static List<Long> getFreePages( RecordManagerHeader recordManagerHeader ) throws IOException
     {
-        return getPageOffsets( FREE_PAGES_NAME );
+        return getPageOffsets( recordManagerHeader, FREE_PAGES_NAME );
     }
 
     
     /**
      * @see #getPageOffsets()
      */
-    public static List<Long> getGlobalPages() throws IOException
+    public static List<Long> getGlobalPages( RecordManagerHeader recordManagerHeader ) throws IOException
     {
-        return getPageOffsets( GLOBAL_PAGES_NAME );
+        return getPageOffsets( recordManagerHeader, GLOBAL_PAGES_NAME );
     }
 
     
@@ -1118,15 +1871,15 @@ public class MavibotInspector
      * @return a list of offsets
      * @throws IOException
      */
-    public static List<Long> getPageOffsets( String pageArrayName ) throws IOException
+    public static List<Long> getPageOffsets( RecordManagerHeader recordManagerHeader, String pageArrayName ) throws IOException
     {
-        List<Long> lst = new ArrayList<Long>();
+        List<Long> lst = new ArrayList<>();
         
         int[] fparry = checkedPages.get( pageArrayName );
 
         long nbPagesChecked = 0; // the 0th page will always be of RM header
         long fileSize = rm.fileChannel.size();
-        long nbPages = ( fileSize - RecordManager.RECORD_MANAGER_HEADER_SIZE ) / rm.pageSize;
+        long nbPages = ( fileSize - RecordManager.recordManagerHeaderSize ) / rm.getPageSize( recordManagerHeader );
 
         for ( int checkedPage : fparry )
         {
@@ -1142,7 +1895,7 @@ public class MavibotInspector
                     int mask = ( checkedPage & ( 1 << j ) );
                     if ( mask != 0 )
                     {
-                        lst.add( nbPagesChecked * rm.pageSize);
+                        lst.add( nbPagesChecked * rm.getPageSize( recordManagerHeader ));
                     }
                 }
                 
@@ -1157,27 +1910,19 @@ public class MavibotInspector
     /**
      * Process a page array
      */
-    private static String dumpPageArray( RecordManager recordManager, int[] checkedPages ) throws IOException
+    private static String dumpPageArray( RecordManager recordManager, RecordManagerHeader recordManagerHeader, int[] checkedPages ) throws IOException
     {
         StringBuilder sb = new StringBuilder();
         int i = -1;
         int nbPagesChecked = 0;
         long fileSize = recordManager.fileChannel.size();
-        long nbPages = ( fileSize - RecordManager.RECORD_MANAGER_HEADER_SIZE ) / recordManager.pageSize;
+        long nbPages = ( fileSize - RecordManager.recordManagerHeaderSize ) / recordManager.getPageSize( recordManagerHeader );
 
         for ( int checkedPage : checkedPages )
         {
-            if ( i == 0 )
-            {
-                sb.append( " " );
-                i++;
-            }
-            else
-            {
-                i = 0;
-            }
+            i++;
 
-            sb.append( "[" ).append( i ).append( "] " );
+            sb.append( " [" ).append( i ).append( "] " );
 
             for ( int j = 0; j < 32; j++ )
             {
@@ -1253,7 +1998,7 @@ public class MavibotInspector
 
                 case 'c':
                     long fileSize = rm.fileChannel.size();
-                    long nbPages = fileSize / rm.pageSize;
+                    long nbPages = fileSize / rm.getPageSize();
                     int nbPageBits = ( int ) ( nbPages / RecordManager.INT_SIZE );
 
                     Map<String, int[]> checkedPages = new HashMap<String, int[]>( 2 );
@@ -1353,7 +2098,7 @@ public class MavibotInspector
     }
 
     
-    private void readPageAt() throws IOException
+    private void readPageAt( RecordManagerHeader recordManagerHeader ) throws IOException
     {
         System.out.println();
         System.out.print( "Offset: " );
@@ -1377,7 +2122,7 @@ public class MavibotInspector
             return;
         }
         
-        PageIO io = rm.fetchPage( offset );
+        PageIO io = rm.fetchPage( recordManagerHeader, offset );
 
         List<Long> ll = new ArrayList<Long>();
         ll.add( offset );
@@ -1395,7 +2140,7 @@ public class MavibotInspector
                 break;
             }
             
-            io = rm.fetchPage( next );
+            io = rm.fetchPage( recordManagerHeader, next );
         }
         while( true );
         

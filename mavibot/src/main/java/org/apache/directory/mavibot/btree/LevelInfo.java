@@ -82,7 +82,7 @@ public class LevelInfo<K, V>
     /**
      * @return the nbElems
      */
-    public int getNbElems()
+    public int getNbPageElems()
     {
         return nbElems;
     }
@@ -254,7 +254,7 @@ public class LevelInfo<K, V>
         sb.append( "\n    nbAddedElems      = " ).append( nbAddedElems );
         sb.append( "\n    currentPos        = " ).append( currentPos );
         sb.append( "\n    currentPage" );
-        sb.append( "\n        nbKeys : " ).append( currentPage.getNbElems() );
+        sb.append( "\n        nbKeys : " ).append( currentPage.getNbPageElems() );
 
         return sb.toString();
     }

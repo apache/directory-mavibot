@@ -42,7 +42,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
 /* no qualifier*/class RevisionNameSerializer extends AbstractElementSerializer<RevisionName>
 {
     /** A static instance of a RevisionNameSerializer */
-    /*No qualifier*/ final static RevisionNameSerializer INSTANCE = new RevisionNameSerializer();
+    /*No qualifier*/ static final RevisionNameSerializer INSTANCE = new RevisionNameSerializer();
 
     /**
      * Create a new instance of a RevisionNameSerializer
@@ -83,9 +83,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
         long revision = LongSerializer.deserialize( in, start );
         String name = StringSerializer.deserialize( in, 8 + start );
 
-        RevisionName revisionName = new RevisionName( revision, name );
-
-        return revisionName;
+        return new RevisionName( revision, name );
     }
 
 
@@ -95,6 +93,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
      * @param in The byte array containing the RevisionName
      * @return A RevisionName instance
      */
+    @Override
     public RevisionName fromBytes( byte[] in )
     {
         return deserialize( in, 0 );
@@ -108,6 +107,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
      * @param start the position in the byte[] we will deserialize the RevisionName from
      * @return A RevisionName instance
      */
+    @Override
     public RevisionName fromBytes( byte[] in, int start )
     {
         // The buffer must be 8 bytes plus 4 bytes long (the revision is a long, and the name is a String
@@ -119,9 +119,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
         long revision = LongSerializer.deserialize( in, start );
         String name = StringSerializer.deserialize( in, 8 + start );
 
-        RevisionName revisionName = new RevisionName( revision, name );
-
-        return revisionName;
+        return new RevisionName( revision, name );
     }
 
 
@@ -136,25 +134,37 @@ import org.apache.directory.mavibot.btree.util.Strings;
             throw new SerializerCreationException( "The revisionName instance should not be null " );
         }
 
-        byte[] result = null;
+        byte[] result;
 
         if ( revisionName.getName() != null )
         {
             byte[] stringBytes = Strings.getBytesUtf8( revisionName.getName() );
-            int stringLen = stringBytes.length;
             result = new byte[8 + 4 + stringBytes.length];
+            
+            // The revision
             LongSerializer.serialize( result, 0, revisionName.getRevision() );
 
-            if ( stringLen > 0 )
+            if ( stringBytes.length > 0 )
             {
+                // The name
                 ByteArraySerializer.serialize( result, 8, stringBytes );
+            }
+            else
+            {
+                // The empty name
+                IntSerializer.serialize( result, 4,  0 );
             }
         }
         else
         {
             result = new byte[8 + 4];
+            
+            // The revision
             LongSerializer.serialize( result, 0, revisionName.getRevision() );
-            StringSerializer.serialize( result, 8, null );
+            
+            
+            // The null name
+            IntSerializer.serialize( result, 4, 0xFFFFFFFF );
         }
 
         return result;
@@ -174,10 +184,13 @@ import org.apache.directory.mavibot.btree.util.Strings;
         if ( revisionName.getName() != null )
         {
             byte[] stringBytes = Strings.getBytesUtf8( revisionName.getName() );
-            int stringLen = stringBytes.length;
             LongSerializer.serialize( buffer, start, revisionName.getRevision() );
-            IntSerializer.serialize( buffer, 8 + start, stringLen );
-            ByteArraySerializer.serialize( buffer, 12 + start, stringBytes );
+            IntSerializer.serialize( buffer, 8 + start, stringBytes.length );
+            
+            if ( stringBytes.length > 0 )
+            {
+                ByteArraySerializer.serialize( buffer, 12 + start, stringBytes );
+            }
         }
         else
         {
@@ -195,9 +208,11 @@ import org.apache.directory.mavibot.btree.util.Strings;
     @Override
     public RevisionName deserialize( BufferHandler bufferHandler ) throws IOException
     {
+        // The revision
         byte[] revisionBytes = bufferHandler.read( 8 );
         long revision = LongSerializer.deserialize( revisionBytes );
 
+        // The name, if any
         byte[] lengthBytes = bufferHandler.read( 4 );
 
         int len = IntSerializer.deserialize( lengthBytes );
@@ -240,7 +255,27 @@ import org.apache.directory.mavibot.btree.util.Strings;
 
             default:
                 byte[] nameBytes = new byte[len];
-                buffer.get( nameBytes );
+                
+                try
+                {
+                    buffer.get( nameBytes );
+                }
+                catch ( Exception e )
+                {
+                    buffer.rewind();
+                    
+                    for ( int i = 0; i < buffer.limit(); i++ )
+                    {
+                        if ( i % 8 == 0 )
+                        {
+                            System.out.println();
+                        }
+                        
+                        byte b = buffer.get();
+                        System.out.print( String.format( "0x%02X ", b ) );
+                    }
+                    throw e;
+                }
 
                 return new RevisionName( revision, Strings.utf8ToString( nameBytes ) );
         }

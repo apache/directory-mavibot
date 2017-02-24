@@ -49,6 +49,7 @@ public class BooleanSerializer extends AbstractElementSerializer<Boolean>
     /**
      * {@inheritDoc}
      */
+    @Override
     public byte[] serialize( Boolean element )
     {
         byte[] bytes = new byte[1];
@@ -123,6 +124,7 @@ public class BooleanSerializer extends AbstractElementSerializer<Boolean>
      * @param in The byte array containing the boolean
      * @return A boolean
      */
+    @Override
     public Boolean fromBytes( byte[] in )
     {
         return deserialize( in, 0 );
@@ -136,6 +138,7 @@ public class BooleanSerializer extends AbstractElementSerializer<Boolean>
      * @param start the position in the byte[] we will deserialize the boolean from
      * @return A boolean
      */
+    @Override
     public Boolean fromBytes( byte[] in, int start )
     {
         if ( ( in == null ) || ( in.length < 1 + start ) )
@@ -150,6 +153,7 @@ public class BooleanSerializer extends AbstractElementSerializer<Boolean>
     /**
      * {@inheritDoc}
      */
+    @Override
     public Boolean deserialize( ByteBuffer buffer ) throws IOException
     {
         return buffer.get() != 0x00;

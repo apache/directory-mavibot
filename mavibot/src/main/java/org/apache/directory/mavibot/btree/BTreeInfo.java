@@ -20,6 +20,7 @@
 package org.apache.directory.mavibot.btree;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 import org.apache.directory.mavibot.btree.util.Strings;
@@ -34,13 +35,10 @@ import org.apache.directory.mavibot.btree.util.Strings;
  *  
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class BTreeInfo<K, V> implements WALObject
+public class BTreeInfo<K, V> extends AbstractWALObject<K, V>
 {
-    /** The BTree reference */
-    private BTree<K,V> btree;
-    
-    /** the B-tree page size */
-    private int pageSize;
+    /** the B-tree page nb elements */
+    private int pageNbElem;
     
     /** the B-tree name */
     private String btreeName;
@@ -57,15 +55,12 @@ public class BTreeInfo<K, V> implements WALObject
     /** The value serializer instance */
     private ElementSerializer<V> valueSerializer;
     
-    /** The unique ID for this object */
-    private long id;
-    
     /**
      * Serialize the structure :
      * 
      * <pre>
      * +------------+
-     * | pageSize   | The B-tree page size (ie, the number of elements per page max)
+     * | pageNbElem | The B-tree number of elements per page max
      * +------------+
      * | nameSize   | The B-tree name size
      * +------------+
@@ -85,7 +80,7 @@ public class BTreeInfo<K, V> implements WALObject
      * @throws IOException 
      */
     @Override
-    public PageIO[] serialize() throws IOException
+    public PageIO[] serialize( WriteTransaction transaction ) throws IOException
     {
         // We will add the newly managed B-tree at the end of the header.
         byte[] btreeNameBytes = Strings.getBytesUtf8( btree.getName() );
@@ -101,10 +96,12 @@ public class BTreeInfo<K, V> implements WALObject
                 RecordManager.INT_SIZE + // The valueSerializerBytes size
                 valueSerializerBytes.length; // The valueSerializerBytes
         
-        RecordManager recordManager = btree.getRecordManager();
+        RecordManager recordManager = transaction.getRecordManager();
+        RecordManagerHeader recordManagerHeader = transaction.recordManagerHeader;
+
 
         // Get the pageIOs we need to store the data. We may need more than one.
-        PageIO[] btreeHeaderPageIos = recordManager.getFreePageIOs( bufferSize );
+        pageIOs = recordManager.getFreePageIOs( recordManagerHeader, bufferSize );
 
         // Now store the B-tree information data in the pages :
         // - the B-tree page size
@@ -113,79 +110,61 @@ public class BTreeInfo<K, V> implements WALObject
         // - the valueSerializer FQCN
         // Starts at 0
         long position = 0L;
-
+        
         // The B-tree page size
-        position = recordManager.store( position, btree.getPageSize(), btreeHeaderPageIos );
+        position = recordManager.store( recordManagerHeader, position, btree.getPageNbElem(), pageIOs );
 
         // The tree name
-        position = recordManager.store( position, btreeNameBytes, btreeHeaderPageIos );
+        position = recordManager.store( recordManagerHeader, position, btreeNameBytes, pageIOs );
 
         // The keySerializer FQCN
-        position = recordManager.store( position, keySerializerBytes, btreeHeaderPageIos );
+        position = recordManager.store( recordManagerHeader, position, keySerializerBytes, pageIOs );
 
         // The valueSerialier FQCN
-        position = recordManager.store( position, valueSerializerBytes, btreeHeaderPageIos );
-
-        // And flush the pages to disk now
-        recordManager.storePages( btreeHeaderPageIos );
-
-        return btreeHeaderPageIos;
+        recordManager.store( recordManagerHeader, position, valueSerializerBytes, pageIOs );
+        
+        // Set the BtreeInfo offset
+        offset = pageIOs[0].getOffset();
+        
+        return pageIOs;
     }
-
-
+    
+    
     /**
      * {@inheritDoc}
      */
     @Override
-    public long getId()
+    public BTreeInfo<K, V> deserialize( Transaction trasaction, ByteBuffer byteBuffer )
     {
-        return id;
+        return null;
     }
-
-
+    
+    
     /**
      * {@inheritDoc}
      */
     @Override
-    public void setId( long id )
+    public String getName()
     {
-        this.id = id;
+        return btree.getName();
     }
 
 
     /**
-     * @return the btree
+     * @return the number of element that can be stored in this page
      */
-    public BTree<K, V> getBtree()
+    public int getPageNbElem()
     {
-        return btree;
+        return pageNbElem;
     }
 
 
     /**
-     * @param btree the btree to set
+     * @param pageNbElement the pageNbElem to set
      */
-    public void setBtree( BTree<K, V> btree )
+    public void setPageNbElem( int pageNbElem )
     {
-        this.btree = btree;
-    }
-
-
-    /**
-     * @return the pageSize
-     */
-    public int getPageSize()
-    {
-        return pageSize;
-    }
-
-
-    /**
-     * @param pageSize the pageSize to set
-     */
-    public void setPageSize( int pageSize )
-    {
-        this.pageSize = pageSize;
+        this.pageNbElem = pageNbElem;
     }
 
 
@@ -277,20 +256,60 @@ public class BTreeInfo<K, V> implements WALObject
     {
         this.valueSerializer = valueSerializer;
     }
+
     
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getRevision()
+    {
+        return -1L;
+    }
+
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String prettyPrint()
+    {
+        StringBuilder sb = new StringBuilder();
+        
+        sb.append( "{Info(" ).append( id ).append( ")@" );
+        
+        if ( offset == RecordManager.NO_PAGE )
+        {
+            sb.append( "---" );
+        }
+        else
+        {
+            sb.append( String.format( "0x%4X", offset ) );
+        }
+        
+        sb.append( ",<" );
+        sb.append( getName() ).append( ':' ).append( getRevision() );
+        sb.append( ">}" );
+
+        return sb.toString();
+    }
+
     
     /**
      * @see Object#toString()
      */
+    @Override
     public String toString()
     {
         StringBuilder sb = new StringBuilder();
         
         sb.append( "BtreeInfo :\n" );
-        sb.append( "    Page size        : " ).append( pageSize ).append( '\n' );
+        sb.append( "    Page Nb Elem     : " ).append( pageNbElem ).append( '\n' );
         sb.append( "    Name             : " ).append( btreeName ).append( '\n' );
         sb.append( "    Key serializer   : " ).append( keySerializerFQCN ).append( '\n' );
         sb.append( "    Value serializer : " ).append( valueSerializerFQCN ).append( '\n' );
+        sb.append( "    ID               : " ).append( id ).append( '\n' );
+        sb.append( "    offset           : " ).append( String.format( "%16x", getOffset() ) ).append( '\n' );
 
         return sb.toString();
     }

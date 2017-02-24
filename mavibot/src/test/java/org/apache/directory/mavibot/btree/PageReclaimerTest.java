@@ -92,7 +92,7 @@ public class PageReclaimerTest
         uidTree.close();
         rm.close();
         rm = new RecordManager( dbFile.getAbsolutePath() );
-        uidTree = ( BTreeImpl ) rm.getManagedTree( TREE_NAME );
+        uidTree = ( BTreeImpl ) rm.getBtree( TREE_NAME );
     }
 
     
@@ -266,12 +266,41 @@ public class PageReclaimerTest
         config.setPageSize( 4 );
 
         BTree btree = new BTreeImpl( config );
-        manager.manage( btree );
+        
+        Transaction writeTransaction = new WriteTransaction();
+        
+        try
+        {
+            manager.manage( writeTransaction, btree );
+        }
+        catch ( Exception e )
+        {
+            writeTransaction.abort();
+            throw e;
+        }
+        finally
+        {
+            writeTransaction.commit();
+        }
         
         // insert 5 so that we get 1 root and 2 child nodes
         for( int i=0; i<5; i++ )
         {
-            btree.insert( i, String.valueOf( i ) );
+            writeTransaction = new WriteTransaction();
+            
+            try
+            {
+                btree.insert( writeTransaction, i, String.valueOf( i ) );
+            }
+            catch ( Exception e )
+            {
+                writeTransaction.abort();
+                throw e;
+            }
+            finally
+            {
+                writeTransaction.commit();
+            }
         }
         
         /*

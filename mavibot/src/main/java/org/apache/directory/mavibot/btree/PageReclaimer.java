@@ -77,7 +77,7 @@ public class PageReclaimer
 
             for ( String name : managed )
             {
-                BTreeImpl tree = ( BTreeImpl ) rm.getManagedTree( name );
+                BTreeImpl tree = ( BTreeImpl ) rm.getBtree( name );
 
                 long latestRev = tree.getRevision();
                 
@@ -93,14 +93,14 @@ public class PageReclaimer
                     }
                 }
 
-                List<RevisionOffset> copiedRevisions = getRevisions( name );
+                List<RevisionOffsets> copiedRevisions = getRevisions( name );
 
                 // the revision last removed from copiedPage BTree
                 long lastRemovedRev = -1;
 
                 List<Long> freeList = new ArrayList<Long>();
                 
-                for ( RevisionOffset ro : copiedRevisions )
+                for ( RevisionOffsets ro : copiedRevisions )
                 {
                     long rv = ro.getRevision();
                     if ( inUseRevisions.contains( rv ) )
@@ -191,11 +191,11 @@ public class PageReclaimer
      * @return list of RevisionOffset
      * @throws Exception
      */
-    private List<RevisionOffset> getRevisions( String name ) throws Exception
+    private List<RevisionOffsets> getRevisions( String name ) throws Exception
     {
         TupleCursor<RevisionName, long[]> cursor = rm.copiedPageBtree.browse();
 
-        List<RevisionOffset> lst = new ArrayList<RevisionOffset>();
+        List<RevisionOffsets> lst = new ArrayList<RevisionOffsets>();
 
         while ( cursor.hasNext() )
         {
@@ -204,7 +204,7 @@ public class PageReclaimer
             if ( name.equals( rn.getName() ) )
             {
                 //System.out.println( t.getValue() );
-                lst.add( new RevisionOffset( rn.getRevision(), t.getValue() ) );
+                lst.add( new RevisionOffsets( rn.getRevision(), t.getValue() ) );
             }
         }
 

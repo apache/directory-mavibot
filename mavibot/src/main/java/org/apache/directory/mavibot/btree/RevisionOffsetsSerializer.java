@@ -36,15 +36,15 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* no qualifier*/class RevisionOffsetSerializer extends AbstractElementSerializer<RevisionOffset>
+/* no qualifier*/class RevisionOffsetsSerializer extends AbstractElementSerializer<RevisionOffsets>
 {
     /** A static instance of a RevisionOffsetSerializer */
-    /*No qualifier*/ final static RevisionOffsetSerializer INSTANCE = new RevisionOffsetSerializer();
+    /*No qualifier*/ static final RevisionOffsetsSerializer INSTANCE = new RevisionOffsetsSerializer();
 
     /**
      * Create a new instance of a RevisionOffsetSerializer
      */
-    private RevisionOffsetSerializer()
+    private RevisionOffsetsSerializer()
     {
         super( RevisionOffsetComparator.INSTANCE );
     }
@@ -56,7 +56,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * @param in The byte array containing the RevisionOffset
      * @return A RevisionOffset instance
      */
-    /* no qualifier*/static RevisionOffset deserialize( byte[] in )
+    /* no qualifier*/static RevisionOffsets deserialize( byte[] in )
     {
         return deserialize( in, 0 );
     }
@@ -69,7 +69,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * @param start the position in the byte[] we will deserialize the RevisionOffset from
      * @return A RevisionOffset instance
      */
-    /* no qualifier*/static RevisionOffset deserialize( byte[] in, int start )
+    /* no qualifier*/static RevisionOffsets deserialize( byte[] in, int start )
     {
         // The buffer must be 8 bytes
         if ( ( in == null ) || ( in.length < 8 + start ) )
@@ -83,9 +83,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         {
             long[] offsets = LongArraySerializer.INSTANCE.fromBytes( in, 8 + start );
 
-            RevisionOffset RevisionOffset = new RevisionOffset( revision, offsets );
-            
-            return RevisionOffset;
+            return new RevisionOffsets( revision, offsets );
         }
         catch( IOException e )
         {
@@ -100,7 +98,8 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * @param in The byte array containing the RevisionOffset
      * @return A RevisionOffset instance
      */
-    public RevisionOffset fromBytes( byte[] in )
+    @Override
+    public RevisionOffsets fromBytes( byte[] in )
     {
         return deserialize( in, 0 );
     }
@@ -113,7 +112,8 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * @param start the position in the byte[] we will deserialize the RevisionOffset from
      * @return A RevisionOffset instance
      */
-    public RevisionOffset fromBytes( byte[] in, int start )
+    @Override
+    public RevisionOffsets fromBytes( byte[] in, int start )
     {
         // The buffer must be 8 bytes long (the revision is a long, and the name is a String
         if ( ( in == null ) || ( in.length < 8 + start ) )
@@ -129,18 +129,18 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * {@inheritDoc}
      */
     @Override
-    public byte[] serialize( RevisionOffset RevisionOffset )
+    public byte[] serialize( RevisionOffsets revisionOffsets )
     {
-        if ( RevisionOffset == null )
+        if ( revisionOffsets == null )
         {
             throw new SerializerCreationException( "The RevisionOffset instance should not be null " );
         }
 
-        byte[] result = null;
+        byte[] result;
 
-        byte[] offsets = LongArraySerializer.INSTANCE.serialize( RevisionOffset.getOffsets() );
+        byte[] offsets = LongArraySerializer.INSTANCE.serialize( revisionOffsets.getOffsets() );
         result = new byte[8 + offsets.length];
-        LongSerializer.serialize( result, 0, RevisionOffset.getRevision() );
+        LongSerializer.serialize( result, 0, revisionOffsets.getRevision() );
 
         System.arraycopy( offsets, 0, result, 8, offsets.length );
         
@@ -156,11 +156,11 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * @param value the value to serialize
      * @return The byte[] containing the serialized RevisionOffset
      */
-    /* no qualifier*/static byte[] serialize( byte[] buffer, int start, RevisionOffset RevisionOffset )
+    /* no qualifier*/static byte[] serialize( byte[] buffer, int start, RevisionOffsets revisionOffsets )
     {
-        LongSerializer.serialize( buffer, start, RevisionOffset.getRevision() );
+        LongSerializer.serialize( buffer, start, revisionOffsets.getRevision() );
         
-        byte[] offsets = LongArraySerializer.INSTANCE.serialize( RevisionOffset.getOffsets() );
+        byte[] offsets = LongArraySerializer.INSTANCE.serialize( revisionOffsets.getOffsets() );
 
         System.arraycopy( offsets, 0, buffer, 8 + start, offsets.length );
         
@@ -172,14 +172,16 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * {@inheritDoc}
      */
     @Override
-    public RevisionOffset deserialize( BufferHandler bufferHandler ) throws IOException
+    public RevisionOffsets deserialize( BufferHandler bufferHandler ) throws IOException
     {
+        // The revision
         byte[] revisionBytes = bufferHandler.read( 8 );
         long revision = LongSerializer.deserialize( revisionBytes );
 
+        // The offsets
         long[] offsets = LongArraySerializer.INSTANCE.deserialize( bufferHandler );
 
-        return new RevisionOffset( revision, offsets );
+        return new RevisionOffsets( revision, offsets );
     }
 
 
@@ -187,13 +189,14 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * {@inheritDoc}
      */
     @Override
-    public RevisionOffset deserialize( ByteBuffer buffer ) throws IOException
+    public RevisionOffsets deserialize( ByteBuffer buffer ) throws IOException
     {
         // The revision
         long revision = buffer.getLong();
 
+        // The offsets
         long[] offsets = LongArraySerializer.INSTANCE.deserialize( buffer );
 
-        return new RevisionOffset( revision, offsets );
+        return new RevisionOffsets( revision, offsets );
     }
 }

@@ -112,7 +112,7 @@ public class RecordManagerTest
             // load the last created btree
             if ( btree != null )
             {
-                btree = recordManager.getManagedTree( btree.getName() );
+                btree = recordManager.getBtree( btree.getName() );
             }
         }
         catch ( Exception e )
@@ -136,7 +136,7 @@ public class RecordManagerTest
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
+        BTree<Long, String> btree1 = recordManager.getBtree( "test" );
 
         assertNotNull( btree1 );
         assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
@@ -170,7 +170,7 @@ public class RecordManagerTest
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
+        BTree<Long, String> btree1 = recordManager.getBtree( "test" );
 
         assertNotNull( btree1 );
         assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
@@ -224,7 +224,7 @@ public class RecordManagerTest
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
+        BTree<Long, String> btree1 = recordManager.getBtree( "test" );
 
         assertNotNull( btree1 );
         assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
@@ -310,7 +310,7 @@ public class RecordManagerTest
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
+        BTree<Long, String> btree1 = recordManager.getBtree( "test" );
 
         assertNotNull( btree1 );
         assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
@@ -448,7 +448,7 @@ public class RecordManagerTest
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
+        BTree<Long, String> btree1 = recordManager.getBtree( "test" );
 
         assertNotNull( btree1 );
         assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
@@ -519,7 +519,7 @@ public class RecordManagerTest
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
+        BTree<Long, String> btree1 = recordManager.getBtree( "test" );
 
         assertNotNull( btree1 );
         assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
@@ -610,7 +610,7 @@ public class RecordManagerTest
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
+        BTree<Long, String> btree1 = recordManager.getBtree( "test" );
 
         assertNotNull( btree1 );
         assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
@@ -707,7 +707,7 @@ public class RecordManagerTest
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
+        BTree<Long, String> btree1 = recordManager.getBtree( "test" );
 
         assertNotNull( btree1 );
         assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
@@ -802,7 +802,7 @@ public class RecordManagerTest
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        BTree<Long, String> btree1 = recordManager.getManagedTree( "test" );
+        BTree<Long, String> btree1 = recordManager.getBtree( "test" );
 
         assertNotNull( btree1 );
         assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );

@@ -28,7 +28,7 @@ import java.util.Arrays;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class RevisionOffset
+public class RevisionOffsets
 {
     /** the revision number */
     private long revision;
@@ -43,7 +43,7 @@ public class RevisionOffset
      * @param revision the revision number
      * @param offsets array of copied page offsets
      */
-    public RevisionOffset( long revision, long[] offsets )
+    public RevisionOffsets( long revision, long[] offsets )
     {
         this.revision = revision;
         this.offsets = offsets;
@@ -84,6 +84,9 @@ public class RevisionOffset
     }
 
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean equals( Object obj )
     {
@@ -92,12 +95,12 @@ public class RevisionOffset
             return true;
         }
         
-        if ( obj == null )
+        if ( !( obj instanceof RevisionOffsets ) )
         {
             return false;
         }
 
-        RevisionOffset other = ( RevisionOffset ) obj;
+        RevisionOffsets other = ( RevisionOffsets ) obj;
 
         if ( revision != other.revision )
         {
@@ -108,6 +111,9 @@ public class RevisionOffset
     }
 
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String toString()
     {

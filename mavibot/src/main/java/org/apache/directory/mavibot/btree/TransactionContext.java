@@ -35,10 +35,10 @@ import java.util.Map;
 public class TransactionContext
 {
     /** The map containing all the modified pages, using their offset as a key */
-    private Map<Long, WALObject> pageMap = new HashMap<Long, WALObject>();
+    private Map<Long, WALObject> pageMap = new HashMap<>();
     
     /** The map containing all the copied pages, using their offset as a key */
-    private Map<Long, WALObject> copiedPageMap = new HashMap<Long, WALObject>();
+    private Map<Long, WALObject> copiedPageMap = new HashMap<>();
     
     /** The global revision */
     private long revision;
@@ -46,8 +46,11 @@ public class TransactionContext
     /** The last offset on disk */
     private long lastOffset;
     
+    /** The RecordManager header for the transaction */
+    private RecordManagerHeader recordManagerHeader;
+    
     /** The BOB header */
-    private BTreeHeader btreeOfBtreeHeader;
+    private BTreeHeader<NameRevision, Long> btreeOfBtreeHeader;
     
     /** The CPB header */
     private BTreeHeader copiedPageBtreeHeader;
@@ -58,12 +61,24 @@ public class TransactionContext
      * 
      * @param lastOffset The last offset of the associated file
      */
-    public TransactionContext( long lastOffset, long revision, BTreeHeader btreeOfBtreeHeader, BTreeHeader copiedPageBtreeHeader )
+    public TransactionContext( RecordManagerHeader recordManagerHeader )
     {
-        this.lastOffset = lastOffset;
+        this.recordManagerHeader = recordManagerHeader;
+    }
+    
+    
+    /**
+     * A constructor for the TransactionContext, which initialize the last offset to
+     * the file size. This is a Read Transaction context, we don't have to keep the copied page
+     * BTreeHeader, nor the last offset.
+     * 
+     * @param revision The current revision used for this transaction
+     * @param btreeOfBtreeHeader The BOB header
+     */
+    public TransactionContext( long revision, BTreeHeader btreeOfBtreeHeader )
+    {
         this.revision = revision;
         this.btreeOfBtreeHeader = btreeOfBtreeHeader;
-        this.copiedPageBtreeHeader = copiedPageBtreeHeader;
     }
 
 
@@ -150,7 +165,7 @@ public class TransactionContext
     /**
      * @return the btreeOfBtreeHeader
      */
-    public BTreeHeader getBtreeOfBtreeHeader() {
+    public BTreeHeader<NameRevision, Long> getBtreeOfBtreeHeader() {
         return btreeOfBtreeHeader;
     }
 
@@ -202,6 +217,7 @@ public class TransactionContext
     /**
      * @see Object#toString()
      */
+    @Override
     public String toString()
     {
         StringBuilder sb = new StringBuilder();

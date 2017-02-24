@@ -24,7 +24,6 @@ package org.apache.directory.mavibot.btree;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
@@ -61,17 +60,17 @@ public class BTreeBuilder<K, V>
 
 
     @SuppressWarnings("unchecked")
-    public BTree<K, V> build( Iterator<Tuple<K, V>> sortedTupleItr ) throws Exception
+    public BTree<K, V> build( WriteTransaction transaction, Iterator<Tuple<K, V>> sortedTupleItr ) throws Exception
     {
-        BTree<K, V> btree = BTreeFactory.createPersistedBTree( name, keySerializer, valueSerializer );
+        BTree<K, V> btree = BTreeFactory.createBTree( transaction, name, keySerializer, valueSerializer );
 
-        rm.manage( btree );
+        rm.manage( transaction, btree );
 
-        List<Page<K, V>> lstLeaves = new ArrayList<Page<K, V>>();
+        List<Page<K, V>> lstLeaves = new ArrayList<>();
 
         int totalTupleCount = 0;
 
-        Leaf<K, V> leaf1 = ( Leaf<K, V> ) BTreeFactory.createLeaf( btree, 0, numKeysInNode );
+        Leaf<K, V> leaf1 = ( Leaf<K, V> ) BTreeFactory.createLeaf( btree, transaction.getRevision(), numKeysInNode );
         lstLeaves.add( leaf1 );
 
         int leafIndex = 0;
@@ -82,19 +81,20 @@ public class BTreeBuilder<K, V>
 
             BTreeFactory.setKey( btree, leaf1, leafIndex, tuple.getKey() );
 
-            ValueHolderImpl<V> eh = new ValueHolderImpl<V>( btree, tuple.getValue() );
+            ValueHolder<V> eh = new ValueHolder<>( btree, tuple.getValue() );
 
             BTreeFactory.setValue( btree, leaf1, leafIndex, eh );
 
             leafIndex++;
             totalTupleCount++;
+            
             if ( ( totalTupleCount % numKeysInNode ) == 0 )
             {
                 leafIndex = 0;
 
-                PageHolder<K, V> pageHolder = rm.writePage( btree, leaf1, 1 );
+                PageHolder<K, V> pageHolder = rm.writePage( transaction, btree, leaf1, 1 );
 
-                leaf1 = ( Leaf<K, V> ) BTreeFactory.createLeaf( btree, 0, numKeysInNode );
+                leaf1 = ( Leaf<K, V> ) BTreeFactory.createLeaf( btree, transaction.getRevision(), numKeysInNode );
                 lstLeaves.add( leaf1 );
             }
 
@@ -108,22 +108,23 @@ public class BTreeBuilder<K, V>
 
         // remove null keys and values from the last leaf and resize
         Leaf<K, V> lastLeaf = ( Leaf<K, V> ) lstLeaves.get( lstLeaves.size() - 1 );
-        for ( int i = 0; i < lastLeaf.getNbElems(); i++ )
+        
+        for ( int i = 0; i < lastLeaf.getNbPageElems(); i++ )
         {
             if ( lastLeaf.getKey( i ) == null )
             {
                 int n = i;
-                lastLeaf.setNbElems( n );
+                lastLeaf.setNbPageElems( n );
                 KeyHolder<K>[] keys = lastLeaf.getKeys();
 
-                lastLeaf.setKeys( ( KeyHolder[] ) Array.newInstance( KeyHolderImpl.class, n ) );
+                lastLeaf.setKeys( ( KeyHolder[] ) Array.newInstance( KeyHolder.class, n ) );
                 System.arraycopy( keys, 0, lastLeaf.getKeys(), 0, n );
 
-                ValueHolder<V>[] values = lastLeaf.values;
-                lastLeaf.values = ( ValueHolderImpl<V>[] ) Array.newInstance( ValueHolderImpl.class, n );
-                System.arraycopy( values, 0, lastLeaf.values, 0, n );
+                ValueHolder<V>[] values = lastLeaf.getValues();
+                lastLeaf.setValues( ( ValueHolder<V>[] ) Array.newInstance( ValueHolder.class, n ) );
+                System.arraycopy( values, 0, lastLeaf.getValues(), 0, n );
 
-                PageHolder<K, V> pageHolder = rm.writePage( btree, lastLeaf, 1 );
+                PageHolder<K, V> pageHolder = rm.writePage( transaction, btree, lastLeaf, 1 );
 
                 break;
             }
@@ -131,34 +132,34 @@ public class BTreeBuilder<K, V>
 
         // make sure either one of the root pages is reclaimed, cause when we call rm.manage()
         // there is already a root page created
-        Page<K, V> rootPage = attachNodes( lstLeaves, btree );
+        Page<K, V> rootPage = attachNodes( transaction, lstLeaves, btree );
 
         //System.out.println("built rootpage : " + rootPage);
         ( ( BTreeImpl<K, V> ) btree ).setNbElems( totalTupleCount );
 
-        rm.updateBtreeHeader( btree, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
+        //rm.updateBtreeHeader( btree, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
 
-        rm.freePages( btree, btree.getRootPage().getRevision(), Arrays.asList( btree.getRootPage() ) );
+        //rm.freePages( transaction, btree, btree.getRootPage( transaction ).getRevision(), Arrays.asList( btree.getRootPage( transaction ) ) );
 
-        ( ( AbstractBTree<K, V> ) btree ).setRootPage( rootPage );
+        ( ( BTreeImpl<K, V> ) btree ).setRootPage( rootPage );
 
         return btree;
     }
 
 
     @SuppressWarnings("unchecked")
-    private Page<K, V> attachNodes( List<Page<K, V>> children, BTree<K, V> btree ) throws IOException
+    private Page<K, V> attachNodes( WriteTransaction transaction, List<Page<K, V>> children, BTree<K, V> btree ) throws IOException
     {
         if ( children.size() == 1 )
         {
             return children.get( 0 );
         }
 
-        List<Page<K, V>> lstNodes = new ArrayList<Page<K, V>>();
+        List<Page<K, V>> lstNodes = new ArrayList<>();
 
         int numChildren = numKeysInNode + 1;
 
-        Node<K, V> node = ( Node<K, V> ) BTreeFactory.createNode( btree, 0, numKeysInNode );
+        Node<K, V> node = ( Node<K, V> ) BTreeFactory.createNode( btree, transaction.getRevision(), numKeysInNode );
         lstNodes.add( node );
         int i = 0;
         int totalNodes = 0;
@@ -179,9 +180,9 @@ public class BTreeBuilder<K, V>
             {
                 i = 0;
 
-                rm.writePage( btree, node, 1 );
+                rm.writePage( transaction, btree, node, 1 );
 
-                node = ( Node<K, V> ) BTreeFactory.createNode( btree, 0, numKeysInNode );
+                node = ( Node<K, V> ) BTreeFactory.createNode( btree, transaction.getRevision(), numKeysInNode );
                 lstNodes.add( node );
             }
         }
@@ -189,23 +190,23 @@ public class BTreeBuilder<K, V>
         // remove null keys and values from the last node and resize
         AbstractPage<K, V> lastNode = ( AbstractPage<K, V> ) lstNodes.get( lstNodes.size() - 1 );
 
-        for ( int j = 0; j < lastNode.getNbElems(); j++ )
+        for ( int j = 0; j < lastNode.getNbPageElems(); j++ )
         {
             if ( lastNode.getKey( j ) == null )
             {
                 int n = j;
-                lastNode.setNbElems( n );
+                lastNode.setNbPageElems( n );
                 KeyHolder<K>[] keys = lastNode.getKeys();
 
                 lastNode.setKeys( ( KeyHolder[] ) Array.newInstance( KeyHolder.class, n ) );
                 System.arraycopy( keys, 0, lastNode.getKeys(), 0, n );
 
-                rm.writePage( btree, lastNode, 1 );
+                rm.writePage( transaction, btree, lastNode, 1 );
 
                 break;
             }
         }
 
-        return attachNodes( lstNodes, btree );
+        return attachNodes( transaction, lstNodes, btree );
     }
 }

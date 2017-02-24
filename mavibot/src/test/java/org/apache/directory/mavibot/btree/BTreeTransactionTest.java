@@ -82,9 +82,6 @@ public class BTreeTransactionTest
         recordManagerNoTxn.close();
         recordManagerTxn.close();
         
-        assertTrue( recordManagerNoTxn.isContextOk() );
-        assertTrue( recordManagerTxn.isContextOk() );
-
         if ( dataDirNoTxn.exists() )
         {
             FileUtils.deleteDirectory( dataDirNoTxn );
@@ -118,12 +115,12 @@ public class BTreeTransactionTest
             // load the last created btree
             if ( btreeWithTransactions != null )
             {
-                btreeWithTransactions = recordManagerTxn.getManagedTree( btreeWithTransactions.getName() );
+                btreeWithTransactions = recordManagerTxn.getBtree( btreeWithTransactions.getName() );
             }
 
             if ( btreeNoTransactions != null )
             {
-                btreeNoTransactions = recordManagerNoTxn.getManagedTree( btreeNoTransactions.getName() );
+                btreeNoTransactions = recordManagerNoTxn.getBtree( btreeNoTransactions.getName() );
             }
         }
         catch ( Exception e )

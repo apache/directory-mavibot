@@ -31,9 +31,7 @@ package org.apache.directory.mavibot.btree;
 /* No qualifier*/class NotPresentResult<K, V> extends AbstractResult<K, V> implements DeleteResult<K, V>
 {
     /** The unique instance for this class */
-    @SuppressWarnings("rawtypes")
-    public static final NotPresentResult NOT_PRESENT = new NotPresentResult();
-
+    public static final NotPresentResult NOT_PRESENT = new NotPresentResult<>();
 
     /**
      * A private void constructor, as we won't have any other instance.
@@ -47,6 +45,7 @@ package org.apache.directory.mavibot.btree;
     /**
      * {@inheritDoc}
      */
+    @Override
     public Page<K, V> getModifiedPage()
     {
         return null;
@@ -56,6 +55,7 @@ package org.apache.directory.mavibot.btree;
     /**
      * {@inheritDoc}
      */
+    @Override
     public Tuple<K, V> getRemovedElement()
     {
         return null;

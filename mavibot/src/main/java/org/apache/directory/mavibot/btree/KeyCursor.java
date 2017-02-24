@@ -51,7 +51,7 @@ public class KeyCursor<K>
     protected int depth = 0;
 
     /** The transaction used for this cursor */
-    protected ReadTransaction<K, K> transaction;
+    protected ReadTransaction transaction;
 
 
     /**
@@ -68,7 +68,7 @@ public class KeyCursor<K>
      * @param transaction The transaction this operation is protected by
      * @param stack The stack of parent's from root to this page
      */
-    public KeyCursor( ReadTransaction<K, K> transaction, ParentPos<K, K>[] stack, int depth )
+    public KeyCursor( ReadTransaction transaction, ParentPos<K, K>[] stack, int depth )
     {
         this.transaction = transaction;
         this.stack = stack;
@@ -96,12 +96,12 @@ public class KeyCursor<K>
             if ( child != null )
             {
                 parentPos.page = child;
-                parentPos.pos = child.getNbElems();
+                parentPos.pos = child.getNbPageElems();
             }
             else
             {
                 // We have N+1 children if the page is a Node, so we don't decrement the nbElems field
-                parentPos.pos = parentPos.page.getNbElems();
+                parentPos.pos = parentPos.page.getNbPageElems();
             }
 
             child = ( ( AbstractPage<K, K> ) parentPos.page ).getPage( parentPos.pos );
@@ -112,12 +112,12 @@ public class KeyCursor<K>
 
         if ( child == null )
         {
-            parentPos.pos = parentPos.page.getNbElems() - 1;
+            parentPos.pos = parentPos.page.getNbPageElems() - 1;
         }
         else
         {
             parentPos.page = child;
-            parentPos.pos = child.getNbElems() - 1;
+            parentPos.pos = child.getNbPageElems() - 1;
         }
 
         parentPos.pos = AFTER_LAST;
@@ -195,7 +195,7 @@ public class KeyCursor<K>
             return true;
         }
 
-        if ( parentPos.pos < parentPos.page.getNbElems() - 1 )
+        if ( parentPos.pos < parentPos.page.getNbPageElems() - 1 )
         {
             // Not the last position, we have a next key
             return true;
@@ -210,7 +210,7 @@ public class KeyCursor<K>
             {
                 parentPos = stack[currentDepth];
 
-                if ( parentPos.pos < parentPos.page.getNbElems() )
+                if ( parentPos.pos < parentPos.page.getNbPageElems() )
                 {
                     // The parent has some remaining keys on the right, get out
                     return true;
@@ -250,7 +250,7 @@ public class KeyCursor<K>
             throw new NoSuchElementException( "No more keys present" );
         }
 
-        if ( parentPos.pos == parentPos.page.getNbElems() )
+        if ( parentPos.pos == parentPos.page.getNbPageElems() )
         {
             // End of the leaf. We have to go back into the stack up to the
             // parent, and down to the leaf
@@ -272,7 +272,7 @@ public class KeyCursor<K>
         }
         else
         {
-            if ( parentPos.pos == parentPos.page.getNbElems() - 1 )
+            if ( parentPos.pos == parentPos.page.getNbPageElems() - 1 )
             {
                 parentPos = findNextParentPos();
                 
@@ -327,7 +327,7 @@ public class KeyCursor<K>
             return false;
         }
 
-        if ( parentPos.pos == ( parentPos.page.getNbElems() - 1 ) )
+        if ( parentPos.pos == ( parentPos.page.getNbPageElems() - 1 ) )
         {
             // End of the leaf. We have to go back into the stack up to the
             // parent, and down to the next leaf
@@ -432,7 +432,7 @@ public class KeyCursor<K>
         // Deal with the AfterLast case
         if ( parentPos.pos == AFTER_LAST )
         {
-            parentPos.pos = parentPos.page.getNbElems() - 1;
+            parentPos.pos = parentPos.page.getNbPageElems() - 1;
         }
         else
         {
@@ -538,7 +538,7 @@ public class KeyCursor<K>
             // is not the last one
             ParentPos<K, K> parentPos = stack[currentDepth];
 
-            if ( parentPos.pos + 1 > parentPos.page.getNbElems() )
+            if ( parentPos.pos + 1 > parentPos.page.getNbPageElems() )
             {
                 // No more element on the right : go up
                 currentDepth--;
@@ -588,7 +588,7 @@ public class KeyCursor<K>
             // is not the last one
             ParentPos<K, K> parentPos = stack[currentDepth];
 
-            if ( parentPos.pos + 1 > parentPos.page.getNbElems() )
+            if ( parentPos.pos + 1 > parentPos.page.getNbPageElems() )
             {
                 // No more element on the right : go up
                 currentDepth--;
@@ -663,14 +663,14 @@ public class KeyCursor<K>
                 {
                     currentDepth++;
                     parentPos = stack[currentDepth];
-                    parentPos.pos = child.getNbElems();
+                    parentPos.pos = child.getNbPageElems();
                     parentPos.page = child;
-                    child = ( ( AbstractPage<K, K> ) parentPos.page ).getPage( parentPos.page.getNbElems() );
+                    child = ( ( AbstractPage<K, K> ) parentPos.page ).getPage( parentPos.page.getNbPageElems() );
                 }
 
                 // and the leaf
                 parentPos = stack[depth];
-                parentPos.pos = child.getNbElems() - 1;
+                parentPos.pos = child.getNbPageElems() - 1;
                 parentPos.page = child;
 
                 return parentPos;
@@ -720,7 +720,7 @@ public class KeyCursor<K>
                 while ( currentDepth < depth - 1 )
                 {
                     currentDepth++;
-                    child = ( ( AbstractPage<K, K> ) child ).getPage( child.getNbElems() );
+                    child = ( ( AbstractPage<K, K> ) child ).getPage( child.getNbPageElems() );
                 }
 
                 return true;
@@ -736,7 +736,7 @@ public class KeyCursor<K>
      */
     public void close()
     {
-        transaction.close();
+        //transaction.close();
     }
 
 

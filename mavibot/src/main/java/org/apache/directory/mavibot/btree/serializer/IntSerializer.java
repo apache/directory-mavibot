@@ -82,6 +82,7 @@ public class IntSerializer extends AbstractElementSerializer<Integer>
      * @param in The byte array containing the Integer
      * @return An Integer
      */
+    @Override
     public Integer fromBytes( byte[] in )
     {
         return deserialize( in, 0 );
@@ -94,6 +95,7 @@ public class IntSerializer extends AbstractElementSerializer<Integer>
      * @param start the position in the byte[] we will deserialize the int from
      * @return An Integer
      */
+    @Override
     public Integer fromBytes( byte[] in, int start )
     {
         if ( ( in == null ) || ( in.length < 4 + start ) )
@@ -111,6 +113,7 @@ public class IntSerializer extends AbstractElementSerializer<Integer>
     /**
      * {@inheritDoc}
      */
+    @Override
     public Integer deserialize( ByteBuffer buffer ) throws IOException
     {
         return buffer.getInt();
@@ -120,6 +123,7 @@ public class IntSerializer extends AbstractElementSerializer<Integer>
     /**
      * {@inheritDoc}
      */
+    @Override
     public Integer deserialize( BufferHandler bufferHandler ) throws IOException
     {
         byte[] in = bufferHandler.read( 4 );

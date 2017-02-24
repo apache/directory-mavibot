@@ -20,148 +20,72 @@
 package org.apache.directory.mavibot.btree;
 
 
+import java.io.Closeable;
 import java.util.Date;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 
 /**
- * The Transaction is used to protect the BTree against concurrent modification,
- * and insure that a read is always done against one single revision. It's also
- * used to gather many modifications under one single revision, if needed.
- * <p/>
- * A Transaction should be closed when the user is done with it, otherwise the
+ * A read transaction is used to insure that reads are always done against 
+ * one single revision.
+ * <br>
+ * A read transaction should be closed when the user is done with it, otherwise the
  * pages associated with the given revision, and all the referenced pages, will
- * remain on the storage.
+ * remain on the storage. 
  * <p/>
  * A Transaction can be hold for quite a long time, for instance while doing
- * a browse against a big BTree. At some point, transactions which are pending
- * for too long will be closed by the transaction manager.
+ * a browse against a big b-tree. At some point, transactions which are pending
+ * for too long will be closed by the transaction manager (the default is to keep a 
+ * read transaction opened for 30 s). If one need to keep a read transaction opened
+ * for a longer time, pass a longer timeout to the constructor. 
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
- *
- * @param <K> The type for the Key
- * @param <V> The type for the stored value
  */
-public class ReadTransaction<K, V>
+public class ReadTransaction extends AbstractTransaction implements Closeable
 {
-    /** The associated revision */
-    private long revision;
-
-    /** The date of creation */
-    private long creationDate;
-
-    /** The associated B-tree header */
-    private BTreeHeader<K, V> btreeHeader;
-
-    /** A flag used to tell if a transaction is closed or not */
-    private volatile boolean closed;
-    
-    /** The list of read transactions being executed */
-    private ConcurrentLinkedQueue<ReadTransaction<K, V>> readTransactions;
-
-    /** The reference to the recordManager, if any */
-    private RecordManager recordManager;
-    
     /**
-     * Creates a new transaction instance
+     * Creates a new read transaction, with a default 30 seconds timeout.
      *
-     * @param btreeHeader The BtreeHeader we will use for this read transaction
+     * @param recordManager The associated RecordManager
      */
-    public ReadTransaction( RecordManager recordManager, BTreeHeader<K, V> btreeHeader, ConcurrentLinkedQueue<ReadTransaction<K, V>> readTransactions )
+    /* No qualifier*/ ReadTransaction( RecordManager recordManager )
     {
-        if ( btreeHeader != null )
-        {
-            this.revision = btreeHeader.getRevision();
-            this.creationDate = System.currentTimeMillis();
-            this.btreeHeader = btreeHeader;
-            this.recordManager = recordManager;
-            closed = false;
-        }
-        
-        this.readTransactions = readTransactions;
+        super( recordManager );
     }
     
-    
     /**
-     * Creates a new transaction instance
+     * Creates a new read transaction, with a specific tiemout.
      *
-     * @param btreeHeader The BtreeHeader we will use for this read transaction
+     * @param recordManager The associated RecordManager
+     * @param timeout The transaction's timeout
      */
-    public ReadTransaction( BTreeHeader<K, V> btreeHeader, ConcurrentLinkedQueue<ReadTransaction<K, V>> readTransactions )
+    /* No qualifier*/ ReadTransaction( RecordManager recordManager, long timeout )
     {
-        if ( btreeHeader != null )
-        {
-            this.revision = btreeHeader.getRevision();
-            this.creationDate = System.currentTimeMillis();
-            this.btreeHeader = btreeHeader;
-            closed = false;
-        }
-        
-        this.readTransactions = readTransactions;
-    }
-
-
-    /**
-     * @return the associated revision
-     */
-    public long getRevision()
-    {
-        return revision;
-    }
-
-
-    /**
-     * @return the creationDate
-     */
-    public long getCreationDate()
-    {
-        return creationDate;
-    }
-
-
-    /**
-     * @return the btreeHeader
-     */
-    public BTreeHeader<K, V> getBtreeHeader()
-    {
-        return btreeHeader;
-    }
-
-
-    /**
-     * Close the transaction, releasing the revision it was using.
-     */
-    public void close()
-    {
-        closed = true;
-        
-        // Remove the transaction from the list of opened transactions
-        readTransactions.remove( this );
-        
-        // and push the 
-        if ( recordManager != null )
-        {
-            recordManager.releaseTransaction( this );
-        }
-        
-        // Now, get back the copied pages
-    }
-
-
-    /**
-     * @return true if this transaction has been closed
-     */
-    public boolean isClosed()
-    {
-        return closed;
+        super( recordManager, timeout );
     }
 
 
     /**
      * @see Object#toString()
      */
+    @Override
     public String toString()
     {
-        return "Transaction[" + revision + ":" + new Date( creationDate ) + ", closed :" + closed + "]";
+        StringBuilder sb = new StringBuilder();
+        
+        sb.append( "ReadTransaction[" );
+        sb.append( getRevision() );
+        sb.append( ", " );
+        sb.append( new Date( getCreationDate() ) );
+        sb.append( ", " );
+        sb.append( getTimeout() );
+        
+        if ( isClosed() )
+        {
+            sb.append( ", CLOSED" );
+        }
+        
+        sb.append( "]" );
+        
+        return sb.toString();
     }
 }

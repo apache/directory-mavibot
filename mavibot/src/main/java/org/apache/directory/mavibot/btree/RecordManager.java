@@ -36,6 +36,7 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -57,7 +58,7 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * The RecordManager is used to manage the file in which we will store the B-trees.
+ * The RecordManager is used to manage the file in which we will store the b-trees.
  * A RecordManager will manage more than one B-tree.<br/>
  *
  * It stores data in fixed size pages (default size is 512 bytes), which may be linked one to
@@ -65,7 +66,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public class RecordManager extends AbstractTransactionManager
+public class RecordManager implements TransactionManager
 {
     /** The LoggerFactory used by this class */
     protected static final Logger LOG = LoggerFactory.getLogger( RecordManager.class );
@@ -73,7 +74,7 @@ public class RecordManager extends AbstractTransactionManager
     /** The LoggerFactory used to trace TXN operations */
     protected static final Logger TXN_LOG = LoggerFactory.getLogger( "TXN_LOG" );
 
-    /** The LoggerFactory used by this class */
+    /** The LoggerFactory used for Pages operations logging */
     protected static final Logger LOG_PAGES = LoggerFactory.getLogger( "org.apache.directory.mavibot.LOG_PAGES" );
 
     /** A dedicated logger for the check */
@@ -84,20 +85,17 @@ public class RecordManager extends AbstractTransactionManager
 
     /** The channel used to read and write data */
     /* no qualifier */FileChannel fileChannel;
-
-    /** The number of managed B-trees */
-    /* no qualifier */int nbBtree;
-
-    /** The first and last free page */
-    /* no qualifier */long firstFreePage;
+    
+    /** The RecordManager header */
+    private AtomicReference<RecordManagerHeader> recordManagerHeaderReference = new AtomicReference<>();
 
     /** Some counters to track the number of free pages */
-    public AtomicLong nbFreedPages = new AtomicLong( 0 );
-    public AtomicLong nbCreatedPages = new AtomicLong( 0 );
-    public AtomicLong nbReusedPages = new AtomicLong( 0 );
-    public AtomicLong nbUpdateRMHeader = new AtomicLong( 0 );
-    public AtomicLong nbUpdateBtreeHeader = new AtomicLong( 0 );
-    public AtomicLong nbUpdatePageIOs = new AtomicLong( 0 );
+    private AtomicLong nbFreedPages = new AtomicLong( 0 );
+    private AtomicLong nbCreatedPages = new AtomicLong( 0 );
+    private AtomicLong nbReusedPages = new AtomicLong( 0 );
+    private AtomicLong nbUpdateRMHeader = new AtomicLong( 0 );
+    private AtomicLong nbUpdateBtreeHeader = new AtomicLong( 0 );
+    private AtomicLong nbUpdatePageIOs = new AtomicLong( 0 );
 
     /**
      * A B-tree used to manage the page that has been copied in a new version.
@@ -126,26 +124,23 @@ public class RecordManager extends AbstractTransactionManager
     private static final int MIN_PAGE_SIZE = 64;
 
     /** The RecordManager header size */
-    /* no qualifier */static int RECORD_MANAGER_HEADER_SIZE = DEFAULT_PAGE_SIZE;
+    /* no qualifier */static int recordManagerHeaderSize = DEFAULT_PAGE_SIZE;
 
     /** A global buffer used to store the RecordManager header */
-    private ByteBuffer RECORD_MANAGER_HEADER_BUFFER;
+    private ByteBuffer recordManagerHeaderBuffer;
 
     /** A static buffer used to store the RecordManager header */
-    private byte[] RECORD_MANAGER_HEADER_BYTES;
+    private byte[] recordManagerHeaderBytes;
 
     /** The length of an Offset, as a negative value */
     //private byte[] LONG_LENGTH = new byte[]
     //    { ( byte ) 0xFF, ( byte ) 0xFF, ( byte ) 0xFF, ( byte ) 0xF8 };
 
-    /** The RecordManager underlying page size. */
-    /* no qualifier */int pageSize = DEFAULT_PAGE_SIZE;
-
     /** The set of managed B-trees */
     private Map<String, BTree<Object, Object>> managedBtrees;
 
     /** The queue of recently closed transactions */
-    private Queue<RevisionName> closedTransactionsQueue = new LinkedBlockingQueue<RevisionName>();
+    private Queue<RevisionName> closedTransactionsQueue = new LinkedBlockingQueue<>();
 
     /** The default file name */
     private static final String DEFAULT_FILE_NAME = "mavibot.db";
@@ -168,35 +163,23 @@ public class RecordManager extends AbstractTransactionManager
     /** The CopiedPages management btree name */
     /* no qualifier */static final String COPIED_PAGE_BTREE_NAME = "_copiedPageBtree_";
 
-    /** The current B-tree of B-trees header offset */
-    /* no qualifier */long currentBtreeOfBtreesOffset;
-
-    /** The previous B-tree of B-trees header offset */
-    private long previousBtreeOfBtreesOffset = NO_PAGE;
-
-    /** The offset on the current copied pages B-tree */
-    /* no qualifier */long currentCopiedPagesBtreeOffset = NO_PAGE;
-
-    /** The offset on the previous copied pages B-tree */
-    private long previousCopiedPagesBtreeOffset = NO_PAGE;
-
     /** A lock to protect the transaction handling */
     private ReentrantLock transactionLock = new ReentrantLock();
 
     /** A ThreadLocalStorage used to store the current transaction */
-    private static final ThreadLocal<Integer> CONTEXT = new ThreadLocal<Integer>();
+    private static final ThreadLocal<Integer> CONTEXT = new ThreadLocal<>();
 
     /** The list of PageIO that can be freed after a commit */
-    List<PageIO> freedPages = new ArrayList<PageIO>();
+    List<PageIO> freedPages = new ArrayList<>();
 
     /** The list of PageIO that can be freed after a roolback */
-    private List<PageIO> allocatedPages = new ArrayList<PageIO>();
+    private List<PageIO> allocatedPages = new ArrayList<>();
 
     /** A Map keeping the latest revisions for each managed BTree */
-    private Map<String, BTreeHeader<?, ?>> currentBTreeHeaders = new HashMap<String, BTreeHeader<?, ?>>();
+    private Map<String, BTreeHeader<?, ?>> currentBTreeHeaders = new HashMap<>();
 
     /** A Map storing the new revisions when some change have been made in some BTrees */
-    private Map<String, BTreeHeader<?, ?>> newBTreeHeaders = new HashMap<String, BTreeHeader<?, ?>>();
+    private Map<String, BTreeHeader<?, ?>> newBTreeHeaders = new HashMap<>();
 
     /** A lock to protect the BtreeHeader maps */
     private ReadWriteLock btreeHeadersLock = new ReentrantReadWriteLock();
@@ -221,12 +204,14 @@ public class RecordManager extends AbstractTransactionManager
     /* a flag used to disable the free page reclaimer (used for internal testing only) */
     private boolean disableReclaimer = false;
 
-    public Map<Long, Integer> writeCounter = new HashMap<Long, Integer>();
-    
-    private AtomicLong currentRevision = new AtomicLong( 0 );
+    public Map<Long, Integer> writeCounter = new HashMap<>();
     
     /** The transaction context */
     private TransactionContext context;
+
+    /** Hex chars */
+    private static final byte[] HEX_CHAR = new byte[]
+        { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
 
 
     /**
@@ -252,20 +237,26 @@ public class RecordManager extends AbstractTransactionManager
      */
     public RecordManager( String fileName, int pageSize )
     {
-        managedBtrees = new LinkedHashMap<String, BTree<Object, Object>>();
+        // Create the RMH
+        RecordManagerHeader recordManagerHeader = new RecordManagerHeader();
+        recordManagerHeaderReference.set( recordManagerHeader );
+        
+        // Create the map of managed b-trees
+        managedBtrees = new LinkedHashMap<>();
 
+        // The page size can't be lower than 512
         if ( pageSize < MIN_PAGE_SIZE )
         {
-            this.pageSize = MIN_PAGE_SIZE;
+            recordManagerHeader.pageSize = MIN_PAGE_SIZE;
         }
         else
         {
-            this.pageSize = pageSize;
+            recordManagerHeader.pageSize = pageSize;
         }
 
-        RECORD_MANAGER_HEADER_BUFFER = ByteBuffer.allocate( this.pageSize );
-        RECORD_MANAGER_HEADER_BYTES = new byte[this.pageSize];
-        RECORD_MANAGER_HEADER_SIZE = this.pageSize;
+        recordManagerHeaderBuffer = ByteBuffer.allocate( recordManagerHeader.pageSize );
+        recordManagerHeaderBytes = new byte[recordManagerHeader.pageSize];
+        recordManagerHeaderSize = recordManagerHeader.pageSize;
 
         // Open the file or create it
         File tmpFile = new File( fileName );
@@ -279,9 +270,11 @@ public class RecordManager extends AbstractTransactionManager
         // We have to create a new file, if it does not already exist
         boolean isNewFile = createFile( tmpFile );
 
+        // Create the file, or load it if it already exists
         try
         {
             RandomAccessFile randomFile = new RandomAccessFile( file, "rw" );
+            
             fileChannel = randomFile.getChannel();
 
             if ( isNewFile )
@@ -293,8 +286,9 @@ public class RecordManager extends AbstractTransactionManager
                 loadRecordManager();
             }
 
+            // Create the unused pages reclaimer
             reclaimer = new PageReclaimer( this );
-            runReclaimer();
+            //runReclaimer();
         }
         catch ( Exception e )
         {
@@ -321,8 +315,8 @@ public class RecordManager extends AbstractTransactionManager
             commitCount = 0;
             reclaimer.reclaim();
             // must update the headers after reclaim operation
-            updateRecordManagerHeader();
-            writeRecordManagerHeader();
+            RecordManagerHeader recordManagerHeader = recordManagerHeaderReference.get();
+            writeRecordManagerHeader( recordManagerHeader );
         }
         catch ( Exception e )
         {
@@ -391,76 +385,73 @@ public class RecordManager extends AbstractTransactionManager
     private void initRecordManager() throws IOException
     {
         // Create a new Header
-        nbBtree = 0;
-        firstFreePage = NO_PAGE;
-        currentBtreeOfBtreesOffset = NO_PAGE;
+        RecordManagerHeader recordManagerHeader = recordManagerHeaderReference.get();
+        recordManagerHeader.nbBtree = 0;
+        recordManagerHeader.firstFreePage = NO_PAGE;
+        recordManagerHeader.currentBtreeOfBtreesOffset = NO_PAGE;
+        recordManagerHeader.idCounter = 0L;
 
-        updateRecordManagerHeader();
-        writeRecordManagerHeader();
-
-        // First, create the btree of btrees <NameRevision, Long>
-        createBtreeOfBtrees();
-
-        // Now, initialize the Copied Page B-tree
-        createCopiedPagesBtree();
-
-        // Inject these B-trees into the RecordManager. They are internal B-trees.
-        try
+        writeRecordManagerHeader( recordManagerHeader );
+        
+        try ( WriteTransaction transaction = beginWriteTransaction() )
         {
-            beginTransaction();
-            writeManagementTree( btreeOfBtrees );
-            currentBtreeOfBtreesOffset = ((BTreeImpl<NameRevision, Long>)btreeOfBtrees).getBtreeOffset();
-
-            // The Copied Pages B-tree
-            writeManagementTree( copiedPageBtree );
-            currentCopiedPagesBtreeOffset = ((BTreeImpl<RevisionName, long[]>)copiedPageBtree).getBtreeOffset();
-
-            // And finally, commit the transaction
-            commit();
+            // First, create the btree of btrees <NameRevision, Long>
+            BTree<NameRevision, Long> btreeOfBtrees = createBtreeOfBtrees( transaction );
+    
+            // Now, create the Copied Page B-tree
+            BTree<RevisionName, long[]> copiedPagesBtree = createCopiedPagesBtree( transaction );
+    
+            // Inject these B-trees into the RecordManager. They are internal B-trees.
+            try
+            {
+                writeManagementTree( transaction, btreeOfBtrees );
+                transaction.recordManagerHeader.btreeOfBtrees = btreeOfBtrees;
+                transaction.recordManagerHeader.nbBtree++;
+                recordManagerHeader.btreeOfBtrees = btreeOfBtrees;
+    
+                // The Copied Pages B-tree
+                writeManagementTree( transaction, copiedPagesBtree );
+                transaction.recordManagerHeader.copiedPagesBtree = copiedPagesBtree;
+                transaction.recordManagerHeader.nbBtree++;
+                recordManagerHeader.copiedPagesBtree = copiedPagesBtree;
+            }
+            catch ( BTreeAlreadyManagedException bame )
+            {
+                transaction.abort();
+            }
         }
-        catch ( BTreeAlreadyManagedException btame )
-        {
-            // Can't happen here.
-        }
-
-        // We are all set ! Verify the file
-        if ( LOG_CHECK.isDebugEnabled() )
-        {
-            MavibotInspector.check( this );
-        }
-
     }
 
 
     /**
      * Create the B-treeOfBtrees
      */
-    private void createBtreeOfBtrees()
+    private BTree<NameRevision, Long> createBtreeOfBtrees( Transaction transaction )
     {
-        BTreeConfiguration<NameRevision, Long> configuration = new BTreeConfiguration<NameRevision, Long>();
+        BTreeConfiguration<NameRevision, Long> configuration = new BTreeConfiguration<>();
         configuration.setKeySerializer( NameRevisionSerializer.INSTANCE );
         configuration.setName( BTREE_OF_BTREES_NAME );
         configuration.setValueSerializer( LongSerializer.INSTANCE );
         configuration.setBtreeType( BTreeTypeEnum.BTREE_OF_BTREES );
         configuration.setCacheSize( BTreeImpl.DEFAULT_CACHE_SIZE );
 
-        btreeOfBtrees = BTreeFactory.createPersistedBTree( configuration );
+        return BTreeFactory.createBTree( transaction, configuration );
     }
 
 
     /**
      * Create the CopiedPagesBtree
      */
-    private void createCopiedPagesBtree()
+    private BTree<RevisionName, long[]> createCopiedPagesBtree( Transaction transaction )
     {
-        BTreeConfiguration<RevisionName, long[]> configuration = new BTreeConfiguration<RevisionName, long[]>();
+        BTreeConfiguration<RevisionName, long[]> configuration = new BTreeConfiguration<>();
         configuration.setKeySerializer( RevisionNameSerializer.INSTANCE );
         configuration.setName( COPIED_PAGE_BTREE_NAME );
         configuration.setValueSerializer( LongArraySerializer.INSTANCE );
         configuration.setBtreeType( BTreeTypeEnum.COPIED_PAGES_BTREE );
         configuration.setCacheSize( BTreeImpl.DEFAULT_CACHE_SIZE );
 
-        copiedPageBtree = BTreeFactory.createPersistedBTree( configuration );
+        return BTreeFactory.createBTree( transaction, configuration );
     }
 
 
@@ -478,14 +469,16 @@ public class RecordManager extends AbstractTransactionManager
     private void loadRecordManager() throws IOException, ClassNotFoundException, IllegalAccessException,
         InstantiationException, IllegalArgumentException, SecurityException, NoSuchFieldException, KeyNotFoundException, CursorException
     {
+        RecordManagerHeader recordManagerHeader = recordManagerHeaderReference.get();
+        
         if ( fileChannel.size() != 0 )
         {
-            ByteBuffer recordManagerHeader = ByteBuffer.allocate( RECORD_MANAGER_HEADER_SIZE );
+            ByteBuffer rmhBytes = ByteBuffer.allocate( recordManagerHeaderSize );
 
             // The file exists, we have to load the data now
-            fileChannel.read( recordManagerHeader );
+            fileChannel.read( rmhBytes );
 
-            recordManagerHeader.rewind();
+            rmhBytes.rewind();
 
             // read the RecordManager Header :
             // +---------------------+
@@ -493,124 +486,174 @@ public class RecordManager extends AbstractTransactionManager
             // +---------------------+
             // | NbTree              | 4 bytes : The number of managed B-trees (at least 1)
             // +---------------------+
+            // | Revision            | 8 bytes : The current revision
+            // +---------------------+
             // | FirstFree           | 8 bytes : The offset of the first free page
             // +---------------------+
-            // | current BoB offset  | 8 bytes : The offset of the current B-tree of B-trees
+            // | BoB offset          | 8 bytes : The offset of the current B-tree of B-trees
             // +---------------------+
-            // | previous BoB offset | 8 bytes : The offset of the previous B-tree of B-trees
-            // +---------------------+
-            // | current CP offset   | 8 bytes : The offset of the current Copied Pages B-tree
-            // +---------------------+
-            // | previous CP offset  | 8 bytes : The offset of the previous Copied Pages B-tree
+            // | CPB offset          | 8 bytes : The offset of the current Copied Pages B-tree
             // +---------------------+
 
             // The page size
-            pageSize = recordManagerHeader.getInt();
+            recordManagerHeader.pageSize = rmhBytes.getInt();
 
             // The number of managed B-trees
-            nbBtree = recordManagerHeader.getInt();
+            recordManagerHeader.nbBtree = rmhBytes.getInt();
 
-            // The first and last free page
-            firstFreePage = recordManagerHeader.getLong();
+            // The current revision
+            recordManagerHeader.revision = rmhBytes.getLong();
+
+            // The first free page
+            recordManagerHeader.firstFreePage = rmhBytes.getLong();
 
             // Read all the free pages
             checkFreePages();
 
-            // The current BOB offset
-            currentBtreeOfBtreesOffset = recordManagerHeader.getLong();
-
-            // The previous BOB offset
-            previousBtreeOfBtreesOffset = recordManagerHeader.getLong();
+            // The BOB offset
+            recordManagerHeader.currentBtreeOfBtreesOffset = rmhBytes.getLong();
 
             // The current Copied Pages B-tree offset
-            currentCopiedPagesBtreeOffset = recordManagerHeader.getLong();
-
-            // The previous Copied Pages B-tree offset
-            previousCopiedPagesBtreeOffset = recordManagerHeader.getLong();
+            recordManagerHeader.currentCopiedPagesBtreeOffset = rmhBytes.getLong();
+            
+            // Set the last offset, which is the file's size
+            recordManagerHeader.lastOffset = fileChannel.size();
 
             // read the B-tree of B-trees
-            PageIO[] bobHeaderPageIos = readPageIOs( currentBtreeOfBtreesOffset, Long.MAX_VALUE );
+            try ( Transaction transaction = beginReadTransaction() )
+            {
+                PageIO[] bobHeaderPageIos = readPageIOs( recordManagerHeader, recordManagerHeader.currentBtreeOfBtreesOffset, Long.MAX_VALUE );
+    
+                recordManagerHeader.btreeOfBtrees = BTreeFactory.<NameRevision, Long> createBTree( BTreeTypeEnum.BTREE_OF_BTREES );
+                ( ( BTreeImpl<NameRevision, Long> ) recordManagerHeader.btreeOfBtrees ).setRecordManagerHeader( transaction.getRecordManagerHeader() );
+    
+                loadBtree( transaction, bobHeaderPageIos, recordManagerHeader.btreeOfBtrees );
 
-            btreeOfBtrees = BTreeFactory.<NameRevision, Long> createPersistedBTree( BTreeTypeEnum.BTREE_OF_BTREES );
-
-            loadBtree( bobHeaderPageIos, btreeOfBtrees );
-
-            // read the copied page B-tree
-            PageIO[] copiedPagesPageIos = readPageIOs( currentCopiedPagesBtreeOffset, Long.MAX_VALUE );
-
-            copiedPageBtree = BTreeFactory
-                .<RevisionName, long[]> createPersistedBTree( BTreeTypeEnum.COPIED_PAGES_BTREE );
-
-            loadBtree( copiedPagesPageIos, copiedPageBtree );
+                // read the copied page B-tree
+                PageIO[] copiedPagesPageIos = readPageIOs( recordManagerHeader, recordManagerHeader.currentCopiedPagesBtreeOffset, Long.MAX_VALUE );
+    
+                recordManagerHeader.copiedPagesBtree = BTreeFactory.<RevisionName, long[]> createBTree( BTreeTypeEnum.COPIED_PAGES_BTREE );
+                ( ( BTreeImpl<RevisionName, long[]> ) recordManagerHeader.copiedPagesBtree ).setRecordManagerHeader( transaction.getRecordManagerHeader() );
+    
+                loadBtree( transaction, copiedPagesPageIos, recordManagerHeader.copiedPagesBtree );
+            }
 
             // Now, read all the B-trees from the btree of btrees
-            TupleCursor<NameRevision, Long> btreeCursor = btreeOfBtrees.browse();
-            Map<String, Long> loadedBtrees = new HashMap<String, Long>();
-
-            // loop on all the btrees we have, and keep only the latest revision
-            long currentRevision = -1L;
-
-            while ( btreeCursor.hasNext() )
+            /*
+            Transaction transaction = beginReadTransaction();
+            Map<String, Long> loadedBtrees = new HashMap<>();
+            
+            try
             {
-                Tuple<NameRevision, Long> btreeTuple = btreeCursor.next();
-                NameRevision nameRevision = btreeTuple.getKey();
-                long btreeOffset = btreeTuple.getValue();
-                long revision = nameRevision.getValue();
-
-                // Check if we already have processed this B-tree
-                Long loadedBtreeRevision = loadedBtrees.get( nameRevision.getName() );
-
-                if ( loadedBtreeRevision != null )
+                TupleCursor<NameRevision, Long> btreeCursor = btreeOfBtrees.browse( transaction );
+    
+                // loop on all the btrees we have, and keep only the latest revision
+                long currentRevision = -1L;
+    
+                while ( btreeCursor.hasNext() )
                 {
-                    // The btree has already been loaded. The revision is necessarily higher
-                    if ( revision > currentRevision )
+                    Tuple<NameRevision, Long> btreeTuple = btreeCursor.next();
+                    NameRevision nameRevision = btreeTuple.getKey();
+                    long btreeOffset = btreeTuple.getValue();
+                    long revision = nameRevision.getValue();
+    
+                    // Check if we already have processed this B-tree
+                    Long loadedBtreeRevision = loadedBtrees.get( nameRevision.getName() );
+    
+                    if ( loadedBtreeRevision != null )
                     {
-                        // We have a newer revision : switch to the new revision (we keep the offset atm)
+                        // The btree has already been loaded. The revision is necessarily higher
+                        if ( revision > currentRevision )
+                        {
+                            // We have a newer revision : switch to the new revision (we keep the offset atm)
+                            loadedBtrees.put( nameRevision.getName(), btreeOffset );
+                            currentRevision = revision;
+                        }
+                    }
+                    else
+                    {
+                        // This is a new B-tree
                         loadedBtrees.put( nameRevision.getName(), btreeOffset );
-                        currentRevision = revision;
+                        currentRevision = nameRevision.getRevision();
                     }
                 }
-                else
-                {
-                    // This is a new B-tree
-                    loadedBtrees.put( nameRevision.getName(), btreeOffset );
-                    currentRevision = nameRevision.getRevision();
-                }
+            }
+            finally
+            {
+                transaction.commit();
             }
 
             // TODO : clean up the old revisions...
 
             // Now, we can load the real btrees using the offsets
-            for ( String btreeName : loadedBtrees.keySet() )
+            for ( Map.Entry<String, Long> loadedBtree : loadedBtrees.entrySet() )
             {
-                long btreeOffset = loadedBtrees.get( btreeName );
+                long btreeOffset = loadedBtree.getValue();
 
                 PageIO[] btreePageIos = readPageIOs( btreeOffset, Long.MAX_VALUE );
 
                 BTree<?, ?> btree = BTreeFactory.<NameRevision, Long> createPersistedBTree();
-                //( ( PersistedBTree<NameRevision, Long> ) btree ).setBtreeHeaderOffset( btreeOffset );
                 loadBtree( btreePageIos, btree );
 
                 // Add the btree into the map of managed B-trees
-                managedBtrees.put( btreeName, ( BTree<Object, Object> ) btree );
+                managedBtrees.put( loadedBtree.getKey(), ( BTree<Object, Object> ) btree );
             }
+            */
         }
+    }
+
+    
+    private <K, V> BTree<K, V> readBTree( Transaction transaction, long btreeOffset ) throws NoSuchFieldException, InstantiationException, EndOfFileExceededException,
+        IOException, IllegalAccessException, ClassNotFoundException
+    {
+        PageIO[] btreePageIos = readPageIOs( transaction.getRecordManagerHeader(), btreeOffset, Long.MAX_VALUE );
+
+        BTree<K, V> btree = BTreeFactory.<K, V> createBTree();
+        loadBtree( transaction, btreePageIos, btree );
+        
+        return btree;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Transaction beginReadTransaction()
+    {
+        return beginReadTransaction( Transaction.DEFAULT_TIMEOUT );
     }
 
 
     /**
-     * Starts a transaction
+     * {@inheritDoc}
      */
-    public void beginTransaction()
+    @Override
+    public Transaction beginReadTransaction( long timeout )
     {
         if ( TXN_LOG.isDebugEnabled() )
         {
-            TXN_LOG.debug( "Begining a new transaction on thread {}, TxnLevel {}",
-                Thread.currentThread().getName(), getTxnLevel() );
+            TXN_LOG.debug( "Begining a new Read Transaction on thread {}",
+                Thread.currentThread().getName() );
+        }
+
+        return new ReadTransaction( this, timeout );
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public WriteTransaction beginWriteTransaction()
+    {
+        if ( TXN_LOG.isDebugEnabled() )
+        {
+            TXN_LOG.debug( "Begining a new write transaction on thread {}",
+                Thread.currentThread().getName() );
         }
 
         // First, take the lock if it's not already taken
-        if ( !( ( ReentrantLock ) transactionLock ).isHeldByCurrentThread() )
+        if ( !transactionLock.isHeldByCurrentThread() )
         {
             TXN_LOG.debug( "--> Lock taken" );
             transactionLock.lock();
@@ -620,295 +663,8 @@ public class RecordManager extends AbstractTransactionManager
             TXN_LOG.debug( "..o The current thread already holds the lock" );
         }
 
-        // Create the context 
-        try
-        {
-            context = new TransactionContext( fileChannel.size() , currentRevision.get() );
-        }
-        catch ( IOException ioe )
-        {
-            String name = Thread.currentThread().getName();
-            String err = "This thread, '" + name + "' cannot get the file size ";
-            TXN_LOG.error( err );
-            throw new RecordManagerException( err );
-        }
-        
-        // Now, check the TLS state
-        incrementTxnLevel();
-    }
-
-
-    /**
-     * Commits a transaction
-     */
-    public void commit()
-    {
-        // We *must* own the transactionLock
-        if ( !transactionLock.isHeldByCurrentThread() )
-        {
-            String name = Thread.currentThread().getName();
-            String err = "This thread, '" + name + "' does not hold the transactionLock ";
-            TXN_LOG.error( err );
-            throw new RecordManagerException( err );
-        }
-
-        if ( TXN_LOG.isDebugEnabled() )
-        {
-            TXN_LOG.debug( "Committing a transaction on thread {}, TxnLevel {}",
-                Thread.currentThread().getName(), getTxnLevel() );
-        }
-
-        if ( !fileChannel.isOpen() )
-        {
-            // Still we have to decrement the TransactionLevel
-            int txnLevel = decrementTxnLevel();
-
-            if ( txnLevel == 0 )
-            {
-                // We can safely release the lock
-                // The file has been closed, nothing remains to commit, let's get out
-                transactionLock.unlock();
-            }
-
-            return;
-        }
-
-        int nbTxnStarted = CONTEXT.get();
-
-        switch ( nbTxnStarted )
-        {
-            case ROLLBACKED_TXN:
-                // The transaction was rollbacked, quit immediatelly
-                transactionLock.unlock();
-
-                return;
-
-            case 1:
-                // First, write all the pageIos that are present in the context
-                Collection<WALObject> walObjects = context.getPages();
-                
-                try
-                {
-                    flushObjects( walObjects );
-                }
-                catch ( IOException ioe )
-                {
-                    
-                }
-                
-                // We are done with the transaction, we can update the RMHeader and swap the BTreeHeaders
-                // First update the RMHeader to be sure that we have a way to restore from a crash
-                updateRecordManagerHeader();
-                writeRecordManagerHeader();
-
-                // Swap the BtreeHeaders maps
-                swapCurrentBtreeHeaders();
-
-                // We can now free pages
-                for ( PageIO pageIo : freedPages )
-                {
-                    try
-                    {
-                        free( pageIo );
-                    }
-                    catch ( IOException ioe )
-                    {
-                        throw new RecordManagerException( ioe.getMessage() );
-                    }
-                }
-
-                // Release the allocated and freed pages list
-                freedPages.clear();
-                allocatedPages.clear();
-
-                // And update the RMHeader again, removing the old references to BOB and CPB b-tree headers
-                // here, we have to erase the old references to keep only the new ones.
-                updateRecordManagerHeader();
-                writeRecordManagerHeader();
-
-                commitCount++;
-
-                if ( commitCount >= pageReclaimerThreshold )
-                {
-                    runReclaimer();
-                }
-
-                // increment the revision
-                currentRevision.incrementAndGet();
-
-                // Finally, decrement the number of started transactions
-                // and release the global lock if possible
-                int txnLevel = decrementTxnLevel();
-
-
-                if ( txnLevel == 0 )
-                {
-                    transactionLock.unlock();
-                }
-
-                return;
-
-            default:
-                // We are inner an existing transaction. Just update the necessary elements
-                // Update the RMHeader to be sure that we have a way to restore from a crash
-                updateRecordManagerHeader();
-
-                // Swap the BtreeHeaders maps
-                //swapCurrentBtreeHeaders();
-
-                // We can now free pages
-                for ( PageIO pageIo : freedPages )
-                {
-                    try
-                    {
-                        free( pageIo );
-                    }
-                    catch ( IOException ioe )
-                    {
-                        throw new RecordManagerException( ioe.getMessage() );
-                    }
-                }
-
-                // Release the allocated and freed pages list
-                freedPages.clear();
-                allocatedPages.clear();
-
-                // And update the RMHeader again, removing the old references to BOB and CPB b-tree headers
-                // here, we have to erase the old references to keep only the new ones.
-                updateRecordManagerHeader();
-
-                commitCount++;
-
-                if ( commitCount >= pageReclaimerThreshold )
-                {
-                    runReclaimer();
-                }
-
-                // Finally, decrement the number of started transactions
-                // and release the global lock
-                txnLevel = decrementTxnLevel();
-
-                if ( txnLevel == 0 )
-                {
-                    transactionLock.unlock();
-                }
-
-                return;
-        }
-    }
-
-
-    public boolean isContextOk()
-    {
-        return ( CONTEXT == null ? true : ( CONTEXT.get() == 0 ) );
-    }
-
-
-    /**
-     * Get the transactionLevel, ie the number of encapsulated update ops
-     */
-    private int getTxnLevel()
-    {
-        Integer nbTxnLevel = CONTEXT.get();
-
-        if ( nbTxnLevel == null )
-        {
-            return -1;
-        }
-
-        return nbTxnLevel;
-    }
-
-
-    /**
-     * Increment the transactionLevel
-     */
-    private void incrementTxnLevel()
-    {
-        Integer nbTxnLevel = CONTEXT.get();
-
-        if ( nbTxnLevel == null )
-        {
-            CONTEXT.set( 1 );
-        }
-        else
-        {
-            // And increment the counter of inner txn.
-            CONTEXT.set( nbTxnLevel + 1 );
-        }
-
-        if ( TXN_LOG.isDebugEnabled() )
-        {
-            TXN_LOG.debug( "Incrementing the TxnLevel : {}", CONTEXT.get() );
-        }
-    }
-
-
-    /**
-     * Decrement the transactionLevel
-     */
-    private int decrementTxnLevel()
-    {
-        int nbTxnStarted = CONTEXT.get() - 1;
-
-        CONTEXT.set( nbTxnStarted );
-
-        if ( TXN_LOG.isDebugEnabled() )
-        {
-            TXN_LOG.debug( "Decrementing the TxnLevel : {}", CONTEXT.get() );
-        }
-
-        return nbTxnStarted;
-    }
-
-
-    /**
-     * Rollback a transaction
-     */
-    public void rollback()
-    {
-        // We *must* own the transactionLock
-        if ( !transactionLock.isHeldByCurrentThread() )
-        {
-            TXN_LOG.error( "This thread does not hold the transactionLock" );
-            throw new RecordManagerException( "This thread does not hold the transactionLock" );
-        }
-
-        if ( TXN_LOG.isDebugEnabled() )
-        {
-            TXN_LOG.debug( "Rollbacking a new transaction on thread {}, TxnLevel {}",
-                Thread.currentThread().getName(), getTxnLevel() );
-        }
-
-        // Reset the counter
-        CONTEXT.set( ROLLBACKED_TXN );
-
-        // We can now free allocated pages, this is the end of the transaction
-        for ( PageIO pageIo : allocatedPages )
-        {
-            try
-            {
-                free( pageIo );
-            }
-            catch ( IOException ioe )
-            {
-                throw new RecordManagerException( ioe.getMessage() );
-            }
-        }
-
-        // Release the allocated and freed pages list
-        freedPages.clear();
-        allocatedPages.clear();
-
-        // And update the RMHeader
-        updateRecordManagerHeader();
-
-        // And restore the BTreeHeaders new Map to the current state
-        revertBtreeHeaders();
-        
-        // This is an all-of-nothing operation : we can't have a transaction within
-        // a transaction that would survive an inner transaction rollback.
-        transactionLock.unlock();
+        // Create the transaction
+        return new WriteTransaction( this );
     }
 
 
@@ -920,7 +676,8 @@ public class RecordManager extends AbstractTransactionManager
      * @param limit The maximum bytes to read. Set this value to -1 when the size is unknown.
      * @return An array of pages
      */
-    /*no qualifier*/PageIO[] readPageIOs( long position, long limit ) throws IOException, EndOfFileExceededException
+    /*no qualifier*/PageIO[] readPageIOs( RecordManagerHeader recordManagerHeader, long position, long limit ) 
+        throws IOException, EndOfFileExceededException
     {
         LOG.debug( "Read PageIOs at position {}", position );
 
@@ -929,11 +686,11 @@ public class RecordManager extends AbstractTransactionManager
             limit = Long.MAX_VALUE;
         }
 
-        PageIO firstPage = fetchPage( position );
+        PageIO firstPage = fetchPage( recordManagerHeader, position );
         firstPage.setSize();
-        List<PageIO> listPages = new ArrayList<PageIO>();
+        List<PageIO> listPages = new ArrayList<>();
         listPages.add( firstPage );
-        long dataRead = pageSize - LONG_SIZE - INT_SIZE;
+        long dataRead = recordManagerHeader.pageSize - LONG_SIZE - INT_SIZE;
 
         // Iterate on the pages, if needed
         long nextPage = firstPage.getNextPage();
@@ -942,10 +699,10 @@ public class RecordManager extends AbstractTransactionManager
         {
             while ( dataRead < limit )
             {
-                PageIO page = fetchPage( nextPage );
+                PageIO page = fetchPage( recordManagerHeader, nextPage );
                 listPages.add( page );
                 nextPage = page.getNextPage();
-                dataRead += pageSize - LONG_SIZE;
+                dataRead += recordManagerHeader.pageSize - LONG_SIZE;
 
                 if ( nextPage == NO_PAGE )
                 {
@@ -968,14 +725,16 @@ public class RecordManager extends AbstractTransactionManager
      * <ul>
      * <li>It's >= 0</li>
      * <li>It's below the end of the file</li>
-     * <li>It's a multipl of the pageSize
+     * <li>It's a multiple of the pageSize
      * </ul>
      * @param offset The offset to check
      * @throws InvalidOffsetException If the offset is not valid
      */
     /* no qualifier */void checkOffset( long offset )
     {
-        if ( ( offset < 0 ) || ( offset > context.getLastOffset() ) || ( ( offset % pageSize ) != 0 ) )
+        RecordManagerHeader recordManagerHeader = recordManagerHeaderReference.get();
+        
+        if ( ( offset < 0 ) || ( offset > recordManagerHeader.lastOffset ) || ( ( offset % recordManagerHeader.pageSize ) != 0 ) )
         {
             throw new InvalidOffsetException( "Bad Offset : " + offset );
         }
@@ -995,11 +754,11 @@ public class RecordManager extends AbstractTransactionManager
      * @throws SecurityException
      * @throws IllegalArgumentException
      */
-    private <K, V> void loadBtree( PageIO[] pageIos, BTree<K, V> btree ) throws EndOfFileExceededException,
+    private <K, V> void loadBtree( Transaction transaction, PageIO[] pageIos, BTree<K, V> btree ) throws EndOfFileExceededException,
         IOException, ClassNotFoundException, IllegalAccessException, InstantiationException, IllegalArgumentException,
         SecurityException, NoSuchFieldException
     {
-        loadBtree( pageIos, btree, null );
+        loadBtree( transaction, pageIos, btree, null );
     }
 
 
@@ -1008,131 +767,92 @@ public class RecordManager extends AbstractTransactionManager
      * We load a B-tree in two steps : first, we load the B-tree header, then the common informations
      *
      * @param pageIos The list of pages containing the meta-data
-     * @param btree The B-tree we have to initialize
-     * @throws InstantiationException
-     * @throws IllegalAccessException
+     * @param btree The b-tree we have to initialize
+     * @throws IOException
      * @throws ClassNotFoundException
+     * @throws IllegalAccessException
+     * @throws InstantiationException
      * @throws NoSuchFieldException
-     * @throws SecurityException
-     * @throws IllegalArgumentException
      */
-    /* no qualifier */<K, V> void loadBtree( PageIO[] pageIos, BTree btree, BTree<K, V> parentBTree )
-        throws EndOfFileExceededException,
-        IOException, ClassNotFoundException, IllegalAccessException, InstantiationException, IllegalArgumentException,
-        SecurityException, NoSuchFieldException
+    /* no qualifier */<K, V> void loadBtree( Transaction transaction, PageIO[] pageIos, BTree<K, V> btree, BTree<K, V> parentBTree )
+        throws IOException, ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchFieldException
     {
+        RecordManagerHeader recordManagerHeader = transaction.getRecordManagerHeader();
         long dataPos = 0L;
 
         // Process the B-tree header
-        BTreeHeader<K, V> btreeHeader = new BTreeHeader<K, V>();
+        BTreeHeader<K, V> btreeHeader = new BTreeHeader<>();
         btreeHeader.setBtree( btree );
 
         // The BtreeHeader offset
-        btreeHeader.setBTreeHeaderOffset( pageIos[0].getOffset() );
+        btreeHeader.setOffset( pageIos[0].getOffset() );
+
+        // The B-tree header page ID
+        long id = readLong( recordManagerHeader, pageIos, dataPos );
+        btreeHeader.setId( id );
+        dataPos += LONG_SIZE;
 
         // The B-tree current revision
-        long revision = readLong( pageIos, dataPos );
+        long revision = readLong( recordManagerHeader, pageIos, dataPos );
         btreeHeader.setRevision( revision );
         dataPos += LONG_SIZE;
 
         // The nb elems in the tree
-        long nbElems = readLong( pageIos, dataPos );
+        long nbElems = readLong( recordManagerHeader, pageIos, dataPos );
         btreeHeader.setNbElems( nbElems );
         dataPos += LONG_SIZE;
 
-        // The B-tree rootPage offset
-        long rootPageOffset = readLong( pageIos, dataPos );
-        btreeHeader.setRootPageOffset( rootPageOffset );
+        // The b-tree rootPage offset
+        long rootPageOffset = readLong( recordManagerHeader, pageIos, dataPos );
         dataPos += LONG_SIZE;
 
         // The B-tree information offset
-        long btreeInfoOffset = readLong( pageIos, dataPos );
+        long btreeInfoOffset = readLong( recordManagerHeader, pageIos, dataPos );
 
         // Now, process the common informations
-        PageIO[] infoPageIos = readPageIOs( btreeInfoOffset, Long.MAX_VALUE );
-        ( ( BTreeImpl<K, V> ) btree ).setBtreeInfoOffset( infoPageIos[0].getOffset() );
+        PageIO[] infoPageIos = readPageIOs( recordManagerHeader, btreeInfoOffset, Long.MAX_VALUE );
         dataPos = 0L;
 
-        // The B-tree page size
-        int btreePageSize = readInt( infoPageIos, dataPos );
-        BTreeFactory.setPageSize( btree, btreePageSize );
+        // The B-tree page numbers of elements
+        int btreePageNbElem = readInt( recordManagerHeader, infoPageIos, dataPos );
+        BTreeFactory.setPageNbElem( btree, btreePageNbElem );
         dataPos += INT_SIZE;
 
         // The tree name
-        ByteBuffer btreeNameBytes = readBytes( infoPageIos, dataPos );
+        ByteBuffer btreeNameBytes = readBytes( recordManagerHeader, infoPageIos, dataPos );
         dataPos += INT_SIZE + btreeNameBytes.limit();
         String btreeName = Strings.utf8ToString( btreeNameBytes );
         BTreeFactory.setName( btree, btreeName );
 
         // The keySerializer FQCN
-        ByteBuffer keySerializerBytes = readBytes( infoPageIos, dataPos );
+        ByteBuffer keySerializerBytes = readBytes( recordManagerHeader, infoPageIos, dataPos );
         dataPos += INT_SIZE + keySerializerBytes.limit();
 
-        String keySerializerFqcn = "";
-
-        if ( keySerializerBytes != null )
-        {
-            keySerializerFqcn = Strings.utf8ToString( keySerializerBytes );
-        }
+        String keySerializerFqcn = Strings.utf8ToString( keySerializerBytes );
 
         BTreeFactory.setKeySerializer( btree, keySerializerFqcn );
 
         // The valueSerialier FQCN
-        ByteBuffer valueSerializerBytes = readBytes( infoPageIos, dataPos );
+        ByteBuffer valueSerializerBytes = readBytes( recordManagerHeader, infoPageIos, dataPos );
 
-        String valueSerializerFqcn = "";
-        dataPos += INT_SIZE + valueSerializerBytes.limit();
-
-        if ( valueSerializerBytes != null )
-        {
-            valueSerializerFqcn = Strings.utf8ToString( valueSerializerBytes );
-        }
+        String valueSerializerFqcn = Strings.utf8ToString( valueSerializerBytes );
 
         BTreeFactory.setValueSerializer( btree, valueSerializerFqcn );
 
-        // The B-tree allowDuplicates flag
-        // Set the recordManager in the btree
-        ( ( BTreeImpl<K, V> ) btree ).setRecordManager( this );
-
-        // Set the current revision to the one stored in the B-tree header
-        // Here, we have to tell the BTree to keep this revision in the
-        // btreeRevisions Map, thus the 'true' parameter at the end.
-        ( ( BTreeImpl<K, V> ) btree ).storeRevision( btreeHeader, true );
-
-        // Now, init the B-tree
-        ( ( BTreeImpl<K, V> ) btree ).init( parentBTree );
-
-        // Update the BtreeHeaders Maps
-        currentBTreeHeaders.put( btree.getName(), ( ( BTreeImpl<K, V> ) btree ).getBtreeHeader() );
-        newBTreeHeaders.put( btree.getName(), ( ( BTreeImpl<K, V> ) btree ).getBtreeHeader() );
+        // Update the BtreeHeader reference
+        ( ( BTreeImpl<K, V> ) btree ).setBtreeHeader( btreeHeader );
 
         // Read the rootPage pages on disk
-        PageIO[] rootPageIos = readPageIOs( rootPageOffset, Long.MAX_VALUE );
-
-        Page<K, V> btreeRoot = readPage( btree, rootPageIos );
+        PageIO[] rootPageIos = readPageIOs( recordManagerHeader, rootPageOffset, Long.MAX_VALUE );
         BTreeFactory.setRecordManager( btree, this );
 
+        Page<K, V> btreeRoot = readPage( transaction, btree, rootPageIos );
+
         BTreeFactory.setRootPage( btree, btreeRoot );
-    }
-
-
-    /**
-     * Deserialize a Page from a B-tree at a give position
-     *
-     * @param btree The B-tree we want to read a Page from
-     * @param offset The position in the file for this page
-     * @return The read page
-     * @throws EndOfFileExceededException If we have reached the end of the file while reading the page
-     */
-    public <K, V> Page<K, V> deserialize( BTree<K, V> btree, long offset ) throws EndOfFileExceededException,
-        IOException
-    {
-        checkOffset( offset );
-        PageIO[] rootPageIos = readPageIOs( offset, Long.MAX_VALUE );
-
-        Page<K, V> page = readPage( btree, rootPageIos );
-
-        return page;
+        
+        // And create the BTreeInfo page
+        BTreeInfo<K, V> btreeInfo = createBtreeInfo( btree );
+        ( ( BTreeImpl<K, V> ) btree ).setBtreeInfo( btreeInfo );
     }
 
 
@@ -1143,91 +863,62 @@ public class RecordManager extends AbstractTransactionManager
      * @return The read Page if successful
      * @throws IOException If the deserialization failed
      */
-    private <K, V> Page<K, V> readPage( BTree<K, V> btree, PageIO[] pageIos ) throws IOException
+    private <K, V> Page<K, V> readPage( Transaction transaction, BTree<K, V> btree, PageIO[] pageIos ) throws IOException
     {
-        // Deserialize the rootPage now
+        RecordManagerHeader recordManagerHeader = transaction.getRecordManagerHeader();
         long position = 0L;
 
         // The revision
-        long revision = readLong( pageIos, position );
+        long id = readLong( recordManagerHeader, pageIos, position );
+        position += LONG_SIZE;
+
+        // The revision
+        long revision = readLong( recordManagerHeader, pageIos, position );
         position += LONG_SIZE;
 
         // The number of elements in the page
-        int nbElems = readInt( pageIos, position );
+        int nbElems = readInt( recordManagerHeader, pageIos, position );
         position += INT_SIZE;
 
         // The size of the data containing the keys and values
         Page<K, V> page = null;
-
-        // Reads the bytes containing all the keys and values, if we have some
-        // We read  big blog of data into  ByteBuffer, then we will process
-        // this ByteBuffer
-        ByteBuffer byteBuffer = readBytes( pageIos, position );
 
         // Now, deserialize the data block. If the number of elements
         // is positive, it's a Leaf, otherwise it's a Node
         // Note that only a leaf can have 0 elements, and it's the root page then.
         if ( nbElems >= 0 )
         {
-            // It's a leaf
-            page = readLeafKeysAndValues( btree, nbElems, revision, byteBuffer, pageIos );
+            // Its a leaf, create it
+            Leaf<K, V> leaf = ( Leaf<K, V> ) BTreeFactory.createLeaf( btree, revision, nbElems );
+            leaf.setId( id );
+
+            // Store the page offset on disk
+            leaf.setOffset( pageIos[0].getOffset() );
+            
+            // The size of the data containing the keys and values
+            // Reads the bytes containing all the keys and values, if we have some
+            // We read  big blob of data into  ByteBuffer, then we will process
+            // this ByteBuffer
+            ByteBuffer byteBuffer = readBytes( recordManagerHeader, pageIos, position );
+
+            leaf.deserialize( transaction, byteBuffer );
+            
+            return leaf;
         }
         else
         {
             // It's a node
-            page = readNodeKeysAndValues( btree, -nbElems, revision, byteBuffer, pageIos );
+            //page = readNodeKeysAndValues( btree, -nbElems, revision, byteBuffer, pageIos );
         }
 
         ( ( AbstractPage<K, V> ) page ).setOffset( pageIos[0].getOffset() );
         
-        if ( pageIos.length > 1 )
+        /*if ( pageIos.length > 1 )
         {
             ( ( AbstractPage<K, V> ) page ).setLastOffset( pageIos[pageIos.length - 1].getOffset() );
-        }
+        }*/
 
         return page;
-    }
-
-
-    /**
-     * Deserialize a Leaf from some PageIOs
-     */
-    private <K, V> Leaf<K, V> readLeafKeysAndValues( BTree<K, V> btree, int nbElems, long revision,
-        ByteBuffer byteBuffer, PageIO[] pageIos )
-    {
-        // Its a leaf, create it
-        Leaf<K, V> leaf = ( Leaf<K, V> ) BTreeFactory.createLeaf( btree, revision, nbElems );
-
-        // Store the page offset on disk
-        leaf.setOffset( pageIos[0].getOffset() );
-        leaf.setLastOffset( pageIos[pageIos.length - 1].getOffset() );
-
-        int[] keyLengths = new int[nbElems];
-        int valueLength = 0;
-
-        // Read each key and value
-        for ( int i = 0; i < nbElems; i++ )
-        {
-            // Read the number of values
-            ValueHolderImpl<V> valueHolder = null;
-
-            // Read the value's length
-            valueLength = byteBuffer.getInt();
-
-            // This is a value, read the byte[] associated with it
-            byte[] valuBytes = new byte[valueLength];
-            byteBuffer.get( valuBytes );
-            valueHolder = new ValueHolderImpl<V>( btree, valuBytes );
-
-            BTreeFactory.setValue( btree, leaf, i, valueHolder );
-
-            keyLengths[i] = byteBuffer.getInt();
-            byte[] data = new byte[keyLengths[i]];
-            byteBuffer.get( data );
-            BTreeFactory.setKey( btree, leaf, i, data );
-        }
-
-        return leaf;
     }
 
 
@@ -1244,9 +935,8 @@ public class RecordManager extends AbstractTransactionManager
         {
             // This is an Offset
             long offset = LongSerializer.INSTANCE.deserialize( byteBuffer );
-            long lastOffset = LongSerializer.INSTANCE.deserialize( byteBuffer );
 
-            PageHolderImpl<K, V> valueHolder = new PageHolderImpl<K, V>( btree, null, offset, lastOffset );
+            PageHolder<K, V> valueHolder = new PageHolder<>( btree, null, offset );
             node.setValue( i, valueHolder );
 
             // Read the key length
@@ -1265,9 +955,8 @@ public class RecordManager extends AbstractTransactionManager
 
         // and read the last value, as it's a node
         long offset = LongSerializer.INSTANCE.deserialize( byteBuffer );
-        long lastOffset = LongSerializer.INSTANCE.deserialize( byteBuffer );
 
-        PageHolderImpl<K, V> valueHolder = new PageHolderImpl<K, V>( btree, null, offset, lastOffset );
+        PageHolder<K, V> valueHolder = new PageHolder<>( btree, null, offset );
         node.setValue( nbElems, valueHolder );
 
         return node;
@@ -1281,21 +970,21 @@ public class RecordManager extends AbstractTransactionManager
      * @param position The position in the data stored in those pages
      * @return The byte[] we have read
      */
-    /* no qualifier */ByteBuffer readBytes( PageIO[] pageIos, long position )
+    /* no qualifier */ByteBuffer readBytes( RecordManagerHeader recordManagerHeader, PageIO[] pageIos, long position )
     {
         // Read the byte[] length first
-        int length = readInt( pageIos, position );
+        int length = readInt( recordManagerHeader, pageIos, position );
         position += INT_SIZE;
 
         // Compute the page in which we will store the data given the
         // current position
-        int pageNb = computePageNb( position );
+        int pageNb = computePageNb( recordManagerHeader, position );
 
         // Compute the position in the current page
-        int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * pageSize;
+        int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * recordManagerHeader.pageSize;
 
         // Check that the length is correct : it should fit in the provided pageIos
-        int pageEnd = computePageNb( position + length );
+        int pageEnd = computePageNb( recordManagerHeader, position + length );
 
         if ( pageEnd > pageIos.length )
         {
@@ -1359,18 +1048,18 @@ public class RecordManager extends AbstractTransactionManager
      * @param position The position in the data stored in those pages
      * @return The int we have read
      */
-    /* no qualifier */int readInt( PageIO[] pageIos, long position )
+    /* no qualifier */int readInt( RecordManagerHeader recordManagerHeader, PageIO[] pageIos, long position )
     {
         // Compute the page in which we will store the data given the
         // current position
-        int pageNb = computePageNb( position );
+        int pageNb = computePageNb( recordManagerHeader, position );
 
         // Compute the position in the current page
-        int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * pageSize;
+        int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * recordManagerHeader.pageSize;
 
         ByteBuffer pageData = pageIos[pageNb].getData();
         int remaining = pageData.capacity() - pagePos;
-        int value = 0;
+        int value;
 
         if ( remaining >= INT_SIZE )
         {
@@ -1425,21 +1114,18 @@ public class RecordManager extends AbstractTransactionManager
      * @param position The position in the data stored in those pages
      * @return The byte we have read
      */
-    private byte readByte( PageIO[] pageIos, long position )
+    private byte readByte( RecordManagerHeader recordManagerHeader, PageIO[] pageIos, long position )
     {
         // Compute the page in which we will store the data given the
         // current position
-        int pageNb = computePageNb( position );
+        int pageNb = computePageNb( recordManagerHeader, position );
 
         // Compute the position in the current page
-        int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * pageSize;
+        int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * recordManagerHeader.pageSize;
 
         ByteBuffer pageData = pageIos[pageNb].getData();
-        byte value = 0;
 
-        value = pageData.get( pagePos );
-
-        return value;
+        return pageData.get( pagePos );
     }
 
 
@@ -1449,14 +1135,14 @@ public class RecordManager extends AbstractTransactionManager
      * @param position The position in the data stored in those pages
      * @return The long we have read
      */
-    /* no qualifier */long readLong( PageIO[] pageIos, long position )
+    /* no qualifier */long readLong( RecordManagerHeader recordManagerHeader, PageIO[] pageIos, long position )
     {
         // Compute the page in which we will store the data given the
         // current position
-        int pageNb = computePageNb( position );
+        int pageNb = computePageNb( recordManagerHeader, position );
 
         // Compute the position in the current page
-        int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * pageSize;
+        int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * recordManagerHeader.pageSize;
 
         ByteBuffer pageData = pageIos[pageNb].getData();
         int remaining = pageData.capacity() - pagePos;
@@ -1541,10 +1227,10 @@ public class RecordManager extends AbstractTransactionManager
     
     private <K, V> BTreeInfo<K, V> createBtreeInfo( BTree<K, V> btree )
     {
-        BTreeInfo<K,V> btreeInfo = new BTreeInfo<K, V>();
+        BTreeInfo<K,V> btreeInfo = new BTreeInfo<>();
         
         btreeInfo.setBtree( btree );
-        btreeInfo.setPageSize( btree.getPageSize() );
+        btreeInfo.setPageNbElem( btree.getPageNbElem() );
         btreeInfo.setBtreeName( btree.getName() );
         btreeInfo.setKeySerializerFQCN( btree.getKeySerializerFQCN() );
         btreeInfo.setValueSerializerFQCN( btree.getValueSerializerFQCN() );
@@ -1567,10 +1253,10 @@ public class RecordManager extends AbstractTransactionManager
      * @throws BTreeAlreadyManagedException If the B-tree is already managed
      * @throws IOException if there was a problem while accessing the file
      */
-    public synchronized <K, V> void manage( BTree<K, V> btree ) throws BTreeAlreadyManagedException, IOException
+    public synchronized <K, V> void manage( WriteTransaction transaction, BTree<K, V> btree ) throws BTreeAlreadyManagedException, IOException
     {
-        beginTransaction();
-        long revision = context.getRevision();
+        long revision = transaction.getRevision();
+        RecordManagerHeader recordManagerHeader = transaction.getRecordManagerHeader();
 
         try
         {
@@ -1583,123 +1269,105 @@ public class RecordManager extends AbstractTransactionManager
             {
                 // There is already a B-tree with this name in the recordManager...
                 LOG.error( "There is already a B-tree named '{}' managed by this recordManager", name );
-                rollback();
+                transaction.abort();
                 throw new BTreeAlreadyManagedException( name );
             }
 
             // Create the B-tree info
             BTreeInfo<K, V> btreeInfo = createBtreeInfo( btree );
-            PageIO[] btreeInfoPageIos = writeBtreeInfo( btree, false );
-            long btreeInfoOffset = btreeInfoPageIos[0].getOffset();
-            ( ( BTreeImpl<K, V> ) btree ).setBtreeInfoOffset( btreeInfoOffset );
-            context.addPage( btreeInfoOffset, btreeInfo );
+            btreeInfo.initId( recordManagerHeader );
+            transaction.addWALObject( btreeInfo );
+            ( ( BTreeImpl<K, V> ) btree ).setBtreeInfo( btreeInfo );
 
             // Create the first root page, with the context revision. It will be empty
-            Page<K, V> rootPage = new Leaf<K, V>( btree, revision, 0 );
-            PageIO[] rootPageIos = serializePage( btree, revision, rootPage );
-            long rootPageOffset = rootPageIos[0].getOffset();
-            ( ( AbstractPage<K, V> ) rootPage ).setOffset( rootPageOffset );
-            context.addPage( rootPageOffset, rootPage );
+            Leaf<K, V> rootPage = new Leaf<>( btree, revision, 0 );
+            rootPage.initId( recordManagerHeader );
+            transaction.addWALObject( rootPage );
 
             // Create a B-tree header, and initialize it
-            BTreeHeader<K, V> btreeHeader = new BTreeHeader<K, V>();
-            btreeHeader.setRootPageOffset( rootPageOffset );
+            BTreeHeader<K, V> btreeHeader = new BTreeHeader<>();
             btreeHeader.setRootPage( rootPage );
             btreeHeader.setBtree( btree );
-            PageIO[] btreeHeaderPageIos = writeBtreeHeader( btree, btreeHeader, false );
-            long btreeHeaderOffset = btreeHeaderPageIos[0].getOffset();
-            context.addPage( btreeHeaderOffset, btreeHeader );
+            btreeHeader.setRevision( revision );
+            ((BTreeImpl<K, V>)btree).setBtreeHeader( btreeHeader );
+            btreeHeader.initId( recordManagerHeader );
+
+            transaction.addWALObject( btreeHeader );
 
             // We can safely increment the number of managed B-trees
-            nbBtree++;
-
-            // Create the new NameRevision
-            NameRevision nameRevision = new NameRevision( name, revision );
-
-            // Inject it into the B-tree of B-tree
-            btreeOfBtrees.insert( nameRevision, btreeHeaderOffset );
-            
-            commit();
+            transaction.recordManagerHeader.nbBtree++;
         }
         catch ( IOException ioe )
         {
-            rollback();
+            transaction.abort();
             throw ioe;
         }
     }
-
-
+    
+    
     /**
-     * Write the B-tree informations on disk. We will write the following informations :
-     * <pre>
-     * +------------+
-     * | pageSize   | The B-tree page size (ie, the number of elements per page max)
-     * +------------+
-     * | nameSize   | The B-tree name size
-     * +------------+
-     * | name       | The B-tree name
-     * +------------+
-     * | keySerSize | The keySerializer FQCN size
-     * +------------+
-     * | keySerFQCN | The keySerializer FQCN
-     * +------------+
-     * | valSerSize | The Value serializer FQCN size
-     * +------------+
-     * | valSerKQCN | The valueSerializer FQCN
-     * +------------+
-     * </pre>
-     * @param btree The B-tree which header has to be written
-     * @param new a flag set to True if we have to flush the page on disk
-     * @return The B-tree header offset
-     * @throws IOException If we weren't able to write the B-tree header
+     * Inject a newly created BTree in the BtreeOfBtrees
      */
-    private <K, V> PageIO[] writeBtreeInfo( BTree<K, V> btree, boolean now ) throws IOException
+    /* No qualifier */ <K, V> void insertInBtreeOfBtrees( WriteTransaction transaction, BTree<K, V> btree ) throws IOException
     {
-        // We will add the newly managed B-tree at the end of the header.
-        byte[] btreeNameBytes = Strings.getBytesUtf8( btree.getName() );
-        byte[] keySerializerBytes = Strings.getBytesUtf8( btree.getKeySerializerFQCN() );
-        byte[] valueSerializerBytes = Strings.getBytesUtf8( btree.getValueSerializerFQCN() );
+        RecordManagerHeader recordManagerHeader = transaction.getRecordManagerHeader();
+        BTree<NameRevision, Long> btreeOfBtrees = recordManagerHeader.btreeOfBtrees;
+        
+        // Create the new NameRevision
+        NameRevision nameRevision = new NameRevision( btree.getName(), recordManagerHeader.getRevision() );
 
-        int bufferSize =
-            INT_SIZE + // The page size
-                INT_SIZE + // The name size
-                btreeNameBytes.length + // The name
-                INT_SIZE + // The keySerializerBytes size
-                keySerializerBytes.length + // The keySerializerBytes
-                INT_SIZE + // The valueSerializerBytes size
-                valueSerializerBytes.length; // The valueSerializerBytes
+        // Inject it into the B-tree of B-tree
+        btreeOfBtrees.insert( transaction, nameRevision, ((BTreeImpl<K, V>)btree).getBtreeHeader().getOffset() );
+    }
+    
+    
+    /**
+     * Inject the copied pages in the copiedPagesBtree. We may have many pages from various B-trees
+     * to inject. As the pages are mixed, we first have to gather them by B-tree.
+     */
+    /* No qualifier */ void insertInCopiedPagesBtree( WriteTransaction transaction ) throws IOException
+    {
+        RecordManagerHeader recordManagerHeader = transaction.getRecordManagerHeader();
+        
+        Map<String, List<Long>> pagesList = new HashMap<>();
 
-        // Get the pageIOs we need to store the data. We may need more than one.
-        PageIO[] btreeHeaderPageIos = getFreePageIOs( bufferSize );
-
-        // Now store the B-tree information data in the pages :
-        // - the B-tree page size
-        // - the B-tree name
-        // - the keySerializer FQCN
-        // - the valueSerializer FQCN
-        // Starts at 0
-        long position = 0L;
-
-        // The B-tree page size
-        position = store( position, btree.getPageSize(), btreeHeaderPageIos );
-
-        // The tree name
-        position = store( position, btreeNameBytes, btreeHeaderPageIos );
-
-        // The keySerializer FQCN
-        position = store( position, keySerializerBytes, btreeHeaderPageIos );
-
-        // The valueSerialier FQCN
-        position = store( position, valueSerializerBytes, btreeHeaderPageIos );
-
-        // And flush the pages to disk now, if required
-        if ( now )
-        { 
-            LOG.debug( "Flushing the newly managed '{}' btree header", btree.getName() );
-            flushPages( btreeHeaderPageIos );
+        // Order the WALObject by B-tree name
+        for ( WALObject<?, ?> walObject : transaction.getCopiedPageMap().values() )
+        {
+            if ( walObject.getBtree().getType() != BTreeTypeEnum.COPIED_PAGES_BTREE )
+            {
+                String name = walObject.getName();
+                
+                List<Long> offsets = pagesList.get( name );
+                
+                if ( offsets == null )
+                {
+                    offsets = new ArrayList<>();
+                }
+                
+                offsets.add( walObject.getOffset() );
+                pagesList.put( name, offsets );
+            }
         }
 
-        return btreeHeaderPageIos;
+        // Inject it into the copied pages B-tree
+        BTree<RevisionName, long[]> copiedPagesBTree = recordManagerHeader.copiedPagesBtree;
+
+        for ( Map.Entry<String, List<Long>> entry : pagesList.entrySet() )
+        {
+            // Create the new RevisionName
+            RevisionName revisionName = new RevisionName( recordManagerHeader.getRevision(), entry.getKey() );
+            List<Long> offsetList = entry.getValue();
+
+            long[] offsetArray = new long[offsetList.size()];
+            
+            for ( int i = 0; i < offsetList.size(); i++ )
+            {
+                offsetArray[i] = offsetList.get( i );
+            }
+            
+            copiedPagesBTree.insert( transaction, revisionName, offsetArray );
+        }
     }
 
 
@@ -1713,432 +1381,65 @@ public class RecordManager extends AbstractTransactionManager
      * @throws BTreeAlreadyManagedException If the B-tree is already managed
      * @throws IOException
      */
-    private synchronized <K, V> void writeManagementTree( BTree<K, V> btree )
+    private synchronized <K, V> void writeManagementTree( WriteTransaction transaction, BTree<K, V> btree )
         throws BTreeAlreadyManagedException, IOException
     {
         LOG.debug( "Managing the sub-btree {}", btree.getName() );
-        BTreeFactory.setRecordManager( btree, this );
-
-        String name = btree.getName();
         
-        // Create the first root page, with revision 0L. It will be empty
+        // Create the first root page, with version 0L. It will be empty
         // and increment the revision at the same time
-        Page<K, V> rootPage = new Leaf<K, V>( btree, 0L, 0 );
-
-        // Create a B-tree header, and initialize it
-        BTreeHeader<K, V> btreeHeader = new BTreeHeader<K, V>();
-        btreeHeader.setRootPage( rootPage );
-        btreeHeader.setBtree( btree );
-
-        // Now, write the subB-tree informations
-        PageIO[] btreeHeaderPageIos = writeBtreeInfo( btree, true );
-
-        // Get the BrtreeInfo offset
-        long btreeInfoOffset = btreeHeaderPageIos[0].getOffset();
-
-        ( ( BTreeImpl<K, V> ) btree ).setBtreeInfoOffset( btreeInfoOffset );
-
-        // Serialize the B-tree root page
-        PageIO[] rootPageIos = serializePage( btree, btreeHeader.getRevision(), rootPage );
-        
-        // Get the reference on the first page
-        long rootPageOffset = rootPageIos[0].getOffset();
-
-        // Store the rootPageOffset into the Btree header and into the rootPage
-        btreeHeader.setRootPageOffset( rootPageOffset );
-
-        ( ( AbstractPage<K, V> ) rootPage ).setOffset( rootPageOffset );
+        Leaf<K, V> rootPage = new Leaf<>( btree, transaction.getRevision(), 0 );
+        rootPage.initId( transaction.getRecordManagerHeader() );
 
         LOG.debug( "Flushing the newly managed '{}' btree rootpage", btree.getName() );
-        flushPages( rootPageIos );
         
-        // And the B-tree header
-        writeBtreeHeader( btree, btreeHeader, true );
+        // Store the B-tree root Page in the WAL
+        transaction.addWALObject( rootPage );
+
+        // Now, create the b-tree info
+        BTreeInfo<K, V> btreeInfo = createBtreeInfo( btree );
+        btreeInfo.initId( transaction.getRecordManagerHeader() );
+        ( ( BTreeImpl<K, V> ) btree ).setBtreeInfo( btreeInfo );
+
+        // Store the B-tree info in the WAL
+        transaction.addWALObject( btreeInfo );
+
+        // Last, not least, Create a B-tree header, and initialize it
+        BTreeHeader<K, V> btreeHeader = new BTreeHeader<>();
+        btreeHeader.setBtree( btree );
+        btreeHeader.setRootPage( rootPage );
+        btreeHeader.setRevision( transaction.getRevision() );
+        btreeHeader.initId( transaction.getRecordManagerHeader() );
+
+        // Store the BtreeHeader in the BTree
+        ( ( BTreeImpl<K, V> ) btree ).setBtreeHeader( btreeHeader );
         
-        // Keep a track of the current BtreeHeader
-        ((BTreeImpl<K, V>)btree).storeRevision(btreeHeader);
-
-        // And in the Map of currentBtreeHeaders and newBtreeHeaders
-        currentBTreeHeaders.put( name, btreeHeader );
-        newBTreeHeaders.put( name, btreeHeader );
-    }
-
-
-    /**
-     * Serialize a new Page. It will contain the following data :<br/>
-     * <ul>
-     * <li>the revision : a long</li>
-     * <li>the number of elements : an int (if <= 0, it's a Node, otherwise it's a Leaf)</li>
-     * <li>the size of the values/keys when serialized
-     * <li>the keys : an array of serialized keys</li>
-     * <li>the values : an array of references to the children pageIO offset (stored as long)
-     * if it's a Node, or a list of values if it's a Leaf</li>
-     * <li></li>
-     * </ul>
-     *
-     * @param revision The node revision
-     * @param keys The keys to serialize
-     * @param children The references to the children
-     * @return An array of pages containing the serialized node
-     * @throws IOException
-     */
-    private <K, V> PageIO[] serializePage( BTree<K, V> btree, long revision, Page<K, V> page ) throws IOException
-    {
-        int nbElems = page.getNbElems();
-
-        if ( nbElems == 0 )
-        {
-            return serializeRootPage( revision );
-        }
-        else
-        {
-            // Prepare a list of byte[] that will contain the serialized page
-            int nbBuffers = 1 + 1 + 1 + nbElems * 3;
-            int dataSize = 0;
-            int serializedSize = 0;
-
-            if ( page.isNode() )
-            {
-                // A Node has one more value to store
-                nbBuffers++;
-            }
-
-            // Now, we can create the list with the right size
-            List<byte[]> serializedData = new ArrayList<byte[]>( nbBuffers );
-
-            // The revision
-            byte[] buffer = LongSerializer.serialize( revision );
-            serializedData.add( buffer );
-            serializedSize += buffer.length;
-
-            // The number of elements
-            // Make it a negative value if it's a Node
-            int pageNbElems = nbElems;
-
-            if ( page.isNode() )
-            {
-                pageNbElems = -nbElems;
-            }
-
-            buffer = IntSerializer.serialize( pageNbElems );
-            serializedData.add( buffer );
-            serializedSize += buffer.length;
-
-            // Iterate on the keys and values. We first serialize the value, then the key
-            // until we are done with all of them. If we are serializing a page, we have
-            // to serialize one more value
-            for ( int pos = 0; pos < nbElems; pos++ )
-            {
-                // Start with the value
-                if ( page.isNode() )
-                {
-                    dataSize += serializeNodeValue( ( Node<K, V> ) page, pos, serializedData );
-                    dataSize += serializeNodeKey( ( Node<K, V> ) page, pos, serializedData );
-                }
-                else
-                {
-                    dataSize += serializeLeafValue( ( Leaf<K, V> ) page, pos, serializedData );
-                    dataSize += serializeLeafKey( ( Leaf<K, V> ) page, pos, serializedData );
-                }
-            }
-
-            // Nodes have one more value to serialize
-            if ( page.isNode() )
-            {
-                dataSize += serializeNodeValue( ( Node<K, V> ) page, nbElems, serializedData );
-            }
-
-            // Store the data size
-            buffer = IntSerializer.serialize( dataSize );
-            serializedData.add( 2, buffer );
-            serializedSize += buffer.length;
-
-            serializedSize += dataSize;
-
-            // We are done. Allocate the pages we need to store the data
-            PageIO[] pageIos = getFreePageIOs( serializedSize );
-
-            // And store the data into those pages
-            long position = 0L;
-
-            for ( byte[] bytes : serializedData )
-            {
-                position = storeRaw( position, bytes, pageIos );
-            }
-
-            return pageIos;
-        }
-    }
-
-
-    /**
-     * Serialize a Node's key
-     */
-    private <K, V> int serializeNodeKey( Node<K, V> node, int pos, List<byte[]> serializedData )
-    {
-        KeyHolder<K> holder = node.getKeyHolder( pos );
-        byte[] buffer = ( ( KeyHolderImpl<K> ) holder ).getRaw();
-
-        // We have to store the serialized key length
-        byte[] length = IntSerializer.serialize( buffer.length );
-        serializedData.add( length );
-
-        // And store the serialized key now if not null
-        if ( buffer.length != 0 )
-        {
-            serializedData.add( buffer );
-        }
-
-        return buffer.length + INT_SIZE;
-    }
-
-
-    /**
-     * Serialize a Node's Value. We store the two offsets of the child page.
-     */
-    private <K, V> int serializeNodeValue( Node<K, V> node, int pos, List<byte[]> serializedData )
-        throws IOException
-    {
-        // For a node, we just store the children's offsets
-        Page<K, V> child = node.getReference( pos );
-
-        // The first offset
-        byte[] buffer = LongSerializer.serialize( ( ( AbstractPage<K, V> ) child ).getOffset() );
-        serializedData.add( buffer );
-        int dataSize = buffer.length;
-
-        // The last offset
-        buffer = LongSerializer.serialize( ( ( AbstractPage<K, V> ) child ).getLastOffset() );
-        serializedData.add( buffer );
-        dataSize += buffer.length;
-
-        return dataSize;
-    }
-
-
-    /**
-     * Serialize a Leaf's key
-     */
-    private <K, V> int serializeLeafKey( Leaf<K, V> leaf, int pos, List<byte[]> serializedData )
-    {
-        int dataSize = 0;
-        KeyHolder<K> keyHolder = leaf.getKeyHolder( pos );
-        byte[] keyData = ( ( KeyHolderImpl<K> ) keyHolder ).getRaw();
-
-        if ( keyData != null )
-        {
-            // We have to store the serialized key length
-            byte[] length = IntSerializer.serialize( keyData.length );
-            serializedData.add( length );
-
-            // And the key data
-            serializedData.add( keyData );
-            dataSize += keyData.length + INT_SIZE;
-        }
-        else
-        {
-            serializedData.add( IntSerializer.serialize( 0 ) );
-            dataSize += INT_SIZE;
-        }
-
-        return dataSize;
-    }
-
-
-    /**
-     * Serialize a Leaf's Value.
-     */
-    private <K, V> int serializeLeafValue( Leaf<K, V> leaf, int pos, List<byte[]> serializedData )
-        throws IOException
-    {
-        ValueHolder<V> valueHolder = leaf.getValue( pos );
-        int dataSize = 0;
-
-        // We have a serialized value. Just flush it
-        byte[] data = ( ( ValueHolderImpl<V> ) valueHolder ).getRaw();
-        dataSize += data.length;
-
-        // Store the data size
-        byte[] buffer = IntSerializer.serialize( data.length );
-        serializedData.add( buffer );
-        dataSize += INT_SIZE;
-
-        // and add the data if it's not 0
-        if ( data.length > 0 )
-        {
-            serializedData.add( data );
-        }
-
-        return dataSize;
-    }
-
-
-    /**
-     * Write a root page with no elements in it
-     */
-    private PageIO[] serializeRootPage( long revision ) throws IOException
-    {
-        // We will have 1 single page if we have no elements
-        PageIO[] pageIos = new PageIO[1];
-
-        // This is either a new root page or a new page that will be filled later
-        PageIO newPage = fetchNewPage();
-
-        // We need first to create a byte[] that will contain all the data
-        // For the root page, this is easy, as we only have to store the revision,
-        // and the number of elements, which is 0.
-        long position = 0L;
-
-        position = store( position, revision, newPage );
-        position = store( position, 0, newPage );
-
-        // Update the page size now
-        newPage.setSize( ( int ) position );
-
-        // Insert the result into the array of PageIO
-        pageIos[0] = newPage;
-
-        return pageIos;
-    }
-
-
-    /**
-     * Update the RecordManager header, injecting the following data :
-     *
-     * <pre>
-     * +---------------------+
-     * | PageSize            | 4 bytes : The size of a physical page (default to 4096)
-     * +---------------------+
-     * | NbTree              | 4 bytes : The number of managed B-trees (at least 1)
-     * +---------------------+
-     * | FirstFree           | 8 bytes : The offset of the first free page
-     * +---------------------+
-     * | current BoB offset  | 8 bytes : The offset of the current B-tree of B-trees
-     * +---------------------+
-     * | previous BoB offset | 8 bytes : The offset of the previous B-tree of B-trees
-     * +---------------------+
-     * | current CP offset   | 8 bytes : The offset of the current CopiedPages B-tree
-     * +---------------------+
-     * | previous CP offset  | 8 bytes : The offset of the previous CopiedPages B-tree
-     * +---------------------+
-     * </pre>
-     */
-    public ByteBuffer updateRecordManagerHeader()
-    {
-        // The page size
-        int position = writeData( RECORD_MANAGER_HEADER_BYTES, 0, pageSize );
-
-        // The number of managed B-tree
-        position = writeData( RECORD_MANAGER_HEADER_BYTES, position, nbBtree );
-
-        // The first free page
-        position = writeData( RECORD_MANAGER_HEADER_BYTES, position, firstFreePage );
-
-        // The offset of the current B-tree of B-trees
-        position = writeData( RECORD_MANAGER_HEADER_BYTES, position, currentBtreeOfBtreesOffset );
-
-        // The offset of the copied pages B-tree
-        position = writeData( RECORD_MANAGER_HEADER_BYTES, position, previousBtreeOfBtreesOffset );
-
-        // The offset of the current B-tree of B-trees
-        position = writeData( RECORD_MANAGER_HEADER_BYTES, position, currentCopiedPagesBtreeOffset );
-
-        // The offset of the copied pages B-tree
-        position = writeData( RECORD_MANAGER_HEADER_BYTES, position, previousCopiedPagesBtreeOffset );
-
-        // Write the RecordManager header on disk
-        RECORD_MANAGER_HEADER_BUFFER.put( RECORD_MANAGER_HEADER_BYTES );
-        RECORD_MANAGER_HEADER_BUFFER.flip();
-
-        LOG.debug( "Update RM header" );
-
-        if ( LOG_PAGES.isDebugEnabled() )
-        {
-            StringBuilder sb = new StringBuilder();
-
-            sb.append( "First free page     : 0x" ).append( Long.toHexString( firstFreePage ) ).append( "\n" );
-            sb.append( "Current BOB header  : 0x" ).append( Long.toHexString( currentBtreeOfBtreesOffset ) )
-                .append( "\n" );
-            sb.append( "Previous BOB header : 0x" ).append( Long.toHexString( previousBtreeOfBtreesOffset ) )
-                .append( "\n" );
-            sb.append( "Current CPB header  : 0x" ).append( Long.toHexString( currentCopiedPagesBtreeOffset ) )
-                .append( "\n" );
-            sb.append( "Previous CPB header : 0x" ).append( Long.toHexString( previousCopiedPagesBtreeOffset ) )
-                .append( "\n" );
-
-            if ( firstFreePage != NO_PAGE )
-            {
-                long freePage = firstFreePage;
-                sb.append( "free pages list : " );
-
-                boolean isFirst = true;
-
-                while ( freePage != NO_PAGE )
-                {
-                    if ( isFirst )
-                    {
-                        isFirst = false;
-                    }
-                    else
-                    {
-                        sb.append( " -> " );
-                    }
-
-                    sb.append( "0x" ).append( Long.toHexString( freePage ) );
-
-                    try
-                    {
-                        PageIO[] freePageIO = readPageIOs( freePage, 8 );
-
-                        freePage = freePageIO[0].getNextPage();
-                    }
-                    catch ( EndOfFileExceededException e )
-                    {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
-                    catch ( IOException e )
-                    {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
-                }
-
-            }
-
-            LOG_PAGES.debug( "Update RM Header : \n{}", sb.toString() );
-        }
-
-        return RECORD_MANAGER_HEADER_BUFFER;
+        // Store the B-tree header in the WAL
+        transaction.addWALObject( btreeHeader );
     }
     
     
     /**
      * Write the RecordmanagerHeader in disk
      */
-    private void writeRecordManagerHeader()
+    /* No Qualifier */ void writeRecordManagerHeader( RecordManagerHeader recordManagerHeader )
     {
+        recordManagerHeader.serialize( this );
+
         try
         {
-            Integer nbTxnStarted = CONTEXT.get();
-
-            if ( ( nbTxnStarted == null ) || ( nbTxnStarted <= 1 ) )
-            {
-                //System.out.println( "Writing page at 0000" );
-                writeCounter.put( 0L, writeCounter.containsKey( 0L ) ? writeCounter.get( 0L ) + 1 : 1 );
-                fileChannel.write( RECORD_MANAGER_HEADER_BUFFER, 0 );
-            }
+            fileChannel.write( recordManagerHeaderBuffer, 0 );
+            fileChannel.force( true );
+            recordManagerHeader.lastOffset = fileChannel.size();
         }
         catch ( IOException ioe )
         {
-            throw new FileException( ioe.getMessage() );
+            throw new FileException( ioe.getMessage(), ioe );
         }
 
-        RECORD_MANAGER_HEADER_BUFFER.clear();
-
-        // Reset the old versions
-        previousBtreeOfBtreesOffset = -1L;
-        previousCopiedPagesBtreeOffset = -1L;
+        // Clean the buffer and switch the versions
+        recordManagerHeaderBuffer.clear();
+        recordManagerHeaderReference.set( recordManagerHeader );
 
         nbUpdateRMHeader.incrementAndGet();
     }
@@ -2153,6 +1454,8 @@ public class RecordManager extends AbstractTransactionManager
      * +---------------------+
      * | NbTree              | 4 bytes : The number of managed B-trees (at least 1)
      * +---------------------+
+     * | Revision            | 8 bytes : The current revision
+     * +---------------------+
      * | FirstFree           | 8 bytes : The offset of the first free page
      * +---------------------+
      * | current BoB offset  | 8 bytes : The offset of the current B-tree of B-trees
@@ -2165,18 +1468,16 @@ public class RecordManager extends AbstractTransactionManager
      * +---------------------+
      * </pre>
      */
-    public void updateRecordManagerHeader( long newBtreeOfBtreesOffset, long newCopiedPageBtreeOffset )
+    /* No qualifier */ void updateRecordManagerHeader( RecordManagerHeader recordManagerHeader, long newBtreeOfBtreesOffset, long newCopiedPageBtreeOffset )
     {
         if ( newBtreeOfBtreesOffset != -1L )
         {
-            previousBtreeOfBtreesOffset = currentBtreeOfBtreesOffset;
-            currentBtreeOfBtreesOffset = newBtreeOfBtreesOffset;
+            recordManagerHeader.currentBtreeOfBtreesOffset = newBtreeOfBtreesOffset;
         }
 
         if ( newCopiedPageBtreeOffset != -1L )
         {
-            previousCopiedPagesBtreeOffset = currentCopiedPagesBtreeOffset;
-            currentCopiedPagesBtreeOffset = newCopiedPageBtreeOffset;
+            recordManagerHeader.currentCopiedPagesBtreeOffset = newCopiedPageBtreeOffset;
         }
     }
 
@@ -2184,12 +1485,12 @@ public class RecordManager extends AbstractTransactionManager
     /**
      * Inject an int into a byte[] at a given position.
      */
-    private int writeData( byte[] buffer, int position, int value )
+    /* No qualifier*/ int writeData( byte[] buffer, int position, int value )
     {
-        RECORD_MANAGER_HEADER_BYTES[position] = ( byte ) ( value >>> 24 );
-        RECORD_MANAGER_HEADER_BYTES[position + 1] = ( byte ) ( value >>> 16 );
-        RECORD_MANAGER_HEADER_BYTES[position + 2] = ( byte ) ( value >>> 8 );
-        RECORD_MANAGER_HEADER_BYTES[position + 3] = ( byte ) ( value );
+        buffer[position] = ( byte ) ( value >>> 24 );
+        buffer[position + 1] = ( byte ) ( value >>> 16 );
+        buffer[position + 2] = ( byte ) ( value >>> 8 );
+        buffer[position + 3] = ( byte ) ( value );
 
         return position + 4;
     }
@@ -2198,16 +1499,16 @@ public class RecordManager extends AbstractTransactionManager
     /**
      * Inject a long into a byte[] at a given position.
      */
-    private int writeData( byte[] buffer, int position, long value )
+    /* No qualifier*/ int writeData( byte[] buffer, int position, long value )
     {
-        RECORD_MANAGER_HEADER_BYTES[position] = ( byte ) ( value >>> 56 );
-        RECORD_MANAGER_HEADER_BYTES[position + 1] = ( byte ) ( value >>> 48 );
-        RECORD_MANAGER_HEADER_BYTES[position + 2] = ( byte ) ( value >>> 40 );
-        RECORD_MANAGER_HEADER_BYTES[position + 3] = ( byte ) ( value >>> 32 );
-        RECORD_MANAGER_HEADER_BYTES[position + 4] = ( byte ) ( value >>> 24 );
-        RECORD_MANAGER_HEADER_BYTES[position + 5] = ( byte ) ( value >>> 16 );
-        RECORD_MANAGER_HEADER_BYTES[position + 6] = ( byte ) ( value >>> 8 );
-        RECORD_MANAGER_HEADER_BYTES[position + 7] = ( byte ) ( value );
+        buffer[position] = ( byte ) ( value >>> 56 );
+        buffer[position + 1] = ( byte ) ( value >>> 48 );
+        buffer[position + 2] = ( byte ) ( value >>> 40 );
+        buffer[position + 3] = ( byte ) ( value >>> 32 );
+        buffer[position + 4] = ( byte ) ( value >>> 24 );
+        buffer[position + 5] = ( byte ) ( value >>> 16 );
+        buffer[position + 6] = ( byte ) ( value >>> 8 );
+        buffer[position + 7] = ( byte ) ( value );
 
         return position + 8;
     }
@@ -2221,16 +1522,17 @@ public class RecordManager extends AbstractTransactionManager
      * @param btreeHeaderOffset The B-tree offset
      * @throws IOException If the update failed
      */
-    /* no qualifier */<K, V> void addInBtreeOfBtrees( String name, long revision, long btreeHeaderOffset )
-        throws IOException
+    /* no qualifier */void addInBtreeOfBtrees( WriteTransaction transaction, String name, long revision, 
+        long btreeHeaderOffset ) throws IOException
     {
+        
         checkOffset( btreeHeaderOffset );
         NameRevision nameRevision = new NameRevision( name, revision );
 
-        btreeOfBtrees.insert( nameRevision, btreeHeaderOffset );
+        btreeOfBtrees.insert( transaction, nameRevision, btreeHeaderOffset );
 
         // Update the B-tree of B-trees offset
-        currentBtreeOfBtreesOffset = getNewBTreeHeader( BTREE_OF_BTREES_NAME ).getBTreeHeaderOffset();
+        //transaction.recordManagerHeader.currentBtreeOfBtreesOffset = getNewBTreeHeader( BTREE_OF_BTREES_NAME ).getOffset();
     }
 
 
@@ -2242,9 +1544,10 @@ public class RecordManager extends AbstractTransactionManager
      * @param btreeHeaderOffset The B-tree offset
      * @throws IOException If the update failed
      */
-    /* no qualifier */<K, V> void addInCopiedPagesBtree( String name, long revision, List<Page<K, V>> pages )
+    /* no qualifier */<K, V> void addInCopiedPagesBtree( WriteTransaction transaction, String name, long revision, List<Page<K, V>> pages )
         throws IOException
     {
+        RecordManagerHeader recordManagerHeader = transaction.getRecordManagerHeader();
         RevisionName revisionName = new RevisionName( revision, name );
 
         long[] pageOffsets = new long[pages.size()];
@@ -2255,22 +1558,11 @@ public class RecordManager extends AbstractTransactionManager
             pageOffsets[pos++] = ( ( AbstractPage<K, V> ) page ).getOffset();
         }
 
-        copiedPageBtree.insert( revisionName, pageOffsets );
+        copiedPageBtree.insert( transaction, revisionName, pageOffsets );
 
         // Update the CopiedPageBtree offset
-        currentCopiedPagesBtreeOffset = ( ( AbstractBTree<RevisionName, long[]> ) copiedPageBtree ).getBtreeHeader()
-            .getBTreeHeaderOffset();
-    }
-
-
-    /**
-     * Internal method used to update the B-tree of B-trees offset
-     * @param btreeOfBtreesOffset The new offset
-     */
-    /* no qualifier */void setBtreeOfBtreesOffset( long btreeOfBtreesOffset )
-    {
-        checkOffset( btreeOfBtreesOffset );
-        this.currentBtreeOfBtreesOffset = btreeOfBtreesOffset;
+        recordManagerHeader.currentCopiedPagesBtreeOffset = 
+            ( ( BTreeImpl<RevisionName, long[]> ) copiedPageBtree ).getBtreeHeader().getOffset();
     }
 
 
@@ -2293,9 +1585,11 @@ public class RecordManager extends AbstractTransactionManager
      * @return The B-tree header offset
      * @throws IOException If we weren't able to write the B-tree header
      */
-    /* no qualifier */<K, V> PageIO[] writeBtreeHeader( BTree<K, V> btree, BTreeHeader<K, V> btreeHeader, boolean now )
+    /* no qualifier *<K, V> PageIO[] writeBtreeHeader( WriteTransaction transaction, BTree<K, V> btree, BTreeHeader<K, V> btreeHeader, boolean now )
         throws IOException
     {
+        RecordManagerHeader recordManagerHeader = transaction.getRecordManagerHeader();
+        
         int bufferSize =
             LONG_SIZE + // The revision
                 LONG_SIZE + // the number of element
@@ -2303,7 +1597,7 @@ public class RecordManager extends AbstractTransactionManager
                 LONG_SIZE; // The B-tree info page offset
 
         // Get the pageIOs we need to store the data. We may need more than one.
-        PageIO[] btreeHeaderPageIos = getFreePageIOs( bufferSize );
+        PageIO[] pageIOs = getFreePageIOs( recordManagerHeader, bufferSize );
 
         // Store the B-tree header Offset into the B-tree
         long btreeHeaderOffset = btreeHeaderPageIos[0].getOffset();
@@ -2317,16 +1611,16 @@ public class RecordManager extends AbstractTransactionManager
         long position = 0L;
 
         // The B-tree current revision
-        position = store( position, btreeHeader.getRevision(), btreeHeaderPageIos );
+        position = store( recordManagerHeader, position, btreeHeader.getRevision(), btreeHeaderPageIos );
 
         // The nb elems in the tree
-        position = store( position, btreeHeader.getNbElems(), btreeHeaderPageIos );
+        position = store( recordManagerHeader, position, btreeHeader.getNbElems(), btreeHeaderPageIos );
 
         // Now, we can inject the B-tree rootPage offset into the B-tree header
-        position = store( position, btreeHeader.getRootPageOffset(), btreeHeaderPageIos );
+        position = store( recordManagerHeader, position, btreeHeader.getRootPageOffset(), btreeHeaderPageIos );
 
         // The B-tree info page offset
-        position = store( position, ( ( BTreeImpl<K, V> ) btree ).getBtreeInfoOffset(), btreeHeaderPageIos );
+        position = store( recordManagerHeader, position, ( ( BTreeImpl<K, V> ) btree ).getBtreeInfoOffset(), btreeHeaderPageIos );
 
         // And flush the pages to disk now
         LOG.debug( "Flushing the newly managed '{}' btree header", btree.getName() );
@@ -2347,12 +1641,8 @@ public class RecordManager extends AbstractTransactionManager
             LOG_PAGES.debug( "Btree Header[{}]\n{}", btreeHeader.getRevision(), sb.toString() );
         }
 
-        if ( now )
-        {
-            flushPages( btreeHeaderPageIos );
-        }
-
-        btreeHeader.setBTreeHeaderOffset( btreeHeaderOffset );
+        btreeHeader.setPageIOs( btreeHeaderPageIos );
+        btreeHeader.setOffset( btreeHeaderOffset );
 
         return btreeHeaderPageIos;
     }
@@ -2369,11 +1659,10 @@ public class RecordManager extends AbstractTransactionManager
     private <K, V> long writeRootPage( BTree<K, V> btree, BTreeHeader<K, V> btreeHeader ) throws IOException
     {
         Page<K, V> rootPage = btreeHeader.getRootPage();
-        long pageId = rootPage.getId();
 
-        context.addPage( pageId, rootPage );
+        context.addPage( ((AbstractPage)rootPage).getOffset(), rootPage );
         
-        return pageId;
+        return ((AbstractPage)rootPage).getOffset();
 
         /*
         PageIO[] rootPageIos = serializePage( btree, btreeHeader.getRevision(), rootPage );
@@ -2416,7 +1705,7 @@ public class RecordManager extends AbstractTransactionManager
     /* no qualifier */<K, V> long updateBtreeHeader( BTree<K, V> btree, long btreeHeaderOffset )
         throws EndOfFileExceededException, IOException
     {
-        return updateBtreeHeader( btree, btreeHeaderOffset, false );
+        return updateBtreeHeader( btree, btreeHeaderOffset );
     }
 
 
@@ -2438,11 +1727,11 @@ public class RecordManager extends AbstractTransactionManager
      * @throws IOException
      * @throws EndOfFileExceededException
      */
-    /* no qualifier */<K, V> void updateBtreeHeaderOnPlace( BTree<K, V> btree, long btreeHeaderOffset )
+    /* no qualifier */<K, V> void updateBtreeHeaderOnPlace( WriteTransaction transaction, BTree<K, V> btree, long btreeHeaderOffset )
         throws EndOfFileExceededException,
         IOException
     {
-        updateBtreeHeader( btree, btreeHeaderOffset, true );
+        updateBtreeHeader( transaction, btree, btreeHeaderOffset, true );
     }
 
 
@@ -2468,33 +1757,35 @@ public class RecordManager extends AbstractTransactionManager
      * @throws EndOfFileExceededException If we tried to write after the end of the file
      * @throws IOException If tehre were some error while writing the data on disk
      */
-    private <K, V> long updateBtreeHeader( BTree<K, V> btree, long btreeHeaderOffset, boolean onPlace )
+    private <K, V> long updateBtreeHeader( WriteTransaction transaction, BTree<K, V> btree, long btreeHeaderOffset, boolean onPlace )
         throws EndOfFileExceededException, IOException
     {
         // Read the pageIOs associated with this B-tree
         PageIO[] pageIos;
         long newBtreeHeaderOffset = NO_PAGE;
         long offset = ( ( BTreeImpl<K, V> ) btree ).getBtreeOffset();
+        RecordManagerHeader recordManagerHeader = transaction.getRecordManagerHeader();
 
         if ( onPlace )
         {
             // We just have to update the existing BTreeHeader
             long headerSize = LONG_SIZE + LONG_SIZE + LONG_SIZE;
 
-            pageIos = readPageIOs( offset, headerSize );
+            pageIos = readPageIOs( recordManagerHeader, offset, headerSize );
 
             // Now, update the revision
             long position = 0;
 
-            position = store( position, btree.getRevision(), pageIos );
-            position = store( position, btree.getNbElems(), pageIos );
-            position = store( position, btreeHeaderOffset, pageIos );
+            position = store( recordManagerHeader, position, transaction.getRevision(), pageIos );
+            position = store( recordManagerHeader, position, btree.getNbElems( recordManagerHeader ), pageIos );
+            store( recordManagerHeader, position, btreeHeaderOffset, pageIos );
 
             // Write the pages on disk
             if ( LOG.isDebugEnabled() )
             {
                 LOG.debug( "-----> Flushing the '{}' B-treeHeader", btree.getName() );
-                LOG.debug( "  revision : " + btree.getRevision() + ", NbElems : " + btree.getNbElems()
+                LOG.debug( "  revision : " + transaction.getRevision() + ", NbElems : " 
+                    + btree.getNbElems( recordManagerHeader )
                     + ", btreeHeader offset : 0x"
                     + Long.toHexString( btreeHeaderOffset ) );
             }
@@ -2502,12 +1793,12 @@ public class RecordManager extends AbstractTransactionManager
             // Get new place on disk to store the modified BTreeHeader if it's not onPlace
             // Rewrite the pages at the same place
             LOG.debug( "Rewriting the B-treeHeader on place for B-tree " + btree.getName() );
-            flushPages( pageIos );
+            flushPages( recordManagerHeader, pageIos );
         }
         else
         {
             // We have to read and copy the existing BTreeHeader and to create a new one
-            pageIos = readPageIOs( offset, Long.MAX_VALUE );
+            pageIos = readPageIOs( recordManagerHeader, offset, Long.MAX_VALUE );
 
             // Now, copy every read page
             PageIO[] newPageIOs = new PageIO[pageIos.length];
@@ -2516,7 +1807,7 @@ public class RecordManager extends AbstractTransactionManager
             for ( PageIO pageIo : pageIos )
             {
                 // Fetch a free page
-                newPageIOs[pos] = fetchNewPage();
+                newPageIOs[pos] = fetchNewPage( recordManagerHeader );
 
                 // keep a track of the allocated and copied pages so that we can
                 // free them when we do a commit or rollback, if the btree is an management one
@@ -2541,14 +1832,14 @@ public class RecordManager extends AbstractTransactionManager
             // and update the revision
             long position = 0;
 
-            position = store( position, btree.getRevision(), newPageIOs );
-            position = store( position, btree.getNbElems(), newPageIOs );
-            position = store( position, btreeHeaderOffset, newPageIOs );
+            position = store( recordManagerHeader, position, transaction.getRevision(), newPageIOs );
+            position = store( recordManagerHeader, position, btree.getNbElems( recordManagerHeader ), newPageIOs );
+            store( recordManagerHeader, position, btreeHeaderOffset, newPageIOs );
 
             // Get new place on disk to store the modified BTreeHeader if it's not onPlace
             // Flush the new B-treeHeader on disk
             LOG.debug( "Rewriting the B-treeHeader on place for B-tree " + btree.getName() );
-            flushPages( newPageIOs );
+            flushPages( recordManagerHeader, newPageIOs );
 
             newBtreeHeaderOffset = newPageIOs[0].getOffset();
         }
@@ -2557,7 +1848,7 @@ public class RecordManager extends AbstractTransactionManager
 
         if ( LOG_CHECK.isDebugEnabled() )
         {
-            MavibotInspector.check( this );
+            MavibotInspector.check( this, recordManagerHeader );
         }
 
         return newBtreeHeaderOffset;
@@ -2571,7 +1862,7 @@ public class RecordManager extends AbstractTransactionManager
      * @param pageIos The list of pages to write
      * @throws IOException If the write failed
      */
-    private void flushPages( PageIO... pageIos ) throws IOException
+    /* No qualifier */ void flushPages( RecordManagerHeader recordManagerHeader, PageIO... pageIos ) throws IOException
     {
         if ( pageIos == null )
         {
@@ -2592,13 +1883,19 @@ public class RecordManager extends AbstractTransactionManager
             pageIo.getData().rewind();
             long pos = pageIo.getOffset();
 
-            if ( fileChannel.size() < ( pageIo.getOffset() + pageSize ) )
+            if ( fileChannel.size() < ( pageIo.getOffset() + recordManagerHeader.pageSize ) )
             {
                 LOG.debug( "Adding a page at the end of the file" );
                 // This is a page we have to add to the file
                 pos = fileChannel.size();
-                fileChannel.write( pageIo.getData(), pos );
-                //fileChannel.force( false );
+                fileChannel.write( pageIo.getData(), pageIo.getOffset() );
+                long endFile = fileChannel.size();
+                
+                if ( endFile == pos )
+                {
+                    System.out.println( "----------------------------------------------------FORCING FLUSH " );
+                    fileChannel.force( true );
+                }
             }
             else
             {
@@ -2617,9 +1914,9 @@ public class RecordManager extends AbstractTransactionManager
     }
 
     
-    private <K, V> void flushObjects( Collection<WALObject> walObjects ) throws IOException
+    private void flushObjects( Transaction transaction, Collection<WALObject> walObjects ) throws IOException
     {
-        if ( ( walObjects == null ) || ( walObjects.size() == 0 ) )
+        if ( ( walObjects == null ) || walObjects.isEmpty() )
         {
             LOG.debug( "No Page to flush" );
             return;
@@ -2635,35 +1932,8 @@ public class RecordManager extends AbstractTransactionManager
 
         for ( WALObject walObject : walObjects )
         {
-            if ( walObject instanceof BTreeHeader )
-            {
-                // We need to update the rootPage offset first
-                PageIO[] pageIos = walObject.serialize();
-                flushPages( pageIos );
-            }
-            else if ( walObject instanceof BTreeInfo )
-            {
-                // Serialize the instance and write it
-                PageIO[] pageIos = walObject.serialize();
-                flushPages( pageIos );
-            }
-            else if ( walObject instanceof Node )
-            {
-                
-            }
-            else if ( walObject instanceof Leaf )
-            {
-                // We can write pages immediately
-                PageIO[] pageIos = walObject.serialize();
-                flushPages( pageIos );
-            }
-            
-            //BTree<K, V> btree =  ( ( AbstractPage<K,V> ) page ).getBtree();
-            //PageIO[] pageIos = serializePage( btree, ( ( AbstractPage<K,V> ) page ).getRevision(), page );
-
-
-            //LOG.debug( "Flushing the newly managed '{}' btree rootpage", btree.getName() );
-            //ushPages( pageIos );
+            // We can write pages immediately
+            flushPages( transaction.getRecordManagerHeader(), walObject.getPageIOs() );
         }
     }
 
@@ -2690,7 +1960,6 @@ public class RecordManager extends AbstractTransactionManager
             long offset = pageIo.getOffset();
 
             LOG.debug( "Writing a page at position {}", offset );
-            //context.addPageIo( offset, pageIo );
 
             writeCounter.put( offset, writeCounter.containsKey( offset ) ? writeCounter.get( offset ) + 1 : 1 );
 
@@ -2706,18 +1975,18 @@ public class RecordManager extends AbstractTransactionManager
      * @param offset The position in the data
      * @return The page number in which the offset will start
      */
-    private int computePageNb( long offset )
+    private int computePageNb( RecordManagerHeader recordManagerHeader, long offset )
     {
         long pageNb = 0;
 
-        offset -= pageSize - LINK_SIZE - PAGE_SIZE;
+        offset -= recordManagerHeader.pageSize - LINK_SIZE - PAGE_SIZE;
 
         if ( offset < 0 )
         {
             return ( int ) pageNb;
         }
 
-        pageNb = 1 + offset / ( pageSize - LINK_SIZE );
+        pageNb = 1 + offset / ( recordManagerHeader.pageSize - LINK_SIZE );
 
         return ( int ) pageNb;
     }
@@ -2732,22 +2001,22 @@ public class RecordManager extends AbstractTransactionManager
      * @param pageIos The pageIOs we have to store the data in
      * @return The new offset
      */
-    /* no qualifier */ long store( long position, byte[] bytes, PageIO... pageIos )
+    /* no qualifier */ long store( RecordManagerHeader recordManagerHeader, long position, byte[] bytes, PageIO... pageIos )
     {
         if ( bytes != null )
         {
             // Write the bytes length
-            position = store( position, bytes.length, pageIos );
+            position = store( recordManagerHeader, position, bytes.length, pageIos );
 
             // Compute the page in which we will store the data given the
             // current position
-            int pageNb = computePageNb( position );
+            int pageNb = computePageNb( recordManagerHeader, position );
 
             // Get back the buffer in this page
             ByteBuffer pageData = pageIos[pageNb].getData();
 
             // Compute the position in the current page
-            int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * pageSize;
+            int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * recordManagerHeader.pageSize;
 
             // Compute the remaining size in the page
             int remaining = pageData.capacity() - pagePos;
@@ -2784,7 +2053,7 @@ public class RecordManager extends AbstractTransactionManager
         else
         {
             // No bytes : write 0 and return
-            position = store( position, 0, pageIos );
+            position = store( recordManagerHeader, position, 0, pageIos );
         }
 
         return position;
@@ -2801,19 +2070,19 @@ public class RecordManager extends AbstractTransactionManager
      * @param pageIos The pageIOs we have to store the data in
      * @return The new offset
      */
-    private long storeRaw( long position, byte[] bytes, PageIO... pageIos )
+    /* No qualifier */ long storeRaw( RecordManagerHeader recordManagerHeader, long position, byte[] bytes, PageIO... pageIos )
     {
         if ( bytes != null )
         {
             // Compute the page in which we will store the data given the
             // current position
-            int pageNb = computePageNb( position );
+            int pageNb = computePageNb( recordManagerHeader, position );
 
             // Get back the buffer in this page
             ByteBuffer pageData = pageIos[pageNb].getData();
 
             // Compute the position in the current page
-            int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * pageSize;
+            int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * recordManagerHeader.pageSize;
 
             // Compute the remaining size in the page
             int remaining = pageData.capacity() - pagePos;
@@ -2857,7 +2126,7 @@ public class RecordManager extends AbstractTransactionManager
         else
         {
             // No bytes : write 0 and return
-            position = store( position, 0, pageIos );
+            position = store( recordManagerHeader, position, 0, pageIos );
         }
 
         return position;
@@ -2873,14 +2142,14 @@ public class RecordManager extends AbstractTransactionManager
      * @param pageIos The pageIOs we have to store the data in
      * @return The new offset
      */
-    /* no qualifier */ long store( long position, int value, PageIO... pageIos )
+    /* no qualifier */ long store( RecordManagerHeader recordManagerHeader, long position, int value, PageIO... pageIos )
     {
         // Compute the page in which we will store the data given the
         // current position
-        int pageNb = computePageNb( position );
+        int pageNb = computePageNb( recordManagerHeader, position );
 
         // Compute the position in the current page
-        int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * pageSize;
+        int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * recordManagerHeader.pageSize;
 
         // Get back the buffer in this page
         ByteBuffer pageData = pageIos[pageNb].getData();
@@ -2948,14 +2217,14 @@ public class RecordManager extends AbstractTransactionManager
      * @param pageIos The pageIOs we have to store the data in
      * @return The new offset
      */
-    /* no qualifier */ long store( long position, long value, PageIO... pageIos )
+    /* no qualifier */ long store( RecordManagerHeader recordManagerHeader, long position, long value, PageIO... pageIos )
     {
         // Compute the page in which we will store the data given the
         // current position
-        int pageNb = computePageNb( position );
+        int pageNb = computePageNb( recordManagerHeader, position );
 
         // Compute the position in the current page
-        int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * pageSize;
+        int pagePos = ( int ) ( position + ( pageNb + 1 ) * LONG_SIZE + INT_SIZE ) - pageNb * recordManagerHeader.pageSize;
 
         // Get back the buffer in this page
         ByteBuffer pageData = pageIos[pageNb].getData();
@@ -3055,11 +2324,11 @@ public class RecordManager extends AbstractTransactionManager
      * @return A PageHolder containing the copied page
      * @throws IOException If the page can't be written on disk
      */
-    /* No qualifier*/<K, V> PageHolder<K, V> writePage( BTree<K, V> btree, Page<K, V> newPage,
+    /* No qualifier*/<K, V> PageHolder<K, V> writePage( WriteTransaction transaction, BTree<K, V> btree, Page<K, V> newPage,
         long newRevision ) throws IOException
     {
         // We first need to save the new page on disk
-        PageIO[] pageIos = serializePage( btree, newRevision, newPage );
+        PageIO[] pageIos = newPage.serialize( transaction );
 
         if ( LOG_PAGES.isDebugEnabled() )
         {
@@ -3069,15 +2338,12 @@ public class RecordManager extends AbstractTransactionManager
         }
 
         // Write the page on disk
-        flushPages( pageIos );
+        flushPages( transaction.getRecordManagerHeader(), pageIos );
 
         // Build the resulting reference
         long offset = pageIos[0].getOffset();
-        long lastOffset = pageIos[pageIos.length - 1].getOffset();
-        PageHolderImpl<K, V> pageHolder = new PageHolderImpl<K, V>( btree, newPage, offset,
-            lastOffset );
 
-        return pageHolder;
+        return new PageHolder<>( btree, newPage, offset );
     }
 
 
@@ -3150,7 +2416,7 @@ public class RecordManager extends AbstractTransactionManager
      * @param dataSize The size of the data we want to store in pages
      * @return The number of pages needed
      */
-    private int computeNbPages( int dataSize )
+    /* No qualifier */ static int computeNbPages( RecordManagerHeader recordManagerHeader, int dataSize )
     {
         if ( dataSize <= 0 )
         {
@@ -3164,7 +2430,7 @@ public class RecordManager extends AbstractTransactionManager
         // pages is :
         // NbPages = ( (dataSize - (PageSize - 8 - 4 )) / (PageSize - 8) ) + 1
         // NbPages += ( if (dataSize - (PageSize - 8 - 4 )) % (PageSize - 8) > 0 : 1 : 0 )
-        int availableSize = ( pageSize - LONG_SIZE );
+        int availableSize = recordManagerHeader.pageSize - LONG_SIZE;
         int nbNeededPages = 1;
 
         // Compute the number of pages that will be full but the first page
@@ -3191,7 +2457,7 @@ public class RecordManager extends AbstractTransactionManager
      * @param dataSize The data size
      * @return An array of pages, enough to store the full data
      */
-    /* No qualifier */ PageIO[] getFreePageIOs( int dataSize ) throws IOException
+    /* No qualifier */ PageIO[] getFreePageIOs( RecordManagerHeader recordManagerHeader, int dataSize ) throws IOException
     {
         if ( dataSize == 0 )
         {
@@ -3199,17 +2465,17 @@ public class RecordManager extends AbstractTransactionManager
                 {};
         }
 
-        int nbNeededPages = computeNbPages( dataSize );
+        int nbNeededPages = computeNbPages( recordManagerHeader, dataSize );
 
         PageIO[] pageIOs = new PageIO[nbNeededPages];
 
         // The first page : set the size
-        pageIOs[0] = fetchNewPage();
+        pageIOs[0] = fetchNewPage( recordManagerHeader );
         pageIOs[0].setSize( dataSize );
 
         for ( int i = 1; i < nbNeededPages; i++ )
         {
-            pageIOs[i] = fetchNewPage();
+            pageIOs[i] = fetchNewPage( recordManagerHeader );
 
             // Create the link
             pageIOs[i - 1].setNextPage( pageIOs[i].getOffset() );
@@ -3225,21 +2491,23 @@ public class RecordManager extends AbstractTransactionManager
      *
      * @return The fetched PageIO
      */
-    private PageIO fetchNewPage() throws IOException
+    /* No qualifier*/ PageIO fetchNewPage( RecordManagerHeader recordManagerHeader ) throws IOException
     {
         //System.out.println( "Fetching new page" );
-        if ( firstFreePage == NO_PAGE )
+        if ( recordManagerHeader.firstFreePage == NO_PAGE )
         {
             nbCreatedPages.incrementAndGet();
 
             // We don't have any free page. Reclaim some new page at the end
             // of the file
-            PageIO newPage = new PageIO( context.getLastOffset() );
+            long lastOffset = recordManagerHeader.lastOffset;
+            PageIO newPage = new PageIO( lastOffset );
 
-            context.addLastOffset( pageSize );
+            ByteBuffer data = ByteBuffer.allocateDirect( recordManagerHeader.pageSize );
 
-            ByteBuffer data = ByteBuffer.allocateDirect( pageSize );
-
+            // Move the last offset one page forward
+            recordManagerHeader.lastOffset = lastOffset + recordManagerHeader.pageSize;
+            
             newPage.setData( data );
             newPage.setNextPage( NO_PAGE );
             newPage.setSize( 0 );
@@ -3255,15 +2523,15 @@ public class RecordManager extends AbstractTransactionManager
             freePageLock.lock();
 
                 // We have some existing free page. Fetch it from disk
-            PageIO pageIo = fetchPage( firstFreePage );
+            PageIO pageIo = fetchPage( recordManagerHeader, recordManagerHeader.firstFreePage );
 
             // Update the firstFreePage pointer
-            firstFreePage = pageIo.getNextPage();
+            recordManagerHeader.firstFreePage = pageIo.getNextPage();
 
             freePageLock.unlock();
 
             // overwrite the data of old page
-            ByteBuffer data = ByteBuffer.allocateDirect( pageSize );
+            ByteBuffer data = ByteBuffer.allocateDirect( recordManagerHeader.pageSize );
             pageIo.setData( data );
 
             pageIo.setNextPage( NO_PAGE );
@@ -3282,11 +2550,11 @@ public class RecordManager extends AbstractTransactionManager
      * @param offset The position in the file
      * @return The found page
      */
-    /* no qualifier */PageIO fetchPage( long offset ) throws IOException, EndOfFileExceededException
+    /* no qualifier */PageIO fetchPage( RecordManagerHeader recordManagerHeader, long offset ) throws IOException, EndOfFileExceededException
     {
         checkOffset( offset );
 
-        if ( fileChannel.size() < offset + pageSize )
+        if ( fileChannel.size() < offset + recordManagerHeader.pageSize )
         {
             // Error : we are past the end of the file
             throw new EndOfFileExceededException( "We are fetching a page on " + offset +
@@ -3297,7 +2565,7 @@ public class RecordManager extends AbstractTransactionManager
             // Read the page
             fileChannel.position( offset );
 
-            ByteBuffer data = ByteBuffer.allocate( pageSize );
+            ByteBuffer data = ByteBuffer.allocate( recordManagerHeader.pageSize );
             fileChannel.read( data );
             data.rewind();
 
@@ -3312,9 +2580,9 @@ public class RecordManager extends AbstractTransactionManager
     /**
      * @return the pageSize
      */
-    public int getPageSize()
+    public int getPageSize( RecordManagerHeader recordManagerHeader )
     {
-        return pageSize;
+        return recordManagerHeader.pageSize;
     }
 
 
@@ -3323,16 +2591,28 @@ public class RecordManager extends AbstractTransactionManager
      *
      * @param pageSize The number of bytes for a page
      */
-    /* no qualifier */void setPageSize( int pageSize )
+    /* no qualifier */void setPageSize( Transaction transaction, int pageSize )
     {
-        if ( this.pageSize >= 13 )
+        RecordManagerHeader recordManagerHeader = transaction.getRecordManagerHeader();
+        
+        if ( recordManagerHeader.pageSize >= 13 )
         {
-            this.pageSize = pageSize;
+            recordManagerHeader.pageSize = pageSize;
         }
         else
         {
-            this.pageSize = DEFAULT_PAGE_SIZE;
+            recordManagerHeader.pageSize = DEFAULT_PAGE_SIZE;
         }
+    }
+
+
+    /**
+     * Close the RecordManager immediately. The pending write transaction will
+     * be aborted. 
+     */
+    public void closeNow() throws IOException
+    {
+        
     }
 
 
@@ -3341,34 +2621,24 @@ public class RecordManager extends AbstractTransactionManager
      */
     public void close() throws IOException
     {
-        beginTransaction();
-
         // Close all the managed B-trees
         for ( BTree<Object, Object> tree : managedBtrees.values() )
         {
-            tree.close();
+            //tree.close();
         }
 
         // Close the management B-trees
-        copiedPageBtree.close();
-        btreeOfBtrees.close();
-
-        managedBtrees.clear();
+        //copiedPageBtree.close();
+        //btreeOfBtrees.close();
 
         // Write the data
         fileChannel.force( true );
 
         // And close the channel
         fileChannel.close();
-
-        commit();
     }
 
-    /** Hex chars */
-    private static final byte[] HEX_CHAR = new byte[]
-        { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
-
-
+    
     public static String dump( byte octet )
     {
         return new String( new byte[]
@@ -3439,35 +2709,35 @@ public class RecordManager extends AbstractTransactionManager
             RandomAccessFile randomFile = new RandomAccessFile( file, "r" );
             FileChannel fileChannel = randomFile.getChannel();
 
-            ByteBuffer recordManagerHeader = ByteBuffer.allocate( RECORD_MANAGER_HEADER_SIZE );
+            ByteBuffer recordManagerHeaderBuffer = ByteBuffer.allocate( recordManagerHeaderSize );
 
             // load the RecordManager header
-            fileChannel.read( recordManagerHeader );
+            fileChannel.read( recordManagerHeaderBuffer );
 
-            recordManagerHeader.rewind();
+            recordManagerHeaderBuffer.rewind();
 
             // The page size
             long fileSize = fileChannel.size();
-            int pageSize = recordManagerHeader.getInt();
+            int pageSize = recordManagerHeaderBuffer.getInt();
             long nbPages = fileSize / pageSize;
 
             // The number of managed B-trees
-            int nbBtree = recordManagerHeader.getInt();
+            int nbBtree = recordManagerHeaderBuffer.getInt();
 
             // The first free page
-            long firstFreePage = recordManagerHeader.getLong();
+            long firstFreePage = recordManagerHeaderBuffer.getLong();
 
             // The current B-tree of B-trees
-            long currentBtreeOfBtreesPage = recordManagerHeader.getLong();
+            long currentBtreeOfBtreesPage = recordManagerHeaderBuffer.getLong();
 
             // The previous B-tree of B-trees
-            long previousBtreeOfBtreesPage = recordManagerHeader.getLong();
+            long previousBtreeOfBtreesPage = recordManagerHeaderBuffer.getLong();
 
             // The current CopiedPages B-tree
-            long currentCopiedPagesBtreePage = recordManagerHeader.getLong();
+            long currentCopiedPagesBtreePage = recordManagerHeaderBuffer.getLong();
 
             // The previous CopiedPages B-tree
-            long previousCopiedPagesBtreePage = recordManagerHeader.getLong();
+            long previousCopiedPagesBtreePage = recordManagerHeaderBuffer.getLong();
 
             System.out.println( "  RecordManager" );
             System.out.println( "  -------------" );
@@ -3482,25 +2752,27 @@ public class RecordManager extends AbstractTransactionManager
             System.out.println( "      current CopiedPages : 0x" + Long.toHexString( currentCopiedPagesBtreePage ) );
             System.out.println( "      previous CopiedPages : 0x" + Long.toHexString( previousCopiedPagesBtreePage ) );
 
+            RecordManagerHeader recordManagerHeader = recordManagerHeaderReference.get();
+            
             // Dump the Free pages list
-            dumpFreePages( firstFreePage );
+            dumpFreePages( recordManagerHeader, firstFreePage );
 
             // Dump the B-tree of B-trees
-            dumpBtreeHeader( currentBtreeOfBtreesPage );
+            dumpBtreeHeader( recordManagerHeader, currentBtreeOfBtreesPage );
 
             // Dump the previous B-tree of B-trees if any
             if ( previousBtreeOfBtreesPage != NO_PAGE )
             {
-                dumpBtreeHeader( previousBtreeOfBtreesPage );
+                dumpBtreeHeader( recordManagerHeader, previousBtreeOfBtreesPage );
             }
 
             // Dump the CopiedPages B-tree
-            dumpBtreeHeader( currentCopiedPagesBtreePage );
+            dumpBtreeHeader( recordManagerHeader, currentCopiedPagesBtreePage );
 
             // Dump the previous B-tree of B-trees if any
             if ( previousCopiedPagesBtreePage != NO_PAGE )
             {
-                dumpBtreeHeader( previousCopiedPagesBtreePage );
+                dumpBtreeHeader( recordManagerHeader, previousCopiedPagesBtreePage );
             }
 
             // Dump all the user's B-tree
@@ -3517,14 +2789,14 @@ public class RecordManager extends AbstractTransactionManager
     /**
      * Dump the free pages
      */
-    private void dumpFreePages( long freePageOffset ) throws EndOfFileExceededException, IOException
+    private void dumpFreePages( RecordManagerHeader recordManagerHeader, long freePageOffset ) throws EndOfFileExceededException, IOException
     {
         System.out.println( "\n  FreePages : " );
         int pageNb = 1;
 
         while ( freePageOffset != NO_PAGE )
         {
-            PageIO pageIo = fetchPage( freePageOffset );
+            PageIO pageIo = fetchPage( recordManagerHeader, freePageOffset );
 
             System.out.println( "    freePage[" + pageNb + "] : 0x" + Long.toHexString( pageIo.getOffset() ) );
 
@@ -3537,36 +2809,36 @@ public class RecordManager extends AbstractTransactionManager
     /**
      * Dump a B-tree Header
      */
-    private long dumpBtreeHeader( long btreeOffset ) throws EndOfFileExceededException, IOException
+    private long dumpBtreeHeader( RecordManagerHeader recordManagerHeader, long btreeOffset ) throws EndOfFileExceededException, IOException
     {
         // First read the B-tree header
-        PageIO[] pageIos = readPageIOs( btreeOffset, Long.MAX_VALUE );
+        PageIO[] pageIos = readPageIOs( recordManagerHeader, btreeOffset, Long.MAX_VALUE );
 
         long dataPos = 0L;
 
         // The B-tree current revision
-        long revision = readLong( pageIos, dataPos );
+        long revision = readLong( recordManagerHeader, pageIos, dataPos );
         dataPos += LONG_SIZE;
 
         // The nb elems in the tree
-        long nbElems = readLong( pageIos, dataPos );
+        long nbElems = readLong( recordManagerHeader, pageIos, dataPos );
         dataPos += LONG_SIZE;
 
         // The B-tree rootPage offset
-        long rootPageOffset = readLong( pageIos, dataPos );
+        long rootPageOffset = readLong( recordManagerHeader, pageIos, dataPos );
         dataPos += LONG_SIZE;
 
         // The B-tree page size
-        int btreePageSize = readInt( pageIos, dataPos );
+        int btreePageSize = readInt( recordManagerHeader, pageIos, dataPos );
         dataPos += INT_SIZE;
 
         // The tree name
-        ByteBuffer btreeNameBytes = readBytes( pageIos, dataPos );
+        ByteBuffer btreeNameBytes = readBytes( recordManagerHeader, pageIos, dataPos );
         dataPos += INT_SIZE + btreeNameBytes.limit();
         String btreeName = Strings.utf8ToString( btreeNameBytes );
 
         // The keySerializer FQCN
-        ByteBuffer keySerializerBytes = readBytes( pageIos, dataPos );
+        ByteBuffer keySerializerBytes = readBytes( recordManagerHeader, pageIos, dataPos );
         dataPos += INT_SIZE + keySerializerBytes.limit();
 
         String keySerializerFqcn = "";
@@ -3577,7 +2849,7 @@ public class RecordManager extends AbstractTransactionManager
         }
 
         // The valueSerialier FQCN
-        ByteBuffer valueSerializerBytes = readBytes( pageIos, dataPos );
+        ByteBuffer valueSerializerBytes = readBytes( recordManagerHeader, pageIos, dataPos );
 
         String valueSerializerFqcn = "";
         dataPos += INT_SIZE + valueSerializerBytes.limit();
@@ -3588,7 +2860,7 @@ public class RecordManager extends AbstractTransactionManager
         }
 
         // The B-tree allowDuplicates flag
-        int allowDuplicates = readInt( pageIos, dataPos );
+        int allowDuplicates = readInt( recordManagerHeader, pageIos, dataPos );
         boolean dupsAllowed = allowDuplicates != 0;
 
         dataPos += INT_SIZE;
@@ -3651,9 +2923,9 @@ public class RecordManager extends AbstractTransactionManager
      *
      * @return The number of managed B-trees
      */
-    public int getNbManagedTrees()
+    public int getNbManagedTrees( RecordManagerHeader recordManagerHeader )
     {
-        return nbBtree;
+        return recordManagerHeader.nbBtree;
     }
 
 
@@ -3664,9 +2936,7 @@ public class RecordManager extends AbstractTransactionManager
      */
     public Set<String> getManagedTrees()
     {
-        Set<String> btrees = new HashSet<String>( managedBtrees.keySet() );
-
-        return btrees;
+        return new HashSet<>( managedBtrees.keySet() );
     }
 
 
@@ -3678,11 +2948,11 @@ public class RecordManager extends AbstractTransactionManager
      * @param copiedPages The pages that have been copied while creating this revision
      * @throws IOException If we weren't able to store the data on disk
      */
-    /* No Qualifier */void storeCopiedPages( String name, long revision, long[] copiedPages ) throws IOException
+    /* No Qualifier */void storeCopiedPages( WriteTransaction transaction, String name, long revision, long[] copiedPages ) throws IOException
     {
         RevisionName revisionName = new RevisionName( revision, name );
 
-        copiedPageBtree.insert( revisionName, copiedPages );
+        copiedPageBtree.insert( transaction, revisionName, copiedPages );
     }
 
 
@@ -3693,7 +2963,7 @@ public class RecordManager extends AbstractTransactionManager
      * @param rootPage The old rootPage
      * @throws IOException If we have an issue while writing on disk
      */
-    /* No qualifier */<K, V> void storeRootPage( BTree<K, V> btree, Page<K, V> rootPage ) throws IOException
+    /* No qualifier */<K, V> void storeRootPage( WriteTransaction transaction, BTree<K, V> btree, Page<K, V> rootPage ) throws IOException
     {
         if ( !isKeepRevisions() )
         {
@@ -3707,77 +2977,51 @@ public class RecordManager extends AbstractTransactionManager
 
         NameRevision nameRevision = new NameRevision( btree.getName(), rootPage.getRevision() );
 
-        ( ( AbstractBTree<NameRevision, Long> ) btreeOfBtrees ).insert( nameRevision,
-            ( ( AbstractPage<K, V> ) rootPage ).getOffset(), 0 );
+        btreeOfBtrees.insert( transaction, nameRevision, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
 
         if ( LOG_CHECK.isDebugEnabled() )
         {
-            MavibotInspector.check( this );
+            MavibotInspector.check( this, transaction.getRecordManagerHeader() );
         }
     }
 
 
     /**
-     * Fetch the rootPage of a given B-tree for a given revision.
+     * Get one managed b-tree, knowing its name. It will return the b-tree version
+     * of the given transaction.
      *
-     * @param btree The B-tree we are interested in
-     * @param revision The revision we want to get back
-     * @return The rootPage for this B-tree and this revision, if any
-     * @throws KeyNotFoundException If we can't find the rootPage for this revision and this B-tree
-     * @throws IOException If we had an ise while accessing the data on disk
+     * @param name The b-tree name we are looking for
+     * @return The managed b-tree
      */
-    /* No qualifier */<K, V> Page<K, V> getRootPage( BTree<K, V> btree, long revision ) throws KeyNotFoundException,
-        IOException
+    public <K, V> BTree<K, V> getBtree( Transaction transaction, String name ) throws IOException
     {
-        if ( btree.getRevision() == revision )
+        RecordManagerHeader recordManagerHeader = transaction.getRecordManagerHeader();
+        BTree<NameRevision, Long> btreeOfBtrees = recordManagerHeader.getBtreeOfBtrees();
+        
+        // Find the newest B-tree reference in the BOB
+        NameRevision nameRevision = new NameRevision( name, Long.MAX_VALUE );
+        
+        TupleCursor<NameRevision, Long> cursor = btreeOfBtrees.browseFrom( transaction, nameRevision );
+        
+        if ( cursor.hasPrev() )
         {
-            // We are asking for the current revision
-            return btree.getRootPage();
+            Tuple<NameRevision, Long> tuple = cursor.prev();
+            
+            if ( tuple != null )
+            {
+                try
+                {
+                    // The B-tree has been found. We got back its offset, so load it
+                    return readBTree( transaction, tuple.getValue() );
+                }
+                catch ( Exception e )
+                {
+                    throw new IOException( e.getMessage() );
+                }
+            }
         }
-
-        // Get the B-tree header offset
-        NameRevision nameRevision = new NameRevision( btree.getName(), revision );
-        long btreeHeaderOffset = btreeOfBtrees.get( nameRevision );
-
-        // get the B-tree rootPage
-        Page<K, V> btreeRoot = readRootPage( btree, btreeHeaderOffset );
-
-        return btreeRoot;
-    }
-
-
-    /**
-     * Read a root page from the B-tree header offset
-     */
-    private <K, V> Page<K, V> readRootPage( BTree<K, V> btree, long btreeHeaderOffset )
-        throws EndOfFileExceededException, IOException
-    {
-        // Read the B-tree header pages on disk
-        PageIO[] btreeHeaderPageIos = readPageIOs( btreeHeaderOffset, Long.MAX_VALUE );
-        long dataPos = LONG_SIZE + LONG_SIZE;
-
-        // The B-tree rootPage offset
-        long rootPageOffset = readLong( btreeHeaderPageIos, dataPos );
-
-        // Read the rootPage pages on disk
-        PageIO[] rootPageIos = readPageIOs( rootPageOffset, Long.MAX_VALUE );
-
-        // Now, convert it to a Page
-        Page<K, V> btreeRoot = readPage( btree, rootPageIos );
-
-        return btreeRoot;
-    }
-
-
-    /**
-     * Get one managed trees, knowing its name.
-     *
-     * @param name The B-tree name we are looking for
-     * @return The managed B-trees
-     */
-    public <K, V> BTree<K, V> getManagedTree( String name )
-    {
-        return ( BTree<K, V> ) managedBtrees.get( name );
+        
+        return null;
     }
 
 
@@ -3793,13 +3037,15 @@ public class RecordManager extends AbstractTransactionManager
      * @throws IOException If we had a problem while updating the file
      * @throws EndOfFileExceededException If we tried to write after the end of the file
      */
-    /* Package protected */<K, V> void freePages( BTree<K, V> btree, long revision, List<Page<K, V>> pages )
+    /* Package protected */<K, V> void freePages( WriteTransaction transaction, BTree<K, V> btree, long revision, List<Page<K, V>> pages )
         throws EndOfFileExceededException, IOException
     {
         if ( ( pages == null ) || pages.isEmpty() )
         {
             return;
         }
+        
+        RecordManagerHeader recordManagerHeader = transaction.getRecordManagerHeader();
 
         if ( !keepRevisions )
         {
@@ -3819,7 +3065,7 @@ public class RecordManager extends AbstractTransactionManager
             {
                 long pageOffset = ( ( AbstractPage<K, V> ) page ).getOffset();
 
-                PageIO[] pageIos = readPageIOs( pageOffset, Long.MAX_VALUE );
+                PageIO[] pageIos = readPageIOs( recordManagerHeader, pageOffset, Long.MAX_VALUE );
 
                 for ( PageIO pageIo : pageIos )
                 {
@@ -3855,10 +3101,10 @@ public class RecordManager extends AbstractTransactionManager
                 // Deal with standard B-trees
                 RevisionName revisionName = new RevisionName( revision, btree.getName() );
 
-                copiedPageBtree.insert( revisionName, pageOffsets );
+                copiedPageBtree.insert( transaction, revisionName, pageOffsets );
 
                 // Update the RecordManager Copiedpage Offset
-                currentCopiedPagesBtreeOffset = ( ( BTreeImpl<RevisionName, long[]> ) copiedPageBtree )
+                recordManagerHeader.currentCopiedPagesBtreeOffset = ( ( BTreeImpl<RevisionName, long[]> ) copiedPageBtree )
                     .getBtreeOffset();
             }
             else
@@ -3866,7 +3112,7 @@ public class RecordManager extends AbstractTransactionManager
                 // Managed B-trees : we simply free the copied pages
                 for ( long pageOffset : pageOffsets )
                 {
-                    PageIO[] pageIos = readPageIOs( pageOffset, Long.MAX_VALUE );
+                    PageIO[] pageIos = readPageIOs( recordManagerHeader, pageOffset, Long.MAX_VALUE );
 
                     for ( PageIO pageIo : pageIos )
                     {
@@ -3884,23 +3130,25 @@ public class RecordManager extends AbstractTransactionManager
      * @param pageIo The page to free
      * @throws IOException If we weren't capable of updating the file
      */
-    /* no qualifier */ void free( PageIO pageIo ) throws IOException
+    /* no qualifier */ void free( WriteTransaction transaction, PageIO pageIo ) throws IOException
     {
+        RecordManagerHeader recordManagerHeader = transaction.getRecordManagerHeader();
+        
         freePageLock.lock();
 
             // We add the Page's PageIOs before the
             // existing free pages.
             // Link it to the first free page
-            pageIo.setNextPage( firstFreePage );
+            pageIo.setNextPage( recordManagerHeader.firstFreePage );
 
             LOG.debug( "Flushing the first free page" );
 
             // And flush it to disk
             //FIXME can be flushed last after releasing the lock
-            flushPages( pageIo );
+            flushPages( recordManagerHeader, pageIo );
 
             // We can update the firstFreePage offset
-            firstFreePage = pageIo.getOffset();
+            recordManagerHeader.firstFreePage = pageIo.getOffset();
 
             freePageLock.unlock();
         }
@@ -3912,15 +3160,17 @@ public class RecordManager extends AbstractTransactionManager
      * @param offsets The offsets of the pages whose associated PageIOs will be fetched and freed.
      * @throws IOException If we weren't capable of updating the file
      */
-    /*no qualifier*/ void free( long... offsets ) throws IOException
+    /*no qualifier*/ void free( Transaction transaction, long... offsets ) throws IOException
     {
+        RecordManagerHeader recordManagerHeader = transaction.getRecordManagerHeader();
+        
         freePageLock.lock();
 
-        List<PageIO> pageIos = new ArrayList<PageIO>();
+        List<PageIO> pageIos = new ArrayList<>();
         int pageIndex = 0;
             for ( int i = 0; i < offsets.length; i++ )
             {
-                PageIO[] ios = readPageIOs( offsets[i], Long.MAX_VALUE );
+                PageIO[] ios = readPageIOs( recordManagerHeader, offsets[i], Long.MAX_VALUE );
 
                 for ( PageIO io : ios )
                 {
@@ -3938,16 +3188,16 @@ public class RecordManager extends AbstractTransactionManager
         // We add the Page's PageIOs before the
         // existing free pages.
         // Link it to the first free page
-        pageIos.get( pageIndex - 1 ).setNextPage( firstFreePage );
+        pageIos.get( pageIndex - 1 ).setNextPage( recordManagerHeader.firstFreePage );
 
         LOG.debug( "Flushing the first free page" );
 
         // And flush it to disk
         //FIXME can be flushed last after releasing the lock
-        flushPages( pageIos.toArray( new PageIO[0] ) );
+        flushPages( recordManagerHeader, pageIos.toArray( new PageIO[0] ) );
 
         // We can update the firstFreePage offset
-        firstFreePage = pageIos.get( 0 ).getOffset();
+        recordManagerHeader.firstFreePage = pageIos.get( 0 ).getOffset();
 
         freePageLock.unlock();
     }
@@ -3982,38 +3232,20 @@ public class RecordManager extends AbstractTransactionManager
      * @throws IOException If we weren't able to update the file on disk
      * @throws BTreeAlreadyManagedException If the B-tree is already managed
      */
-    @SuppressWarnings("all")
-    public <K, V> BTree<K, V> addBTree( String name, ElementSerializer<K> keySerializer,
+    public <K, V> BTree<K, V> addBTree( WriteTransaction transaction, String name, ElementSerializer<K> keySerializer,
         ElementSerializer<V> valueSerializer, boolean allowDuplicates )
         throws IOException, BTreeAlreadyManagedException
     {
-        BTreeConfiguration config = new BTreeConfiguration();
+        BTreeConfiguration<K, V> config = new BTreeConfiguration<>();
 
         config.setName( name );
         config.setKeySerializer( keySerializer );
         config.setValueSerializer( valueSerializer );
 
-        BTree btree = new BTreeImpl( config );
-        manage( btree );
-
-        if ( LOG_CHECK.isDebugEnabled() )
-        {
-            MavibotInspector.check( this );
-        }
+        BTree<K, V> btree = new BTreeImpl<>( transaction,  config );
+        manage( transaction, btree );
 
         return btree;
-    }
-
-
-    /**
-     * Add a newly closd transaction into the closed transaction queue
-     */
-    /* no qualifier */<K, V> void releaseTransaction( ReadTransaction<K, V> readTransaction )
-    {
-        RevisionName revisionName = new RevisionName(
-            readTransaction.getRevision(),
-            readTransaction.getBtreeHeader().getBtree().getName() );
-        //closedTransactionsQueue.add( revisionName );
     }
 
 
@@ -4041,9 +3273,25 @@ public class RecordManager extends AbstractTransactionManager
     public BTreeHeader getNewBTreeHeader( String name )
     {
         // get the current BTree Header for this BTree and revision
-        BTreeHeader<?, ?> btreeHeader = newBTreeHeaders.get( name );
-
-        return btreeHeader;
+        return newBTreeHeaders.get( name );
+    }
+    
+    
+    /**
+     * @return The byte[] that will contain the Recoed Manager Header 
+     */
+    /* No qualifier */ byte[] getRecordManagerHeaderBytes()
+    {
+        return recordManagerHeaderBytes;
+    }
+    
+    
+    /**
+     * @return The ByteBuffer that will contain the Record Manager Header 
+     */
+    /* No qualifier */ ByteBuffer getRecordManagerHeaderBuffer()
+    {
+        return recordManagerHeaderBuffer;
     }
 
 
@@ -4099,18 +3347,20 @@ public class RecordManager extends AbstractTransactionManager
 
     private void checkFreePages() throws EndOfFileExceededException, IOException
     {
+        RecordManagerHeader recordManagerHeader = recordManagerHeaderReference.get();
+        
         //System.out.println( "Checking the free pages, starting from " + Long.toHexString( firstFreePage ) );
 
         // read all the free pages, add them into a set, to be sure we don't have a cycle
-        Set<Long> freePageOffsets = new HashSet<Long>();
+        Set<Long> freePageOffsets = new HashSet<>();
 
-        long currentFreePageOffset = firstFreePage;
+        long currentFreePageOffset = recordManagerHeader.firstFreePage;
 
         while ( currentFreePageOffset != NO_PAGE )
         {
             //System.out.println( "Next page offset :" + Long.toHexString( currentFreePageOffset ) );
 
-            if ( ( currentFreePageOffset % pageSize ) != 0 )
+            if ( ( currentFreePageOffset % recordManagerHeader.pageSize ) != 0 )
             {
                 throw new InvalidOffsetException( "Wrong offset : " + Long.toHexString( currentFreePageOffset ) );
             }
@@ -4122,7 +3372,7 @@ public class RecordManager extends AbstractTransactionManager
             }
 
             freePageOffsets.add( currentFreePageOffset );
-            PageIO pageIO = fetchPage( currentFreePageOffset );
+            PageIO pageIO = fetchPage( recordManagerHeader, currentFreePageOffset );
 
             currentFreePageOffset = pageIO.getNextPage();
         }
@@ -4153,20 +3403,32 @@ public class RecordManager extends AbstractTransactionManager
     {
         return context;
     }
+    
+    
+    /**
+     * @return A copy of the current RecordManager header
+     */
+    /* No qualifier */ RecordManagerHeader getRecordManagerHeader()
+    {
+        return recordManagerHeaderReference.get().copy();
+    }
 
 
     /**
      * @see Object#toString()
      */
+    @Override
     public String toString()
     {
         StringBuilder sb = new StringBuilder();
 
         sb.append( "RM free pages : [" );
+        
+        RecordManagerHeader recordManagerHeader = recordManagerHeaderReference.get();
 
-        if ( firstFreePage != NO_PAGE )
+        if ( recordManagerHeader.firstFreePage != NO_PAGE )
         {
-            long current = firstFreePage;
+            long current = recordManagerHeader.firstFreePage;
             boolean isFirst = true;
 
             while ( current != NO_PAGE )
@@ -4184,7 +3446,7 @@ public class RecordManager extends AbstractTransactionManager
 
                 try
                 {
-                    pageIo = fetchPage( current );
+                    pageIo = fetchPage( recordManagerHeader, current );
                     sb.append( pageIo.getOffset() );
                     current = pageIo.getNextPage();
                 }
