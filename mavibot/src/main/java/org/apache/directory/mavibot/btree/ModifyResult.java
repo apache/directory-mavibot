@@ -39,6 +39,9 @@ import java.util.List;
 
     /** The modified value if the key was found in the tree*/
     protected V modifiedValue;
+    
+    /** The modified key */
+    protected K modifiedKey;
 
 
     /**
@@ -47,10 +50,11 @@ import java.util.List;
      * @param modifiedPage The modified page
      * @param modifiedvalue The modified value (can be null if the key wasn't present in the tree)
      */
-    public ModifyResult( Page<K, V> modifiedPage, V modifiedValue )
+    public ModifyResult( Page<K, V> modifiedPage, K modifiedKey, V modifiedValue )
     {
         super();
         this.modifiedPage = modifiedPage;
+        this.modifiedKey = modifiedKey;
         this.modifiedValue = modifiedValue;
     }
 
@@ -62,10 +66,11 @@ import java.util.List;
      * @param modifiedPage The modified page
      * @param modifiedvalue The modified value (can be null if the key wasn't present in the tree)
      */
-    public ModifyResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage, V modifiedValue )
+    public ModifyResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage, K modifiedKey, V modifiedValue )
     {
         super( copiedPages );
         this.modifiedPage = modifiedPage;
+        this.modifiedKey = modifiedKey;
         this.modifiedValue = modifiedValue;
     }
 
@@ -106,10 +111,28 @@ import java.util.List;
     {
         StringBuilder sb = new StringBuilder();
 
-        sb.append( "ModifyResult, old value = " ).append( modifiedValue );
+        sb.append( "ModifyResult, old tuple = <" ).append( modifiedKey ).append( ", " ).append( modifiedValue ).append( '>' );
         sb.append( ", modifiedPage = " ).append( modifiedPage );
         sb.append( super.toString() );
 
         return sb.toString();
+    }
+
+
+    /**
+     * @return the modifiedKey
+     */
+    public K getModifiedKey()
+    {
+        return modifiedKey;
+    }
+
+
+    /**
+     * @param modifiedKey the modifiedKey to set
+     */
+    public void setModifiedKey( K modifiedKey )
+    {
+        this.modifiedKey = modifiedKey;
     }
 }

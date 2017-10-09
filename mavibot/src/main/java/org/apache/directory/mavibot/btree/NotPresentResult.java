@@ -19,7 +19,6 @@
  */
 package org.apache.directory.mavibot.btree;
 
-
 /**
  * The result of an delete operation, when the key to delete is not present in the tree.
  * 
@@ -28,39 +27,10 @@ package org.apache.directory.mavibot.btree;
 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier*/class NotPresentResult<K, V> extends AbstractResult<K, V> implements DeleteResult<K, V>
+/* No qualifier*/class NotPresentResult<K, V> extends AbstractDeleteResult<K, V>
 {
     /** The unique instance for this class */
     public static final NotPresentResult NOT_PRESENT = new NotPresentResult<>();
-
-    /**
-     * A private void constructor, as we won't have any other instance.
-     */
-    private NotPresentResult()
-    {
-        // Do nothing
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Page<K, V> getModifiedPage()
-    {
-        return null;
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Tuple<K, V> getRemovedElement()
-    {
-        return null;
-    }
-
 
     /**
      * {@inheritDoc}
@@ -68,5 +38,11 @@ package org.apache.directory.mavibot.btree;
     public K getNewLeftMost()
     {
         return null;
+    }
+
+    
+    /* No qualifier */NotPresentResult()
+    {
+        super( null, null);
     }
 }

@@ -23,6 +23,8 @@ package org.apache.directory.mavibot.btree;
 import java.io.IOException;
 import java.util.Date;
 
+import org.apache.directory.mavibot.btree.exception.BTreeNotFoundException;
+
 
 /**
  * A read transaction is used to insure that reads are always done against 
@@ -67,6 +69,7 @@ public abstract class AbstractTransaction implements Transaction
         this( recordManager, DEFAULT_TIMEOUT );
     }
     
+    
     /**
      * Creates a new read transaction, with a specific tiemout. It create a new copy of
      * the recordManager header
@@ -78,9 +81,18 @@ public abstract class AbstractTransaction implements Transaction
     {
         assert recordManager != null;
         this.recordManager = recordManager;
-        recordManagerHeader = recordManager.getRecordManagerHeader();
         
         this.timeout = timeout;
+    }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public <K, V> Page<K, V> getPage( BTreeInfo<K, V> btreeInfo, long offset ) throws IOException
+    {
+        return ( Page<K, V> ) recordManager.getPage( btreeInfo, recordManagerHeader.pageSize, offset );
     }
     
     
@@ -170,6 +182,25 @@ public abstract class AbstractTransaction implements Transaction
     public void commit() throws IOException
     {
         closed = true;
+    }
+    
+    
+    /**
+     * {@inheritDoc}
+     * @param name The B-tree we are looking for
+     * @return The found B-tree, or a BTreeNotFoundException if teh B-tree does not exist.
+     */
+    @Override
+    public <K, V> BTree<K, V> getBTree( String name )
+    {
+        BTree<K, V> btree = recordManagerHeader.getBTree( name );
+        
+        if ( btree == null )
+        {
+            throw new BTreeNotFoundException( "Cannot find btree " + name );
+        }
+        
+        return btree;
     }
 
 

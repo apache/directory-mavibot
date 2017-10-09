@@ -20,19 +20,33 @@
 package org.apache.directory.mavibot.btree;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 /**
- * A WALObject is an object stored in the TransactionContext before weing written on disk.
+ * A WALObject is an object stored in a {@link Transaction} before being written on disk. 
+ * <p>
+ * The <strong>WAL</strong> (aka Write Ahead Log) is a temporary storage where updates are
+ * kept until the transaction is committed on disk, or rolled back.
+ * <p> 
+ * The following elements are WalObjects :
+ * <ul>
+ *   <li>Leaf</li>
+ *   <li>Node</li>
+ *   <li>BtreeHeader</li>
+ *   <li>BtreeInfo</li>
+ * </ul>
+ * <p>
+ * In order to save useless writes, when a WALObject is already present in the WAL, it's replaced by the new version. That
+ * means the element will not be written twice on disk.
+ * @see <a href="https://en.wikipedia.org/wiki/Write-ahead_logging">https://en.wikipedia.org/wiki/Write-ahead_logging</a>
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public interface WALObject<K, V>
 {
     /**
-     * @return the B-tree
+     * @return the B-tree information
      */
-    public BTree<K, V> getBtree();
+    public BTreeInfo<K, V> getBtreeInfo();
 
     
     /**
@@ -53,7 +67,7 @@ public interface WALObject<K, V>
     
     
     /**
-     * @param pageIOs Store teh PageIOs for this object
+     * @param pageIOs Set the PageIOs for this object
      */
     void setPageIOs( PageIO[] pageIOs );
     
@@ -67,18 +81,6 @@ public interface WALObject<K, V>
      * @throws IOException If we got an error while serializing
      */
     PageIO[] serialize( WriteTransaction transaction ) throws IOException;
-    
-    
-    /**
-     * Deserialize a WALObject from a PageIO[]
-     * 
-     * @param transaction The Read Transaction in use
-     * @param byteBuffer The byteBuffer containing the page data
-     * @return The read page
-     * 
-     * @throws IOException If we got an error while serializing
-     */
-    WALObject<K, V> deserialize( Transaction transaction, ByteBuffer byteBuffer ) throws IOException;
 
     
     /**
@@ -98,4 +100,13 @@ public interface WALObject<K, V>
      * @return The pretty print for this instance
      */
     String prettyPrint();
+
+    
+    /**
+     * Tells if the B-tree is a user B-tree or not
+     * 
+     * @return <code>false</code> if the B-tree is a <em>BtreeOfBtrees</em> or a <em>CopiedPagesBTree</em>, 
+     * <code>true</code> otherwise
+     */
+    boolean isBTreeUser();
 }

@@ -67,6 +67,17 @@ public interface Transaction extends Closeable
      * @return The current transaction revision
      */
     long getRevision();
+    
+    
+    /**
+     * Retrieve a Page from the cache, or read it from the disk.
+     * 
+     * @param btreeInfo The {@link BtreeInfo} reference
+     * @param offset The page offset
+     * @return The found {@link Page}
+     * @throws IOException If we weren't able to fetch a page
+     */
+    <K, V> Page<K, V> getPage( BTreeInfo<K, V> btreeInfo , long offset ) throws IOException;
 
 
     /**
@@ -93,4 +104,14 @@ public interface Transaction extends Closeable
      * @return The associated {@link RecordManagerHeader}
      */
     RecordManagerHeader getRecordManagerHeader();
+
+
+    /**
+     * Get a managed B-tree, knowing its name. It will return the B-tree version
+     * of the given transaction.
+     *
+     * @param name The B-tree we are looking for
+     * @return The found B-tree, or a BTreeNotFoundException if the B-tree does not exist.
+     */
+    <K, V> BTree<K, V> getBTree( String name );
 }

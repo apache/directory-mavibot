@@ -21,6 +21,7 @@ package org.apache.directory.mavibot.btree;
 
 
 import java.io.IOException;
+import java.io.Serializable;
 
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
@@ -36,12 +37,12 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier*/interface Page<K, V> extends WALObject<K, V>
+/* No qualifier*/interface Page<K, V> extends WALObject<K, V>, Serializable
 {
     /**
      * @return The number of elements present in this page
      */
-    int getNbPageElems();
+    int getPageNbElems();
 
 
     /**
@@ -70,14 +71,14 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * the place were to remove the <K,V> into the tree, by recursively browsing the pages.
      * If the key is present, it will be deleted and we will remove the key from the tree.
      *
-     * @param revision The new revision for the modified pages
+     * @param transaction The started transaction for this operation
      * @param key The key to delete
      * @param parent The parent page
      * @param parentPos The position of the current page in it's parent
-     * @return Either a modified Page if the key has been removed from the page, or a NotPresentResult.
+     * @return Either a modified Page if the key has been removed from the page, or a {@link NotPresentResult}.
      * @throws IOException If we have an error while trying to access the page
      */
-    DeleteResult<K, V> delete( WriteTransaction transaction, K key ) throws IOException;
+    DeleteResult<K, V> delete( WriteTransaction transaction, K key, Node<K, V> parent, int parentPos ) throws IOException;
 
 
     /**
@@ -86,28 +87,31 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * Note that we may get back null if a null value has been associated
      * with the key.
      *
+     * @param transaction The started transaction for this operation
      * @param key The key we are looking for
      * @return The associated value, which can be null
      * @throws KeyNotFoundException If no entry with the given key can be found
      * @throws IOException If we have an error while trying to access the page
      */
-    V get( K key ) throws KeyNotFoundException, IOException;
+    V get( Transaction transaction, K key ) throws KeyNotFoundException, IOException;
 
 
     /**
      * Checks if the page contains the given key with the given value.
      *
+     * @param transaction The started transaction for this operation
      * @param key The key we are looking for
      * @param value The value associated with the given key
      * @return true if the key and value are associated with each other, false otherwise
+     * @throws IOException if we can't access the underlying database
      */
-    boolean contains( K key, V value ) throws IOException;
+    boolean contains( Transaction transaction, K key, V value ) throws IOException;
 
     
     /**
-     * Copies the current page and all its keys, with a new revision.
+     * Copies the current page and all its keys, with the transaction's revision and a new ID.
      *
-     * @param revision The new revision
+     * @param transaction The started transaction for this operation
      * @return The copied page
      */
     Page<K, V> copy( WriteTransaction transaction );
@@ -117,9 +121,10 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * Browses the tree, looking for the given key, and creates a Cursor on top
      * of the found result.
      *
-     * @param key The key we are looking for.
      * @param transaction The started transaction for this operation
+     * @param key The key we are looking for.
      * @param stack The stack of parents we go through to get to this page
+     * @param depth The depth in the stack we are in. This will be incremented for each child we go down to.
      * @return A Cursor to browse the next elements
      * @throws IOException If we have an error while trying to access the page
      */
@@ -132,6 +137,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      *
      * @param transaction The started transaction for this operation
      * @param stack The stack of parents we go through to get to this page
+     * @param depth The depth in the stack we are in. This will be incremented for each child we go down to.
      * @return A Cursor to browse the next elements
      * @throws IOException If we have an error while trying to access the page
      */
@@ -144,65 +150,56 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      *
      * @param transaction The started transaction for this operation
      * @param stack The stack of parents we go through to get to this page
+     * @param depth The depth in the stack we are in. This will be incremented for each child we go down to.
      * @return A Cursor to browse the keys
      * @throws IOException If we have an error while trying to access the page
      */
     KeyCursor<K> browseKeys( Transaction transaction, ParentPos<K, K>[] stack, int depth )
         throws IOException;
 
-    
-    /**
-     * @return the revision
-     */
-    @Override
-    long getRevision();
-
-
-    /**
-     * Returns the key at a given position
-     *
-     * @param pos The position of the key we want to retrieve
-     * @return The key found at the given position
-     */
-    K getKey( int pos );
-
 
     /**
      * Finds the leftmost key in this page. If the page is a node, it will go
      * down in the leftmost children to recursively find the leftmost key.
      *
+     * @param transaction The started transaction for this operation
      * @return The leftmost key in the tree
+     * @throws IOException If we have an error while trying to access the page
      */
-    K getLeftMostKey();
+    K getLeftMostKey( Transaction transaction ) throws IOException;
 
 
     /**
      * Finds the rightmost key in this page. If the page is a node, it will go
      * down in the rightmost children to recursively find the rightmost key.
      *
+     * @param transaction The started transaction for this operation
      * @return The rightmost key in the tree
+     * @throws IOException If we have an error while trying to access the page
      */
-    K getRightMostKey();
+    K getRightMostKey( Transaction transaction ) throws IOException;
 
 
     /**
      * Finds the leftmost element in this page. If the page is a node, it will go
      * down in the leftmost children to recursively find the leftmost element.
      *
+     * @param transaction The started transaction for this operation
      * @return The leftmost element in the tree
      * @throws IOException If we have an error while trying to access the page
      */
-    Tuple<K, V> findLeftMost() throws IOException;
+    Tuple<K, V> findLeftMost( Transaction transaction ) throws IOException;
 
 
     /**
      * Finds the rightmost element in this page. If the page is a node, it will go
      * down in the rightmost children to recursively find the rightmost element.
      *
+     * @param transaction The started transaction for this operation
      * @return The rightmost element in the tree
      * @throws IOException If we have an error while trying to access the page
      */
-    Tuple<K, V> findRightMost() throws IOException;
+    Tuple<K, V> findRightMost( Transaction transaction ) throws IOException;
 
 
     /**
@@ -214,51 +211,14 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
 
     /**
-     * Find the position of the given key in the page. If we have found the key,
-     * we will return its position as a negative value.
-     * <p/>
-     * Assuming that the array is zero-indexed, the returned value will be : <br/>
-     *   position = - ( position + 1)
-     * <br/>
-     * So for the following table of keys : <br/>
-     * <pre>
-     * +---+---+---+---+
-     * | b | d | f | h |
-     * +---+---+---+---+
-     *   0   1   2   3
-     * </pre>
-     * looking for 'b' will return -1 (-(0+1)) and looking for 'f' will return -3 (-(2+1)).<br/>
-     * Computing the real position is just a matter to get -(position++).
-     * <p/>
-     * If we don't find the key in the table, we will return the position of the key
-     * immediately above the key we are looking for. <br/>
-     * For instance, looking for :
-     * <ul>
-     * <li>'a' will return 0</li>
-     * <li>'b' will return -1</li>
-     * <li>'c' will return 1</li>
-     * <li>'d' will return -2</li>
-     * <li>'e' will return 2</li>
-     * <li>'f' will return -3</li>
-     * <li>'g' will return 3</li>
-     * <li>'h' will return -4</li>
-     * <li>'i' will return 4</li>
-     * </ul>
-     *
-     * @param key The key to find
-     * @return The position in the page.
-     */
-    int findPos( K key );
-
-
-    /**
      * Checks if the given key exists.
      *
+     * @param transaction The started transaction for this operation
      * @param key The key we are looking at
      * @return true if the key is present, false otherwise
      * @throws IOException If we have an error while trying to access the page
      */
-    boolean hasKey( K key ) throws IOException;
+    boolean hasKey( Transaction transaction, K key ) throws IOException;
 
 
     /**

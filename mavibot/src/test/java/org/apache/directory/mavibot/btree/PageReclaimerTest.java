@@ -54,7 +54,7 @@ public class PageReclaimerTest
 
     private RecordManager rm;
 
-    private BTreeImpl<Integer, String> uidTree;
+    private BTree<Integer, String> uidTree;
     
     @Rule
     public TemporaryFolder tmpDir;
@@ -74,7 +74,7 @@ public class PageReclaimerTest
         rm = new RecordManager( dbFile.getAbsolutePath() );
         rm.setPageReclaimerThreshold( 10 );
         
-        uidTree = ( BTreeImpl<Integer, String> ) rm.addBTree( TREE_NAME, IntSerializer.INSTANCE, StringSerializer.INSTANCE, false );
+        uidTree = ( BTree<Integer, String> ) rm.addBTree( TREE_NAME, IntSerializer.INSTANCE, StringSerializer.INSTANCE, false );
     }
 
 
@@ -92,7 +92,7 @@ public class PageReclaimerTest
         uidTree.close();
         rm.close();
         rm = new RecordManager( dbFile.getAbsolutePath() );
-        uidTree = ( BTreeImpl ) rm.getBtree( TREE_NAME );
+        uidTree = ( BTree ) rm.getBtree( TREE_NAME );
     }
 
     
@@ -265,7 +265,7 @@ public class PageReclaimerTest
         config.setValueSerializer( StringSerializer.INSTANCE );
         config.setPageSize( 4 );
 
-        BTree btree = new BTreeImpl( config );
+        BTree btree = new BTree( config );
         
         Transaction writeTransaction = new WriteTransaction();
         

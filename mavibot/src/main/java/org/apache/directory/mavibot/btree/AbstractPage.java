@@ -23,12 +23,13 @@ package org.apache.directory.mavibot.btree;
 import java.io.IOException;
 import java.lang.reflect.Array;
 
-import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
-
-
 /**
- * A MVCC abstract Page. It stores the field and the methods shared by the Node and Leaf
- * classes (the keys and values/children).
+ * A MVCC abstract Page. It stores the keys/children and the methods shared by the {@link Node} and {@link Leaf}
+ * classes (the keys and values/children). It also hold the number of elements the page contains, and its current revision.
+ * <p>
+ * Keys are stored in {@link KeyHolder}s, values in {@link ValueHolder}.
+ * <p>
+ * The {@link Page} extends {@link AbstractWALObject} as any pae may be stored in the WAL at some point.
  *
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
@@ -41,22 +42,19 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
     protected KeyHolder<K>[] keys;
 
     /** Children pages associated with keys. */
-    protected PageHolder<K, V>[] children;
+    protected long[] children;
 
     /** The number of current values in the Page */
-    protected int nbPageElems;
-
-    /** This Page's revision */
-    protected long revision;
+    protected int pageNbElems;
 
     /**
      * Creates a default empty AbstractPage
      *
-     * @param btree The associated BTree
+     * @param btreeInfo The associated BTree info
      */
-    protected AbstractPage( BTree<K, V> btree )
+    protected AbstractPage( BTreeInfo<K, V> btreeInfo )
     {
-        this.btree = btree;
+        super( btreeInfo );
     }
 
 
@@ -65,12 +63,12 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      */
     @SuppressWarnings("unchecked")
     // Cannot create an array of generic objects
-    protected AbstractPage( BTree<K, V> btree, long revision, int nbPageElems )
+    protected AbstractPage( BTreeInfo<K, V> btreeInfo, long revision, int pageNbElems )
     {
-        this.btree = btree;
+        super( btreeInfo );
         this.revision = revision;
-        this.nbPageElems = nbPageElems;
-        this.keys = ( KeyHolder[] ) Array.newInstance( KeyHolder.class, btree.getPageNbElem() );
+        this.pageNbElems = pageNbElems;
+        this.keys = ( KeyHolder[] ) Array.newInstance( KeyHolder.class, btreeInfo.getPageNbElem() );
     }
 
 
@@ -78,29 +76,32 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * {@inheritDoc}
      */
     @Override
-    public int getNbPageElems()
+    public int getPageNbElems()
     {
-        return nbPageElems;
+        return pageNbElems;
     }
 
 
     /**
      * Sets the number of element in this page
-     * @param nbPageElems The number of elements
+     * 
+     * @param pageNbElems The number of elements
      */
-    /* no qualifier */void setNbPageElems( int nbPageElems )
+    /* no qualifier */void setPageNbElems( int pageNbElems )
     {
-        this.nbPageElems = nbPageElems;
+        this.pageNbElems = pageNbElems;
     }
 
 
     /**
-     * {@inheritDoc}
+     * Returns the key at a given position
+     *
+     * @param pos The position of the key we want to retrieve
+     * @return The key found at the given position
      */
-    @Override
-    public K getKey( int pos )
+    protected K getKey( int pos )
     {
-        if ( ( pos < nbPageElems ) && ( keys[pos] != null ) )
+        if ( ( pos < pageNbElems ) && ( keys[pos] != null ) )
         {
             return keys[pos].getKey();
         }
@@ -109,211 +110,41 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             return null;
         }
     }
-
-
+    
+    
     /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean hasKey( K key ) throws IOException
-    {
-        int pos = findPos( key );
-
-        if ( pos < 0 )
-        {
-            // Here, if we have found the key in the node, then we must go down into
-            // the right child, not the left one
-            return children[-pos].getValue().hasKey( key );
-        }
-        else
-        {
-            Page<K, V> page = children[pos].getValue();
-
-            return page.hasKey( key );
-        }
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    /* no qualifier */Page<K, V> getReference( int pos ) throws IOException
-    {
-        if ( pos < nbPageElems + 1 )
-        {
-            if ( children[pos] != null )
-            {
-                return children[pos].getValue();
-            }
-            else
-            {
-                return null;
-            }
-        }
-        else
-        {
-            return null;
-        }
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public TupleCursor<K, V> browse( Transaction transaction, K key, ParentPos<K, V>[] stack, int depth )
-        throws IOException
-    {
-        int pos = findPos( key );
-
-        if ( pos < 0 )
-        {
-            pos = -pos;
-        }
-
-        // We first stack the current page
-        stack[depth++] = new ParentPos<>( this, pos );
-
-        Page<K, V> page = children[pos].getValue();
-
-        return page.browse( transaction, key, stack, depth );
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean contains( K key, V value ) throws IOException
-    {
-        int pos = findPos( key );
-
-        if ( pos < 0 )
-        {
-            // Here, if we have found the key in the node, then we must go down into
-            // the right child, not the left one
-            return children[-pos].getValue().contains( key, value );
-        }
-        else
-        {
-            return children[pos].getValue().contains( key, value );
-        }
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public DeleteResult<K, V> delete( WriteTransaction transaction, K key ) throws IOException
-    {
-        return delete( transaction, key, null, -1 );
-    }
-
-
-    /**
-     * The real delete implementation. It can be used for internal deletion in the B-tree.
-     *
-     * @param key The key to delete
-     * @param parent The parent page
-     * @param parentPos The position of this page in the parent page
-     * @return The result
-     * @throws IOException If we had an issue while processing the deletion
-     */
-    /* no qualifier */abstract DeleteResult<K, V> delete( WriteTransaction transaction, K key, Page<K, V> parent,
-        int parentPos ) throws IOException;
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public V get( K key ) throws IOException, KeyNotFoundException
-    {
-        int pos = findPos( key );
-
-        if ( pos < 0 )
-        {
-            // Here, if we have found the key in the node, then we must go down into
-            // the right child, not the left one
-            return children[-pos].getValue().get( key );
-        }
-        else
-        {
-            return children[pos].getValue().get( key );
-        }
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    /* no qualifier */Page<K, V> getPage( int pos )
-    {
-        if ( ( pos >= 0 ) && ( pos < children.length ) && ( children[pos] != null ) )
-        {
-            return children[pos].getValue();
-        }
-        else
-        {
-            return null;
-        }
-    }
-
-
-    /**
-     * Inject a pageHolder into the node, at a given position
+     * Set a parent page child value, either an offset (a positive value) or an ID (a negative value) if the offset is -1.
      * 
-     * @param pos The position of the added pageHolder
-     * @param pageHolder The pageHolder to add
+     * @param parent The node to update
+     * @param pos The position in the parent node
+     * @param child The child to refer to
      */
-    /* no qualifier */void setPageHolder( int pos, PageHolder<K, V> pageHolder )
+    protected void setChild( Node<K, V> parent, int pos, Page<K, V> child )
     {
-        if ( ( pos >= 0 ) && ( pos < children.length ) )
+        parent.children[pos] = child.getOffset();
+        
+        if ( parent.children[pos] == BTreeConstants.NO_PAGE )
         {
-            children[pos] = pageHolder;
+            parent.children[pos] = -child.getId();
         }
     }
-
-
+    
+    
     /**
-     * Sets the value at a give position
-     * @param pos The position in the values array
-     * @param value the value to inject
+     * Set the page child value, either an offset (a positive value) or an ID (a negative value) if the offset is -1.
+     * 
+     * @param children The parent's children
+     * @param pos The position in the parent node
+     * @param child The child to refer to
      */
-    /* no qualifier */void setValue( int pos, ValueHolder<V> value )
+    protected void setChild( long[] children, int pos, Page<K, V> child )
     {
-        // Implementation in the leaves
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public TupleCursor<K, V> browse( Transaction transaction, ParentPos<K, V>[] stack, int depth )
-        throws IOException
-    {
-        stack[depth++] = new ParentPos<>( this, 0 );
-
-        Page<K, V> page = children[0].getValue();
-
-        return page.browse( transaction, stack, depth );
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public KeyCursor<K> browseKeys( Transaction transaction, ParentPos<K, K>[] stack, int depth )
-        throws IOException
-    {
-        stack[depth++] = new ParentPos( this, 0 );
-
-        Page<K, V> page = children[0].getValue();
-
-        return page.browseKeys( transaction, stack, depth );
+        children[pos] = child.getOffset();
+        
+        if ( children[pos] == BTreeConstants.NO_PAGE )
+        {
+            children[pos] = -child.getId();
+        }
     }
 
 
@@ -321,12 +152,12 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * Selects the sibling (the previous or next page with the same parent) which has
      * the more element assuming it's above N/2
      *
+     * @param transaction The {@link Transaction} we are running in 
      * @param parent The parent of the current page
-     * @param The position of the current page reference in its parent
+     * @param parentPos The position of the current page reference in its parent
      * @return The position of the sibling, or -1 if we have'nt found any sibling
-     * @throws IOException If we have an error while trying to access the page
      */
-    protected int selectSibling( Transaction transaction, Page<K, V> parent, int parentPos ) throws IOException
+    protected int selectSibling( Transaction transaction, Node<K, V> parent, int parentPos ) throws IOException
     {
         if ( parentPos == 0 )
         {
@@ -335,18 +166,24 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             return 1;
         }
 
-        if ( parentPos == parent.getNbPageElems() )
+        if ( parentPos == parent.getPageNbElems() )
         {
             // The current page is referenced on the right of its parent's page :
             // we will not have a next page with the same parent
             return parentPos - 1;
         }
 
-        Page<K, V> prevPage = ( ( AbstractPage<K, V> ) parent ).getPage( parentPos - 1 );
-        Page<K, V> nextPage = ( ( AbstractPage<K, V> ) parent ).getPage( parentPos + 1 );
+        // Ok, in the middle of a page, select the one with the higher number of children,
+        // or the left one
+        Page<K, V> prevPage = parent.getPage( transaction, parentPos - 1 );
+        Page<K, V> nextPage = parent.getPage( transaction, parentPos + 1 );
 
-        int prevPageSize = prevPage.getNbPageElems();
-        int nextPageSize = nextPage.getNbPageElems();
+        if ( prevPage == null )
+        {
+            prevPage = parent.getPage( transaction, parentPos - 1 );
+        }
+        int prevPageSize = prevPage.getPageNbElems();
+        int nextPageSize = nextPage.getPageNbElems();
 
         if ( prevPageSize >= nextPageSize )
         {
@@ -360,29 +197,9 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
 
     /**
-     * {@inheritDoc}
+     * @return the array containing the {@link Page}'s keys.
      */
-    @Override
-    public K getLeftMostKey()
-    {
-        return keys[0].getKey();
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public K getRightMostKey()
-    {
-        return keys[nbPageElems - 1].getKey();
-    }
-
-
-    /**
-     * @return the keys
-     */
-    /* no qualifier */KeyHolder<K>[] getKeys()
+    public KeyHolder<K>[] getKeys()
     {
         return keys;
     }
@@ -392,7 +209,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * Sets the key at a give position
      *
      * @param pos The position in the keys array
-     * @param key the key to inject
+     * @param key The key to inject
      */
     /* no qualifier */void setKey( int pos, KeyHolder<K> key )
     {
@@ -401,30 +218,11 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
 
     /**
-     * @param revision the keys to set
+     * @param keys The keys to set
      */
     /* no qualifier */void setKeys( KeyHolder<K>[] keys )
     {
         this.keys = keys;
-    }
-
-
-    /**
-     * @return the revision
-     */
-    @Override
-    public long getRevision()
-    {
-        return revision;
-    }
-
-
-    /**
-     * @param revision the revision to set
-     */
-    /* no qualifier */void setRevision( long revision )
-    {
-        this.revision = revision;
     }
 
 
@@ -453,7 +251,7 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
             return -1;
         }
 
-        return btree.getKeyComparator().compare( key1, key2 );
+        return btreeInfo.getKeySerializer().getComparator().compare( key1, key2 );
     }
 
 
@@ -493,17 +291,16 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
      * @param key The key to find
      * @return The position in the page.
      */
-    @Override
-    public int findPos( K key )
+    protected int findPos( K key )
     {
         // Deal with the special key where we have an empty page
-        if ( nbPageElems == 0 )
+        if ( pageNbElems == 0 )
         {
             return 0;
         }
 
         int min = 0;
-        int max = nbPageElems - 1;
+        int max = pageNbElems - 1;
 
         // binary search
         while ( min < max )
@@ -551,62 +348,6 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 
 
     /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Tuple<K, V> findLeftMost() throws IOException
-    {
-        return children[0].getValue().findLeftMost();
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Tuple<K, V> findRightMost() throws IOException
-    {
-        return children[nbPageElems].getValue().findRightMost();
-    }
-    
-    
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String getName()
-    {
-        return btree.getName();
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String dumpPage( String tabs )
-    {
-        StringBuilder sb = new StringBuilder();
-
-        if ( nbPageElems > 0 )
-        {
-            // Start with the first child
-            sb.append( children[0].getValue().dumpPage( tabs + "    " ) );
-
-            for ( int i = 0; i < nbPageElems; i++ )
-            {
-                sb.append( tabs );
-                sb.append( "<" );
-                sb.append( getKey( i ) ).append( ">\n" );
-                sb.append( children[i + 1].getValue().dumpPage( tabs + "    " ) );
-            }
-        }
-
-        return sb.toString();
-    }
-
-
-    /**
      * @see Object#toString()
      */
     @Override
@@ -615,7 +356,8 @@ import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
         StringBuilder sb = new StringBuilder();
 
         sb.append( "r" ).append( revision );
-        sb.append( ", nbPageElems:" ).append( nbPageElems );
+        sb.append( ", B-tree:" ).append(  getName() );
+        sb.append( ", pageNbElems:" ).append( pageNbElems );
         sb.append( ", id:" ).append( id );
 
         if ( offset > 0 )

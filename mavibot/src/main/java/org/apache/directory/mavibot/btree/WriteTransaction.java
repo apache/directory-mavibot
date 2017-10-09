@@ -20,10 +20,9 @@
 package org.apache.directory.mavibot.btree;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -41,12 +40,8 @@ import java.util.Set;
 public class WriteTransaction extends AbstractTransaction
 {
     /** The List containing all the user modified pages, in the order they have been created */
-    //private List<WALObject<?, ?>> newUserPages = new ArrayList<WALObject<?, ?>>();
-    private List<WALObject<?, ?>> newPages = new ArrayList<WALObject<?, ?>>();
+    private Map<Long, WALObject<?, ?>> newPages = new LinkedHashMap<>();
     
-    /** The List containing all the BOB/CPB modified pages, in the order they have been created */
-    //private List<WALObject<?, ?>> newAdminPages = new ArrayList<WALObject<?, ?>>();
-
     /** The map containing all the copied pages, using their offset as a key */
     private Map<Long, WALObject<?, ?>> copiedPageMap = new HashMap<>();
     
@@ -58,6 +53,10 @@ public class WriteTransaction extends AbstractTransaction
     WriteTransaction( RecordManager recordManager )
     {
         super( recordManager );
+        
+        
+        // Get a copy of the RMH
+        recordManagerHeader = recordManager.getRecordManagerHeaderCopy();
         
         //System.out.println( "---> Write transaction started, " + this );
         
@@ -79,11 +78,23 @@ public class WriteTransaction extends AbstractTransaction
         }
         else
         {
-            //newUserPages.clear();
-            //newAdminPages.clear();
             newPages.clear();
             copiedPageMap.clear();
             super.close();
+        }
+    }
+    
+    
+    private <K, V> void updateRefs( Node<K, V> node )
+    {
+        for ( int i = 0; i < node.pageNbElems + 1; i++ )
+        {
+            if ( node.children[i] < 0L )
+            {
+                // This is a Page ID, replace it with the page offset
+                WALObject child = newPages.get( -node.children[i] );
+                node.children[i] = child.getOffset();
+            }
         }
     }
 
@@ -97,56 +108,55 @@ public class WriteTransaction extends AbstractTransaction
         if ( !isClosed() )
         {
             // First, find the modified users B-trees, and flush the user's pages 
-            Set<BTree<?, ?>> btrees = new HashSet<>();
+            Set<BTreeInfo<?, ?>> btreeInfos = new HashSet<>();
             
-            //for ( WALObject<?, ?> walObject : newUserPages )
-            for ( WALObject<?, ?> walObject : newPages )
+            //System.out.println( "-----User BTree----" );
+            for ( WALObject<?, ?> walObject : newPages.values() )
             {
-                BTree<?, ?> btree = walObject.getBtree();
+                //System.out.println( "WALObject" + walObject );
+                BTreeInfo<?, ?> btreeInfo = walObject.getBtreeInfo();
                 
                 // Flush the page
+                if ( walObject instanceof Node )
+                {
+                    updateRefs( ( Node ) walObject );
+                }
+                
                 walObject.serialize( this );
                 recordManager.flushPages( recordManagerHeader, walObject.getPageIOs() );
                 
                 // and update the B-tree list if needed
-                btrees.add( btree );
+                if ( walObject.isBTreeUser() )
+                {
+                    btreeInfos.add( btreeInfo );
+                }
             }
             
             // We can clean the user's list
-            //newUserPages.clear();
             newPages.clear();
 
             // Update the BOB, if we aren't already processing the BOB
-            for ( BTree<?, ?> btree : btrees )
+            for ( BTreeInfo<?, ?> btreeInfo : btreeInfos )
             {
-                recordManager.insertInBtreeOfBtrees( this, btree );
+                recordManager.insertInBtreeOfBtrees( this, recordManagerHeader.btreeMap.get( btreeInfo.getName() ) );
             }
             
-            //for ( WALObject<?, ?> walObject : newAdminPages )
-            for ( WALObject<?, ?> walObject : newPages )
-            {
-                // Flush the page
-                walObject.serialize( this );
-                recordManager.flushPages( recordManagerHeader, walObject.getPageIOs() );
-            }
+            // Flush the newly updated pages 
+            //System.out.println( "-----BOB----" );
+            flushNewPages();
 
             // BOB done, clear the list
-            //newAdminPages.clear();
             newPages.clear();
             
             // Add the copied pages in the CPB
             recordManager.insertInCopiedPagesBtree( this );
             
             // Last not least, Flush the CPB pages
-            //for ( WALObject<?, ?> walObject : newAdminPages )
-            for ( WALObject<?, ?> walObject : newPages )
-            {
-                walObject.serialize( this );
-                recordManager.flushPages( recordManagerHeader, walObject.getPageIOs() );
-            }
+            //System.out.println( "-----CPB BTree----" );
+            flushNewPages();
             
-            long newBtreeOfBtreesOffet = ((BTreeImpl<NameRevision, Long>)recordManagerHeader.btreeOfBtrees).getBtreeHeader().offset;
-            long newCopiedPagesBtreeOffset = ((BTreeImpl<RevisionName, long[]>)recordManagerHeader.copiedPagesBtree).getBtreeHeader().offset;
+            long newBtreeOfBtreesOffet = ((BTree<NameRevision, Long>)recordManagerHeader.btreeOfBtrees).getBtreeHeader().offset;
+            long newCopiedPagesBtreeOffset = ((BTree<RevisionName, long[]>)recordManagerHeader.copiedPagesBtree).getBtreeHeader().offset;
 
             // And update the RecordManagerHeader
             recordManager.updateRecordManagerHeader( recordManagerHeader, newBtreeOfBtreesOffet, newCopiedPagesBtreeOffset );
@@ -159,6 +169,22 @@ public class WriteTransaction extends AbstractTransaction
             super.close();
         }
     }
+    
+    
+    private void flushNewPages() throws IOException
+    {
+        for ( WALObject<?, ?> walObject : newPages.values() )
+        {
+            //System.out.println( "WALObject" + walObject );
+            if ( walObject instanceof Node )
+            {
+                updateRefs( ( Node ) walObject );
+            }
+
+            walObject.serialize( this );
+            recordManager.flushPages( recordManagerHeader, walObject.getPageIOs() );
+        }
+    }
 
 
     /**
@@ -168,8 +194,6 @@ public class WriteTransaction extends AbstractTransaction
     public void abort() throws IOException
     {
         // We just have to empty the maps
-        //newUserPages.clear();
-        //newAdminPages.clear();
         newPages.clear();
         copiedPageMap.clear();
         super.close();
@@ -224,24 +248,33 @@ public class WriteTransaction extends AbstractTransaction
      *  
      * @param walObject The {@link WALObject} to store
      */
-    /* No qualifier */void addWALObject( WALObject walObject ) throws IOException
+    /* No qualifier */void addWALObject( WALObject walObject )
     {
+        // Only add the page if it's not already there
         if ( walObject != null )
         {
-            newPages.add( walObject );
-            /*
-            if ( walObject.getBtree().getType() == BTreeTypeEnum.PERSISTED )
-            {
-                newUserPages.add( walObject );
-            }
-            else
-            {
-                newAdminPages.add( walObject );
-            }
-            */
+            WALObject oldPage = newPages.put( walObject.getId(), walObject );
+            recordManager.putPage( walObject );
         }
     }
     
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public <K, V> Page<K, V> getPage( BTreeInfo<K, V> btreeInfo, long offset ) throws IOException
+    {
+        if ( offset >= 0 )
+        {
+            return ( Page<K, V> ) recordManager.getPage( btreeInfo, recordManagerHeader.pageSize, offset );
+        }
+        else
+        {
+            return ( Page<K, V> )newPages.get( -offset );
+        }
+    }
+
     
     /**
      * Add a page in the list of modified {@link WALObject}s. If there is an existing 
@@ -250,34 +283,9 @@ public class WriteTransaction extends AbstractTransaction
      *  
      * @param walObject The {@link WALObject} to store
      */
-    /* No qualifier */WALObject removeWALObject( long id ) throws IOException
+    /* No qualifier */WALObject removeWALObject( long id )
     {
-        for ( int i = 0; i < newPages.size(); i++ )
-        {
-            if ( newPages.get( i ).getId() == id )
-            {
-                return newPages.remove( i );
-            }
-        }
-        /*
-        for ( int i = 0; i < newUserPages.size(); i++ )
-        {
-            if ( newUserPages.get( i ).getId() == id )
-            {
-                return newUserPages.remove( i );
-            }
-        }
-
-        for ( int i = 0; i < newAdminPages.size(); i++ )
-        {
-            if ( newAdminPages.get( i ).getId() == id )
-            {
-                return newAdminPages.remove( i );
-            }
-        }
-        */
-        
-        return null;
+        return newPages.remove( id );
     }
     
     
@@ -288,11 +296,11 @@ public class WriteTransaction extends AbstractTransaction
      *  
      * @param walObject The {@link WALObject} to store
      */
-    /* No qualifier */void addCopiedWALObject( WALObject walObject )
+    /* No qualifier */<K, V> void addCopiedWALObject( WALObject<K, V> walObject )
     {
-        if ( walObject != null )
+        if ( ( walObject != null ) && !copiedPageMap.containsKey( walObject.getId() ) )
         {
-            copiedPageMap.put( Long.valueOf( walObject.getOffset() ), walObject );
+            copiedPageMap.put( walObject.getId(), walObject );
         }
     }
     
@@ -306,32 +314,7 @@ public class WriteTransaction extends AbstractTransaction
      */
     public WALObject<?, ?> getWALObject( long id )
     {
-        for ( WALObject walObject : newPages )
-        {
-            if ( walObject.getId() == id )
-            {
-                return walObject;
-            }
-        }
-        /*
-        for ( WALObject walObject : newUserPages )
-        {
-            if ( walObject.getId() == id )
-            {
-                return walObject;
-            }
-        }
-
-        for ( WALObject walObject : newAdminPages )
-        {
-            if ( walObject.getId() == id )
-            {
-                return walObject;
-            }
-        }
-        */
-        
-        return null;
+        return newPages.get( id );
     }
     
     
@@ -340,6 +323,104 @@ public class WriteTransaction extends AbstractTransaction
         return copiedPageMap;
     }
     
+    
+    /**
+     * Update the WAL
+     * 
+     * @param revision The previous revision
+     * @param oldPage The previous page
+     * @param newPage The new page
+     * @throws IOException If we had an error storing the 
+     **/
+    /* No qualifier */ <K, V> void updateWAL( long previousRevision, WALObject<K, V> oldPage, WALObject<K, V> newPage )
+    {
+        addWALObject( newPage );
+
+        if ( ( previousRevision != getRevision() ) && newPage.isBTreeUser() )
+        {
+            // Now, move the new child into the copied pages if needed
+            addCopiedWALObject( oldPage );
+        }
+    }
+    
+    
+    /**
+     * Creates a new {@link Leaf}, with a valid offset.
+     * 
+     * @param btreeInfo The {@link BTreeInfo} reference
+     * @return A new {@link Leaf} instance
+     */
+    /* No qualifier */ <K, V> Leaf<K, V> newLeaf( BTreeInfo<K, V> btreeInfo, int nbElems )
+    {
+        Leaf<K, V> leaf = new Leaf<>( btreeInfo, getRevision(), nbElems );
+        leaf.initId( recordManagerHeader );
+        
+        return leaf;
+    }
+    
+    
+    /**
+     * Creates a new {@link Leaf}, with a valid offset.
+     * 
+     * @param btreeInfo The {@link BTreeInfo} reference
+     * @return A new {@link Leaf} instance
+     */
+    /* No qualifier */ <K, V> Leaf<K, V> newLeaf( BTreeInfo<K, V> btreeInfo, long id, int nbElems )
+    {
+        Leaf<K, V> leaf = new Leaf<>( btreeInfo, getRevision(), nbElems );
+        leaf.setId( id );
+        
+        return leaf;
+    }
+    
+    
+    /**
+     * Creates a new {@link Node}, with a valid offset.
+     * 
+     * @param btreeInfo The {@link BTreeInfo} reference
+     * @return A new {@link Leaf} instance
+     */
+    /* No qualifier */ <K, V> Node<K, V> newNode( BTreeInfo<K, V> btreeInfo, int nbElems )
+    {
+        Node<K, V> node = new Node<>( btreeInfo, getRevision(), nbElems );
+        node.initId( recordManagerHeader );
+
+        return node;
+    }
+    
+    
+    /**
+     * Creates a new {@link Node}, with a valid offset.
+     * 
+     * @param btreeInfo The {@link BTreeInfo} reference
+     * @return A new {@link Leaf} instance
+     */
+    /* No qualifier */ <K, V> Node<K, V> newNode( BTreeInfo<K, V> btreeInfo, long id, int nbElems )
+    {
+        Node<K, V> node = new Node<>( btreeInfo, getRevision(), nbElems );
+        node.setId( id );
+        
+        return node;
+    }
+    
+    
+    /**
+     * Creates a new Node which will contain only one key, with references to
+     * a left and right page. This is a specific constructor used by the btree
+     * when the root was full when we added a new value.
+     *
+     * @param btreeInfo the {@link BTreeInfo} reference
+     * @param key The new key
+     * @param leftPage The left page offset
+     * @param rightPage The right page offset
+     */
+    /* No qualifier */ <K, V> Node<K, V> newNode( BTreeInfo<K, V> btreeInfo, K key, long leftPage, long rightPage )
+    {
+        Node<K, V> node = new Node<>( btreeInfo, getRevision(), key, leftPage, rightPage );
+        node.initId( recordManagerHeader );
+        
+        return node;
+    }
     
     /**
      * {@inheritDoc}
@@ -359,7 +440,7 @@ public class WriteTransaction extends AbstractTransaction
             sb.append( "    pageList :[\n        " );
             boolean isFirst = true;
             
-            for ( WALObject walObject : newPages )
+            for ( WALObject walObject : newPages.values() )
             {
                 if ( isFirst )
                 {
@@ -375,72 +456,12 @@ public class WriteTransaction extends AbstractTransaction
             
             sb.append( '\n' );
             
-            /*
-            for ( Entry<Long, WALObject<?, ?>> entry : pageMap.entrySet() )
-            {
-                if ( isFirst )
-                {
-                    isFirst = false;
-                }
-                else
-                {
-                    sb.append( ", " );
-                }
-                
-                sb.append( String.format( "%x", entry.getKey() ) );
-                sb.append(  ':' );
-                sb.append( '<' );
-                sb.append( entry.getValue().getName() );
-                sb.append( ':' );
-                
-                if ( entry.getValue().getRevision() == RecordManager.NO_PAGE )
-                {
-                    sb.append( "info" );
-                }
-                else
-                {
-                    sb.append( entry.getValue().getRevision() );
-                }
-                sb.append( '>' );
-                sb.append( entry.getValue().getClass().getSimpleName() );
-            }
-            
-            sb.append( "]\n" );
-            */
         }
         else
         {
             sb.append( "    UserPageList empty\n" );
         }
         
-        /*
-        if ( newAdminPages.size() > 0 )
-        {
-            sb.append( "    AdminPageList :[\n        " );
-            boolean isFirst = true;
-            
-            for ( WALObject walObject : newAdminPages )
-            {
-                if ( isFirst )
-                {
-                    isFirst = false;
-                }
-                else
-                {
-                    sb.append( ",\n        " );
-                }
-
-                sb.append( walObject.prettyPrint() );
-            }
-            
-            sb.append( '\n' );
-        }
-        else
-        {
-            sb.append( "    AdminPageList empty\n" );
-        }
-        */
-
         if ( copiedPageMap.size() > 0 )
         {
             sb.append( "    CopiedPagesMap :[\n        " );

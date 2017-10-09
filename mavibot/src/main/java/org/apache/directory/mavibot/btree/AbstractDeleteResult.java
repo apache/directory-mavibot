@@ -31,14 +31,16 @@ import java.util.List;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-/* No qualifier*/abstract class AbstractDeleteResult<K, V> extends AbstractResult<K, V> implements
-    DeleteResult<K, V>
+/* No qualifier*/abstract class AbstractDeleteResult<K, V> extends AbstractResult<K, V> implements DeleteResult<K, V>
 {
     /** The modified page reference */
     private Page<K, V> modifiedPage;
 
     /** The removed element if the key was found in the tree*/
     private Tuple<K, V> removedElement;
+    
+    /** The key following the deleted key (may be null) */
+    private K nextKey;
 
 
     /**
@@ -75,6 +77,25 @@ import java.util.List;
      * {@inheritDoc}
      */
     @Override
+    public K getNextKey()
+    {
+        return nextKey;
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setNextKey( K nextKey )
+    {
+        this.nextKey = nextKey;
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
     public Page<K, V> getModifiedPage()
     {
         return modifiedPage;
@@ -84,7 +105,6 @@ import java.util.List;
     /**
      * {@inheritDoc}
      */
-    @Override
     public Tuple<K, V> getRemovedElement()
     {
         return removedElement;

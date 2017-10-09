@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * A holder to store the Value
+ * A holder to store the Value.
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  * @param <V> The value type
@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
     protected static final Logger LOG = LoggerFactory.getLogger( ValueHolder.class );
 
     /** The parent BTree */
-    protected BTreeImpl parentBtree;
+    protected BTreeInfo<V, V> btreeInfo;
 
     /** The serialized value */
     private byte[] raw;
@@ -65,10 +65,10 @@ import org.slf4j.LoggerFactory;
      * @param nbValues the number of stored values
      * @param raw the byte[] containing either the serialized array of values or the sub-btree offset
      */
-    ValueHolder( BTree<?, V> parentBtree, byte[] raw )
+    ValueHolder( BTreeInfo<?, V> btreeInfo, byte[] raw )
     {
-        this.parentBtree = ( BTreeImpl<V, V> ) parentBtree;
-        this.valueSerializer = parentBtree.getValueSerializer();
+        this.btreeInfo = ( BTreeInfo<V, V> ) btreeInfo;
+        this.valueSerializer = btreeInfo.getValueSerializer();
         this.raw = raw;
         isRawUpToDate = true;
     }
@@ -81,10 +81,10 @@ import org.slf4j.LoggerFactory;
      * @param parentBtree The parent BTree
      * @param values The Value stored in the ValueHolder
      */
-    public ValueHolder( BTree parentBtree, V value )
+    public ValueHolder( BTreeInfo<?, V> btreeInfo, V value )
     {
-        this.parentBtree = ( BTreeImpl ) parentBtree;
-        this.valueSerializer = parentBtree.getValueSerializer();
+        this.btreeInfo = ( BTreeInfo<V, V> ) btreeInfo;
+        this.valueSerializer = btreeInfo.getValueSerializer();
         set( value );
 
         isDeserialized = true;

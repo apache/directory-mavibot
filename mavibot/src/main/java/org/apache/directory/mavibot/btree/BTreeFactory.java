@@ -57,7 +57,7 @@ public class BTreeFactory<K, V>
      */
     public static <K, V> BTree<K, V> createBTree()
     {
-        return new BTreeImpl<>();
+        return new BTree<>();
     }
 
 
@@ -69,8 +69,9 @@ public class BTreeFactory<K, V>
      */
     public static <K, V> BTree<K, V> createBTree( BTreeTypeEnum type )
     {
-        BTree<K, V> btree = new BTreeImpl<>();
-        ( ( BTreeImpl<K, V> ) btree ).setType( type );
+        BTree<K, V> btree = new BTree<>( );
+        btree.setBtreeInfo( new BTreeInfo<>() );
+        btree.setType( type );
 
         return btree;
     }
@@ -85,7 +86,7 @@ public class BTreeFactory<K, V>
      */
     public static <K, V> BTree<K, V> createBTree( Transaction transaction, BTreeConfiguration<K, V> configuration )
     {
-        return new BTreeImpl<>( transaction, configuration );
+        return new BTree<>( transaction, configuration );
     }
 
 
@@ -106,10 +107,9 @@ public class BTreeFactory<K, V>
         configuration.setKeySerializer( keySerializer );
         configuration.setValueSerializer( valueSerializer );
         configuration.setPageNbElem( BTree.DEFAULT_PAGE_NBELEM );
-        configuration.setCacheSize( BTreeImpl.DEFAULT_CACHE_SIZE );
         configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
 
-        return new BTreeImpl<>( transaction, configuration );
+        return new BTree<>( transaction, configuration );
     }
 
 
@@ -135,7 +135,7 @@ public class BTreeFactory<K, V>
         configuration.setCacheSize( cacheSize );
         configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
 
-        return new BTreeImpl<>( transaction, configuration );
+        return new BTree<>( transaction, configuration );
     }
 
 
@@ -157,10 +157,9 @@ public class BTreeFactory<K, V>
         configuration.setKeySerializer( keySerializer );
         configuration.setValueSerializer( valueSerializer );
         configuration.setPageNbElem( pageNbElem );
-        configuration.setCacheSize( BTreeImpl.DEFAULT_CACHE_SIZE );
         configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
 
-        return new BTreeImpl<>( transaction, configuration );
+        return new BTree<>( transaction, configuration );
     }
 
 
@@ -186,7 +185,7 @@ public class BTreeFactory<K, V>
         configuration.setCacheSize( cacheSize );
         configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
 
-        return new BTreeImpl<>( transaction, configuration );
+        return new BTree<>( transaction, configuration );
     }
 
 
@@ -196,7 +195,7 @@ public class BTreeFactory<K, V>
      * @param btree The btree to update
      * @param btreeHeaderOffset The offset
      */
-    public static <K, V> void setBtreeHeaderOffset( BTreeImpl<K, V> btree, long btreeHeaderOffset )
+    public static <K, V> void setBtreeHeaderOffset( BTree<K, V> btree, long btreeHeaderOffset )
     {
         btree.setBtreeHeaderOffset( btreeHeaderOffset );
     }
@@ -214,9 +213,9 @@ public class BTreeFactory<K, V>
      *
      * @return A Leaf instance
      */
-    /* no qualifier*/static <K, V> Page<K, V> createLeaf( BTree<K, V> btree, long revision, int nbElems )
+    /* no qualifier*/static <K, V> Page<K, V> createLeaf( BTreeInfo<K, V> btreeInfo, long revision, int nbElems )
     {
-        return new Leaf<>( btree, revision, nbElems );
+        return new Leaf<>( btreeInfo, revision, nbElems );
     }
 
 
@@ -228,10 +227,10 @@ public class BTreeFactory<K, V>
      * @param nbElems The number or elements in this node
      * @return A Node instance
      */
-    /* no qualifier*/static <K, V> Page<K, V> createNode( BTree<K, V> btree, long revision, int nbElems )
+    /* no qualifier*/static <K, V> Page<K, V> createNode( BTreeInfo<K, V> btreeInfo, long revision, int nbElems )
     {
         //System.out.println( "Creating a node with nbElems : " + nbElems );
-        return new Node<>( btree, revision, nbElems );
+        return new Node<>( btreeInfo, revision, nbElems );
     }
 
 
@@ -246,9 +245,9 @@ public class BTreeFactory<K, V>
      * @param pos The position in the keys array
      * @param key The key to inject
      */
-    /* no qualifier*/static <K, V> void setKey( BTree<K, V> btree, Page<K, V> page, int pos, K key )
+    /* no qualifier*/static <K, V> void setKey( BTreeInfo<K, V> btreeInfo, Page<K, V> page, int pos, K key )
     {
-        KeyHolder<K> keyHolder = new KeyHolder<>( btree.getKeySerializer(), key );
+        KeyHolder<K> keyHolder = new KeyHolder<>( btreeInfo.getKeySerializer(), key );
 
         ( ( AbstractPage<K, V> ) page ).setKey( pos, keyHolder );
     }
@@ -262,7 +261,7 @@ public class BTreeFactory<K, V>
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    /* no qualifier*/static <K, V> void setValue( BTree<K, V> btree, Page<K, V> page, int pos, ValueHolder<V> value )
+    /* no qualifier*/static <K, V> void setValue( Page<K, V> page, int pos, ValueHolder<V> value )
     {
         ( ( Leaf<K, V> ) page ).setValue( pos, value );
     }
@@ -276,9 +275,9 @@ public class BTreeFactory<K, V>
      * @param pos The position in the values array
      * @param child the child page to inject
      */
-    /* no qualifier*/static <K, V> void setPage( BTree<K, V> btree, Page<K, V> page, int pos, Page<K, V> child )
+    /* no qualifier*/static <K, V> void setPage( BTreeInfo<K, V> btreeInfo, Page<K, V> page, int pos, Page<K, V> child )
     {
-        ( ( Node<K, V> ) page ).setValue( pos, new PageHolder<K, V>( btree, child ) );
+        ( ( Node<K, V> ) page ).setValue( pos, child.getOffset() );
     }
 
 
@@ -368,7 +367,7 @@ public class BTreeFactory<K, V>
      */
     /* no qualifier*/static <K, V> void setRootPage( BTree<K, V> btree, Page<K, V> root )
     {
-        ( ( BTreeImpl<K, V> ) btree ).setRootPage( root );
+        ( ( BTree<K, V> ) btree ).setRootPage( root );
     }
 
 
@@ -380,7 +379,7 @@ public class BTreeFactory<K, V>
      */
     /* no qualifier */static <K, V> Page<K, V> getRootPage( BTree<K, V> btree )
     {
-        return (( BTreeImpl<K, V> ) btree ).getRootPage();
+        return (( BTree<K, V> ) btree ).getRootPage();
     }
 
 
@@ -392,7 +391,7 @@ public class BTreeFactory<K, V>
      */
     /* no qualifier */static <K, V> void setNbElems( BTree<K, V> btree, long nbElems )
     {
-        ( ( BTreeImpl<K, V> ) btree ).setNbElems( nbElems );
+        ( ( BTree<K, V> ) btree ).setNbElems( nbElems );
     }
 
 
@@ -404,7 +403,7 @@ public class BTreeFactory<K, V>
      */
     /* no qualifier*/static <K, V> void setRevision( BTree<K, V> btree, long revision )
     {
-        ( ( BTreeImpl<K, V> ) btree ).setRevision( revision );
+        ( ( BTree<K, V> ) btree ).setRevision( revision );
     }
 
 
@@ -445,7 +444,7 @@ public class BTreeFactory<K, V>
     {
         LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
 
-        ParentPos<K, V> last = new ParentPos<K, V>( btree.getRootPage(), btree.getRootPage().getNbPageElems() );
+        ParentPos<K, V> last = new ParentPos<>( btree.getRootPage(), btree.getRootPage().getPageNbElems() );
         stack.push( last );
 
         if ( btree.getRootPage().isLeaf() )
@@ -459,9 +458,10 @@ public class BTreeFactory<K, V>
 
             while ( true )
             {
-                Page<K, V> p = ( ( AbstractPage<K, V> ) node ).getPage( node.getNbPageElems() );
+                //Page<K, V> p = transaction.getPage( btreeInfo, ( ( AbstractPage )parentPos.page ).children[parentPos.pos] );
+                Page<K, V> p = ( ( AbstractPage<K, V> ) node ).getPage( node.getPageNbElems() );
 
-                last = new ParentPos<>( p, p.getNbPageElems() );
+                last = new ParentPos<>( p, p.getPageNbElems() );
                 stack.push( last );
 
                 if ( p.isLeaf() )
@@ -488,9 +488,9 @@ public class BTreeFactory<K, V>
      */
     /* no qualifier*/static <K, V> void setRootPageOffset( BTree<K, V> btree, long rootPageOffset )
     {
-        if ( btree instanceof BTreeImpl )
+        if ( btree instanceof BTree )
         {
-            ( ( BTreeImpl<K, V> ) btree ).getBtreeHeader().setRootPageOffset( rootPageOffset );
+            btree.getBtreeHeader().setRootPageOffset( rootPageOffset );
         }
         else
         {
@@ -507,9 +507,9 @@ public class BTreeFactory<K, V>
      */
     /* no qualifier*/static <K, V> void setRecordManager( BTree<K, V> btree, RecordManager recordManager )
     {
-        if ( btree instanceof BTreeImpl )
+        if ( btree instanceof BTree )
         {
-            ( ( BTreeImpl<K, V> ) btree ).setRecordManager( recordManager );
+            ( ( BTree<K, V> ) btree ).setRecordManager( recordManager );
         }
         else
         {
@@ -526,17 +526,10 @@ public class BTreeFactory<K, V>
      * @param pos The position of this key in the page
      * @param buffer The byte[] containing the serialized key
      */
-    /* no qualifier*/static <K, V> void setKey( BTree<K, V> btree, Page<K, V> page, int pos, byte[] buffer )
+    /* no qualifier*/static <K, V> void setKey( BTreeInfo<K, V> btreeInfo, Page<K, V> page, int pos, byte[] buffer )
     {
-        if ( btree instanceof BTreeImpl )
-        {
-            KeyHolder<K> keyHolder = new KeyHolder<K>( btree.getKeySerializer(), buffer );
-            ( ( AbstractPage<K, V> ) page ).setKey( pos, keyHolder );
-        }
-        else
-        {
-            throw new IllegalArgumentException( "The b-tree must be a PersistedBTree" );
-        }
+        KeyHolder<K> keyHolder = new KeyHolder<>( btreeInfo.getKeySerializer(), buffer );
+        ( ( AbstractPage<K, V> ) page ).setKey( pos, keyHolder );
     }
 
 
@@ -548,7 +541,7 @@ public class BTreeFactory<K, V>
      */
     /* no qualifier*/static <K, V> LinkedList<ParentPos<K, V>> getPathToLeftMostLeaf( BTree<K, V> btree )
     {
-        if ( btree instanceof BTreeImpl )
+        if ( btree instanceof BTree )
         {
             LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
 

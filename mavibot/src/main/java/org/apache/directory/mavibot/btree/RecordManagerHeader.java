@@ -2,6 +2,8 @@ package org.apache.directory.mavibot.btree;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -42,13 +44,16 @@ public class RecordManagerHeader
     /* no qualifier */long revision;
     
     /** The RecordManager underlying page size. */
-    /* no qualifier */int pageSize = RecordManager.DEFAULT_PAGE_SIZE;
+    /* no qualifier */int pageSize = BTreeConstants.DEFAULT_PAGE_SIZE;
     
     /** The number of managed B-trees */
     /* no qualifier */int nbBtree;
 
     /** The first and last free page */
     /* no qualifier */long firstFreePage;
+    
+    /** A map of the current managed B-trees */
+    /* no qualifier */Map<String, BTree> btreeMap = new HashMap<>(); 
 
     /** The b-tree of b-trees, where we store user's b-trees. */
     /* no qualifier */BTree<NameRevision, Long> btreeOfBtrees;
@@ -60,17 +65,18 @@ public class RecordManagerHeader
     /* no qualifier */long currentBtreeOfBtreesOffset;
 
     /** The offset on the current copied pages B-tree */
-    /* no qualifier */long currentCopiedPagesBtreeOffset = RecordManager.NO_PAGE;
+    /* no qualifier */long currentCopiedPagesBtreeOffset = BTreeConstants.NO_PAGE;
     
     /** The page ID incremental counter */
     /* no qualifier */long idCounter = 0;
     
     /** The offset of the end of the file */
-    /* no qualifier */long lastOffset = RecordManager.NO_PAGE;
+    /* no qualifier */long lastOffset = BTreeConstants.NO_PAGE;
     
     
     /** The lock used to protect the recordManagerHeader while accessing it */
     private ReadWriteLock lock = new ReentrantReadWriteLock();
+    
     
     /**
      * Copy the current data structure and returns it.
@@ -93,6 +99,17 @@ public class RecordManagerHeader
             copy.copiedPagesBtree = copiedPagesBtree;
             copy.lastOffset = lastOffset;
             copy.idCounter = idCounter;
+            
+            // Copy the map
+            Map<String, BTree> newBTreeMap = new HashMap<>( btreeMap.size() );
+            
+            for ( Map.Entry<String, BTree> entry : btreeMap.entrySet() )
+            {
+                BTree btree = entry.getValue();
+                newBTreeMap.put( entry.getKey(), btree.copy() );
+            }
+            
+            copy.btreeMap = newBTreeMap;
             
             return copy;
         }
@@ -120,6 +137,7 @@ public class RecordManagerHeader
             currentCopiedPagesBtreeOffset = update.currentCopiedPagesBtreeOffset;
             firstFreePage = update.firstFreePage;
             lastOffset = update.lastOffset;
+            idCounter = update.idCounter;
         }
         finally
         {
@@ -148,6 +166,24 @@ public class RecordManagerHeader
     {
         return copiedPagesBtree;
     }
+    
+    
+    /* No qualifier */ <K, V> BTree<K, V> getBTree( String name )
+    {
+        return btreeMap.get( name );
+    }
+    
+    
+    /* No qualifier */ <K, V> void addBTree( BTree<K, V> btree )
+    {
+        btreeMap.put( btree.getName(), btree );
+    }
+    
+    
+    /* No qualifier */ boolean containsBTree( String name )
+    {
+        return btreeMap.get( name ) != null;
+    }
 
 
     /**
@@ -166,6 +202,8 @@ public class RecordManagerHeader
      * | current BoB offset  | 8 bytes : The offset of the current B-tree of B-trees
      * +---------------------+
      * | current CP offset   | 8 bytes : The offset of the current CopiedPages B-tree
+     * +---------------------+
+     * | ID                  | 8 bytes : The page ID
      * +---------------------+
      * </pre>
      */
@@ -189,7 +227,10 @@ public class RecordManagerHeader
         position = recordManager.writeData( recordManagerHeaderBytes, position, currentBtreeOfBtreesOffset );
 
         // The offset of the current B-tree of B-trees
-        recordManager.writeData( recordManagerHeaderBytes, position, currentCopiedPagesBtreeOffset );
+        position = recordManager.writeData( recordManagerHeaderBytes, position, currentCopiedPagesBtreeOffset );
+
+        // The ID counter
+        recordManager.writeData( recordManagerHeaderBytes, position, idCounter );
 
         // Write the RecordManager header on disk
         recordManager.getRecordManagerHeaderBuffer().put( recordManagerHeaderBytes );
@@ -213,14 +254,14 @@ public class RecordManagerHeader
             sb.append( String.format( "%16x", currentCopiedPagesBtreeOffset ) );
             sb.append( "\n" );
 
-            if ( firstFreePage != RecordManager.NO_PAGE )
+            if ( firstFreePage != BTreeConstants.NO_PAGE )
             {
                 long freePage = firstFreePage;
                 sb.append( "free pages list : " );
 
                 boolean isFirst = true;
 
-                while ( freePage != RecordManager.NO_PAGE )
+                while ( freePage != BTreeConstants.NO_PAGE )
                 {
                     if ( isFirst )
                     {
@@ -235,7 +276,7 @@ public class RecordManagerHeader
 
                     try
                     {
-                        PageIO[] freePageIO = recordManager.readPageIOs( this, freePage, 8 );
+                        PageIO[] freePageIO = recordManager.readPageIOs( this.pageSize, freePage, 8 );
 
                         freePage = freePageIO[0].getNextPage();
                     }
@@ -269,6 +310,34 @@ public class RecordManagerHeader
         sb.append( "    BOB current offset :  " ).append( String.format( "%16x", currentBtreeOfBtreesOffset ) ).append( '\n' );
         sb.append( "    CPB current offset :  " ).append( String.format( "%16x", currentCopiedPagesBtreeOffset ) ).append( '\n' );
         sb.append( "    last offset :         " ).append( String.format( "%16x", lastOffset ) ).append( '\n' );
+        
+        if ( btreeMap.isEmpty() )
+        {
+            sb.append( "    No managed B-trees\n" );
+        }
+        else
+        {
+            sb.append( "    Managed B-trees :\n" );
+            sb.append( "        {" );
+            boolean isFirst = true;
+            
+            for ( String name : btreeMap.keySet() )
+            {
+                if ( isFirst )
+                {
+                    isFirst = false;
+                }
+                else
+                {
+                    sb.append(  ", " );
+                }
+                
+                sb.append( name );
+            }
+
+            sb.append( "}\n" );
+        }
+        
         return sb.toString();
     }
 }

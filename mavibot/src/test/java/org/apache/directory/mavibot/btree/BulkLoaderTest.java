@@ -93,7 +93,7 @@ public class BulkLoaderTest
             try
             {
                 RecordManager rm = new RecordManager( file.getAbsolutePath() );
-                BTreeImpl<Long, String> btree = ( BTreeImpl<Long, String> ) rm.addBTree( "test",
+                BTree<Long, String> btree = ( BTree<Long, String> ) rm.addBTree( "test",
                     LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
                 btree.setPageSize( 64 );
 
@@ -213,7 +213,7 @@ public class BulkLoaderTest
         try
         {
             RecordManager rm = new RecordManager( file.getAbsolutePath() );
-            BTreeImpl<Long, String> btree = ( BTreeImpl<Long, String> ) rm.addBTree( "test",
+            BTree<Long, String> btree = ( BTree<Long, String> ) rm.addBTree( "test",
                 LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
 
             int[] expectedNbPages = new int[]
@@ -270,7 +270,7 @@ public class BulkLoaderTest
         try
         {
             RecordManager rm = new RecordManager( file.getAbsolutePath() );
-            BTreeImpl<Long, String> btree = ( BTreeImpl<Long, String> ) rm.addBTree( "test",
+            BTree<Long, String> btree = ( BTree<Long, String> ) rm.addBTree( "test",
                 LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
 
             int[] expectedNbPages = new int[]
@@ -325,7 +325,7 @@ public class BulkLoaderTest
         try
         {
             RecordManager rm = new RecordManager( file.getAbsolutePath() );
-            BTreeImpl<Long, String> btree = ( BTreeImpl<Long, String> ) rm.addBTree( "test",
+            BTree<Long, String> btree = ( BTree<Long, String> ) rm.addBTree( "test",
                 LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
 
             int[] expectedNbPages = new int[]
@@ -380,7 +380,7 @@ public class BulkLoaderTest
             try
             {
                 RecordManager rm = new RecordManager( file.getAbsolutePath() );
-                BTreeImpl<Long, String> btree = ( BTreeImpl<Long, String> ) rm.addBTree( "test",
+                BTree<Long, String> btree = ( BTree<Long, String> ) rm.addBTree( "test",
                     LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
 
                 int nbElems = i;
@@ -512,7 +512,7 @@ public class BulkLoaderTest
         try
         {
             RecordManager rm = new RecordManager( file.getAbsolutePath() );
-            BTreeImpl<Long, String> btree = ( BTreeImpl<Long, String> ) rm.addBTree( "test",
+            BTree<Long, String> btree = ( BTree<Long, String> ) rm.addBTree( "test",
                 LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
 
             int nbElems = 4;
@@ -914,7 +914,7 @@ public class BulkLoaderTest
         try
         {
             RecordManager rm = new RecordManager( file.getAbsolutePath() );
-            BTreeImpl<Long, String> btree = ( BTreeImpl<Long, String> ) rm.addBTree( "test",
+            BTree<Long, String> btree = ( BTree<Long, String> ) rm.addBTree( "test",
                 LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
 
             // btree.valueThresholdUp = 8;

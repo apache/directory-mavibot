@@ -27,10 +27,19 @@ import org.apache.directory.mavibot.btree.util.Strings;
 
 /**
  * A structure containing a Page on disk. It's a byte[PageSize] plus a few more details like
- * the page offset on disk and a link to the next page.</br>
- * As we may need more than one Page to store some data, the PageIO are linked so that
- * the list of all the PageIO contain the full data.</br>
- * The first PageIO contains the size of the data.</br>
+ * the data size (for the first PageIO) and a link to the next page, plus the offset on disk for itself.
+ * <p>
+ * The tricky part is that a PageIO is really just a fixed size byte[] read from the disk, and there is no
+ * semantic associated to the PageIO : it's totally opaque. The semantic is added by the caller, which 
+ * will decode the data to extract the added information from the data. The caller knows what to do with 
+ * the contained data, the PageIO does not.
+ * <p>
+ * Typically : 
+ * <ul>
+ *   <li>The first PageIO contains the size of the data starting at position 8.</li>
+ *   <li>Each PageIO first 8 bytes are the offset of teh next page, if any, or -1 if there is none</li>
+ * </ul
+ * >
  * Here is the logical structure of a PageIO :
  * <pre>
  * For a first page :
@@ -66,12 +75,12 @@ import org.apache.directory.mavibot.btree.util.Strings;
     /** The offset on disk */
     private int size;
 
-    /** The position of the page on disk */
+    /** The offset on disk */
     private long offset;
 
 
     /**
-     * A default constructor for a PageIO
+     * A default constructor for a PageIO (used by tests)
      */
     /* no qualifier */PageIO()
     {
@@ -153,7 +162,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
 
 
     /**
-     * @param size the size to set
+     * The default size
      */
     /* no qualifier */void setSize()
     {
@@ -215,6 +224,45 @@ import org.apache.directory.mavibot.btree.util.Strings;
 
         // The offset and next page pointers are not copied.
         return copy;
+    }
+
+    
+    /**
+     * Reads all the data from a set of PageIOs. The first PageIO contains the data length
+     * @param pageIos The PageIO to load into the buffer
+     * @return A ByteBuffer containing the data
+     */
+    /* No qualifier */static ByteBuffer getBuffer( PageIO[] pageIos )
+    {
+        if ( ( pageIos == null ) || ( pageIos.length ==0 ) )
+        {
+            return ByteBuffer.allocate( 0 );
+        }
+        
+        ByteBuffer buffer = ByteBuffer.allocate( ( int ) pageIos[0].getSize() );
+        
+        boolean isFirst = true;
+        
+        for ( PageIO pageIo : pageIos )
+        {
+            ByteBuffer data = pageIo.getData();
+            
+            if ( isFirst )
+            {
+                data.position( BTreeConstants.LONG_SIZE  + BTreeConstants.INT_SIZE  );
+                isFirst = false;
+            }
+            else
+            {
+                data.position( BTreeConstants.LONG_SIZE  );
+            }
+            
+            buffer.put( data );
+        }
+        
+        buffer.flip();
+        
+        return buffer;
     }
 
 

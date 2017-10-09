@@ -109,12 +109,12 @@ public class BTreeBuilder<K, V>
         // remove null keys and values from the last leaf and resize
         Leaf<K, V> lastLeaf = ( Leaf<K, V> ) lstLeaves.get( lstLeaves.size() - 1 );
         
-        for ( int i = 0; i < lastLeaf.getNbPageElems(); i++ )
+        for ( int i = 0; i < lastLeaf.getPageNbElems(); i++ )
         {
             if ( lastLeaf.getKey( i ) == null )
             {
                 int n = i;
-                lastLeaf.setNbPageElems( n );
+                lastLeaf.setPageNbElems( n );
                 KeyHolder<K>[] keys = lastLeaf.getKeys();
 
                 lastLeaf.setKeys( ( KeyHolder[] ) Array.newInstance( KeyHolder.class, n ) );
@@ -135,13 +135,13 @@ public class BTreeBuilder<K, V>
         Page<K, V> rootPage = attachNodes( transaction, lstLeaves, btree );
 
         //System.out.println("built rootpage : " + rootPage);
-        ( ( BTreeImpl<K, V> ) btree ).setNbElems( totalTupleCount );
+        ( ( BTree<K, V> ) btree ).setNbElems( totalTupleCount );
 
         //rm.updateBtreeHeader( btree, ( ( AbstractPage<K, V> ) rootPage ).getOffset() );
 
         //rm.freePages( transaction, btree, btree.getRootPage( transaction ).getRevision(), Arrays.asList( btree.getRootPage( transaction ) ) );
 
-        ( ( BTreeImpl<K, V> ) btree ).setRootPage( rootPage );
+        ( ( BTree<K, V> ) btree ).setRootPage( rootPage );
 
         return btree;
     }
@@ -190,12 +190,12 @@ public class BTreeBuilder<K, V>
         // remove null keys and values from the last node and resize
         AbstractPage<K, V> lastNode = ( AbstractPage<K, V> ) lstNodes.get( lstNodes.size() - 1 );
 
-        for ( int j = 0; j < lastNode.getNbPageElems(); j++ )
+        for ( int j = 0; j < lastNode.getPageNbElems(); j++ )
         {
             if ( lastNode.getKey( j ) == null )
             {
                 int n = j;
-                lastNode.setNbPageElems( n );
+                lastNode.setPageNbElems( n );
                 KeyHolder<K>[] keys = lastNode.getKeys();
 
                 lastNode.setKeys( ( KeyHolder[] ) Array.newInstance( KeyHolder.class, n ) );

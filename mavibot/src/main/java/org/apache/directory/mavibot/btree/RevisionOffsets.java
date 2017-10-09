@@ -24,7 +24,7 @@ import java.util.Arrays;
 
 
 /**
- * A class to hold name, revision, and copied page offsets of a B-Tree.
+ * A class to hold a revision, and copied page offsets of a B-Tree. This is used by the CPB.
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
@@ -50,36 +50,60 @@ public class RevisionOffsets
     }
 
 
+    /**
+     * @return The revison
+     */
     public long getRevision()
     {
         return revision;
     }
 
 
+    /**
+     * @param revision The revision to set
+     */
     /* no qualifier */void setRevision( long revision )
     {
         this.revision = revision;
     }
 
 
+    /**
+     * @return The list of copied page offsets
+     */
     public long[] getOffsets()
     {
         return offsets;
     }
 
 
+    /**
+     * @param offsets The copied page offsets
+     */
     /* no qualifier */void setOffsets( long[] offsets )
     {
         this.offsets = offsets;
     }
 
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public int hashCode()
     {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ( int ) ( revision ^ ( revision >>> 32 ) );
+        int prime = 31;
+        int result = 17;
+        result = prime * result + ( int ) revision;
+        long offsetSum = 0L;
+
+        for ( long offset : offsets )
+        {
+            offsetSum += offset;
+        }
+        
+        result += ( int ) ( offsetSum * result );
+        
         return result;
     }
 
@@ -102,12 +126,7 @@ public class RevisionOffsets
 
         RevisionOffsets other = ( RevisionOffsets ) obj;
 
-        if ( revision != other.revision )
-        {
-            return false;
-        }
-
-        return true;
+        return revision == other.revision;
     }
 
 

@@ -50,6 +50,9 @@ public class ReadTransaction extends AbstractTransaction implements Closeable
     /* No qualifier*/ ReadTransaction( RecordManager recordManager )
     {
         super( recordManager );
+        
+        // Don't get a copy of the RMH
+        recordManagerHeader = recordManager.getCurrentRecordManagerHeader();
     }
     
     /**
@@ -61,6 +64,9 @@ public class ReadTransaction extends AbstractTransaction implements Closeable
     /* No qualifier*/ ReadTransaction( RecordManager recordManager, long timeout )
     {
         super( recordManager, timeout );
+        
+        // Don't get a copy of the RMH
+        recordManagerHeader = recordManager.getCurrentRecordManagerHeader();
     }
 
 

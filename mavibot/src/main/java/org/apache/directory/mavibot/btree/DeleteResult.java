@@ -40,4 +40,18 @@ package org.apache.directory.mavibot.btree;
      * @return the removed element
      */
     Tuple<K, V> getRemovedElement();
+
+    
+    /**
+     * @return The key following the one that is removed
+     */
+    K getNextKey();
+    
+    
+    /**
+     * Set the key following the one that is removed
+     * 
+     * @param nextKey The next key
+     */
+    void setNextKey( K nextKey );
 }

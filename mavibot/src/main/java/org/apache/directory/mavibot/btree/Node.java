@@ -22,9 +22,11 @@ package org.apache.directory.mavibot.btree;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
@@ -49,15 +51,14 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      *
      * @param btree the parent BTree
      * @param revision the Node revision
-     * @param nbPageElems The number of elements in this Node
+     * @param pageNbElems The number of elements in this Node
      */
-    @SuppressWarnings("unchecked")
-    Node( BTree<K, V> btree, long revision, int nbPageElems )
+    Node( BTreeInfo<K, V> btreeInfo, long revision, int pageNbElems )
     {
-        super( btree, revision, nbPageElems );
+        super( btreeInfo, revision, pageNbElems );
 
         // Create the children array
-        children = ( PageHolder<K, V>[] ) Array.newInstance( PageHolder.class, nbPageElems + 1 );
+        children = ( long[] ) Array.newInstance( long.class, pageNbElems + 1 );
     }
 
 
@@ -72,48 +73,18 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * @param leftPage The left page
      * @param rightPage The right page
      */
-    @SuppressWarnings("unchecked")
-    Node( BTree<K, V> btree, long revision, K key, Page<K, V> leftPage, Page<K, V> rightPage )
+    Node( BTreeInfo<K, V> btreeInfo, long revision, K key, long leftPage, long rightPage )
     {
-        super( btree, revision, 1 );
+        super( btreeInfo, revision, 1 );
 
         // Create the children array, and store the left and right children
-        children = ( PageHolder<K, V>[] ) Array.newInstance( PageHolder.class,
-            btree.getPageNbElem() + 1 );
-
-        children[0] = new PageHolder<K, V>( btree, leftPage );
-        children[1] = new PageHolder<K, V>( btree, rightPage );
-
-        // Feed the key array
-        keys[0] = new KeyHolder<K>( btree.getKeySerializer(), key );
-    }
-
-
-    /**
-     * Creates a new Node which will contain only one key, with references to
-     * a left and right page. This is a specific constructor used by the btree
-     * when the root was full when we added a new value.
-     *
-     * @param btree the parent BTree
-     * @param revision the Node revision
-     * @param key The new key
-     * @param leftPage The left page
-     * @param rightPage The right page
-     */
-    @SuppressWarnings("unchecked")
-    Node( BTree<K, V> btree, long revision, K key, PageHolder<K, V> leftPage, PageHolder<K, V> rightPage )
-    {
-        super( btree, revision, 1 );
-
-        // Create the children array, and store the left and right children
-        children = ( PageHolder<K, V>[] ) Array.newInstance( PageHolder.class,
-            btree.getPageNbElem() + 1 );
+        children = new long[btreeInfo.getPageNbElem() + 1];
 
         children[0] = leftPage;
         children[1] = rightPage;
 
         // Feed the key array
-        keys[0] = new KeyHolder<K>( btree.getKeySerializer(), key );
+        keys[0] = new KeyHolder<K>( btreeInfo.getKeySerializer(), key );
     }
 
 
@@ -135,9 +106,13 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         }
 
         // Get the child page into which we will insert the <K, V> tuple
-        Page<K, V> child = children[pos].getValue();
+        Page<K, V> child = transaction.getPage( btreeInfo, children[pos] );
 
         // and insert the <K, V> into this child
+        if ( child == null )
+        {
+            System.out.println( "error" );
+        }
         InsertResult<K, V> result = child.insert( transaction, key, value );
 
         // Ok, now, we have injected the <K, V> tuple down the tree. Let's check
@@ -161,7 +136,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             // We have to deal with the two cases :
             // - the current page is full, we have to split it
             // - the current page is not full, we insert the new pivot
-            if ( nbPageElems == btree.getPageNbElem() )
+            if ( pageNbElems == btreeInfo.getPageNbElem() )
             {
                 // The page is full
                 result = addAndSplit( transaction, ( SplitResult<K, V> ) result, pos );
@@ -180,13 +155,6 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
     /**
      * Modifies the current node after a remove has been done in one of its children.
      * The node won't be merged with another node.
-     *
-     * @param removeResult The result of a remove operation
-     * @param index the position of the key, not transformed
-     * @param pos The position of the key, as a positive value
-     * @param found If the key has been found in the page
-     * @return The new result
-     * @throws IOException If we have an error while trying to access the page
      */
     private RemoveResult<K, V> handleRemoveResult( WriteTransaction transaction, RemoveResult<K, V> removeResult, 
         int index, int pos, boolean found ) throws IOException
@@ -194,27 +162,30 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         // Simplest case : the element has been removed from the underlying page,
         // we just have to copy the current page an modify the reference to link to
         // the modified page.
-        Node<K, V> newPage = copy( transaction );
+        Node<K, V> newNode = copy( transaction );
 
         Page<K, V> modifiedPage = removeResult.getModifiedPage();
 
         if ( found )
         {
-            newPage.children[index + 1] = createHolder( modifiedPage );
+            setChild( newNode, index + 1, modifiedPage );
         }
         else
         {
-            newPage.children[index] = createHolder( modifiedPage );
+            setChild( newNode, index, modifiedPage );
         }
 
         if ( pos < 0 )
         {
-            newPage.keys[index].setKey( removeResult.getModifiedPage().getLeftMostKey() );
+            newNode.keys[index].setKey( removeResult.getModifiedPage().getLeftMostKey( transaction ) );
         }
 
         // Modify the result and return
-        removeResult.setModifiedPage( newPage );
-        removeResult.addCopiedPage( this );
+        removeResult.setModifiedPage( newNode );
+        
+        // Store the new page in the WAL
+        transaction.removeWALObject( id );
+        transaction.updateWAL( revision, this, newNode );
 
         return removeResult;
     }
@@ -223,31 +194,28 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
     /**
      * Handles the removal of an element from the root page, when two of its children
      * have been merged.
-     *
-     * @param mergedResult The merge result
-     * @param pos The position in the current root
-     * @param found Tells if the removed key is present in the root page
-     * @return The resulting root page
-     * @throws IOException If we have an error while trying to access the page
      */
-    private RemoveResult<K, V> handleRootRemove( MergedWithSiblingResult<K, V> mergedResult, int pos )
+    private RemoveResult<K, V> handleRootRemove( WriteTransaction transaction, MergedWithSiblingResult<K, V> mergedResult, int pos )
         throws IOException
     {
         RemoveResult<K, V> removeResult;
 
         // If the current node contains only one key, then the merged result will be
         // the new root. Deal with this case
-        if ( nbPageElems == 1 )
+        if ( pageNbElems == 1 )
         {
-            removeResult = new RemoveResult<>( mergedResult.getCopiedPages(), mergedResult.getModifiedPage(),
-                mergedResult.getRemovedElement() );
-
-            removeResult.addCopiedPage( this );
+            removeResult = new RemoveResult<>( mergedResult.getModifiedPage(), mergedResult.getRemovedElement(), pos );
+            
+            // Add the current root to the copied pages, as we won't use it anymore
+            transaction.addCopiedWALObject( this );
+            transaction.removeWALObject( id );
         }
         else
         {
             // Remove the element and update the reference to the changed pages
-            removeResult = removeKey( mergedResult, revision, pos );
+            removeResult = removeKey( transaction, mergedResult, pos );
+            transaction.removeWALObject( id );
+            transaction.updateWAL( revision, this, removeResult.getModifiedPage() );
         }
 
         return removeResult;
@@ -258,47 +226,40 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * Borrows an element from the right sibling, creating a new sibling with one
      * less element and creating a new page where the element to remove has been
      * deleted and the borrowed element added on the right.
-     *
-     * @param revision The new revision for all the pages
-     * @param sibling The right sibling
-     * @param pos The position of the element to remove
-     * @return The resulting pages
-     * @throws IOException If we have an error while trying to access the page
      */
-    private DeleteResult<K, V> borrowFromRight( WriteTransaction transaction, MergedWithSiblingResult<K, V> mergedResult,
-        Node<K, V> sibling, int pos ) throws IOException
+    private DeleteResult<K, V> borrowFromRight( WriteTransaction transaction, MergedWithSiblingResult<K, V> mergedResult, Node<K, V> sibling, int pos ) throws IOException
     {
         // Create the new sibling, with one less element at the beginning
-        Node<K, V> newSibling = new Node<>( btree, revision, sibling.nbPageElems - 1 );
+        Node<K, V> newSibling = transaction.newNode( btreeInfo, sibling.getPageNbElems() - 1 );
 
-        K siblingKey = sibling.children[0].getValue().getLeftMostKey();
+        K siblingKey = transaction.getPage( btreeInfo, sibling.children[0] ).getLeftMostKey( transaction );
 
         // Copy the keys and children of the old sibling in the new sibling
-        System.arraycopy( sibling.keys, 1, newSibling.keys, 0, newSibling.nbPageElems );
-        System.arraycopy( sibling.children, 1, newSibling.children, 0, newSibling.nbPageElems + 1 );
-
+        System.arraycopy( sibling.keys, 1, newSibling.keys, 0, newSibling.getPageNbElems() );
+        System.arraycopy( sibling.children, 1, newSibling.children, 0, newSibling.getPageNbElems() + 1 );
+        
         // Create the new page and add the new element at the end
         // First copy the current node, with the same size
-        Node<K, V> newNode = new Node<>( btree, revision, nbPageElems );
+        Node<K, V> newNode = transaction.newNode( btreeInfo, pageNbElems );
 
         // Copy the keys and the values up to the insertion position
         int index = Math.abs( pos );
 
         // Copy the key and children from sibling
-        newNode.keys[nbPageElems - 1] = new KeyHolder<>( btree.getKeySerializer(), siblingKey ); // 1
-        newNode.children[nbPageElems] = sibling.children[0]; // 8
+        newNode.keys[pageNbElems - 1] = new KeyHolder<>( btreeInfo.getKeySerializer(), siblingKey ); // 1
+        newNode.children[pageNbElems] = sibling.children[0]; // 8
 
         if ( index < 2 )
         {
             // Copy the keys
-            System.arraycopy( keys, 1, newNode.keys, 0, nbPageElems - 1 );
+            System.arraycopy( keys, 1, newNode.keys, 0, pageNbElems - 1 );
 
             // Inject the modified page
             Page<K, V> modifiedPage = mergedResult.getModifiedPage();
-            newNode.children[0] = createHolder( modifiedPage );
+            setChild( newNode, 0, modifiedPage );
 
             // Copy the children
-            System.arraycopy( children, 2, newNode.children, 1, nbPageElems - 1 );
+            System.arraycopy( children, 2, newNode.children, 1, pageNbElems - 1 );
         }
         else
         {
@@ -309,17 +270,15 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             }
 
             // Inject the new modified page key
-            newNode.keys[index - 2] = new KeyHolder<K>( btree.getKeySerializer(), mergedResult
-                .getModifiedPage()
-                .getLeftMostKey() ); // 2
+            newNode.keys[index - 2] = new KeyHolder<>( btreeInfo.getKeySerializer(), mergedResult.getModifiedPage().getLeftMostKey( transaction ) ); // 2
 
-            if ( index < nbPageElems )
+            if ( index < pageNbElems )
             {
                 // Copy the remaining keys after the deletion point
-                System.arraycopy( keys, index, newNode.keys, index - 1, nbPageElems - index ); // 3
+                System.arraycopy( keys, index, newNode.keys, index - 1, pageNbElems - index ); // 3
 
                 // Copy the remaining children after the deletion point
-                System.arraycopy( children, index + 1, newNode.children, index, nbPageElems - index ); // 7
+                System.arraycopy( children, index + 1, newNode.children, index, pageNbElems - index ); // 7
             }
 
             // Copy the children before the deletion point
@@ -327,17 +286,18 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
             // Inject the modified page
             Page<K, V> modifiedPage = mergedResult.getModifiedPage();
-            newNode.children[index - 1] = createHolder( modifiedPage ); // 6
+            setChild( newNode, index - 1, modifiedPage );
         }
 
+        // Store the updated pages in the WAL
+        transaction.removeWALObject( id );
+        transaction.updateWAL( revision, this, newNode );
+        transaction.removeWALObject( sibling.id );
+        transaction.updateWAL( sibling.getRevision(), sibling, newSibling );
+
         // Create the result
-        DeleteResult<K, V> result = new BorrowedFromRightResult<>( mergedResult.getCopiedPages(), newNode,
+        return new BorrowedFromRightResult<>( mergedResult.getCopiedPages(), newNode,
             newSibling, mergedResult.getRemovedElement() );
-
-        result.addCopiedPage( this );
-        result.addCopiedPage( sibling );
-
-        return result;
     }
 
 
@@ -345,50 +305,42 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * Borrows an element from the left sibling, creating a new sibling with one
      * less element and creating a new page where the element to remove has been
      * deleted and the borrowed element added on the left.
-     *
-     * @param revision The new revision for all the pages
-     * @param sibling The left sibling
-     * @param pos The position of the element to remove
-     * @return The resulting pages
-     * @throws IOException If we have an error while trying to access the page
      */
-    private DeleteResult<K, V> borrowFromLeft( WriteTransaction transaction, MergedWithSiblingResult<K, V> mergedResult,
-        Node<K, V> sibling, int pos ) throws IOException
+    private DeleteResult<K, V> borrowFromLeft( WriteTransaction transaction, MergedWithSiblingResult<K, V> mergedResult, Node<K, V> sibling, int pos ) throws IOException
     {
         // The sibling is on the left, borrow the rightmost element
-        Page<K, V> siblingChild = sibling.children[sibling.nbPageElems].getValue();
+        Page<K, V> siblingChild = transaction.getPage( btreeInfo, sibling.children[sibling.pageNbElems] );
 
         // Create the new sibling, with one less element at the end
-        Node<K, V> newSibling = new Node<>( btree, revision, sibling.nbPageElems - 1 );
+        Node<K, V> newSibling = transaction.newNode( btreeInfo, sibling.getPageNbElems() - 1 );
 
         // Copy the keys and children of the old sibling in the new sibling
-        System.arraycopy( sibling.keys, 0, newSibling.keys, 0, newSibling.nbPageElems );
-        System.arraycopy( sibling.children, 0, newSibling.children, 0, newSibling.nbPageElems + 1 );
+        System.arraycopy( sibling.keys, 0, newSibling.keys, 0, newSibling.getPageNbElems() );
+        System.arraycopy( sibling.children, 0, newSibling.children, 0, newSibling.getPageNbElems() + 1 );
 
         // Create the new page and add the new element at the beginning
         // First copy the current node, with the same size
-        Node<K, V> newNode = new Node<>( btree, revision, nbPageElems );
+        Node<K, V> newNode = transaction.newNode( btreeInfo, pageNbElems );
 
         // Sets the first children
-        newNode.children[0] = createHolder( siblingChild ); //1
+        setChild( newNode, 0, siblingChild );
 
         int index = Math.abs( pos );
-
+        
         if ( index < 2 )
         {
-            newNode.keys[0] = new KeyHolder<K>( btree.getKeySerializer(), mergedResult.getModifiedPage()
-                .getLeftMostKey() );
-            System.arraycopy( keys, 1, newNode.keys, 1, nbPageElems - 1 );
+            newNode.keys[0] = new KeyHolder<>( btreeInfo.getKeySerializer(), mergedResult.getModifiedPage().getLeftMostKey( transaction) );
+            System.arraycopy( keys, 1, newNode.keys, 1, pageNbElems - 1 );
 
             Page<K, V> modifiedPage = mergedResult.getModifiedPage();
-            newNode.children[1] = createHolder( modifiedPage );
-            System.arraycopy( children, 2, newNode.children, 2, nbPageElems - 1 );
+            setChild( newNode, 1, modifiedPage );
+            System.arraycopy( children, 2, newNode.children, 2, pageNbElems - 1 );
         }
         else
         {
             // Set the first key
-            newNode.keys[0] = new KeyHolder<K>( btree.getKeySerializer(), children[0].getValue()
-                .getLeftMostKey() ); //2
+            K leftMostKey = transaction.getPage( btreeInfo, children[0] ).getLeftMostKey( transaction );
+            newNode.keys[0] = new KeyHolder<>( btreeInfo.getKeySerializer(), leftMostKey ); //2
 
             if ( index > 2 )
             {
@@ -397,17 +349,15 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             }
 
             // Inject the modified key
-            newNode.keys[index - 1] = new KeyHolder<K>( btree.getKeySerializer(), mergedResult
-                .getModifiedPage()
-                .getLeftMostKey() ); // 3
+            newNode.keys[index - 1] = new KeyHolder<>( btreeInfo.getKeySerializer(), mergedResult.getModifiedPage().getLeftMostKey( transaction ) ); // 3
 
-            if ( index < nbPageElems )
+            if ( index < pageNbElems)
             {
                 // Add copy the remaining keys after the deletion point
-                System.arraycopy( keys, index, newNode.keys, index, nbPageElems - index ); // 5
+                System.arraycopy( keys, index, newNode.keys, index, pageNbElems - index ); // 5
 
                 // Copy the remaining children after the insertion point
-                System.arraycopy( children, index + 1, newNode.children, index + 1, nbPageElems - index ); // 8
+                System.arraycopy( children, index + 1, newNode.children, index + 1, pageNbElems - index ); // 8
             }
 
             // Copy the children before the insertion point
@@ -415,41 +365,73 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
             // Insert the modified page
             Page<K, V> modifiedPage = mergedResult.getModifiedPage();
-            newNode.children[index] = createHolder( modifiedPage ); // 7
+            setChild( newNode, index, modifiedPage );
         }
+        
+        // Store the updated pages in the WAL
+        transaction.removeWALObject( id );
+        transaction.updateWAL( revision, this, newNode );
+        transaction.removeWALObject( sibling.id );
+        transaction.updateWAL( sibling.getRevision(), sibling, newSibling );
 
         // Create the result
-        DeleteResult<K, V> result = new BorrowedFromLeftResult<>( mergedResult.getCopiedPages(), newNode,
+        return new BorrowedFromLeftResult<>( mergedResult.getCopiedPages(), newNode,
             newSibling,
             mergedResult.getRemovedElement() );
-
-        result.addCopiedPage( this );
-        result.addCopiedPage( sibling );
-
-        return result;
     }
 
 
     /**
      * We have to merge the node with its sibling, both have N/2 elements before the element
      * removal.
-     *
-     * @param revision The revision
-     * @param mergedResult The result of the merge
-     * @param sibling The Page we will merge the current page with
-     * @param isLeft Tells if the sibling is on the left
-     * @param pos The position of the key that has been removed
-     * @return The page resulting of the merge
-     * @throws IOException If we have an error while trying to access the page
+     * The trick is that the new Node will have N keys, not N-1. The reason is that when two children
+     * get merged, the two Node we will merge will refer to N/2 + 1 and N/2 children, N + 1 children,
+     * and we need N keys in the node for that.
+     * 
+     * <pre>
+     * Before :
+     *                 +---+---+                           +---+---+
+     *                 | 3 | 7 |                           | 12| 15|
+     *                 +---+---+                           +---+---+
+     *                 |   |   |                           |   |   |
+     *       +---------+   |   +-------+           +-------+   |   +-------+
+     *       |             |           |           |           |           |
+     *       v             v           v           v           v           v
+     * +---+---+---+   +---+---+   +---+---+   +---+---+   +---+---+   +---+---+
+     * | 0 | 1 | 2 |   | 3 | 5 |   | 7 | 8 |   | 10| 11|   | 12| 14|   | 15| 16|
+     * +---+---+---+   +---+---+   +---+---+   +---+---+   +---+---+   +---+---+
+     *                                           ^
+     *                                           |
+     *                                           +--- Deleted element
+     *                                           
+     * Leaves [10,11] and [12,14] are merged, leaving the node [12,15] with only one key. We
+     * have to merge the [3,7] node with the [12, 15] node :
+     * 
+     *                         +---+---+---+---+
+     *                         | 3 | 7 | 11| 15|
+     *                         +---+---+---+---+
+     *                         |   |   |   |   |
+     *       +-----------------+   |   |   |   +-------------------+
+     *       |                     |   |   |                       |
+     *       |             +-------+   |   +---------+             |
+     *       |             |           |             |             |
+     *       v             v           v             v             v
+     * +---+---+---+   +---+---+   +---+---+   +---+---+---+   +---+---+
+     * | 0 | 1 | 2 |   | 3 | 5 |   | 7 | 8 |   | 11| 12| 14|   | 15| 16|
+     * +---+---+---+   +---+---+   +---+---+   +---+---+---+   +---+---+
+     * 
+     * We have 5 children instead of 6, but 4 keys in the merged nodes.
+     * </pre>
      */
     private DeleteResult<K, V> mergeWithSibling( WriteTransaction transaction, MergedWithSiblingResult<K, V> mergedResult,
         Node<K, V> sibling, boolean isLeft, int pos ) throws IOException
     {
-        // Create the new node. It will contain N - 1 elements (the maximum number)
-        // as we merge two nodes that contain N/2 elements minus the one we remove
-        Node<K, V> newNode = new Node<>( btree, revision, btree.getPageNbElem() );
+        // Create the new node. It will contain N keys (the maximum number)
+        // as we merge two nodes that contain N/2 elements
+        Node<K, V> newNode = transaction.newNode( btreeInfo, btreeInfo.getPageNbElem() );
+
         Tuple<K, V> removedElement = mergedResult.getRemovedElement();
-        int half = btree.getPageNbElem() / 2;
+        int half = btreeInfo.getPageNbElem() / 2;
         int index = Math.abs( pos );
 
         if ( isLeft )
@@ -461,21 +443,19 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             // Then copy all the elements up to the deletion point
             if ( index < 2 )
             {
-                newNode.keys[half] = new KeyHolder<K>( btree.getKeySerializer(), mergedResult
-                    .getModifiedPage()
-                    .getLeftMostKey() );
+                newNode.keys[half] = new KeyHolder<K>( btreeInfo.getKeySerializer(), mergedResult.getModifiedPage().getLeftMostKey( transaction ) );
                 System.arraycopy( keys, 1, newNode.keys, half + 1, half - 1 );
 
                 Page<K, V> modifiedPage = mergedResult.getModifiedPage();
-                newNode.children[half + 1] = createHolder( modifiedPage );
+                setChild( newNode, half + 1, modifiedPage );
                 System.arraycopy( children, 2, newNode.children, half + 2, half - 1 );
             }
             else
             {
                 // Copy the left part of the node keys up to the deletion point
                 // Insert the new key
-                newNode.keys[half] = new KeyHolder<K>( btree.getKeySerializer(), children[0].getValue()
-                    .getLeftMostKey() ); // 3
+                K leftMostKey = transaction.getPage( btreeInfo, children[0] ).getLeftMostKey( transaction );
+                newNode.keys[half] = new KeyHolder<K>( btreeInfo.getKeySerializer(), leftMostKey ); // 3
 
                 if ( index > 2 )
                 {
@@ -483,8 +463,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
                 }
 
                 // Inject the new merged key
-                newNode.keys[half + index - 1] = new KeyHolder<K>( btree.getKeySerializer(), mergedResult
-                    .getModifiedPage().getLeftMostKey() ); //5
+                newNode.keys[half + index - 1] = new KeyHolder<K>( btreeInfo.getKeySerializer(), mergedResult.getModifiedPage().getLeftMostKey( transaction ) ); //5
 
                 if ( index < half )
                 {
@@ -497,7 +476,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
                 // Inject the new merged child
                 Page<K, V> modifiedPage = mergedResult.getModifiedPage();
-                newNode.children[half + index] = createHolder( modifiedPage ); //8
+                setChild( newNode, half + index, modifiedPage );
             }
         }
         else
@@ -510,7 +489,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
                 // Insert the first child
                 Page<K, V> modifiedPage = mergedResult.getModifiedPage();
-                newNode.children[0] = createHolder( modifiedPage );
+                setChild( newNode, 0, modifiedPage );
 
                 // Copy the node children
                 System.arraycopy( children, 2, newNode.children, 1, half - 1 );
@@ -528,13 +507,11 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
                 System.arraycopy( children, 0, newNode.children, 0, index - 1 ); //6
 
                 // Inject the modified key
-                newNode.keys[index - 2] = new KeyHolder<K>( btree.getKeySerializer(), mergedResult
-                    .getModifiedPage()
-                    .getLeftMostKey() ); //2
+                newNode.keys[index - 2] = new KeyHolder<K>( btreeInfo.getKeySerializer(), mergedResult.getModifiedPage().getLeftMostKey( transaction ) ); //2
 
                 // Inject the modified children
                 Page<K, V> modifiedPage = mergedResult.getModifiedPage();
-                newNode.children[index - 1] = createHolder( modifiedPage ); // 7
+                setChild( newNode, index - 1, modifiedPage );
 
                 // Add the remaining node's key if needed
                 if ( index < half )
@@ -547,7 +524,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             }
 
             // Inject the new key from sibling
-            newNode.keys[half - 1] = new KeyHolder<>( btree.getKeySerializer(), sibling.findLeftMost()
+            newNode.keys[half - 1] = new KeyHolder<>( btreeInfo.getKeySerializer(), sibling.findLeftMost( transaction )
                 .getKey() ); //3
 
             // Copy the sibling keys
@@ -557,14 +534,14 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             System.arraycopy( sibling.children, 0, newNode.children, half, half + 1 ); // 9
         }
 
+        // Update the WAL
+        transaction.removeWALObject( id );
+        transaction.removeWALObject( sibling.id );
+        transaction.updateWAL( revision, this, newNode );
+        transaction.addCopiedWALObject( sibling );
+        
         // And create the result
-        DeleteResult<K, V> result = new MergedWithSiblingResult<>( mergedResult.getCopiedPages(), newNode,
-            removedElement );
-
-        result.addCopiedPage( this );
-        result.addCopiedPage( sibling );
-
-        return result;
+        return new MergedWithSiblingResult<>( mergedResult.getCopiedPages(), newNode, removedElement );
     }
 
 
@@ -572,28 +549,29 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * {@inheritDoc}
      */
     @Override
-    /* no qualifier */ DeleteResult<K, V> delete( WriteTransaction transaction, K key, Page<K, V> parent, int parentPos )
-        throws IOException
+    public DeleteResult<K, V> delete( WriteTransaction transaction, K key, Node<K, V> parent, int parentPos ) throws IOException
     {
         // We first try to delete the element from the child it belongs to
         // Find the key in the page
         int pos = findPos( key );
-        boolean found = pos < 0;
         int index = pos;
-        Page<K, V> child;
+        boolean found = pos < 0;
         DeleteResult<K, V> deleteResult;
+        Page<K, V> child;
 
+        // Go down the B-tree
         if ( found )
         {
-            index = -( pos + 1 );
-            child = children[-pos].getValue();
-            deleteResult = ((AbstractPage<K, V>)child).delete( transaction, key, this, -pos );
+            index = - ( pos + 1 );
+            child = transaction.getPage( btreeInfo, children[-pos] );
+            deleteResult = child.delete( transaction, key, this, -pos );
         }
         else
         {
-            child = children[pos].getValue();
-            deleteResult = ((AbstractPage<K, V>)child).delete( transaction, key, this, pos );
+            child = transaction.getPage( btreeInfo, children[pos] );
+            deleteResult = child.delete( transaction, key, this, pos );
         }
+        
 
         // If the key is not present in the tree, we simply return
         if ( deleteResult instanceof NotPresentResult )
@@ -607,9 +585,8 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         {
             return handleRemoveResult( transaction, ( RemoveResult<K, V> ) deleteResult, index, pos, found );
         }
-
-        // If we had to borrow an element in the child, then have to update
-        // the current page
+        
+        // If we had to borrow an element in the child, then we have to update the current page
         if ( deleteResult instanceof BorrowedFromSiblingResult )
         {
             return handleBorrowedResult( transaction, ( BorrowedFromSiblingResult<K, V> ) deleteResult, pos );
@@ -624,19 +601,19 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             // If the parent is null, then this page is the root page.
             if ( parent == null )
             {
-                return handleRootRemove( mergedResult, pos );
+                return handleRootRemove( transaction, mergedResult, pos );
             }
 
             // We have some parent. Check if the current page is not half full
-            int halfSize = btree.getPageNbElem() / 2;
+            int halfSize = btreeInfo.getPageNbElem() / 2;
 
-            if ( nbPageElems > halfSize )
+            if ( pageNbElems > halfSize )
             {
                 // The page has more than N/2 elements.
                 // We simply remove the element from the page, and if it was the leftmost,
                 // we return the new pivot (it will replace any instance of the removed
                 // key in its parents)
-                return removeKey( mergedResult, revision, pos );
+                return removeKey( transaction, mergedResult, pos );
             }
             else
             {
@@ -645,10 +622,9 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
                 // a sibling, or we will have to merge two pages
                 int siblingPos = selectSibling( transaction, parent, parentPos );
 
-                Node<K, V> sibling = ( Node<K, V> ) ( ( ( Node<K, V> ) parent ).children[siblingPos]
-                    .getValue() );
+                Node<K, V> sibling = ( Node<K, V> ) ( transaction.getPage( btreeInfo, parent.children[siblingPos] ) );
 
-                if ( sibling.nbPageElems > halfSize )
+                if ( sibling.getPageNbElems() > halfSize )
                 {
                     // The sibling contains enough elements
                     // We can borrow the element from the sibling
@@ -665,8 +641,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
                 else
                 {
                     // We need to merge the sibling with the current page
-                    return mergeWithSibling( transaction, mergedResult, sibling,
-                        siblingPos < parentPos, pos );
+                    return mergeWithSibling( transaction, mergedResult, sibling, ( siblingPos < parentPos ), pos );
                 }
             }
         }
@@ -675,14 +650,10 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         return null;
     }
 
-
+    
     /**
      * The deletion in a children has moved an element from one of its sibling. The key
      * is present in the current node.
-     * @param borrowedResult The result of the deletion from the children
-     * @param pos The position the key was found in the current node
-     * @return The result
-     * @throws IOException If we have an error while trying to access the page
      */
     private RemoveResult<K, V> handleBorrowedResult( WriteTransaction transaction, 
         BorrowedFromSiblingResult<K, V> borrowedResult, int pos ) throws IOException
@@ -690,7 +661,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         Page<K, V> modifiedPage = borrowedResult.getModifiedPage();
         Page<K, V> modifiedSibling = borrowedResult.getModifiedSibling();
 
-        Node<K, V> newPage = copy( transaction );
+        Node<K, V> newNode = copy( transaction );
 
         if ( pos < 0 )
         {
@@ -699,25 +670,25 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             if ( borrowedResult.isFromRight() )
             {
                 // Update the keys
-                newPage.keys[newPos] = new KeyHolder<K>( btree.getKeySerializer(), modifiedPage.findLeftMost()
+                newNode.keys[newPos] = new KeyHolder<K>( btreeInfo.getKeySerializer(), modifiedPage.findLeftMost( transaction )
                     .getKey() );
-                newPage.keys[newPos + 1] = new KeyHolder<K>( btree.getKeySerializer(), modifiedSibling
-                    .findLeftMost()
+                newNode.keys[newPos + 1] = new KeyHolder<K>( btreeInfo.getKeySerializer(), modifiedSibling
+                    .findLeftMost( transaction )
                     .getKey() );
 
                 // Update the children
-                newPage.children[newPos + 1] = createHolder( modifiedPage );
-                newPage.children[newPos + 2] = createHolder( modifiedSibling );
+                setChild( newNode, newPos + 1, modifiedPage );
+                setChild( newNode, newPos + 2, modifiedSibling );
             }
             else
             {
                 // Update the keys
-                newPage.keys[newPos] = new KeyHolder<K>( btree.getKeySerializer(), modifiedPage.findLeftMost()
+                newNode.keys[newPos] = new KeyHolder<K>( btreeInfo.getKeySerializer(), modifiedPage.findLeftMost( transaction )
                     .getKey() );
 
                 // Update the children
-                newPage.children[newPos] = createHolder( modifiedSibling );
-                newPage.children[newPos + 1] = createHolder( modifiedPage );
+                setChild( newNode, newPos, modifiedSibling );
+                setChild( newNode, newPos + 1, modifiedPage );
             }
         }
         else
@@ -725,61 +696,53 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             if ( borrowedResult.isFromRight() )
             {
                 // Update the keys
-                newPage.keys[pos] = new KeyHolder<K>( btree.getKeySerializer(), modifiedSibling.findLeftMost()
+                newNode.keys[pos] = new KeyHolder<K>( btreeInfo.getKeySerializer(), modifiedSibling.findLeftMost( transaction )
                     .getKey() );
 
                 // Update the children
-                newPage.children[pos] = createHolder( modifiedPage );
-                newPage.children[pos + 1] = createHolder( modifiedSibling );
+                setChild( newNode, pos, modifiedPage );
+                setChild( newNode, pos + 1, modifiedSibling );
             }
             else
             {
                 // Update the keys
-                newPage.keys[pos - 1] = new KeyHolder<>( btree.getKeySerializer(), modifiedPage
-                    .findLeftMost()
+                newNode.keys[pos - 1] = new KeyHolder<>( btreeInfo.getKeySerializer(), modifiedPage
+                    .findLeftMost( transaction )
                     .getKey() );
 
                 // Update the children
-                newPage.children[pos - 1] = createHolder( modifiedSibling );
-                newPage.children[pos] = createHolder( modifiedPage );
+                setChild( newNode, pos - 1, modifiedSibling );
+                setChild( newNode, pos, modifiedPage );
             }
         }
+        
+        transaction.removeWALObject( id );
+        transaction.addWALObject( newNode );
 
         // Modify the result and return
-        RemoveResult<K, V> removeResult = new RemoveResult<>( borrowedResult.getCopiedPages(), newPage,
-            borrowedResult.getRemovedElement() );
-
-        removeResult.addCopiedPage( this );
-
-        return removeResult;
+        return new RemoveResult<>( newNode, borrowedResult.getRemovedElement(), pos );
     }
 
 
     /**
      * Remove the key at a given position.
-     *
-     * @param mergedResult The page we will remove a key from
-     * @param revision The revision of the modified page
-     * @param pos The position into the page of the element to remove
-     * @return The modified page with the <K,V> element added
-     * @throws IOException If we have an error while trying to access the page
      */
-    private RemoveResult<K, V> removeKey( MergedWithSiblingResult<K, V> mergedResult, long revision, int pos )
+    private RemoveResult<K, V> removeKey( WriteTransaction transaction, MergedWithSiblingResult<K, V> mergedResult, int pos )
         throws IOException
     {
         // First copy the current page, but remove one element in the copied page
-        Node<K, V> newNode = new Node<>( btree, revision, nbPageElems - 1 );
-
+        Node<K, V> newNode = transaction.newNode( btreeInfo, pageNbElems - 1 );
+        
+        // Compute the key position.
         int index = Math.abs( pos ) - 2;
 
-        //
         if ( index < 0 )
         {
             // Copy the keys and the children
-            System.arraycopy( keys, 1, newNode.keys, 0, newNode.nbPageElems );
+            System.arraycopy( keys, 1, newNode.keys, 0, newNode.pageNbElems );
             Page<K, V> modifiedPage = mergedResult.getModifiedPage();
-            newNode.children[0] = createHolder( modifiedPage );
-            System.arraycopy( children, 2, newNode.children, 1, nbPageElems - 1 );
+            setChild( newNode, 0, modifiedPage );
+            System.arraycopy( children, 2, newNode.children, 1, pageNbElems - 1 );
         }
         else
         {
@@ -789,33 +752,52 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
                 System.arraycopy( keys, 0, newNode.keys, 0, index );
             }
 
-            newNode.keys[index] = new KeyHolder<K>( btree.getKeySerializer(), mergedResult.getModifiedPage()
-                .findLeftMost().getKey() );
+            newNode.keys[index] = new KeyHolder<K>( btreeInfo.getKeySerializer(), mergedResult.getModifiedPage()
+                .findLeftMost( transaction ).getKey() );
 
-            if ( index < nbPageElems - 2 )
+            if ( index < pageNbElems - 2 )
             {
-                System.arraycopy( keys, index + 2, newNode.keys, index + 1, nbPageElems - index - 2 );
+                System.arraycopy( keys, index + 2, newNode.keys, index + 1, pageNbElems - index - 2 );
             }
 
             // Copy the children
             System.arraycopy( children, 0, newNode.children, 0, index + 1 );
 
             Page<K, V> modifiedPage = mergedResult.getModifiedPage();
-            newNode.children[index + 1] = createHolder( modifiedPage );
+            setChild( newNode, index + 1, modifiedPage );
 
-            if ( index < nbPageElems - 2 )
+            if ( index < pageNbElems - 2 )
             {
-                System.arraycopy( children, index + 3, newNode.children, index + 2, nbPageElems - index - 2 );
+                System.arraycopy( children, index + 3, newNode.children, index + 2, pageNbElems - index - 2 );
             }
         }
+        
+        transaction.removeWALObject( id );
+        transaction.updateWAL( revision, this, newNode );
 
         // Create the result
-        RemoveResult<K, V> result = new RemoveResult<>( mergedResult.getCopiedPages(), newNode,
-            mergedResult.getRemovedElement() );
+        return new RemoveResult<>( newNode, mergedResult.getRemovedElement(), pos );
+    }
 
-        result.addCopiedPage( this );
 
-        return result;
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public V get( Transaction transaction, K key ) throws IOException, KeyNotFoundException
+    {
+        int pos = findPos( key );
+
+        if ( pos < 0 )
+        {
+            // Here, if we have found the key in the node, then we must go down into
+            // the right child, not the left one
+            return transaction.getPage( btreeInfo, children[-pos] ).get( transaction, key );
+        }
+        else
+        {
+            return transaction.getPage( btreeInfo, children[pos] ).get( transaction, key );
+        }
     }
 
 
@@ -824,7 +806,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      */
     /* No qualifier */KeyHolder<K> getKeyHolder( int pos )
     {
-        if ( pos < nbPageElems )
+        if ( pos < pageNbElems )
         {
             return keys[pos];
         }
@@ -841,7 +823,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    /* no qualifier */void setValue( int pos, PageHolder<K, V> value )
+    /* no qualifier */void setValue( int pos, long value )
     {
         children[pos] = value;
     }
@@ -851,41 +833,30 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * This method is used when we have to replace a child in a page when we have
      * found the key in the tree (the value will be changed, so we have made
      * copies of the existing pages).
-     *
-     * @param revision The current revision
-     * @param result The modified page
-     * @param pos The position of the found key
-     * @return A modified page
-     * @throws IOException If we have an error while trying to access the page
      */
-    private InsertResult<K, V> replaceChild( WriteTransaction transaction, ModifyResult<K, V> result, int pos ) throws IOException
+    private ModifyResult<K, V> replaceChild( WriteTransaction transaction, ModifyResult<K, V> result, int pos ) throws IOException
     {
         // Just copy the current page and update its revision
-        Page<K, V> newPage = this;
+        Node<K, V> newNode = this;
         
         if ( revision != transaction.getRevision() )
         {
-            newPage = copy( transaction );
+            newNode = copy( transaction );
         }
 
         // Last, we update the children table of the newly created page
         // to point on the modified child
         Page<K, V> modifiedPage = result.getModifiedPage();
 
-        ( ( Node<K, V> ) newPage ).children[pos] = createHolder( modifiedPage );
+        setChild( newNode, pos, modifiedPage );
 
         // We can return the result, where we update the modifiedPage,
         // to avoid the creation of a new object
-        result.setModifiedPage( newPage );
+        result.setModifiedPage( newNode);
         
         if ( revision != transaction.getRevision() )
         {
-            transaction.addWALObject( newPage );
-            
-            if ( btree.getType() != BTreeTypeEnum.COPIED_PAGES_BTREE )
-            {
-                transaction.addCopiedWALObject( this );
-            }
+            transaction.updateWAL( revision, this, newNode );
         }
         else
         {
@@ -901,27 +872,8 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
 
     /**
-     * Creates a new holder containing a reference to a Page
-     *
-     * @param page The page we will refer to
-     * @return A holder containing a reference to the child page
-     * @throws IOException If we have an error while trying to access the page
-     */
-    private PageHolder<K, V> createHolder( Page<K, V> page ) throws IOException
-    {
-        return new PageHolder<>( btree, page );
-    }
-
-
-    /**
      * Adds a new key into a copy of the current page at a given position. We return the
      * modified page. The new page will have one more key than the current page.
-     *
-     * @param transaction The {@WriteTransaction} we are running in
-     * @param slitResult the result of the child's split
-     * @param pos The position into the page
-     * @return The modified page with the <K,V> element added
-     * @throws IOException If we have an error while trying to access the page
      */
     private InsertResult<K, V> insertChild( WriteTransaction transaction, SplitResult<K, V> splitResult, int pos ) throws IOException
     {
@@ -934,69 +886,62 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         
         if ( transaction.getRevision() != revision )
         {
-            newNode = new Node<>( btree, transaction.getRevision(), nbPageElems + 1 );
-            newNode.setId( id );
+            newNode = transaction.newNode( btreeInfo, pageNbElems + 1 );
 
             // Copy the keys and the children up to the insertion position
-            if ( nbPageElems > 0 )
+            if ( pageNbElems > 0 )
             {
                 System.arraycopy( keys, 0, newNode.keys, 0, pos );
                 System.arraycopy( children, 0, newNode.children, 0, pos );
             }
 
             // Add the new key and children
-            newNode.keys[pos] = new KeyHolder<K>( btree.getKeySerializer(), pivot );
-            newNode.children[pos] = createHolder( leftPage );
-            newNode.children[pos + 1] = createHolder( rightPage );
+            newNode.keys[pos] = new KeyHolder<K>( btreeInfo.getKeySerializer(), pivot );
+            setChild( newNode, pos, leftPage );
+            setChild( newNode, pos + 1, rightPage );
 
             // And copy the remaining keys and children
-            if ( nbPageElems - pos > 0 )
+            if ( pageNbElems - pos > 0 )
             {
-                System.arraycopy( keys, pos, newNode.keys, pos + 1, nbPageElems - pos );
+                System.arraycopy( keys, pos, newNode.keys, pos + 1, pageNbElems - pos );
                 System.arraycopy( children, pos + 1, newNode.children, pos + 2, children.length - pos - 1 );
             }
         }
         else
         {
-            KeyHolder[] newKeys = ( KeyHolder[] ) Array.newInstance( KeyHolder.class, nbPageElems + 1);
-            PageHolder[] newChildren = ( PageHolder<K, V>[] ) Array.newInstance( PageHolder.class, nbPageElems + 2 );
+            KeyHolder[] newKeys = ( KeyHolder[] ) Array.newInstance( KeyHolder.class, pageNbElems + 1);
+            long[] newChildren = ( long[] ) Array.newInstance( long.class, pageNbElems + 2 );
             
             // Copy the keys and the children up to the insertion position
             System.arraycopy( keys, 0, newKeys, 0, pos );
             System.arraycopy( children, 0, newChildren, 0, pos );
 
             // Add the new key and children
-            newKeys[pos] = new KeyHolder<K>( btree.getKeySerializer(), pivot );
-            newChildren[pos] = createHolder( leftPage );
-            newChildren[pos + 1] = createHolder( rightPage );
+            newKeys[pos] = new KeyHolder<K>( btreeInfo.getKeySerializer(), pivot );
+            setChild( newChildren, pos, leftPage );
+            setChild( newChildren, pos + 1, rightPage );
             
             // And copy the remaining keys and children
-            if ( nbPageElems - pos > 0 )
+            if ( pageNbElems - pos > 0 )
             {
-                System.arraycopy( keys, pos, newKeys, pos + 1, nbPageElems - pos );
-                System.arraycopy( children, pos + 1, newChildren, pos + 2, children.length - pos - 1 );
+                System.arraycopy( keys, pos, newKeys, pos + 1, pageNbElems - pos );
+                System.arraycopy( children, pos + 1, newChildren, pos + 2, pageNbElems - pos );
             }
             
             keys = newKeys;
             children = newChildren;
         }
         
-        nbPageElems++;
+        pageNbElems++;
 
         // Create the result
-        ModifyResult<K, V> result = new ModifyResult<>( newNode, null );
+        ModifyResult<K, V> result = new ModifyResult<>( newNode, pivot, null );
         
         // Remove the old Node from the transaction
         transaction.removeWALObject( id );
         
         // and add the new Node into the transaction Pages map
-        transaction.addWALObject( newNode );
-
-        // And the split node in the CopiedPages B-tree if we are not already processing it
-        if ( btree.getType() != BTreeTypeEnum.COPIED_PAGES_BTREE )
-        {
-            transaction.addCopiedWALObject( this );
-        }
+        transaction.updateWAL( revision, this, newNode );
 
         return result;
     }
@@ -1019,16 +964,12 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      */
     private InsertResult<K, V> addAndSplit( WriteTransaction transaction, SplitResult<K, V> splitResult, int pos ) throws IOException
     {
-        int middle = btree.getPageNbElem() >> 1;
-        long revision = transaction.getRevision();
+        int middle = btreeInfo.getPageNbElem() >> 1;
         InsertResult<K, V> result;
 
         // Create two new pages
-        Node<K, V> newLeftPage = new Node<>( btree, revision, middle );
-        newLeftPage.initId( transaction.getRecordManagerHeader() );
-        
-        Node<K, V> newRightPage = new Node<>( btree, revision, middle );
-        newRightPage.initId( transaction.getRecordManagerHeader() );
+        Node<K, V> newLeftPage = transaction.newNode( btreeInfo, middle );
+        Node<K, V> newRightPage = transaction.newNode( btreeInfo, middle );
 
         // Determinate where to store the new value
         // If it's before the middle, insert the value on the left,
@@ -1040,9 +981,9 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             System.arraycopy( children, 0, newLeftPage.children, 0, pos );
 
             // Add the new element
-            newLeftPage.keys[pos] = new KeyHolder<K>( btree.getKeySerializer(), splitResult.getPivot() );
-            newLeftPage.children[pos] = createHolder( splitResult.getLeftPage() );
-            newLeftPage.children[pos + 1] = createHolder( splitResult.getRightPage() );
+            newLeftPage.keys[pos] = new KeyHolder<K>( btreeInfo.getKeySerializer(), splitResult.getPivot() );
+            setChild( newLeftPage, pos, splitResult.getLeftPage() );
+            setChild( newLeftPage, pos + 1, splitResult.getRightPage() );
 
             // And copy the remaining elements minus the new pivot
             System.arraycopy( keys, pos, newLeftPage.keys, pos + 1, middle - pos - 1 );
@@ -1069,12 +1010,12 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             // Copy the keys and the children up to the insertion position (here, middle)
             System.arraycopy( keys, 0, newLeftPage.keys, 0, middle );
             System.arraycopy( children, 0, newLeftPage.children, 0, middle );
-            newLeftPage.children[middle] = createHolder( splitResult.getLeftPage() );
+            setChild( newLeftPage, middle, splitResult.getLeftPage() );
 
             // And process the right page now
             System.arraycopy( keys, middle, newRightPage.keys, 0, middle );
             System.arraycopy( children, middle + 1, newRightPage.children, 1, middle );
-            newRightPage.children[0] = createHolder( splitResult.getRightPage() );
+            setChild( newRightPage, 0, splitResult.getRightPage() );
 
             // Create the result
             result = new SplitResult<>( null, splitResult.getPivot(), newLeftPage, newRightPage );
@@ -1090,13 +1031,13 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             System.arraycopy( children, middle + 1, newRightPage.children, 0, pos - middle - 1 );
 
             // Add the new element
-            newRightPage.keys[pos - middle - 1] = new KeyHolder<K>( btree.getKeySerializer(), splitResult.getPivot() );
-            newRightPage.children[pos - middle - 1] = createHolder( splitResult.getLeftPage() );
-            newRightPage.children[pos - middle] = createHolder( splitResult.getRightPage() );
+            newRightPage.keys[pos - middle - 1] = new KeyHolder<K>( btreeInfo.getKeySerializer(), splitResult.getPivot() );
+            setChild( newRightPage, pos - middle - 1, splitResult.getLeftPage() );
+            setChild( newRightPage, pos - middle, splitResult.getRightPage() );
 
             // And copy the remaining elements minus the new pivot
-            System.arraycopy( keys, pos, newRightPage.keys, pos - middle, nbPageElems - pos );
-            System.arraycopy( children, pos + 1, newRightPage.children, pos + 1 - middle, nbPageElems - pos );
+            System.arraycopy( keys, pos, newRightPage.keys, pos - middle, pageNbElems - pos );
+            System.arraycopy( children, pos + 1, newRightPage.children, pos + 1 - middle, pageNbElems - pos );
 
             // Create the result
             K newPivot = keys[middle].getKey();
@@ -1117,7 +1058,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         transaction.removeWALObject( id );
 
         // And insert this page into the copied pages map, if it's not a CopiedPages B-tree page. 
-        if ( btree.getType() != BTreeTypeEnum.COPIED_PAGES_BTREE )
+        if ( isBTreeUser() )
         {
             transaction.addCopiedWALObject( this );
         }
@@ -1127,23 +1068,92 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
 
     /**
-     * Copies the current page and all its keys, with a new revision.
-     *
-     * @param revision The new revision
-     * @return The copied page
+     * {@inheritDoc}
+     */
+    @Override
+    public TupleCursor<K, V> browse( Transaction transaction, ParentPos<K, V>[] stack, int depth ) throws IOException
+    {
+        stack[depth++] = new ParentPos<>( this, 0 );
+
+        Page<K, V> page = transaction.getPage( btreeInfo, children[0] );
+
+        return page.browse( transaction, stack, depth );
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public TupleCursor<K, V> browse( Transaction transaction, K key, ParentPos<K, V>[] stack, int depth ) throws IOException
+    {
+        int pos = findPos( key );
+
+        if ( pos < 0 )
+        {
+            pos = -pos;
+        }
+
+        // We first stack the current page
+        stack[depth++] = new ParentPos<>( this, pos );
+
+        Page<K, V> page = transaction.getPage( btreeInfo, children[pos] );
+
+        return page.browse( transaction, key, stack, depth );
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public KeyCursor<K> browseKeys( Transaction transaction, ParentPos<K, K>[] stack, int depth ) throws IOException
+    {
+        stack[depth++] = new ParentPos( this, 0 );
+
+        Page<K, V> page = transaction.getPage( btreeInfo, children[0] );
+
+        return page.browseKeys( transaction, stack, depth );
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean contains( Transaction transaction, K key, V value ) throws IOException
+    {
+        int pos = findPos( key );
+        Page<K, V> child;
+
+        if ( pos < 0 )
+        {
+            // Here, if we have found the key in the node, then we must go down into
+            // the right child, not the left one
+            child = transaction.getPage( btreeInfo, children[-pos] );
+        }
+        else
+        {
+            child = transaction.getPage( btreeInfo, children[pos] );
+        }
+        
+        return child.contains( transaction, key, value );
+    }
+
+
+    /**
+     * {@inheritDoc}
      */
     @Override
     public Node<K, V> copy( WriteTransaction transaction )
     {
-        long revision = transaction.getRevision();
-        Node<K, V> newNode = new Node<>( btree, revision, nbPageElems );
-        newNode.setId( id );
+        Node<K, V> newNode = transaction.newNode( btreeInfo, pageNbElems );
 
         // Copy the keys
-        System.arraycopy( keys, 0, newNode.keys, 0, nbPageElems );
+        System.arraycopy( keys, 0, newNode.keys, 0, pageNbElems );
 
         // Copy the children
-        System.arraycopy( children, 0, newNode.children, 0, nbPageElems + 1 );
+        System.arraycopy( children, 0, newNode.children, 0, pageNbElems + 1 );
 
         return newNode;
     }
@@ -1153,9 +1163,9 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * {@inheritDoc}
      */
     @Override
-    public K getLeftMostKey()
+    public Tuple<K, V> findLeftMost( Transaction transaction ) throws IOException
     {
-        return children[0].getValue().getLeftMostKey();
+        return transaction.getPage( btreeInfo, children[0] ).findLeftMost( transaction );
     }
 
 
@@ -1163,16 +1173,55 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * {@inheritDoc}
      */
     @Override
-    public K getRightMostKey()
+    public K getLeftMostKey( Transaction transaction ) throws IOException
     {
-        int index = ( nbPageElems + 1 ) - 1;
+        return transaction.getPage( btreeInfo, children[0] ).getLeftMostKey( transaction );
+    }
 
-        if ( children[index] != null )
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Tuple<K, V> findRightMost( Transaction transaction ) throws IOException
+    {
+        return transaction.getPage( btreeInfo, children[pageNbElems] ).findRightMost( transaction );
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public K getRightMostKey( Transaction transaction ) throws IOException
+    {
+        return transaction.getPage( btreeInfo, children[pageNbElems - 1] ).getRightMostKey( transaction );
+    }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean hasKey( Transaction transaction, K key ) throws IOException
+    {
+        int pos = findPos( key );
+        long offset;
+
+        if ( pos < 0 )
         {
-            return children[index].getValue().getRightMostKey();
+            // Here, if we have found the key in the node, then we must go down into
+            // the right child, not the left one
+            offset = children[-pos];
         }
-
-        return children[nbPageElems - 1].getValue().getRightMostKey();
+        else
+        {
+            offset = children[pos];
+        }
+        
+        Page<K, V> child = transaction.getPage( btreeInfo, offset );
+        
+        return child.hasKey( transaction, key );
     }
 
 
@@ -1199,11 +1248,16 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
     /**
      * Serialize a new Page. It will contain the following data :<br/>
      * <ul>
+     * <li>the page id : a long</li>
      * <li>the revision : a long</li>
-     * <li>the number of elements : an int (if <= 0, it's a Node, otherwise it's a Leaf)</li>
-     * <li>the keys : an array of serialized keys</li>
-     * <li>the values : an array of references to the children pageIO offset (stored as long)
-     * if it's a Node, or a list of values if it's a Leaf</li>
+     * <li>the number of elements : an negative int</li>
+     *   <li>the keys and values, N times :
+     *     <ul>
+     *       <li>key[n] : a serialized key</li>
+     *       <li>value[n] : a serialized value</li>
+     *     </ul>
+     *     followed by the last value
+     *   </li>
      * <li></li>
      * </ul>
      * Note that keys and values are stored alternatively :
@@ -1224,7 +1278,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         RecordManagerHeader recordManagerHeader = transaction.getRecordManagerHeader();
 
         // Prepare a list of byte[] that will contain the serialized page
-        int nbBuffers = 1 + 1 + 1 + nbPageElems * 2 + 1;
+        int nbBuffers = 1 + 1 + 1 + pageNbElems * 2 + 1;
         int dataSize = 0;
         int serializedSize = 0;
 
@@ -1243,14 +1297,14 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
         // The number of elements
         // Make it a negative value if it's a Node
-        buffer = IntSerializer.serialize( -nbPageElems );
+        buffer = IntSerializer.serialize( -pageNbElems );
         serializedData.add( buffer );
         serializedSize += buffer.length;
 
         // Iterate on the keys and values. We first serialize the value, then the key
         // until we are done with all of them. If we are serializing a page, we have
         // to serialize one more value
-        for ( int pos = 0; pos < nbPageElems; pos++ )
+        for ( int pos = 0; pos < pageNbElems; pos++ )
         {
             // Start with the value
             dataSize += serializeNodeValue( pos, serializedData );
@@ -1258,9 +1312,10 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         }
         
         // Nodes have one more value to serialize
-        dataSize += serializeNodeValue( nbPageElems, serializedData );
+        dataSize += serializeNodeValue( pageNbElems, serializedData );
 
-        // Store the data size
+        // Store the data size at the third position in the list of buffers
+        // (ie, just after the number of elements, and just before the keys/values)
         buffer = IntSerializer.serialize( dataSize );
         serializedData.add( 3, buffer );
         serializedSize += buffer.length;
@@ -1302,6 +1357,54 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
 
     /**
+     * {@inheritDoc}
+     */
+    /* no qualifier */Page<K, V> getPage( Transaction transaction, int pos ) throws IOException
+    {
+        if ( ( pos >= 0 ) && ( pos < children.length ) )
+        {
+            return transaction.getPage( btreeInfo, children[pos] );
+        }
+        else
+        {
+            return null;
+        }
+    }
+
+    
+    /**
+     * Deserialize a Node. It will contain the following data :<br/>
+     * <ul>
+     * <li>the keys : an array of serialized keys</li>
+     * <li>the values : an array of serialized values</li>
+     * </ul>
+     * 
+     * The three first values have already been deserialized by the caller.
+     * {@inheritDoc}
+     */
+    public Node<K, V> deserialize( ByteBuffer byteBuffer ) throws IOException
+    {
+        // Iterate on the keys and values. We first serialize the value, then the key
+        // until we are done with all of them. If we are serializing a page, we have
+        // to serialize one more value
+        for ( int pos = 0; pos < pageNbElems; pos++ )
+        {
+            // Start with the value
+            children[pos] = LongSerializer.INSTANCE.deserialize( byteBuffer );
+
+            // Then the key
+            K key = btreeInfo.getKeySerializer().deserialize( byteBuffer );
+            this.setKey( pos, new KeyHolder<>( btreeInfo.getKeySerializer(), key ) );
+        }
+        
+        // The last value
+        children[pageNbElems] = LongSerializer.INSTANCE.deserialize( byteBuffer );
+
+        return this;
+    }
+
+
+    /**
      * Serialize a Node's key
      */
     private int serializeNodeKey( int pos, List<byte[]> serializedData )
@@ -1320,13 +1423,10 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * Serialize a Node's Value. We store the two offsets of the child page.
      */
     private int serializeNodeValue( int pos, List<byte[]> serializedData )
-        throws IOException
     {
         // For a node, we just store the children's offsets
-        Page<K, V> child = getReference( pos );
-
         // The first offset
-        byte[] buffer = LongSerializer.serialize( ( ( AbstractPage<K, V> ) child ).getOffset() );
+        byte[] buffer = LongSerializer.serialize( children[pos] );
         serializedData.add( buffer );
 
         return buffer.length;
@@ -1343,7 +1443,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         
         sb.append( "{Node(" ).append( id ).append( ")@" );
         
-        if ( offset == RecordManager.NO_PAGE )
+        if ( offset == BTreeConstants.NO_PAGE )
         {
             sb.append( "---" );
         }
@@ -1355,6 +1455,43 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         sb.append( ",<" );
         sb.append( getName() ).append( ':' ).append( getRevision() );
         sb.append( ">}" );
+
+        return sb.toString();
+    }
+    
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String dumpPage( String tabs )
+    {
+        StringBuilder sb = new StringBuilder();
+
+        if ( pageNbElems > 0 )
+        {
+            // Start with the first child
+            sb.append( children[0] );
+
+            for ( int i = 0; i < pageNbElems; i++ )
+            {
+                sb.append( tabs );
+                sb.append( "<" );
+                sb.append( getKey( i ) ).append( ">\n" );
+                
+                if ( offset > 0 )
+                {
+                    sb.append( "0x" ).append( Long.toHexString( offset ) );
+                }
+                else
+                {
+                    sb.append( "ID:" ).append( -offset );
+                    
+                }
+                
+                sb.append( children[i + 1] );
+            }
+        }
 
         return sb.toString();
     }
@@ -1372,32 +1509,29 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         sb.append( super.toString() );
         sb.append( "] -> {" );
 
-        if ( nbPageElems > 0 )
+        if ( pageNbElems > 0 )
         {
             // Start with the first child
-            if ( children[0] == null )
+            if ( children[0] < 0 )
             {
-                sb.append( "null" );
+                sb.append( ":ID" ).append( -children[0] );
             }
             else
             {
-                sb.append( 'r' ).append( children[0].getValue().getRevision() );
+                sb.append( ':' ).append( String.format( "0x%04X", children[0] ) );
             }
-            
-            sb.append( ':' ).append( String.format( "0x%04X", children[0].getOffset() ) );
 
-            for ( int i = 0; i < nbPageElems; i++ )
+            for ( int i = 0; i < pageNbElems; i++ )
             {
                 sb.append( "|<" ).append( keys[i] ).append( ">|" );
 
-                if ( children[i + 1] == null )
+                if ( children[i+1] < 0 )
                 {
-                    sb.append( "null" );
+                    sb.append( ":ID" ).append( -children[i+1] );
                 }
                 else
                 {
-                    sb.append( 'r' ).append( children[i + 1].getValue().getRevision() );
-                    sb.append( ':' ).append( String.format( "0x%04X", children[i+1].getOffset() ) );
+                    sb.append( ':' ).append( String.format( "0x%04X", children[i+1] ) );
                 }
             }
         }

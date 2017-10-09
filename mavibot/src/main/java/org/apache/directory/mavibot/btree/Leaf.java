@@ -33,6 +33,8 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
 /**
  * A MVCC Leaf. It stores the keys and values. It does not have any children.
+ * We have one key per value. Values are stored in {@link ValueHolder}, as we may not
+ * deserialize them.
  *
  * @param <K> The type for the Key
  * @param <V> The type for the stored value
@@ -50,9 +52,9 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      *
      * @param btree The BTree this page belongs to.
      */
-    Leaf( BTree<K, V> btree )
+    /* No qualifier */Leaf( BTreeInfo<K, V> btreeInfo )
     {
-        super( btree );
+        super( btreeInfo );
     }
 
 
@@ -61,13 +63,13 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      *
      * @param btree The BTree this page belongs to.
      * @param revision The page revision
-     * @param nbPageElems The number of elements this page will contain
+     * @param pageNbElems The number of elements this page will contain
      */
     @SuppressWarnings("unchecked")
-    Leaf( BTree<K, V> btree, long revision, int nbPageElems )
+    /* No qualifier */Leaf( BTreeInfo<K, V> btreeInfo, long revision, int pageNbElems )
     {
-        super( btree, revision, nbPageElems );
-        values = ( ValueHolder<V>[] ) Array.newInstance( ValueHolder.class, btree.getPageNbElem() );
+        super( btreeInfo, revision, pageNbElems );
+        values = ( ValueHolder<V>[] ) Array.newInstance( ValueHolder.class, btreeInfo.getPageNbElem() );
     }
 
 
@@ -88,11 +90,11 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         }
 
         // The key is not present in the leaf. We have to add it in the page
-        if ( nbPageElems < btree.getPageNbElem() )
+        if ( pageNbElems < btreeInfo.getPageNbElem() )
         {
             // The current page is not full, it can contain the added element.
             // We insert it into a copied page and return the result
-            return modifyLeaf( transaction, key, value, pos );
+            return addElement( transaction, key, value, pos );
         }
         else
         {
@@ -102,19 +104,15 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         }
     }
 
-
+    
     /**
      * {@inheritDoc}
      */
-    @SuppressWarnings("unchecked")
     @Override
-    /* no qualifier */DeleteResult<K, V> delete( WriteTransaction transaction, K key, Page<K, V> parent, int parentPos )
-        throws IOException
+    public DeleteResult<K, V> delete( WriteTransaction transaction, K key, Node<K, V> parent, int parentPos ) throws IOException
     {
-        long revision = transaction.getRevision();
-        
         // Check that the leaf is not empty
-        if ( nbPageElems == 0 )
+        if ( pageNbElems == 0 )
         {
             // Empty leaf
             return NotPresentResult.NOT_PRESENT;
@@ -128,35 +126,28 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             // Not found : return the not present result.
             return NotPresentResult.NOT_PRESENT;
         }
-
-        // Get the removed element
-        Tuple<K, V> removedElement;
-
-        // flag to detect if a key was completely removed
-        int index = -( pos + 1 );
-
-        ValueHolder<V> valueHolder = values[index];
-
-        // we have to delete the whole value
-        removedElement = new Tuple<>( keys[index].getKey(), valueHolder.get() ); // the entire value was removed
-
-        Leaf<K, V> newLeaf;
-
-        // No value, we can remove the key
-        newLeaf = new Leaf<>( btree, revision, nbPageElems - 1 );
-        newLeaf.initId( transaction.getRecordManagerHeader() );
-
-        // Create the result
-        DeleteResult<K, V> defaultResult = new RemoveResult<>( newLeaf, removedElement );
-
+        else
+        {
+            pos = - ( pos + 1 );
+        }
+        
+        // The removed element
+        Tuple<K, V> removedElement = new Tuple<>( keys[pos].getKey(), values[pos].get() );
+        
         // If the parent is null, then this page is the root page.
         if ( parent == null )
         {
-            // Just remove the entry if it's present, or replace it if we have more than one value in the ValueHolder
-            copyAfterRemovingElement( newLeaf, index );
+            Leaf<K, V> newLeaf = transaction.newLeaf( btreeInfo, pageNbElems - 1);
 
-            // The current page is added in the copied page list
-            defaultResult.addCopiedPage( this );
+            // Create the result
+            DeleteResult<K, V> defaultResult = new RemoveResult<>( newLeaf, removedElement, pos );
+
+            // Just remove the entry if it's present, or replace it if we have more than one value in the ValueHolder
+            copyAfterRemovingElement( newLeaf, pos );
+            
+            // Move the new leaf in the WAL, and the old page in the copied page list, if needed 
+            transaction.removeWALObject( id );
+            transaction.updateWAL( revision, this, newLeaf );
 
             return defaultResult;
         }
@@ -164,47 +155,51 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         {
             // The current page is not the root. Check if the leaf has more than N/2
             // elements
-            int halfSize = btree.getPageNbElem() / 2;
+            int halfSize = btreeInfo.getPageNbElem() / 2;
 
-            if ( nbPageElems == halfSize )
+            if ( pageNbElems == halfSize )
             {
                 // We have to find a sibling now, and either borrow an entry from it
                 // if it has more than N/2 elements, or to merge the two pages.
                 // Check in both next and previous page, if they have the same parent
                 // and select the biggest page with the same parent to borrow an element.
                 int siblingPos = selectSibling( transaction, parent, parentPos );
-                Leaf<K, V> sibling = ( Leaf<K, V> ) ( ( ( Node<K, V> ) parent )
-                    .getPage( siblingPos ) );
+                Leaf<K, V> sibling = ( Leaf<K, V> ) ( parent.getPage( transaction, siblingPos ) );
 
-                if ( sibling.nbPageElems == halfSize )
+                if ( sibling.pageNbElems == halfSize )
                 {
                     // We will merge the current page with its sibling
-                    return mergeWithSibling( transaction, removedElement, sibling, siblingPos < parentPos , index );
+                    return mergeWithSibling( transaction, removedElement, sibling, ( siblingPos < parentPos ), pos );
                 }
                 else
                 {
                     // We can borrow the element from the left sibling
                     if ( siblingPos < parentPos )
                     {
-                        return borrowFromLeft( transaction, removedElement, sibling, index );
+                        return borrowFromLeft( transaction, removedElement, sibling, pos );
                     }
                     else
                     {
                         // Borrow from the right sibling
-                        return borrowFromRight( transaction, removedElement, sibling, index );
+                        return borrowFromRight( transaction, removedElement, sibling, pos );
                     }
                 }
             }
             else
             {
+                Leaf<K, V> newLeaf = transaction.newLeaf( btreeInfo, pageNbElems - 1);
+
+                // Create the result
+                DeleteResult<K, V> defaultResult = new RemoveResult<>( newLeaf, removedElement, pos );
+
                 // The page has more than N/2 elements.
                 // We simply remove the element from the page, and if it was the leftmost,
                 // we return the new pivot (it will replace any instance of the removed
                 // key in its parents)
-                copyAfterRemovingElement( newLeaf, index );
-
-                // The current page is added in the copied page list
-                defaultResult.addCopiedPage( this );
+                copyAfterRemovingElement( newLeaf, pos );
+                
+                transaction.removeWALObject( id );
+                transaction.updateWAL( revision, this, newLeaf );
 
                 return defaultResult;
             }
@@ -214,62 +209,104 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
     /**
      * Merges the sibling with the current leaf, after having removed the element in the page.
-     *
-     * @param revision The new revision
-     * @param sibling The sibling we will merge with
-     * @param isLeft Tells if the sibling is on the left or on the right
-     * @param pos The position of the removed element
-     * @return The new created leaf containing the sibling and the old page.
-     * @throws IOException If we have an error while trying to access the page
+     * <pre>
+     * Before :
+     * 
+     *        +---+---+---+---+
+     *        | ~ | u | w | ~ |
+     *        +---+---+---+---+
+     *                |   |
+     *          +-----+   +---------+
+     *          |                   |
+     *          v                   v
+     *  +---+---+---+---+   +---+---+---+---+
+     *  | u | v |   |   |   | w | x |   |   |
+     *  +---+---+---+---+   +---+---+---+---+
+     *  | U | V |   |   |   | W | X |   |   |
+     *  +---+---+---+---+   +---+---+---+---+
+     *    ^
+     *    |
+     *    +--- Removed element
+     * 
+     * After :
+     * 
+     *        +---+---+---+---+
+     *        | ~ | v | ~ | ~ |
+     *        +---+---+---+---+
+     *            |   |   |
+     *      ...---+   |   |
+     *                |   |
+     *          +-----+   +---...
+     *          |
+     *          v
+     *  +---+---+---+---+
+     *  | v | w | x |   |
+     *  +---+---+---+---+
+     *  | V | W | X |   |
+     *  +---+---+---+---+
+     *    ^
+     *    |
+     *    +--- Removed element
+     * </pre>
      */
     private DeleteResult<K, V> mergeWithSibling( WriteTransaction transaction, Tuple<K, V> removedElement,
-        Leaf<K, V> sibling, boolean isLeft, int pos ) throws IOException
+        Leaf<K, V> sibling, boolean isFromLeft, int pos )
     {
-        long revision = transaction.getRevision();
-        
         // Create the new page. It will contain N - 1 elements (the maximum number)
         // as we merge two pages that contain N/2 elements minus the one we remove
-        Leaf<K, V> newLeaf = new Leaf<>( btree, revision, btree.getPageNbElem() - 1 );
-        newLeaf.initId( transaction.getRecordManagerHeader() );
+        Leaf<K, V> newLeaf = transaction.newLeaf( btreeInfo, btreeInfo.getPageNbElem() - 1 );
 
-        if ( isLeft )
+        if ( isFromLeft )
         {
             // The sibling is on the left
             // Copy all the elements from the sibling first
-            System.arraycopy( sibling.keys, 0, newLeaf.keys, 0, sibling.nbPageElems );
-            System.arraycopy( sibling.values, 0, newLeaf.values, 0, sibling.nbPageElems );
+            System.arraycopy( sibling.keys, 0, newLeaf.keys, 0, sibling.pageNbElems );
+            System.arraycopy( sibling.values, 0, newLeaf.values, 0, sibling.pageNbElems );
 
             // Copy all the elements from the page up to the deletion position
-            System.arraycopy( keys, 0, newLeaf.keys, sibling.nbPageElems, pos );
-            System.arraycopy( values, 0, newLeaf.values, sibling.nbPageElems, pos );
+            if ( pos > 0 )
+            { 
+                System.arraycopy( keys, 0, newLeaf.keys, sibling.pageNbElems, pos );
+                System.arraycopy( values, 0, newLeaf.values, sibling.pageNbElems, pos );
+            }
 
             // And copy the remaining elements after the deletion point
-            System.arraycopy( keys, pos + 1, newLeaf.keys, sibling.nbPageElems + pos, nbPageElems - pos - 1 );
-            System.arraycopy( values, pos + 1, newLeaf.values, sibling.nbPageElems + pos, nbPageElems - pos - 1 );
+            if ( pos < pageNbElems - 1 )
+            {
+                System.arraycopy( keys, pos + 1, newLeaf.keys, sibling.pageNbElems + pos, pageNbElems - pos - 1 );
+                System.arraycopy( values, pos + 1, newLeaf.values, sibling.pageNbElems + pos, pageNbElems - pos - 1 );
+            }
         }
         else
         {
             // The sibling is on the right
             // Copy all the elements from the page up to the deletion position
-            System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
-            System.arraycopy( values, 0, newLeaf.values, 0, pos );
+            if ( pos > 0 )
+            {
+                System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
+                System.arraycopy( values, 0, newLeaf.values, 0, pos );
+            }
 
             // Then copy the remaining elements after the deletion point
-            System.arraycopy( keys, pos + 1, newLeaf.keys, pos, nbPageElems - pos - 1 );
-            System.arraycopy( values, pos + 1, newLeaf.values, pos, nbPageElems - pos - 1 );
+            if ( pos < pageNbElems - 1 )
+            {
+                System.arraycopy( keys, pos + 1, newLeaf.keys, pos, pageNbElems - pos - 1 );
+                System.arraycopy( values, pos + 1, newLeaf.values, pos, pageNbElems - pos - 1 );
+            }
 
             // And copy all the elements from the sibling
-            System.arraycopy( sibling.keys, 0, newLeaf.keys, nbPageElems - 1, sibling.nbPageElems );
-            System.arraycopy( sibling.values, 0, newLeaf.values, nbPageElems - 1, sibling.nbPageElems );
+            System.arraycopy( sibling.keys, 0, newLeaf.keys, pageNbElems - 1, sibling.pageNbElems );
+            System.arraycopy( sibling.values, 0, newLeaf.values, pageNbElems - 1, sibling.pageNbElems );
         }
 
+        // Add the new leaf to the WAL
+        // And add the sibling to the copied pages
+        transaction.removeWALObject( id );
+        transaction.removeWALObject( sibling.id );
+        transaction.updateWAL( revision, this, newLeaf );
+        
         // And create the result
-        DeleteResult<K, V> result = new MergedWithSiblingResult<>( newLeaf, removedElement );
-
-        result.addCopiedPage( this );
-        result.addCopiedPage( sibling );
-
-        return result;
+        return new MergedWithSiblingResult<>( newLeaf, removedElement );
     }
 
 
@@ -277,52 +314,81 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * Borrows an element from the left sibling, creating a new sibling with one
      * less element and creating a new page where the element to remove has been
      * deleted and the borrowed element added on the left.
-     *
-     * @param revision The new revision for all the pages
-     * @param sibling The left sibling
-     * @param pos The position of the element to remove
-     * @return The resulting pages
-     * @throws IOException If we have an error while trying to access the page
+     * <pre>
+     * Before :
+     * 
+     *            +---+---+---+---+
+     *            | ~ | x | ~ | ~ |
+     *            +---+---+---+---+
+     *                |   |
+     *          +-----+   +---------+
+     *          |                   |
+     *          v                   v
+     *  +---+---+---+---+   +---+---+---+---+
+     *  | u | v | w |   |   | x | y |   |   |
+     *  +---+---+---+---+   +---+---+---+---+
+     *  | U | V | W |   |   | X | Y |   |   |
+     *  +---+---+---+---+   +---+---+---+---+
+     *                            ^
+     *                            |
+     *                            +--- Removed element
+     *                            
+     * After :
+     *            +---+---+---+---+
+     *            | ~ | w | ~ | ~ |
+     *            +---+---+---+---+
+     *                |   |
+     *          +-----+   +---------+
+     *          |                   |
+     *          v                   v
+     *  +---+---+---+---+   +---+---+---+---+
+     *  | u | v |   |   |   | w | x |   |   |
+     *  +---+---+---+---+   +---+---+---+---+
+     *  | U | V |   |   |   | W | X |   |   |
+     *  +---+---+---+---+   +---+---+---+---+
+     * </pre>
      */
-    private DeleteResult<K, V> borrowFromLeft( WriteTransaction transaction, Tuple<K, V> removedElement, Leaf<K, V> sibling,
-        int pos )
-        throws IOException
+    private DeleteResult<K, V> borrowFromLeft( WriteTransaction transaction, Tuple<K, V> removedElement, Leaf<K, V> sibling, int pos )
     {
-        long revision = transaction.getRevision();
-        
-        // The sibling is on the left, borrow the rightmost element
-        K siblingKey = sibling.keys[sibling.nbPageElems - 1].getKey();
-        ValueHolder<V> siblingValue;
-        siblingValue = sibling.values[sibling.nbPageElems - 1];
+        // The sibling is on the left, borrow the sibling rightmost element
+        K siblingKey = sibling.keys[sibling.pageNbElems - 1].getKey();
+        ValueHolder<V> siblingValue = sibling.values[sibling.pageNbElems - 1];
 
         // Create the new sibling, with one less element at the end
-        Leaf<K, V> newSibling = ( Leaf<K, V> ) sibling.copy( transaction, sibling.nbPageElems - 1 );
-        newSibling.initId( transaction.getRecordManagerHeader() );
+        Leaf<K, V> newSibling = ( Leaf<K, V> ) sibling.copy( transaction, sibling.pageNbElems - 1 );
+        
+        // Store the new sibling in the WAL
+        transaction.updateWAL( sibling.getRevision(), sibling, newSibling );
 
         // Create the new page and add the new element at the beginning
         // First copy the current page, with the same size
-        Leaf<K, V> newLeaf = new Leaf<>( btree, revision, nbPageElems );
-        newLeaf.initId( transaction.getRecordManagerHeader() );
+        Leaf<K, V> newLeaf = transaction.newLeaf( btreeInfo, pageNbElems );
 
         // Insert the borrowed element
-        newLeaf.keys[0] = new KeyHolder<K>( btree.getKeySerializer(), siblingKey );
+        newLeaf.keys[0] = new KeyHolder<K>( btreeInfo.getKeySerializer(), siblingKey );
         newLeaf.values[0] = siblingValue;
 
-        // Copy the keys and the values up to the insertion position,
-        System.arraycopy( keys, 0, newLeaf.keys, 1, pos );
-        System.arraycopy( values, 0, newLeaf.values, 1, pos );
+        // Copy the keys and the values up to the removal position,
+        if ( pos > 0 )
+        {
+            System.arraycopy( keys, 0, newLeaf.keys, 1, pos );
+            System.arraycopy( values, 0, newLeaf.values, 1, pos );
+        }
 
         // And copy the remaining elements
-        System.arraycopy( keys, pos + 1, newLeaf.keys, pos + 1, keys.length - pos - 1 );
-        System.arraycopy( values, pos + 1, newLeaf.values, pos + 1, values.length - pos - 1 );
+        if ( pos < pageNbElems - 1 )
+        {
+            System.arraycopy( keys, pos + 1, newLeaf.keys, pos + 1, pageNbElems - pos - 1 );
+            System.arraycopy( values, pos + 1, newLeaf.values, pos + 1, pageNbElems - pos - 1 );
+        }
 
-        DeleteResult<K, V> result = new BorrowedFromLeftResult<>( newLeaf, newSibling, removedElement );
+        // Store the new child in the WAL
+        transaction.removeWALObject( sibling.id );
+        transaction.removeWALObject( id );
+        transaction.updateWAL( revision, sibling, newSibling );
+        transaction.updateWAL( revision, this, newLeaf );
 
-        // Add the copied pages to the list
-        result.addCopiedPage( this );
-        result.addCopiedPage( sibling );
-
-        return result;
+        return new BorrowedFromLeftResult<>( newLeaf, newSibling, removedElement );
     }
 
 
@@ -330,84 +396,130 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * Borrows an element from the right sibling, creating a new sibling with one
      * less element and creating a new page where the element to remove has been
      * deleted and the borrowed element added on the right.
-     *
-     * @param revision The new revision for all the pages
-     * @param sibling The right sibling
-     * @param pos The position of the element to remove
-     * @return The resulting pages
-     * @throws IOException If we have an error while trying to access the page
+     * <pre>
+     * Before :
+     * 
+     *            +---+---+---+---+
+     *            | ~ | w | ~ | ~ |
+     *            +---+---+---+---+
+     *                |   |
+     *          +-----+   +---------+
+     *          |                   |
+     *          v                   v
+     *  +---+---+---+---+   +---+---+---+---+
+     *  | u | v |   |   |   | w | x | y |   |
+     *  +---+---+---+---+   +---+---+---+---+
+     *  | U | V |   |   |   | W | X | Y |   |
+     *  +---+---+---+---+   +---+---+---+---+
+     *    ^
+     *    |
+     *    +--- Removed element
+     *                            
+     * After :
+     *            +---+---+---+---+
+     *            | ~ | x | ~ | ~ |
+     *            +---+---+---+---+
+     *                |   |
+     *          +-----+   +---------+
+     *          |                   |
+     *          v                   v
+     *  +---+---+---+---+   +---+---+---+---+
+     *  | v | w |   |   |   | x | y |   |   |
+     *  +---+---+---+---+   +---+---+---+---+
+     *  | V | W |   |   |   | X | Y |   |   |
+     *  +---+---+---+---+   +---+---+---+---+
+     * </pre>
      */
-    private DeleteResult<K, V> borrowFromRight( WriteTransaction transaction, Tuple<K, V> removedElement, Leaf<K, V> sibling,
-        int pos )
-        throws IOException
+    private DeleteResult<K, V> borrowFromRight( WriteTransaction transaction, Tuple<K, V> removedElement, Leaf<K, V> sibling, int pos )
     {
-        long revision = transaction.getRevision();
-        
-        // The sibling is on the left, borrow the rightmost element
+        // The sibling is on the right, borrow the leftmost element
         K siblingKey = sibling.keys[0].getKey();
-        ValueHolder<V> siblingHolder;
-        siblingHolder = sibling.values[0];
+        ValueHolder<V> siblingHolder = sibling.values[0];
 
         // Create the new sibling
-        Leaf<K, V> newSibling = new Leaf<>( btree, revision, sibling.nbPageElems - 1 );
-        newSibling.initId( transaction.getRecordManagerHeader() );
+        Leaf<K, V> newSibling = transaction.newLeaf( btreeInfo, sibling.pageNbElems - 1 );
 
-        // Copy the keys and the values from 1 to N in the new sibling
-        System.arraycopy( sibling.keys, 1, newSibling.keys, 0, sibling.nbPageElems - 1 );
-        System.arraycopy( sibling.values, 1, newSibling.values, 0, sibling.nbPageElems - 1 );
+        // Copy the keys and the values from 1 to N - 1 in the new sibling
+        System.arraycopy( sibling.keys, 1, newSibling.keys, 0, sibling.pageNbElems - 1 );
+        System.arraycopy( sibling.values, 1, newSibling.values, 0, sibling.pageNbElems - 1 );
+        
+        // Store the new sibling in the WAL
+        transaction.updateWAL( sibling.getRevision(), sibling, newSibling );
 
         // Create the new page and add the new element at the end
         // First copy the current page, with the same size
-        Leaf<K, V> newLeaf = new Leaf<>( btree, revision, nbPageElems );
-        newLeaf.initId( transaction.getRecordManagerHeader() );
+        Leaf<K, V> newLeaf = transaction.newLeaf( btreeInfo, pageNbElems );
 
         // Insert the borrowed element at the end
-        newLeaf.keys[nbPageElems - 1] = new KeyHolder<K>( btree.getKeySerializer(), siblingKey );
-        newLeaf.values[nbPageElems - 1] = siblingHolder;
+        newLeaf.keys[pageNbElems - 1] = new KeyHolder<K>( btreeInfo.getKeySerializer(), siblingKey );
+        newLeaf.values[pageNbElems - 1] = siblingHolder;
 
         // Copy the keys and the values up to the deletion position,
         System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
         System.arraycopy( values, 0, newLeaf.values, 0, pos );
 
         // And copy the remaining elements
-        System.arraycopy( keys, pos + 1, newLeaf.keys, pos, keys.length - pos - 1 );
-        System.arraycopy( values, pos + 1, newLeaf.values, pos, values.length - pos - 1 );
+        System.arraycopy( keys, pos + 1, newLeaf.keys, pos, pageNbElems - pos - 1 );
+        System.arraycopy( values, pos + 1, newLeaf.values, pos, pageNbElems - pos - 1 );
+        
+        // Store the new leaf in the WAL
+        transaction.removeWALObject( sibling.id );
+        transaction.removeWALObject( id );
+        transaction.updateWAL( revision, sibling, newSibling );
+        transaction.updateWAL( revision, this, newLeaf );
 
-        DeleteResult<K, V> result = new BorrowedFromRightResult<>( newLeaf, newSibling, removedElement );
-
-        // Add the copied pages to the list
-        result.addCopiedPage( this );
-        result.addCopiedPage( sibling );
-
-        return result;
+        return new BorrowedFromRightResult<>( newLeaf, newSibling, removedElement );
     }
 
 
     /**
-     * Copies the elements of the current page to a new page
-     *
-     * @param keyRemoved a flag stating if the key was removed
-     * @param newLeaf The new page into which the remaining keys and values will be copied
-     * @param pos The position into the page of the element to remove
-     * @throws IOException If we have an error while trying to access the page
+     * Copies the elements of the current page to a new page, without the removed element.
+     * <pre>
+     *        +--- removed pos
+     *        |
+     *        v
+     *  +---+---+---+---+---+
+     *  | A | B | C | D | E |
+     *  +---+---+---+---+---+
+     *    |   |   |   |   |
+     *    |   x   |   |   |
+     *    |       |   |   |
+     *    |   +---+   |   |
+     *    |   |       |   |
+     *    |   |   +---+   |
+     *    |   |   |       |
+     *    |   |   |   +---+
+     *    |   |   |   |
+     *    v   v   v   v
+     *  +---+---+---+---+
+     *  | A | C | D | E |
+     *  +---+---+---+---+
+     * </pre
      */
     private void copyAfterRemovingElement( Leaf<K, V> newLeaf, int pos )
-        throws IOException
     {
         // Deal with the special case of a page with only one element by skipping
         // the copy, as we won't have any remaining  element in the page
-        if ( nbPageElems == 1 )
+        if ( pageNbElems == 1 )
         {
             return;
         }
 
         // Copy the keys and the values up to the insertion position
-        System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
-        System.arraycopy( values, 0, newLeaf.values, 0, pos );
+        if ( pos > 0 )
+        {
+            System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
+            System.arraycopy( values, 0, newLeaf.values, 0, pos );
+        }
 
         // And copy the elements after the position
-        System.arraycopy( keys, pos + 1, newLeaf.keys, pos, keys.length - pos - 1 );
-        System.arraycopy( values, pos + 1, newLeaf.values, pos, values.length - pos - 1 );
+        int remaining = keys.length - pos - 1;
+        
+        if ( remaining > 0 )
+        {
+            System.arraycopy( keys, pos + 1, newLeaf.keys, pos, remaining );
+            System.arraycopy( values, pos + 1, newLeaf.values, pos, remaining );
+        }
     }
 
 
@@ -415,16 +527,18 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * {@inheritDoc}
      */
     @Override
-    public V get( K key ) throws KeyNotFoundException, IOException
+    public V get( Transaction transaction, K key ) throws KeyNotFoundException, IOException
     {
         int pos = findPos( key );
 
         if ( pos < 0 )
         {
+            // Found key, return the value
             return values[-( pos + 1 )].get();
         }
         else
         {
+            // The key wasn't found
             throw KeyNotFoundException.INSTANCE;
         }
     }
@@ -435,7 +549,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      */
     /* No qualifier */KeyHolder<K> getKeyHolder( int pos )
     {
-        if ( pos < nbPageElems )
+        if ( pos < pageNbElems )
         {
             return keys[pos];
         }
@@ -450,21 +564,19 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * {@inheritDoc}
      */
     @Override
-    public boolean hasKey( K key )
+    public boolean hasKey( Transaction transaction, K key ) throws IOException
     {
         int pos = findPos( key );
 
-        if ( pos < 0 )
-        {
-            return true;
-        }
-
-        return false;
+        return ( pos < 0 );
     }
 
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public boolean contains( K key, V value ) throws IOException
+    public boolean contains( Transaction transaction, K key, V value ) throws IOException
     {
         int pos = findPos( key );
 
@@ -486,7 +598,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      */
     /* no qualifier */ValueHolder<V> getValue( int pos )
     {
-        if ( pos < nbPageElems )
+        if ( pos < pageNbElems )
         {
             return values[pos];
         }
@@ -502,7 +614,6 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * @param pos The position in the values array
      * @param value the value to inject
      */
-    @Override
     /* no qualifier */void setValue( int pos, ValueHolder<V> value )
     {
         values[pos] = value;
@@ -513,12 +624,12 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * {@inheritDoc}
      */
     @Override
-    public TupleCursor<K, V> browse( Transaction transaction, K key, ParentPos<K, V>[] stack, int depth )
+    public TupleCursor<K, V> browse( Transaction transaction, K key, ParentPos<K, V>[] stack, int depth ) throws IOException
     {
         int pos = findPos( key );
 
         // First use case : the leaf is empty (this is a root page)
-        if ( nbPageElems == 0 )
+        if ( pageNbElems == 0 )
         {
             // We have to return an empty cursor
             return new EmptyTupleCursor<>();
@@ -551,7 +662,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
                 
                 cursor.beforeFirst();
             }
-            else if ( pos < nbPageElems )
+            else if ( pos < pageNbElems )
             {
                 // There is at least one key above the one we are looking for.
                 // This will be the starting point.
@@ -581,7 +692,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         int pos = 0;
         TupleCursor<K, V> cursor;
 
-        if ( nbPageElems == 0 )
+        if ( pageNbElems == 0 )
         {
             // The tree is empty, it's the root, we have nothing to return
             stack[depth] = new ParentPos<>( null, -1 );
@@ -604,16 +715,15 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * Copy the current page and all of the keys, values and children, if it's not a leaf.
      *
      * @param revision The new revision
-     * @param nbPageElems The number of elements to copy
+     * @param pageNbElems The number of elements to copy
      * @return The copied page
      */
-    public Page<K, V> copy( WriteTransaction transaction, int nbPageElems )
+    public Page<K, V> copy( WriteTransaction transaction, int pageNbElems )
     {
-        Leaf<K, V> newLeaf = new Leaf<>( btree, transaction.getRevision(), nbPageElems );
-        newLeaf.setId( id );
+        Leaf<K, V> newLeaf = transaction.newLeaf( btreeInfo, pageNbElems );
 
         // Copy the keys and the values
-        System.arraycopy( keys, 0, newLeaf.keys, 0, nbPageElems );
+        System.arraycopy( keys, 0, newLeaf.keys, 0, pageNbElems );
 
         if ( values != null )
         {
@@ -635,8 +745,8 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
                     }
                 }
 
-                // Stop when we have copied nbPageElems values
-                if ( pos == nbPageElems )
+                // Stop when we have copied pageNbElems values
+                if ( pos == pageNbElems )
                 {
                     break;
                 }
@@ -648,24 +758,17 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
 
     /**
-     * Copy the current page and all of the keys, values and children, if it's not a leaf.
-     *
-     * @param revision The new revision
-     * @param nbPageElems The number of elements to copy
-     * @return The copied page
+     * {@inheritDoc}
      */
     @Override
     public Page<K, V> copy( WriteTransaction transaction )
     {
-        long revision = transaction.getRevision();
-        
-        Leaf<K, V> newLeaf = new Leaf<>( btree, revision, nbPageElems );
-        newLeaf.initId( transaction.getRecordManagerHeader() );
+        Leaf<K, V> newLeaf = transaction.newLeaf( btreeInfo, pageNbElems );
 
         // Copy the keys and the values
-        System.arraycopy( keys, 0, newLeaf.keys, 0, nbPageElems );
+        System.arraycopy( keys, 0, newLeaf.keys, 0, pageNbElems );
 
-        if ( ( values != null ) && ( nbPageElems > 0 ) )
+        if ( ( values != null ) && ( pageNbElems > 0 ) )
         {
             // It' not enough to copy the ValueHolder, we have to clone them
             // as ValueHolders are mutable
@@ -682,8 +785,8 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
                     e.printStackTrace();
                 }
 
-                // Stop when we have copied nbPageElems values
-                if ( pos == nbPageElems )
+                // Stop when we have copied pageNbElems values
+                if ( pos == pageNbElems )
                 {
                     break;
                 }
@@ -696,17 +799,8 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
     /**
      * Copy the current page if needed, and replace the value at the position we have found the key.
-     *
-     * @param transaction The {@link WriteTransaction} we are processing this update in
-     * @param key The new key
-     * @param value the new value
-     * @param pos The position of the key in the page
-     * @return A {@link InserResult} instance, containing the reference to the new page, or an 
-     * {@link ExistsResult} instance, if the value already exists in the page.
-     * @throws IOException If we have an error while trying to access the page
      */
     private InsertResult<K, V> replaceElement( WriteTransaction transaction, V value, int pos )
-        throws IOException
     {
         Leaf<K, V> newLeaf = this;
     
@@ -725,7 +819,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         // If the page was created in a previous revision, copy it
         if ( revision != transaction.getRevision() )
         {
-            newLeaf = ( Leaf<K, V> ) copy( transaction, nbPageElems );
+            newLeaf = ( Leaf<K, V> ) copy( transaction, pageNbElems );
         }
 
         // Get the previous value from the leaf
@@ -733,62 +827,37 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         newLeaf.values[pos].set( value );
 
         // Create the result
-        InsertResult<K, V> result = new ModifyResult<>( newLeaf, replacedValue );
+        InsertResult<K, V> result = new ModifyResult<>( newLeaf, newLeaf.keys[pos].getKey(), replacedValue );
         
-        // If we have copied a page, put it in the transaction
-        if ( revision != transaction.getRevision() )
-        {
-            transaction.addWALObject( newLeaf );
-            
-            // And store the old leaf into teh CopiedPages B-tree, if we are not
-            // processing the CopiedPages B-tree itself
-            if ( btree.getType() != BTreeTypeEnum.COPIED_PAGES_BTREE )
-            {
-                transaction.addCopiedWALObject( this );
-            }
-        }
+        // Update the WAL with the newly created leaf, or an updated version of the leaf
+        transaction.updateWAL( revision, this, newLeaf );
 
         return result;
     }
-
+    
     
     /**
-     * Add a new element in a page, at a gven position. The page will not be fulled up by this addition.
-     *
-     * @param transaction The {@link WriteTransaction} we are processing this update in
-     * @param key The key to add
-     * @param value The value to add
-     * @param pos The position of the insertion of the new element
-     * @return An {@link InserResult} instance, containing a reference to the newly created Leaf.
-     * @throws IOException If we have an error while trying to access the page
+     * Add a new element in a page, at a given position. The page will not be fulled up by this addition.
      */
-    private InsertResult<K, V> modifyLeaf( WriteTransaction transaction, K key, V value, int pos ) throws IOException
+    private InsertResult<K, V> addElement( WriteTransaction transaction, K key, V value, int pos )
     {
         Leaf<K, V> newLeaf = this;
         
         // If the page was created in a previous revision, copy it
         if ( revision != transaction.getRevision() )
         {
-            newLeaf = ( Leaf<K, V> ) copy( transaction, nbPageElems );
+            newLeaf = ( Leaf<K, V> ) copy( transaction, pageNbElems );
         }
 
         // Inject the <K, V> into the new leaf
         Page<K, V> modifiedPage = newLeaf.addElement( key, value, pos );
 
         // And return a modified result
-        InsertResult<K, V> result = new ModifyResult<>( modifiedPage, null );
+        InsertResult<K, V> result = new ModifyResult<>( modifiedPage, key, null );
         
         // Add the new leaf in the transaction pages map, and add
         // the old leaf into the CopiedPages B-tree, if needed
-        if ( revision != transaction.getRevision() )
-        {
-            transaction.addWALObject( newLeaf );
-            
-            if ( btree.getType() != BTreeTypeEnum.COPIED_PAGES_BTREE )
-            {
-                transaction.addCopiedWALObject( this );
-            }
-        }
+        transaction.updateWAL( revision, this, newLeaf );
 
         return result;
     }
@@ -797,39 +866,60 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
     /**
      * Adds a new <K, V> into the current page at a given position. We return the
      * modified page. The modified page will have one more element than the current page.
-     *
-     * @param revision The revision of the modified page
-     * @param key The key to insert
-     * @param value The value to insert
-     * @param pos The position into the page
-     * @return The modified page with the <K,V> element added
      */
     private Page<K, V> addElement( K key, V value, int pos )
     {
         // Create the value holder
-        ValueHolder<V> valueHolder = new ValueHolder<>( btree, value );
+        ValueHolder<V> valueHolder = new ValueHolder<>( btreeInfo, value );
 
         // Deal with the special case of an empty page
-        if ( nbPageElems == 0 )
+        if ( pageNbElems == 0 )
         {
-            keys[0] = new KeyHolder<>( btree.getKeySerializer(), key );
+            keys[0] = new KeyHolder<>( btreeInfo.getKeySerializer(), key );
             values[0] = valueHolder;
         }
         else
         {
             // Copy the keys and the values from the insertion point one position to the right
-            int nbElementToMove = nbPageElems - pos;
+            int nbElementToMove = pageNbElems - pos;
             System.arraycopy( keys, pos, keys, pos + 1, nbElementToMove );
             System.arraycopy( values, pos, values, pos + 1, nbElementToMove );
 
             // Add the new element
-            keys[pos] = new KeyHolder<K>( btree.getKeySerializer(), key );
+            keys[pos] = new KeyHolder<K>( btreeInfo.getKeySerializer(), key );
             values[pos] = valueHolder;
         }
 
-        nbPageElems++;
+        pageNbElems++;
 
         return this;
+    }
+    
+
+    /**
+     * Delete an element into the current page at a given position. We return the
+     * modified page. The modified page will have one less element than the current page.
+     *
+     * @param pos The position into the page
+     * @return The modified page with the element removed
+     */
+    public Tuple<K, V> deleteElement( int pos )
+    {
+        Tuple<K, V> removedElement = new Tuple<>( keys[pos].getKey(), values[pos].get() );
+        
+        // Copy the keys and the values from the insertion point one position to the right,
+        // if this is not the last element
+        int nbElementToMove = pageNbElems - pos - 1;
+        
+        if ( nbElementToMove > 0 )
+        {
+            System.arraycopy( keys, pos + 1, keys, pos, nbElementToMove );
+            System.arraycopy( values, pos + 1, values, pos, nbElementToMove );
+        }
+
+        pageNbElems--;
+        
+        return removedElement;
     }
 
 
@@ -840,45 +930,35 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * If the newly added element is in the middle, we will use it
      * as a pivot. Otherwise, we will use either the last element in the left page if the element is added
      * on the left, or the first element in the right page if it's added on the right.
-     *
-     * @param transaction The {@link WriteTransaction} we are processing this update in
-     * @param key The key to add
-     * @param value The value to add
-     * @param pos The position of the insertion of the new element
-     * @return An {@SplitResult} instance containing the pivot, and the new left and right pages. We haven't 
-     * created the new parent Node yet.
-     * @throws IOException If we have an error while trying to access the page
      */
     private SplitResult<K, V> addAndSplit( WriteTransaction transaction, K key, V value, int pos ) throws IOException
     {
-        long revision = transaction.getRevision();
-        int middle = btree.getPageNbElem() >> 1;
+        RecordManagerHeader recordManagerHeader = transaction.getRecordManagerHeader();
+        int middle = btreeInfo.getPageNbElem() >> 1;
         Leaf<K, V> leftLeaf;
         Leaf<K, V> rightLeaf;
-        ValueHolder<V> valueHolder = new ValueHolder<>( btree, value );
+        ValueHolder<V> valueHolder = new ValueHolder<>( btreeInfo, value );
 
         // Determinate where to store the new value
         if ( pos <= middle )
         {
-            // The left page will contain the new value
-            leftLeaf = new Leaf<>( btree, revision, middle + 1 );
-            leftLeaf.initId( transaction.getRecordManagerHeader() );
+            // The left page will contain the new value. Create it, with a new ID
+            leftLeaf = transaction.newLeaf( btreeInfo, middle + 1 );
 
             // Copy the keys and the values up to the insertion position
             System.arraycopy( keys, 0, leftLeaf.keys, 0, pos );
             System.arraycopy( values, 0, leftLeaf.values, 0, pos );
 
             // Add the new element
-            leftLeaf.keys[pos] = new KeyHolder<K>( btree.getKeySerializer(), key );
+            leftLeaf.keys[pos] = new KeyHolder<K>( btreeInfo.getKeySerializer(), key );
             leftLeaf.values[pos] = valueHolder;
 
             // And copy the remaining elements
             System.arraycopy( keys, pos, leftLeaf.keys, pos + 1, middle - pos );
             System.arraycopy( values, pos, leftLeaf.values, pos + 1, middle - pos );
 
-            // Now, create the right page
-            rightLeaf = new Leaf<>( btree, revision, middle );
-            rightLeaf.initId( transaction.getRecordManagerHeader() );
+            // Now, create the right page, with a new ID
+            rightLeaf = transaction.newLeaf( btreeInfo, middle );
 
             // Copy the keys and the values in the right page
             System.arraycopy( keys, middle, rightLeaf.keys, 0, middle );
@@ -886,17 +966,15 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         }
         else
         {
-            // Create the left page
-            leftLeaf = new Leaf<>( btree, revision, middle );
-            leftLeaf.initId( transaction.getRecordManagerHeader() );
+            // Create the left page, with a new ID
+            leftLeaf = transaction.newLeaf( btreeInfo, middle );
 
-            // Copy all the element into the left page
+            // Copy all the elements into the left page
             System.arraycopy( keys, 0, leftLeaf.keys, 0, middle );
             System.arraycopy( values, 0, leftLeaf.values, 0, middle );
 
-            // Now, create the right page
-            rightLeaf = new Leaf<>( btree, revision, middle + 1 );
-            rightLeaf.initId( transaction.getRecordManagerHeader() );
+            // Now, create the right page, with a new ID
+            rightLeaf = transaction.newLeaf( btreeInfo, middle + 1 );
 
             int rightPos = pos - middle;
 
@@ -905,12 +983,12 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             System.arraycopy( values, middle, rightLeaf.values, 0, rightPos );
 
             // Add the new element
-            rightLeaf.keys[rightPos] = new KeyHolder<>( btree.getKeySerializer(), key );
+            rightLeaf.keys[rightPos] = new KeyHolder<>( btreeInfo.getKeySerializer(), key );
             rightLeaf.values[rightPos] = valueHolder;
 
             // And copy the remaining elements
-            System.arraycopy( keys, pos, rightLeaf.keys, rightPos + 1, nbPageElems - pos );
-            System.arraycopy( values, pos, rightLeaf.values, rightPos + 1, nbPageElems - pos );
+            System.arraycopy( keys, pos, rightLeaf.keys, rightPos + 1, pageNbElems - pos );
+            System.arraycopy( values, pos, rightLeaf.values, rightPos + 1, pageNbElems - pos );
         }
 
         // Get the pivot
@@ -923,8 +1001,8 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         // And remove the original page from the transaction
         transaction.removeWALObject( id );
         
-        // Add the old page into the CopiedPages B-tree if we aren't processing it
-        if ( btree.getType() != BTreeTypeEnum.COPIED_PAGES_BTREE )
+        // Add the old page into the CopiedPages B-tree if it isn't part of the WAL
+        if ( isBTreeUser() && ( revision != transaction.getRevision() ) )
         {
             transaction.addCopiedWALObject( this );
         }
@@ -938,7 +1016,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * {@inheritDoc}
      */
     @Override
-    public K getLeftMostKey()
+    public K getLeftMostKey( Transaction transaction )
     {
         return keys[0].getKey();
     }
@@ -948,9 +1026,9 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * {@inheritDoc}
      */
     @Override
-    public K getRightMostKey()
+    public K getRightMostKey( Transaction transaction ) throws IOException
     {
-        return keys[nbPageElems - 1].getKey();
+        return keys[pageNbElems - 1].getKey();
     }
 
 
@@ -958,11 +1036,9 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * {@inheritDoc}
      */
     @Override
-    public Tuple<K, V> findLeftMost() throws IOException
+    public Tuple<K, V> findLeftMost( Transaction transaction )
     {
-        K key = keys[0].getKey();
-
-        return new Tuple<>( key, values[0].get() );
+        return new Tuple<>( keys[0].getKey(), values[0].get() );
     }
 
 
@@ -970,13 +1046,9 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * {@inheritDoc}
      */
     @Override
-    public Tuple<K, V> findRightMost() throws IOException
+    public Tuple<K, V> findRightMost( Transaction transaction )
     {
-
-        K key = keys[nbPageElems - 1].getKey();
-        V value = values[nbPageElems - 1].get();
-
-        return new Tuple<>( key, value );
+        return new Tuple<>( keys[pageNbElems - 1].getKey(), values[pageNbElems - 1].get() );
     }
 
 
@@ -1004,7 +1076,6 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * Serialize a Leaf's Value.
      */
     private int serializeLeafValue( int pos, List<byte[]> serializedData )
-        throws IOException
     {
         ValueHolder<V> valueHolder = getValue( pos );
         int dataSize = 0;
@@ -1056,7 +1127,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         RecordManagerHeader recordManagerHeader = transaction.getRecordManagerHeader();
         
         // We will have 1 single page if we have no elements
-        int bufferSize = RecordManager.LONG_SIZE + RecordManager.LONG_SIZE + RecordManager.INT_SIZE;
+        int bufferSize = BTreeConstants.LONG_SIZE + BTreeConstants.LONG_SIZE + BTreeConstants.INT_SIZE;
 
         // This is either a new root page or a new page that will be filled later
         pageIOs = recordManager.getFreePageIOs( recordManagerHeader, bufferSize );
@@ -1082,11 +1153,22 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
     /**
      * Serialize a new Leaf. It will contain the following data :<br/>
      * <ul>
-     * <li>the revision : a long</li>
-     * <li>the number of elements in the page : a positive int </li>
-     * <li>the keys : an array of serialized keys</li>
-     * <li>the values : an array of serialized values</li>
+     *   <li>the page id : a long</li>
+     *   <li>the revision : a long</li>
+     *   <li>the number of elements in the page : a positive int </li>
+     *   <li>the data size : an int</li>
+     *   <li>the keys and values, N times :
+     *     <ul>
+     *       <li>key[n] : a serialized key</li>
+     *       <li>value[n] : a serialized value</li>
+     *     </ul>
+     *   </li>
      * </ul>
+     * Note that keys and values are stored alternatively :
+     * <pre> 
+     * V[0], K[0], V[1], K[1], ... V[N], K[N]
+     * </pre>
+     * 
      * {@inheritDoc}
      */
     @Override
@@ -1095,14 +1177,14 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         RecordManager recordManager = transaction.getRecordManager();
         RecordManagerHeader recordManagerHeader = transaction.getRecordManagerHeader();
         
-        if ( nbPageElems == 0 )
+        if ( pageNbElems == 0 )
         {
             return serializeRootPage( transaction, revision );
         }
         else
         {
             // Prepare a list of byte[] that will contain the serialized page
-            int nbBuffers = 1 + 1 + 1 + 1 + nbPageElems * 2;
+            int nbBuffers = 1 + 1 + 1 + 1 + pageNbElems * 2;
             int dataSize = 0;
             int serializedSize = 0;
 
@@ -1120,21 +1202,21 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             serializedSize += buffer.length;
 
             // The number of elements
-            buffer = IntSerializer.serialize( nbPageElems );
+            buffer = IntSerializer.serialize( pageNbElems );
             serializedData.add( buffer );
             serializedSize += buffer.length;
 
             // Iterate on the keys and values. We first serialize the value, then the key
-            // until we are done with all of them. If we are serializing a page, we have
-            // to serialize one more value
-            for ( int pos = 0; pos < nbPageElems; pos++ )
+            // until we are done with all of them. 
+            for ( int pos = 0; pos < pageNbElems; pos++ )
             {
                 // Start with the value
                 dataSize += serializeLeafValue( pos, serializedData );
                 dataSize += serializeLeafKey( pos, serializedData );
             }
 
-            // Store the data size
+            // Store the data size at the third position in the list of buffers
+            // (ie, just after the number of elements, and just before the keys/values)
             buffer = IntSerializer.serialize( dataSize );
             serializedData.add( 3, buffer );
             serializedSize += buffer.length;
@@ -1175,8 +1257,8 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             return pageIOs;
         }
     }
-
-
+    
+    
     /**
      * Deserialize a Leaf. It will contain the following data :<br/>
      * <ul>
@@ -1191,192 +1273,42 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      * The three first values have already been deserialized by the caller.
      * {@inheritDoc}
      */
-    @Override
-    public Page<K, V> deserialize( Transaction transaction, ByteBuffer byteBuffer ) throws IOException
+    public Leaf<K, V> deserialize( ByteBuffer byteBuffer ) throws IOException
     {
         // Iterate on the keys and values. We first serialize the value, then the key
         // until we are done with all of them. If we are serializing a page, we have
         // to serialize one more value
-        for ( int pos = 0; pos < nbPageElems; pos++ )
+        for ( int pos = 0; pos < pageNbElems; pos++ )
         {
             // Start with the value
-            V value = btree.getValueSerializer().deserialize( byteBuffer );
-            ValueHolder<V> valueHolder = new ValueHolder<>( btree, value );
-            BTreeFactory.setValue( btree, this, pos, valueHolder );
+            V value = btreeInfo.getValueSerializer().deserialize( byteBuffer );
+            ValueHolder<V> valueHolder = new ValueHolder<>( btreeInfo, value );
+            BTreeFactory.setValue( this, pos, valueHolder );
 
             // Then the key
-            K key = btree.getKeySerializer().deserialize( byteBuffer );
-            BTreeFactory.setKey( btree, this, pos, key );
+            K key = btreeInfo.getKeySerializer().deserialize( byteBuffer );
+            this.setKey( pos, new KeyHolder<>( btreeInfo.getKeySerializer(), key ) );
         }
         
         return this;
     }
 
-
-    /**
-     * @see Object#toString()
-     */
-    @Override
-    public String toString()
-    {
-        StringBuilder sb = new StringBuilder();
-
-        sb.append( "Leaf[" );
-        sb.append( super.toString() );
-
-        sb.append( "] -> {" );
-
-        if ( nbPageElems > 0 )
-        {
-            boolean isFirst = true;
-
-            for ( int i = 0; i < nbPageElems; i++ )
-            {
-                if ( isFirst )
-                {
-                    isFirst = false;
-                }
-                else
-                {
-                    sb.append( ", " );
-                }
-
-                sb.append( "<" ).append( keys[i] ).append( "," );
-
-                if ( values != null )
-                {
-                    sb.append( values[i] );
-                }
-                else
-                {
-                    sb.append( "null" );
-                }
-
-                sb.append( ">" );
-            }
-        }
-
-        sb.append( "}" );
-
-        return sb.toString();
-    }
-
-
-    /**
-     * same as {@link #addElement(long, Object, Object, int)} except the values are not copied.
-     * This method is only used while inserting an element into a sub-BTree.
-     */
-    private Page<K, V> addSubTreeElement( WriteTransaction transaction, K key, int pos )
-    {
-        long revision = transaction.getRevision();
-        
-        // First copy the current page, but add one element in the copied page
-        Leaf<K, V> newLeaf = new Leaf<>( btree, revision, nbPageElems + 1 );
-        newLeaf.initId( transaction.getRecordManagerHeader() );
-
-        // Deal with the special case of an empty page
-        if ( nbPageElems == 0 )
-        {
-            newLeaf.keys[0] = new KeyHolder<K>( btree.getKeySerializer(), key );
-        }
-        else
-        {
-            // Copy the keys and the values up to the insertion position
-            System.arraycopy( keys, 0, newLeaf.keys, 0, pos );
-
-            // Add the new element
-            newLeaf.keys[pos] = new KeyHolder<K>( btree.getKeySerializer(), key );
-
-            // And copy the remaining elements
-            System.arraycopy( keys, pos, newLeaf.keys, pos + 1, keys.length - pos );
-        }
-
-        return newLeaf;
-    }
-
-
-    /**
-     * same as {@link #addAndSplit(long, Object, Object, int)} except the values are not copied.
-     * This method is only used while inserting an element into a sub-BTree.
-     */
-    private InsertResult<K, V> addAndSplitSubTree( WriteTransaction transaction, K key, int pos )
-    {
-        long revision = transaction.getRevision();
-        
-        int middle = btree.getPageNbElem() >> 1;
-        Leaf<K, V> leftLeaf;
-        Leaf<K, V> rightLeaf;
-
-        // Determinate where to store the new value
-        if ( pos <= middle )
-        {
-            // The left page will contain the new value
-            leftLeaf = new Leaf<>( btree, revision, middle + 1 );
-            leftLeaf.initId( transaction.getRecordManagerHeader() );
-
-            // Copy the keys and the values up to the insertion position
-            System.arraycopy( keys, 0, leftLeaf.keys, 0, pos );
-
-            // Add the new element
-            leftLeaf.keys[pos] = new KeyHolder<K>( btree.getKeySerializer(), key );
-
-            // And copy the remaining elements
-            System.arraycopy( keys, pos, leftLeaf.keys, pos + 1, middle - pos );
-
-            // Now, create the right page
-            rightLeaf = new Leaf<>( btree, revision, middle );
-            rightLeaf.initId( transaction.getRecordManagerHeader() );
-
-            // Copy the keys and the values in the right page
-            System.arraycopy( keys, middle, rightLeaf.keys, 0, middle );
-        }
-        else
-        {
-            // Create the left page
-            leftLeaf = new Leaf<>( btree, revision, middle );
-            leftLeaf.initId( transaction.getRecordManagerHeader() );
-
-            // Copy all the element into the left page
-            System.arraycopy( keys, 0, leftLeaf.keys, 0, middle );
-
-            // Now, create the right page
-            rightLeaf = new Leaf<>( btree, revision, middle + 1 );
-            rightLeaf.initId( transaction.getRecordManagerHeader() );
-
-            int rightPos = pos - middle;
-
-            // Copy the keys and the values up to the insertion position
-            System.arraycopy( keys, middle, rightLeaf.keys, 0, rightPos );
-
-            // Add the new element
-            rightLeaf.keys[rightPos] = new KeyHolder<K>( btree.getKeySerializer(), key );
-
-            // And copy the remaining elements
-            System.arraycopy( keys, pos, rightLeaf.keys, rightPos + 1, nbPageElems - pos );
-        }
-
-        // Get the pivot
-        K pivot = rightLeaf.keys[0].getKey();
-
-        // Create the result
-        return new SplitResult<>( pivot, leftLeaf, rightLeaf );
-    }
-
-
+    
     /**
      * {@inheritDoc}
      */
-    public KeyCursor<K> browseKeys( ReadTransaction transaction, ParentPos<K, K>[] stack, int depth )
+    @Override
+    public KeyCursor<K> browseKeys( Transaction transaction, ParentPos<K, K>[] stack, int depth ) throws IOException
     {
         int pos = 0;
         KeyCursor<K> cursor;
 
-        if ( nbPageElems == 0 )
+        if ( pageNbElems == 0 )
         {
             // The tree is empty, it's the root, we have nothing to return
             stack[depth] = new ParentPos<>( null, -1 );
 
-            return new KeyCursor<>( transaction, stack, depth );
+            return new KeyCursor<>( transaction, btreeInfo, stack, depth );
         }
         else
         {
@@ -1385,7 +1317,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
             stack[depth] = parentPos;
 
-            cursor = new KeyCursor<>( transaction, stack, depth );
+            cursor = new KeyCursor<>( transaction, btreeInfo, stack, depth );
         }
 
         return cursor;
@@ -1430,7 +1362,7 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         
         sb.append( "{Leaf(" ).append( id ).append( ")@" );
         
-        if ( offset == RecordManager.NO_PAGE )
+        if ( offset == BTreeConstants.NO_PAGE )
         {
             sb.append( "---" );
         }
@@ -1457,11 +1389,11 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 
         sb.append( tabs );
 
-        if ( nbPageElems > 0 )
+        if ( pageNbElems > 0 )
         {
             boolean isFirst = true;
 
-            for ( int i = 0; i < nbPageElems; i++ )
+            for ( int i = 0; i < pageNbElems; i++ )
             {
                 if ( isFirst )
                 {
@@ -1488,6 +1420,55 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         }
 
         sb.append( "\n" );
+
+        return sb.toString();
+    }
+
+
+    /**
+     * @see Object#toString()
+     */
+    @Override
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append( "Leaf[" );
+        sb.append( super.toString() );
+
+        sb.append( "] -> {" );
+
+        if ( pageNbElems > 0 )
+        {
+            boolean isFirst = true;
+
+            for ( int i = 0; i < pageNbElems; i++ )
+            {
+                if ( isFirst )
+                {
+                    isFirst = false;
+                }
+                else
+                {
+                    sb.append( ", " );
+                }
+
+                sb.append( "<" ).append( keys[i] ).append( "," );
+
+                if ( values != null )
+                {
+                    sb.append( values[i] );
+                }
+                else
+                {
+                    sb.append( "null" );
+                }
+
+                sb.append( ">" );
+            }
+        }
+
+        sb.append( "}" );
 
         return sb.toString();
     }

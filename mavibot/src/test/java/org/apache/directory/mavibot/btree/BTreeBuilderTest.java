@@ -114,7 +114,7 @@ public class BTreeBuilderTest
             {
                 btree = rm.getBtree( txn, "master" );
     
-                assertEquals( 7, btree.getRootPage().getNbPageElems() );
+                assertEquals( 7, btree.getRootPage().getPageNbElems() );
     
                 assertEquals( 7, btree.getRootPage().findRightMost().getKey().intValue() );
     

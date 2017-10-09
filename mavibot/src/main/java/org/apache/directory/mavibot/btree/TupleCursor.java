@@ -21,6 +21,7 @@ package org.apache.directory.mavibot.btree;
 
 
 import java.io.Closeable;
+import java.io.IOException;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
@@ -86,7 +87,7 @@ public class TupleCursor<K, V> implements Iterator<Tuple<K,V>>, Closeable
      * rightmost page for each level, and the position to the rightmost element
      * of each page.
      */
-    public void afterLast()
+    public void afterLast() throws IOException
     {
         // First check that we have elements in the B-tree
         if ( ( stack == null ) || ( stack.length == 0 ) )
@@ -99,8 +100,8 @@ public class TupleCursor<K, V> implements Iterator<Tuple<K,V>>, Closeable
         // to BEFORE_FIRST
         for ( int i = 0; i < depth; i++ )
         {
-            stack[i].pos = stack[i].page.getNbPageElems();
-            stack[i+1].page = ( ( Node<K, V> ) stack[i].page ).getPage( stack[i].pos );
+            stack[i].pos = stack[i].page.getPageNbElems();
+            stack[i+1].page = ( ( Node<K, V> ) stack[i].page ).getPage( transaction, stack[i].pos );
         }
 
         stack[depth].pos = AFTER_LAST;
@@ -128,7 +129,7 @@ public class TupleCursor<K, V> implements Iterator<Tuple<K,V>>, Closeable
     /**
      * Positions this cursor before the first element.
      */
-    public void beforeFirst()
+    public void beforeFirst() throws IOException
     {
         // First check that we have elements in the B-tree
         if ( ( stack == null ) || ( stack.length == 0 ) )
@@ -142,7 +143,7 @@ public class TupleCursor<K, V> implements Iterator<Tuple<K,V>>, Closeable
         for ( int i = 0; i < depth; i++ )
         {
             stack[i].pos = 0;
-            stack[i+1].page = ( ( Node<K, V> ) stack[i].page ).getPage( 0 );
+            stack[i+1].page = ( ( Node<K, V> ) stack[i].page ).getPage( transaction, 0 );
         }
 
         stack[depth].pos = BEFORE_FIRST;
@@ -165,7 +166,7 @@ public class TupleCursor<K, V> implements Iterator<Tuple<K,V>>, Closeable
         }
 
         // Take the leaf and check if we have no mare values
-        if ( ( stack[depth].pos + 1 < stack[depth].page.getNbPageElems() ) || ( stack[depth].pos == BEFORE_FIRST ) )
+        if ( ( stack[depth].pos + 1 < stack[depth].page.getPageNbElems() ) || ( stack[depth].pos == BEFORE_FIRST ) )
         {
             // get out, we have values on the right
             return true;
@@ -174,7 +175,7 @@ public class TupleCursor<K, V> implements Iterator<Tuple<K,V>>, Closeable
         // Check that we are not at position 0 for all the pages in the stack 
         for ( int i = depth - 1; i >= 0; i-- )
         {
-            if ( stack[i].pos < stack[i].page.getNbPageElems() )
+            if ( stack[i].pos < stack[i].page.getPageNbElems() )
             {
                 return true;
             }
@@ -226,14 +227,14 @@ public class TupleCursor<K, V> implements Iterator<Tuple<K,V>>, Closeable
                 stack[depth].pos++;
                 parentPos = stack[depth];
 
-                if ( stack[depth].pos == stack[depth].page.getNbPageElems() )
+                if ( stack[depth].pos == stack[depth].page.getPageNbElems() )
                 {
                     boolean hasNext = false;
 
                     // Move up to find the next leaf
                     for ( int i = depth; i >= 0; i-- )
                     {
-                        if ( stack[i].pos != stack[i].page.getNbPageElems() )
+                        if ( stack[i].pos != stack[i].page.getPageNbElems() )
                         {
                             // We have some more children on the right, move forward
                             stack[i].pos++;
@@ -241,12 +242,28 @@ public class TupleCursor<K, V> implements Iterator<Tuple<K,V>>, Closeable
                             // and go down the stack if we weren't already at the bottom, setting the pos to 0
                             for ( int j = i + 1; j < depth; j++ )
                             {
-                                stack[j].page = ((Node<K, V>)stack[j - 1].page).getPage( stack[j - 1].pos );
+                                try
+                                {
+                                    stack[j].page = ((Node<K, V>)stack[j - 1].page).getPage( transaction, stack[j - 1].pos );
+                                }
+                                catch ( IOException ioe )
+                                {
+                                    throw new RuntimeException( ioe );
+                                }
+                                
                                 stack[j].pos = 0;
                             }
                             
                             // The last page is a leaf
-                            stack[depth].page = ((Node<K, V>)stack[depth - 1].page).getPage( stack[depth - 1].pos );
+                            try
+                            {
+                                stack[depth].page = ((Node<K, V>)stack[depth - 1].page).getPage( transaction, stack[depth - 1].pos );
+                            }
+                            catch ( IOException ioe )
+                            {
+                                throw new RuntimeException( ioe );
+                            }
+                        
                             stack[depth].pos = 0;
                             
                             parentPos = stack[depth];
@@ -319,7 +336,7 @@ public class TupleCursor<K, V> implements Iterator<Tuple<K,V>>, Closeable
      * @throws NoSuchElementException When we have reached the beginning of the B-tree, or if 
      * the B-tree is empty
      */
-    public Tuple<K, V> prev()
+    public Tuple<K, V> prev() throws IOException
     {
         // First check that we have elements in the B-tree
         if ( ( stack == null ) || ( stack.length == 0 ) )
@@ -342,7 +359,7 @@ public class TupleCursor<K, V> implements Iterator<Tuple<K,V>>, Closeable
 
             case AFTER_LAST :
                 // Move to the last element
-                parentPos.pos = parentPos.page.getNbPageElems() - 1;
+                parentPos.pos = parentPos.page.getPageNbElems() - 1;
                 break;
             
             case 0 :
@@ -360,13 +377,13 @@ public class TupleCursor<K, V> implements Iterator<Tuple<K,V>>, Closeable
                         // and go down the stack if we weren't already at the bottom, setting the pos to nbElems
                         for ( int j = i + 1; j < depth; j++ )
                         {
-                            stack[j].page = ((Node<K, V>)stack[j - 1].page).getPage( stack[j - 1].pos );
-                            stack[j].pos = stack[j].page.getNbPageElems();
+                            stack[j].page = ((Node<K, V>)stack[j - 1].page).getPage( transaction, stack[j - 1].pos );
+                            stack[j].pos = stack[j].page.getPageNbElems();
                         }
 
                         // The last page is a leaf
-                        stack[depth].page = ((Node<K, V>)stack[depth - 1].page).getPage( stack[depth - 1].pos );
-                        stack[depth].pos = stack[depth].page.getNbPageElems() - 1;
+                        stack[depth].page = ((Node<K, V>)stack[depth - 1].page).getPage( transaction, stack[depth - 1].pos );
+                        stack[depth].pos = stack[depth].page.getPageNbElems() - 1;
                         
                         hasPrev = true;
                         break;

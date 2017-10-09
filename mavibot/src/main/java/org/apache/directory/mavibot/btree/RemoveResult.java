@@ -34,15 +34,19 @@ import java.util.List;
  */
 /* No qualifier*/class RemoveResult<K, V> extends AbstractDeleteResult<K, V>
 {
+    /** The position in the page where the element has been found */
+    private int pos;
+
     /**
      * The default constructor for RemoveResult.
      * 
      * @param modifiedPage The modified page
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
      */
-    public RemoveResult( Page<K, V> modifiedPage, Tuple<K, V> removedElement )
+    public RemoveResult( Page<K, V> modifiedPage, Tuple<K, V> removedElement, int pos )
     {
         super( modifiedPage, removedElement );
+        this.pos = pos;
     }
 
 
@@ -53,9 +57,28 @@ import java.util.List;
      * @param modifiedPage The modified page
      * @param removedElement The removed element (can be null if the key wasn't present in the tree)
      */
-    public RemoveResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage, Tuple<K, V> removedElement )
+    public RemoveResult( List<Page<K, V>> copiedPages, Page<K, V> modifiedPage, Tuple<K, V> removedElement , int pos )
     {
         super( copiedPages, modifiedPage, removedElement );
+        this.pos = pos;
+    }
+    
+    
+    /**
+     * @return The position of the removed element
+     */
+    int getPos()
+    {
+        return pos;
+    }
+
+
+    /**
+     * @param pos The position fo the removed element
+     */
+    void setPos( int pos )
+    {
+        this.pos = pos;
     }
 
 
@@ -69,6 +92,7 @@ import java.util.List;
 
         sb.append( "RemoveResult :" );
         sb.append( "\n    removed element = " ).append( getRemovedElement() );
+        sb.append( "\n    Position = " ).append( pos );
         sb.append( "\n    modifiedPage = " ).append( getModifiedPage() );
 
         return sb.toString();

@@ -550,9 +550,9 @@ public class BulkLoader<K, V>
             // we have to write the page on disk and update the btree
             if ( level.getNbAddedElems() == level.getNbElems() )
             {
-                PageHolder<K, V> rootHolder = ( ( BTreeImpl<K, V> ) btree ).getRecordManager().writePage(
+                PageHolder<K, V> rootHolder = ( ( BTree<K, V> ) btree ).getRecordManager().writePage(
                     btree, node, 0L );
-                ( ( BTreeImpl<K, V> ) btree ).setRootPage( rootHolder.getValue() );
+                ( ( BTree<K, V> ) btree ).setRootPage( rootHolder.getValue() );
             }
         }
 
@@ -572,7 +572,7 @@ public class BulkLoader<K, V>
         Node<K, V> node = ( Node<K, V> ) level.getCurrentPage();
 
         // We first have to write the page on disk
-        PageHolder<K, V> pageHolder = ( ( BTreeImpl<K, V> ) btree ).getRecordManager().writePage( btree, page, 0L );
+        PageHolder<K, V> pageHolder = ( ( BTree<K, V> ) btree ).getRecordManager().writePage( btree, page, 0L );
 
         // First deal with a node that has less than PageSize elements at this level.
         // It will become the root node.
@@ -712,7 +712,7 @@ public class BulkLoader<K, V>
                     level.incNbAddedElems();
 
                     // Check if we are done with the page
-                    if ( level.getCurrentPos() == node.getNbPageElems() + 1 )
+                    if ( level.getCurrentPos() == node.getPageNbElems() + 1 )
                     {
                         // Yes, we have to update the parent
                         injectInNode( btree, node, levels, levelIndex + 1 );
@@ -755,7 +755,7 @@ public class BulkLoader<K, V>
                     level.incNbAddedElems();
 
                     // Check if we are done with the page
-                    if ( level.getCurrentPos() == node.getNbPageElems() + 1 )
+                    if ( level.getCurrentPos() == node.getPageNbElems() + 1 )
                     {
                         // Yes, we have to update the parent
                         injectInNode( btree, node, levels, levelIndex + 1 );
@@ -779,7 +779,7 @@ public class BulkLoader<K, V>
         Page<K, V> rootPage = btree.getRootPage();
 
         // Initialize the root page
-        ( ( AbstractPage<K, V> ) rootPage ).setNbPageElems( nbElems );
+        ( ( AbstractPage<K, V> ) rootPage ).setPageNbElems( nbElems );
         KeyHolder<K>[] keys = new KeyHolder[nbElems];
         ValueHolder<V>[] values = new ValueHolder[nbElems];
 
@@ -810,7 +810,7 @@ public class BulkLoader<K, V>
         ( ( AbstractPage<K, V> ) rootPage ).setKeys( keys );
 
         // Update the btree with the nb of added elements, and write it$
-        BTreeHeader<K, V> btreeHeader = ( ( BTreeImpl<K, V> ) btree ).getBtreeHeader();
+        BTreeHeader<K, V> btreeHeader = ( ( BTree<K, V> ) btree ).getBtreeHeader();
         btreeHeader.setNbElems( nbElems );
 
         return btree;
@@ -942,7 +942,7 @@ public class BulkLoader<K, V>
         }
 
         // Update the btree with the nb of added elements, and write it$
-        BTreeHeader<K, V> btreeHeader = ( ( BTreeImpl<K, V> ) btree ).getBtreeHeader();
+        BTreeHeader<K, V> btreeHeader = ( ( BTree<K, V> ) btree ).getBtreeHeader();
         btreeHeader.setNbElems( nbElems );
 
         return btree;

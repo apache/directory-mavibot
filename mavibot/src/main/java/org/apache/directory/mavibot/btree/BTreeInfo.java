@@ -41,7 +41,7 @@ public class BTreeInfo<K, V> extends AbstractWALObject<K, V>
     private int pageNbElem;
     
     /** the B-tree name */
-    private String btreeName;
+    private String name;
     
     /** the keySerializer FQCN */
     private String keySerializerFQCN;
@@ -55,8 +55,20 @@ public class BTreeInfo<K, V> extends AbstractWALObject<K, V>
     /** The value serializer instance */
     private ElementSerializer<V> valueSerializer;
     
+    /** The BTree type : either in-memory, disk backed or persisted */
+    private BTreeTypeEnum btreeType;
+
+    
     /**
-     * Serialize the structure :
+     * Default constructor
+     */
+    public BTreeInfo()
+    {
+        btreeInfo = this;
+    }
+    
+    /**
+     * Serialize the BTreeInfo structure :
      * 
      * <pre>
      * +------------+
@@ -83,17 +95,17 @@ public class BTreeInfo<K, V> extends AbstractWALObject<K, V>
     public PageIO[] serialize( WriteTransaction transaction ) throws IOException
     {
         // We will add the newly managed B-tree at the end of the header.
-        byte[] btreeNameBytes = Strings.getBytesUtf8( btree.getName() );
-        byte[] keySerializerBytes = Strings.getBytesUtf8( btree.getKeySerializerFQCN() );
-        byte[] valueSerializerBytes = Strings.getBytesUtf8( btree.getValueSerializerFQCN() );
+        byte[] btreeNameBytes = Strings.getBytesUtf8( name );
+        byte[] keySerializerBytes = Strings.getBytesUtf8( keySerializerFQCN );
+        byte[] valueSerializerBytes = Strings.getBytesUtf8( valueSerializerFQCN );
 
         int bufferSize =
-            RecordManager.INT_SIZE + // The page size
-                RecordManager.INT_SIZE + // The name size
+            BTreeConstants.INT_SIZE + // The page size
+                BTreeConstants.INT_SIZE + // The name size
                 btreeNameBytes.length + // The name
-                RecordManager.INT_SIZE + // The keySerializerBytes size
+                BTreeConstants.INT_SIZE + // The keySerializerBytes size
                 keySerializerBytes.length + // The keySerializerBytes
-                RecordManager.INT_SIZE + // The valueSerializerBytes size
+                BTreeConstants.INT_SIZE + // The valueSerializerBytes size
                 valueSerializerBytes.length; // The valueSerializerBytes
         
         RecordManager recordManager = transaction.getRecordManager();
@@ -112,7 +124,7 @@ public class BTreeInfo<K, V> extends AbstractWALObject<K, V>
         long position = 0L;
         
         // The B-tree page size
-        position = recordManager.store( recordManagerHeader, position, btree.getPageNbElem(), pageIOs );
+        position = recordManager.store( recordManagerHeader, position, pageNbElem, pageIOs );
 
         // The tree name
         position = recordManager.store( recordManagerHeader, position, btreeNameBytes, pageIOs );
@@ -134,19 +146,9 @@ public class BTreeInfo<K, V> extends AbstractWALObject<K, V>
      * {@inheritDoc}
      */
     @Override
-    public BTreeInfo<K, V> deserialize( Transaction trasaction, ByteBuffer byteBuffer )
-    {
-        return null;
-    }
-    
-    
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public String getName()
     {
-        return btree.getName();
+        return name;
     }
 
 
@@ -169,20 +171,11 @@ public class BTreeInfo<K, V> extends AbstractWALObject<K, V>
 
 
     /**
-     * @return the btreeName
-     */
-    public String getBtreeName()
-    {
-        return btreeName;
-    }
-
-
-    /**
      * @param btreeName the btreeName to set
      */
-    public void setBtreeName( String btreeName )
+    public void setName( String name )
     {
-        this.btreeName = btreeName;
+        this.name = name;
     }
 
 
@@ -201,6 +194,22 @@ public class BTreeInfo<K, V> extends AbstractWALObject<K, V>
     public void setKeySerializerFQCN( String keySerializerFQCN )
     {
         this.keySerializerFQCN = keySerializerFQCN;
+        
+        try
+        {
+            Class<?> instance = Class.forName( keySerializerFQCN );
+        
+            keySerializer = ( ElementSerializer<K> ) instance.getDeclaredField( "INSTANCE" ).get( null );
+
+            if ( keySerializer == null )
+            {
+                keySerializer = ( ElementSerializer<K> ) instance.newInstance();
+            }
+        }
+        catch ( ClassNotFoundException | NoSuchFieldException | IllegalAccessException | InstantiationException e )
+        {
+            // Add log
+        }
     }
     
     
@@ -237,6 +246,22 @@ public class BTreeInfo<K, V> extends AbstractWALObject<K, V>
     public void setValueSerializerFQCN( String valueSerializerFQCN )
     {
         this.valueSerializerFQCN = valueSerializerFQCN;
+        
+        try
+        {
+            Class<?> instance = Class.forName( valueSerializerFQCN );
+        
+            valueSerializer = ( ElementSerializer<V> ) instance.getDeclaredField( "INSTANCE" ).get( null );
+
+            if ( valueSerializer == null )
+            {
+                valueSerializer = ( ElementSerializer<V> ) instance.newInstance();
+            }
+        }
+        catch ( ClassNotFoundException | NoSuchFieldException | IllegalAccessException | InstantiationException e )
+        {
+            // Add log
+        }
     }
 
 
@@ -260,11 +285,31 @@ public class BTreeInfo<K, V> extends AbstractWALObject<K, V>
     
     /**
      * {@inheritDoc}
+     * 
+     * The BTreeInfo revision is always -1L
      */
     @Override
     public long getRevision()
     {
         return -1L;
+    }
+
+
+    /**
+     * @return the type
+     */
+    public BTreeTypeEnum getType()
+    {
+        return btreeType;
+    }
+
+
+    /**
+     * @param type the type to set
+     */
+    public void setType( BTreeTypeEnum type )
+    {
+        this.btreeType = type;
     }
 
     
@@ -278,7 +323,7 @@ public class BTreeInfo<K, V> extends AbstractWALObject<K, V>
         
         sb.append( "{Info(" ).append( id ).append( ")@" );
         
-        if ( offset == RecordManager.NO_PAGE )
+        if ( offset == BTreeConstants.NO_PAGE )
         {
             sb.append( "---" );
         }
@@ -305,7 +350,8 @@ public class BTreeInfo<K, V> extends AbstractWALObject<K, V>
         
         sb.append( "BtreeInfo :\n" );
         sb.append( "    Page Nb Elem     : " ).append( pageNbElem ).append( '\n' );
-        sb.append( "    Name             : " ).append( btreeName ).append( '\n' );
+        sb.append( "    Name             : " ).append( name ).append( '\n' );
+        sb.append( "    Type             : " ).append( btreeType ).append( '\n' );
         sb.append( "    Key serializer   : " ).append( keySerializerFQCN ).append( '\n' );
         sb.append( "    Value serializer : " ).append( valueSerializerFQCN ).append( '\n' );
         sb.append( "    ID               : " ).append( id ).append( '\n' );
