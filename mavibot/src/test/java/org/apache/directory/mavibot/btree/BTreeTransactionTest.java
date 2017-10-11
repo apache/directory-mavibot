@@ -44,27 +44,22 @@ public class BTreeTransactionTest
 {
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
-    private File dataDirWithTxn = null;
-    private File dataDirNoTxn = null;
-    private BTree<Long, String> btreeWithTransactions = null;
-    private BTree<Long, String> btreeNoTransactions = null;
-    private RecordManager recordManagerTxn = null;
-    private RecordManager recordManagerNoTxn = null;
+    private File dataDir = null;
+    private BTree<Long, String> btree = null;
+    private RecordManager recordManager = null;
 
 
     @Before
     public void createBTree() throws IOException
     {
-        dataDirWithTxn = tempFolder.newFolder( UUID.randomUUID().toString() );
-        dataDirNoTxn = tempFolder.newFolder( UUID.randomUUID().toString() );
+        dataDir = tempFolder.newFolder( UUID.randomUUID().toString() );
 
         openRecordManagerAndBtrees();
 
         try
         {
             // Create a new BTree with transaction and another one without
-            btreeWithTransactions = recordManagerTxn.addBTree( "testWithTxn", LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
-            btreeNoTransactions = recordManagerNoTxn.addBTree( "testNoTxn", LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
+            btree = recordManager.addBTree( "testWithTxn", LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
         }
         catch ( Exception e )
         {
@@ -76,20 +71,13 @@ public class BTreeTransactionTest
     @After
     public void cleanup() throws IOException
     {
-        btreeNoTransactions.close();
-        btreeWithTransactions.close();
+        btree.close();
 
-        recordManagerNoTxn.close();
-        recordManagerTxn.close();
+        recordManager.close();
         
-        if ( dataDirNoTxn.exists() )
+        if ( dataDir.exists() )
         {
-            FileUtils.deleteDirectory( dataDirNoTxn );
-        }
-
-        if ( dataDirWithTxn.exists() )
-        {
-            FileUtils.deleteDirectory( dataDirWithTxn );
+            FileUtils.deleteDirectory( dataDir );
         }
     }
 
@@ -98,29 +86,21 @@ public class BTreeTransactionTest
     {
         try
         {
-            if ( recordManagerTxn != null )
+            if ( recordManager != null )
             {
-                recordManagerTxn.close();
-            }
-
-            if ( recordManagerNoTxn != null )
-            {
-                recordManagerNoTxn.close();
+                recordManager.close();
             }
 
             // Now, try to reload the file back
-            recordManagerTxn = new RecordManager( dataDirWithTxn.getAbsolutePath() );
-            recordManagerNoTxn = new RecordManager( dataDirNoTxn.getAbsolutePath() );
+            recordManager = new RecordManager( dataDir.getAbsolutePath() );
 
             // load the last created btree
-            if ( btreeWithTransactions != null )
+            if ( btree != null )
             {
-                btreeWithTransactions = recordManagerTxn.getBtree( btreeWithTransactions.getName() );
-            }
-
-            if ( btreeNoTransactions != null )
-            {
-                btreeNoTransactions = recordManagerNoTxn.getBtree( btreeNoTransactions.getName() );
+                try ( Transaction readTransaction = recordManager.beginReadTransaction() )
+                {
+                    btree = recordManager.getBtree( readTransaction, btree.getName(), 0L );
+                }
             }
         }
         catch ( Exception e )
@@ -131,37 +111,22 @@ public class BTreeTransactionTest
 
 
     @Test
-    public void testWithoutTransaction() throws IOException
-    {
-        long t0 = System.currentTimeMillis();
-
-        for ( long i = 0L; i < 1000L; i++ )
-        {
-            btreeNoTransactions.insert( i, Long.toString( i ) );
-        }
-
-        long t1 = System.currentTimeMillis();
-
-        System.out.println( "Delta without transaction for 100K elements = " + ( t1 - t0 ) );
-    }
-
-
-    @Test
     @Ignore("Fails atm")
     public void testWithTransaction() throws IOException
     {
+        long nbIteration = 100_000L;
         long t0 = System.currentTimeMillis();
 
-        for ( long i = 0L; i < 1000L; i++ )
+        for ( long i = 0L; i < nbIteration; i++ )
         {
-            System.out.println( i );
-            //btreeWithTransactions.beginTransaction();
-            btreeWithTransactions.insert( i, Long.toString( i ) );
-            //btreeWithTransactions.commit();
+            try ( WriteTransaction writeTransaction = recordManager.beginWriteTransaction() )
+            {
+                btree.insert( writeTransaction, i, Long.toString( i ) );
+            }
         }
 
         long t1 = System.currentTimeMillis();
 
-        System.out.println( "Delta with transaction for 100K elements = " + ( t1 - t0 ) );
+        System.out.println( "Delta with transaction for " + nbIteration + " elements = " + ( t1 - t0 ) );
     }
 }
