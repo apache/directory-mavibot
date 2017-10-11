@@ -56,66 +56,66 @@ public class ReadTest
 
         // Create page size of 32 only
         RecordManager recordManager = new RecordManager( tempFileName, 32 );
-        Method storeMethod = RecordManager.class.getDeclaredMethod( "store", long.class, int.class, PageIO[].class );
-        Method readIntMethod = RecordManager.class.getDeclaredMethod( "readInt", PageIO[].class, long.class );
+        Method storeMethod = RecordManager.class.getDeclaredMethod( "store", RecordManagerHeader.class, long.class, int.class, PageIO[].class );
+        Method readIntMethod = RecordManager.class.getDeclaredMethod( "readInt", int.class, PageIO[].class, long.class );
         storeMethod.setAccessible( true );
         readIntMethod.setAccessible( true );
 
         // Allocate some Pages
         PageIO[] pageIos = new PageIO[2];
         pageIos[0] = new PageIO();
-        pageIos[0].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+        pageIos[0].setData( ByteBuffer.allocate( recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ) ) );
         pageIos[1] = new PageIO();
-        pageIos[1].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+        pageIos[1].setData( ByteBuffer.allocate( recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ) ) );
 
         // Set the int at the beginning
-        storeMethod.invoke( recordManager, 0, 0x12345678, pageIos );
+        storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 0, 0x12345678, pageIos );
 
         // Read it back
-        int readValue = ( Integer ) readIntMethod.invoke( recordManager, pageIos, 0 );
+        int readValue = ( Integer ) readIntMethod.invoke( recordManager, recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ), pageIos, 0 );
 
         assertEquals( 0x12345678, readValue );
 
         // Set the int at the end of the first page
-        storeMethod.invoke( recordManager, 16, 0x12345678, pageIos );
+        storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 16, 0x12345678, pageIos );
 
         // Read it back
-        readValue = ( Integer ) readIntMethod.invoke( recordManager, pageIos, 16 );
+        readValue = ( Integer ) readIntMethod.invoke( recordManager, recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ), pageIos, 16 );
 
         assertEquals( 0x12345678, readValue );
 
         // Set the int at the end of the first page and overlapping on the second page
         // 1 byte overlapping
-        storeMethod.invoke( recordManager, 17, 0x12345678, pageIos );
+        storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 17, 0x12345678, pageIos );
 
         // Read it back
-        readValue = ( Integer ) readIntMethod.invoke( recordManager, pageIos, 17 );
+        readValue = ( Integer ) readIntMethod.invoke( recordManager, recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ), pageIos, 17 );
 
         assertEquals( 0x12345678, readValue );
 
         // Set the int at the end of the first page and overlapping on the second page
         // 2 bytes overlapping
-        storeMethod.invoke( recordManager, 18, 0x12345678, pageIos );
+        storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 18, 0x12345678, pageIos );
 
         // Read it back
-        readValue = ( Integer ) readIntMethod.invoke( recordManager, pageIos, 18 );
+        readValue = ( Integer ) readIntMethod.invoke( recordManager, recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ), pageIos, 18 );
 
         assertEquals( 0x12345678, readValue );
 
         // Set the int at the end of the first page and overlapping on the second page
         // 3 bytes overlapping
-        storeMethod.invoke( recordManager, 19, 0x12345678, pageIos );
+        storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 19, 0x12345678, pageIos );
 
         // Read it back
-        readValue = ( Integer ) readIntMethod.invoke( recordManager, pageIos, 19 );
+        readValue = ( Integer ) readIntMethod.invoke( recordManager, recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ), pageIos, 19 );
 
         assertEquals( 0x12345678, readValue );
 
         // Set the int at the beginning of the second page
-        storeMethod.invoke( recordManager, 20, 0x12345678, pageIos );
+        storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 20, 0x12345678, pageIos );
 
         // Read it back
-        readValue = ( Integer ) readIntMethod.invoke( recordManager, pageIos, 20 );
+        readValue = ( Integer ) readIntMethod.invoke( recordManager, recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ), pageIos, 20 );
 
         recordManager.close();
     }
@@ -132,102 +132,102 @@ public class ReadTest
 
         // Create page size of 32 only
         RecordManager recordManager = new RecordManager( tempFileName, 32 );
-        Method storeMethod = RecordManager.class.getDeclaredMethod( "store", long.class, long.class, PageIO[].class );
-        Method readLongMethod = RecordManager.class.getDeclaredMethod( "readLong", PageIO[].class, long.class );
+        Method storeMethod = RecordManager.class.getDeclaredMethod( "store", RecordManagerHeader.class, long.class, long.class, PageIO[].class );
+        Method readLongMethod = RecordManager.class.getDeclaredMethod( "readLong", int.class, PageIO[].class, long.class );
         storeMethod.setAccessible( true );
         readLongMethod.setAccessible( true );
 
         // Allocate some Pages
         PageIO[] pageIos = new PageIO[2];
         pageIos[0] = new PageIO();
-        pageIos[0].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+        pageIos[0].setData( ByteBuffer.allocate( recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ) ) );
         pageIos[1] = new PageIO();
-        pageIos[1].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+        pageIos[1].setData( ByteBuffer.allocate( recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ) ) );
 
         // Set the int at the beginning
-        storeMethod.invoke( recordManager, 0, 0x0123456789ABCDEFL, pageIos );
+        storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 0, 0x0123456789ABCDEFL, pageIos );
 
         // Read it back
-        long readValue = ( Long ) readLongMethod.invoke( recordManager, pageIos, 0 );
+        long readValue = ( Long ) readLongMethod.invoke( recordManager, recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ), pageIos, 0 );
 
         assertEquals( 0x0123456789ABCDEFL, readValue );
 
         // Set the int at the end of the first page
-        storeMethod.invoke( recordManager, 12, 0x0123456789ABCDEFL, pageIos );
+        storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 12, 0x0123456789ABCDEFL, pageIos );
 
         // Read it back
-        readValue = ( Long ) readLongMethod.invoke( recordManager, pageIos, 12 );
+        readValue = ( Long ) readLongMethod.invoke( recordManager, recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ), pageIos, 12 );
 
         assertEquals( 0x0123456789ABCDEFL, readValue );
 
         // Set the int at the end of the first page and overlapping on the second page
         // 1 byte overlapping
-        storeMethod.invoke( recordManager, 13, 0x0123456789ABCDEFL, pageIos );
+        storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 13, 0x0123456789ABCDEFL, pageIos );
 
         // Read it back
-        readValue = ( Long ) readLongMethod.invoke( recordManager, pageIos, 13 );
+        readValue = ( Long ) readLongMethod.invoke( recordManager, recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ), pageIos, 13 );
 
         assertEquals( 0x0123456789ABCDEFL, readValue );
 
         // Set the int at the end of the first page and overlapping on the second page
         // 2 bytes overlapping
-        storeMethod.invoke( recordManager, 14, 0x0123456789ABCDEFL, pageIos );
+        storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 14, 0x0123456789ABCDEFL, pageIos );
 
         // Read it back
-        readValue = ( Long ) readLongMethod.invoke( recordManager, pageIos, 14 );
+        readValue = ( Long ) readLongMethod.invoke( recordManager, recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ), pageIos, 14 );
 
         assertEquals( 0x0123456789ABCDEFL, readValue );
 
         // Set the int at the end of the first page and overlapping on the second page
         // 3 bytes overlapping
-        storeMethod.invoke( recordManager, 15, 0x0123456789ABCDEFL, pageIos );
+        storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 15, 0x0123456789ABCDEFL, pageIos );
 
         // Read it back
-        readValue = ( Long ) readLongMethod.invoke( recordManager, pageIos, 15 );
+        readValue = ( Long ) readLongMethod.invoke( recordManager, recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ), pageIos, 15 );
 
         assertEquals( 0x0123456789ABCDEFL, readValue );
 
         // Set the int at the end of the first page and overlapping on the second page
         // 4 bytes overlapping
-        storeMethod.invoke( recordManager, 16, 0x0123456789ABCDEFL, pageIos );
+        storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 16, 0x0123456789ABCDEFL, pageIos );
 
         // Read it back
-        readValue = ( Long ) readLongMethod.invoke( recordManager, pageIos, 16 );
+        readValue = ( Long ) readLongMethod.invoke( recordManager, recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ), pageIos, 16 );
 
         assertEquals( 0x0123456789ABCDEFL, readValue );
 
         // Set the int at the end of the first page and overlapping on the second page
         // 5 bytes overlapping
-        storeMethod.invoke( recordManager, 17, 0x0123456789ABCDEFL, pageIos );
+        storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 17, 0x0123456789ABCDEFL, pageIos );
 
         // Read it back
-        readValue = ( Long ) readLongMethod.invoke( recordManager, pageIos, 17 );
+        readValue = ( Long ) readLongMethod.invoke( recordManager, recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ), pageIos, 17 );
 
         assertEquals( 0x0123456789ABCDEFL, readValue );
 
         // Set the int at the end of the first page and overlapping on the second page
         // 6 bytes overlapping
-        storeMethod.invoke( recordManager, 18, 0x0123456789ABCDEFL, pageIos );
+        storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 18, 0x0123456789ABCDEFL, pageIos );
 
         // Read it back
-        readValue = ( Long ) readLongMethod.invoke( recordManager, pageIos, 18 );
+        readValue = ( Long ) readLongMethod.invoke( recordManager, recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ), pageIos, 18 );
 
         assertEquals( 0x0123456789ABCDEFL, readValue );
 
         // Set the int at the end of the first page and overlapping on the second page
         // 7 bytes overlapping
-        storeMethod.invoke( recordManager, 19, 0x0123456789ABCDEFL, pageIos );
+        storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 19, 0x0123456789ABCDEFL, pageIos );
 
         // Read it back
-        readValue = ( Long ) readLongMethod.invoke( recordManager, pageIos, 19 );
+        readValue = ( Long ) readLongMethod.invoke( recordManager, recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ), pageIos, 19 );
 
         assertEquals( 0x0123456789ABCDEFL, readValue );
 
         // Set the int at the beginning of the second page
-        storeMethod.invoke( recordManager, 20, 0x0123456789ABCDEFL, pageIos );
+        storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 20, 0x0123456789ABCDEFL, pageIos );
 
         // Read it back
-        readValue = ( Long ) readLongMethod.invoke( recordManager, pageIos, 20 );
+        readValue = ( Long ) readLongMethod.invoke( recordManager, recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ), pageIos, 20 );
 
         recordManager.close();
     }
@@ -244,31 +244,32 @@ public class ReadTest
 
         // We use smaller pages
         RecordManager recordManager = new RecordManager( tempFileName, 32 );
-        Method storeMethod = RecordManager.class.getDeclaredMethod( "store", long.class, byte[].class, PageIO[].class );
-        Method readBytesMethod = RecordManager.class.getDeclaredMethod( "readBytes", PageIO[].class, long.class );
+        Method storeMethod = RecordManager.class.getDeclaredMethod( "store", RecordManagerHeader.class, long.class, byte[].class, 
+            PageIO[].class );
+        Method readBytesMethod = RecordManager.class.getDeclaredMethod( "readBytes", int.class, PageIO[].class, long.class );
         storeMethod.setAccessible( true );
         readBytesMethod.setAccessible( true );
 
         // Allocate some Pages
         PageIO[] pageIos = new PageIO[4];
         pageIos[0] = new PageIO();
-        pageIos[0].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+        pageIos[0].setData( ByteBuffer.allocate( recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ) ) );
         pageIos[1] = new PageIO();
-        pageIos[1].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+        pageIos[1].setData( ByteBuffer.allocate( recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ) ) );
         pageIos[2] = new PageIO();
-        pageIos[2].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+        pageIos[2].setData( ByteBuffer.allocate( recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ) ) );
         pageIos[3] = new PageIO();
-        pageIos[3].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+        pageIos[3].setData( ByteBuffer.allocate( recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ) ) );
 
         // We start with 4 bytes
         byte[] bytes = new byte[]
             { 0x01, 0x23, 0x45, 0x67 };
 
         // Set the bytes at the beginning
-        storeMethod.invoke( recordManager, 0L, bytes, pageIos );
+        storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 0L, bytes, pageIos );
 
         // Read the bytes back
-        ByteBuffer readBytes = ( ByteBuffer ) readBytesMethod.invoke( recordManager, pageIos, 0L );
+        ByteBuffer readBytes = ( ByteBuffer ) readBytesMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader().pageSize, pageIos, 0L );
 
         // The byte length
         assertNotNull( readBytes );
@@ -280,10 +281,10 @@ public class ReadTest
         assertEquals( 0x67, readBytes.get() );
 
         // Set the bytes at the end of the first page
-        storeMethod.invoke( recordManager, 12L, bytes, pageIos );
+        storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 12L, bytes, pageIos );
 
         // Read the bytes back
-        readBytes = ( ByteBuffer ) readBytesMethod.invoke( recordManager, pageIos, 12L );
+        readBytes = ( ByteBuffer ) readBytesMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader().pageSize, pageIos, 12L );
 
         // The byte length
         assertNotNull( readBytes );
@@ -302,10 +303,10 @@ public class ReadTest
             bytes[i] = ( byte ) ( i + 1 );
         }
 
-        storeMethod.invoke( recordManager, 0L, bytes, pageIos );
+        storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 0L, bytes, pageIos );
 
         // Read the bytes back
-        readBytes = ( ByteBuffer ) readBytesMethod.invoke( recordManager, pageIos, 0L );
+        readBytes = ( ByteBuffer ) readBytesMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader().pageSize, pageIos, 0L );
 
         // The byte length
         assertNotNull( readBytes );
@@ -318,14 +319,15 @@ public class ReadTest
         }
 
         // Write the bytes over 2 pages
-        storeMethod.invoke( recordManager, 15L, bytes, pageIos );
+        storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 15L, bytes, pageIos );
 
         // Read the bytes back
-        readBytes = ( ByteBuffer ) readBytesMethod.invoke( recordManager, pageIos, 15L );
+        readBytes = ( ByteBuffer ) readBytesMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader().pageSize, pageIos, 15L );
 
         // The byte length
         assertNotNull( readBytes );
         assertEquals( 16, readBytes.limit() );
+        
         // The data
         for ( int i = 0; i < 16; i++ )
         {
@@ -340,10 +342,10 @@ public class ReadTest
             bytes[i] = ( byte ) ( i + 1 );
         }
 
-        storeMethod.invoke( recordManager, 2L, bytes, pageIos );
+        storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 2L, bytes, pageIos );
 
         // Read the bytes back
-        readBytes = ( ByteBuffer ) readBytesMethod.invoke( recordManager, pageIos, 2L );
+        readBytes = ( ByteBuffer ) readBytesMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader().pageSize, pageIos, 2L );
 
         // The byte length
         assertNotNull( readBytes );
