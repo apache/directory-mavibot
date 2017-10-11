@@ -129,6 +129,15 @@ public class WriteTransaction extends AbstractTransaction
                 if ( walObject.isBTreeUser() )
                 {
                     btreeInfos.add( btreeInfo );
+
+                    // Also update the recordManagerHeader B-tree map
+                    if ( walObject instanceof BTreeHeader )
+                    {
+                        BTree btree = recordManagerHeader.btreeMap.get( btreeInfo.getName() );
+                        BTree newBtree = btree.copy();
+                        newBtree.setBtreeHeader( ( BTreeHeader ) walObject );
+                        recordManagerHeader.btreeMap.put( btreeInfo.getName(), newBtree );
+                    }
                 }
             }
             
@@ -298,7 +307,7 @@ public class WriteTransaction extends AbstractTransaction
      */
     /* No qualifier */<K, V> void addCopiedWALObject( WALObject<K, V> walObject )
     {
-        if ( ( walObject != null ) && !copiedPageMap.containsKey( walObject.getId() ) )
+        if ( ( walObject != null ) && ( walObject.getOffset() != BTreeConstants.NO_PAGE ) && !copiedPageMap.containsKey( walObject.getId() ) )
         {
             copiedPageMap.put( walObject.getId(), walObject );
         }
