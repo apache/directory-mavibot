@@ -24,7 +24,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
@@ -36,6 +35,7 @@ import java.util.UUID;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.directory.mavibot.btree.exception.BTreeAlreadyManagedException;
+import org.apache.directory.mavibot.btree.exception.CursorException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
@@ -212,49 +212,58 @@ public class RecordManagerTest
         // Now, add some elements in the BTree
         for ( long i = 1L; i < 32L; i++ )
         {
-            btree.insert( i, "V" + i );
+            try ( WriteTransaction writeTransaction = recordManager.beginWriteTransaction() )
+            {
+                btree.insert( writeTransaction, i, "V" + i );
+            }
         }
 
         for ( long i = 1L; i < 32L; i++ )
         {
-            if ( !btree.hasKey( i ) )
+            try ( Transaction transaction = recordManager.beginReadTransaction() )
             {
-                System.out.println( "Not found !!! " + i );
+                if ( !btree.hasKey( transaction, i ) )
+                {
+                    System.out.println( "Not found !!! " + i );
+                }
+                assertTrue( btree.hasKey( transaction, i ) );
+                assertEquals( "V" + i, btree.get( transaction, i ) );
             }
-            assertTrue( btree.hasKey( i ) );
-            assertEquals( "V" + i, btree.get( i ) );
         }
 
         // Now, try to reload the file back
         openRecordManagerAndBtree();
 
-        assertEquals( 1, recordManager.getNbManagedTrees() );
+        assertEquals( 3, recordManager.getNbManagedTrees( recordManager.getCurrentRecordManagerHeader() ) );
 
         Set<String> managedBTrees = recordManager.getManagedTrees();
 
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        BTree<Long, String> btree1 = recordManager.getBtree( "test" );
-
-        assertNotNull( btree1 );
-        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
-        assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
-        assertEquals( btree.getName(), btree1.getName() );
-        assertEquals( btree.getNbElems(), btree1.getNbElems() );
-        assertEquals( btree.getPageSize(), btree1.getPageSize() );
-        assertEquals( btree.getRevision(), btree1.getRevision() );
-        assertEquals( btree.getValueSerializer().getClass().getName(), btree1.getValueSerializer().getClass().getName() );
-
-        // Check the stored element
-        for ( long i = 1L; i < 32L; i++ )
+        try ( Transaction transaction = recordManager.beginReadTransaction() )
         {
-            if ( !btree1.hasKey( i ) )
+            BTree<Long, String> btree1 = recordManager.getBtree( transaction, "test" );
+
+            assertNotNull( btree1 );
+            assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
+            assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
+            assertEquals( btree.getName(), btree1.getName() );
+            assertEquals( btree.getNbElems(), btree1.getNbElems() );
+            assertEquals( btree.getBtreeInfo().getPageNbElem(), btree1.getBtreeInfo().getPageNbElem() );
+            assertEquals( btree.getBtreeHeader().getRevision(), btree1.getBtreeHeader().getRevision() );
+            assertEquals( btree.getValueSerializer().getClass().getName(), btree1.getValueSerializer().getClass().getName() );
+
+            // Check the stored element
+            for ( long i = 1L; i < 32L; i++ )
             {
-                System.out.println( "Not found " + i );
+                if ( !btree1.hasKey( transaction, i ) )
+                {
+                    System.out.println( "Not found " + i );
+                }
+                assertTrue( btree1.hasKey( transaction, i ) );
+                assertEquals( "V" + i, btree1.get( transaction, i ) );
             }
-            assertTrue( btree1.hasKey( i ) );
-            assertEquals( "V" + i, btree1.get( i ) );
         }
     }
 
@@ -282,7 +291,11 @@ public class RecordManagerTest
         for ( Long i = 0L; i < nbElems; i++ )
         {
             String value = "V" + i;
-            btree.insert( i, value );
+            
+            try ( WriteTransaction writeTransaction = recordManager.beginWriteTransaction() )
+            {
+                btree.insert( writeTransaction, i, value );
+            }
 
             /*
             if ( !recordManager1.check() )
@@ -306,83 +319,89 @@ public class RecordManagerTest
         System.out.println( "Size after insertion of 100 000 elements : " + fileSize );
         System.out.println( "Time taken to write 100 000 elements : " + ( t1 - t0 ) );
         System.out.println( "  Nb elem/s : " + ( ( nbElems * 1000 ) / ( t1 - t0 ) ) );
-        System.out.println( "Nb created page " + recordManager.nbCreatedPages.get() );
-        System.out.println( "Nb allocated page " + recordManager.nbReusedPages.get() );
-        System.out.println( "Nb page we have freed " + recordManager.nbFreedPages.get() );
+        //System.out.println( "Nb created page " + recordManager.nbCreatedPages.get() );
+        //System.out.println( "Nb allocated page " + recordManager.nbReusedPages.get() );
+        //System.out.println( "Nb page we have freed " + recordManager.nbFreedPages.get() );
         System.out.println( recordManager );
 
         // Now, try to reload the file back
         openRecordManagerAndBtree();
 
-        assertEquals( 1, recordManager.getNbManagedTrees() );
+        assertEquals( 1, recordManager.getNbManagedTrees( recordManager.getCurrentRecordManagerHeader() ) );
 
         Set<String> managedBTrees = recordManager.getManagedTrees();
 
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        BTree<Long, String> btree1 = recordManager.getBtree( "test" );
-
-        assertNotNull( btree1 );
-        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
-        assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
-        assertEquals( btree.getName(), btree1.getName() );
-        assertEquals( btree.getNbElems(), btree1.getNbElems() );
-        assertEquals( btree.getPageSize(), btree1.getPageSize() );
-        assertEquals( btree.getRevision(), btree1.getRevision() );
-        assertEquals( btree.getValueSerializer().getClass().getName(), btree1.getValueSerializer().getClass().getName() );
-
-        // Check the stored element
-        long t2 = System.currentTimeMillis();
-        for ( long i = 0L; i < nbElems; i++ )
+        try ( Transaction transaction = recordManager.beginReadTransaction() )
         {
-            //assertTrue( btree1.exist( i ) );
-            assertEquals( "V" + i, btree1.get( i ) );
+            BTree<Long, String> btree1 = recordManager.getBtree( transaction, "test" );
+    
+            assertNotNull( btree1 );
+            assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
+            assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
+            assertEquals( btree.getName(), btree1.getName() );
+            assertEquals( btree.getNbElems(), btree1.getNbElems() );
+            assertEquals( btree.getBtreeInfo().getPageNbElem(), btree1.getBtreeInfo().getPageNbElem() );
+            assertEquals( btree.getBtreeHeader().getRevision(), btree1.getBtreeHeader().getRevision() );
+            assertEquals( btree.getValueSerializer().getClass().getName(), btree1.getValueSerializer().getClass().getName() );
+    
+            // Check the stored element
+            long t2 = System.currentTimeMillis();
+            for ( long i = 0L; i < nbElems; i++ )
+            {
+                //assertTrue( btree1.exist( i ) );
+                assertEquals( "V" + i, btree1.get( transaction, i ) );
+            }
+            long t3 = System.currentTimeMillis();
+            System.out.println( "Time taken to verify 100 000 elements : " + ( t3 - t2 ) );
+    
+            // Check the stored element a second time
+            long t4 = System.currentTimeMillis();
+            for ( long i = 0L; i < nbElems; i++ )
+            {
+                //assertTrue( btree1.exist( i ) );
+                assertEquals( "V" + i, btree1.get( transaction, i ) );
+            }
+            long t5 = System.currentTimeMillis();
+            System.out.println( "Time taken to verify 100 000 elements : " + ( t5 - t4 ) );
         }
-        long t3 = System.currentTimeMillis();
-        System.out.println( "Time taken to verify 100 000 elements : " + ( t3 - t2 ) );
-
-        // Check the stored element a second time
-        long t4 = System.currentTimeMillis();
-        for ( long i = 0L; i < nbElems; i++ )
-        {
-            //assertTrue( btree1.exist( i ) );
-            assertEquals( "V" + i, btree1.get( i ) );
-        }
-        long t5 = System.currentTimeMillis();
-        System.out.println( "Time taken to verify 100 000 elements : " + ( t5 - t4 ) );
     }
 
 
     private void checkBTreeRevisionBrowse( BTree<Long, String> btree, long revision, long... values )
         throws IOException,
-        KeyNotFoundException
+        KeyNotFoundException, CursorException
     {
-        TupleCursor<Long, String> cursor = btree.browse( revision );
-        List<Long> expected = new ArrayList<Long>( values.length );
-        Set<Long> found = new HashSet<Long>( values.length );
-
-        for ( long value : values )
+        try ( Transaction transaction = recordManager.beginReadTransaction() )
         {
-            expected.add( value );
+            TupleCursor<Long, String> cursor = btree.browse( transaction );
+            List<Long> expected = new ArrayList<Long>( values.length );
+            Set<Long> found = new HashSet<Long>( values.length );
+    
+            for ( long value : values )
+            {
+                expected.add( value );
+            }
+    
+            int nb = 0;
+    
+            while ( cursor.hasNext() )
+            {
+                Tuple<Long, String> res = cursor.next();
+    
+                long key = res.getKey();
+                assertEquals( expected.get( nb ), ( Long ) key );
+                assertFalse( found.contains( key ) );
+                found.add( key );
+                assertEquals( "V" + key, res.getValue() );
+                nb++;
+            }
+    
+            assertEquals( values.length, nb );
+            cursor.close();
         }
-
-        int nb = 0;
-
-        while ( cursor.hasNext() )
-        {
-            Tuple<Long, String> res = cursor.next();
-
-            long key = res.getKey();
-            assertEquals( expected.get( nb ), ( Long ) key );
-            assertFalse( found.contains( key ) );
-            found.add( key );
-            assertEquals( "V" + key, res.getValue() );
-            nb++;
-        }
-
-        assertEquals( values.length, nb );
-        cursor.close();
     }
 
 
@@ -390,475 +409,45 @@ public class RecordManagerTest
         throws IOException,
         KeyNotFoundException
     {
-        TupleCursor<Long, String> cursor = btree.browseFrom( revision, from );
-        List<Long> expected = new ArrayList<Long>( values.length );
-        Set<Long> found = new HashSet<Long>( values.length );
-
-        for ( long value : values )
+        try ( Transaction transaction = recordManager.beginReadTransaction() )
         {
-            expected.add( value );
+            TupleCursor<Long, String> cursor = btree.browseFrom( transaction, from );
+            List<Long> expected = new ArrayList<Long>( values.length );
+            Set<Long> found = new HashSet<Long>( values.length );
+    
+            for ( long value : values )
+            {
+                expected.add( value );
+            }
+    
+            int nb = 0;
+    
+            while ( cursor.hasNext() )
+            {
+                Tuple<Long, String> res = cursor.next();
+    
+                long key = res.getKey();
+                assertEquals( expected.get( nb ), ( Long ) key );
+                assertFalse( found.contains( key ) );
+                found.add( key );
+                assertEquals( "V" + key, res.getValue() );
+                nb++;
+            }
+    
+            assertEquals( values.length, nb );
+            cursor.close();
         }
-
-        int nb = 0;
-
-        while ( cursor.hasNext() )
-        {
-            Tuple<Long, String> res = cursor.next();
-
-            long key = res.getKey();
-            assertEquals( expected.get( nb ), ( Long ) key );
-            assertFalse( found.contains( key ) );
-            found.add( key );
-            assertEquals( "V" + key, res.getValue() );
-            nb++;
-        }
-
-        assertEquals( values.length, nb );
-        cursor.close();
-
-    }
-
-
-    /**
-     * Test the creation of a RecordManager with a BTree containing data, where we keep the revisions,
-     * and browse the BTree.
-     */
-    @Test
-    public void testRecordManagerBrowseWithKeepRevisions() throws IOException, BTreeAlreadyManagedException,
-        KeyNotFoundException
-    {
-        recordManager.setKeepRevisions( true );
-
-        // Now, add some elements in the BTree
-        btree.insert( 3L, "V3" );
-        long rev1 = btree.getRevision();
-
-        btree.insert( 1L, "V1" );
-        long rev2 = btree.getRevision();
-
-        btree.insert( 5L, "V5" );
-        long rev3 = btree.getRevision();
-
-        // Check that we can browse each revision
-        // revision 1
-        checkBTreeRevisionBrowse( btree, rev1, 3L );
-
-        // Revision 2
-        checkBTreeRevisionBrowse( btree, rev2, 1L, 3L );
-
-        // Revision 3
-        checkBTreeRevisionBrowse( btree, rev3, 1L, 3L, 5L );
-
-        // Now, try to reload the file back
-        openRecordManagerAndBtree();
-
-        assertEquals( 1, recordManager.getNbManagedTrees() );
-
-        Set<String> managedBTrees = recordManager.getManagedTrees();
-
-        assertEquals( 1, managedBTrees.size() );
-        assertTrue( managedBTrees.contains( "test" ) );
-
-        BTree<Long, String> btree1 = recordManager.getBtree( "test" );
-
-        assertNotNull( btree1 );
-        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
-        assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
-        assertEquals( btree.getName(), btree1.getName() );
-        assertEquals( btree.getNbElems(), btree1.getNbElems() );
-        assertEquals( btree.getPageSize(), btree1.getPageSize() );
-        assertEquals( btree.getRevision(), btree1.getRevision() );
-        assertEquals( btree.getValueSerializer().getClass().getName(), btree1.getValueSerializer().getClass().getName() );
-
-        // Check the stored element
-        assertTrue( btree1.hasKey( 1L ) );
-        assertTrue( btree1.hasKey( 3L ) );
-        assertTrue( btree1.hasKey( 5L ) );
-        assertEquals( "V1", btree1.get( 1L ) );
-        assertEquals( "V3", btree1.get( 3L ) );
-        assertEquals( "V5", btree1.get( 5L ) );
-
-        // Check that we can read the revision again
-        // revision 1
-        checkBTreeRevisionBrowse( btree, rev1 );
-
-        // Revision 2
-        checkBTreeRevisionBrowse( btree, rev2 );
-
-        // Revision 3
-        checkBTreeRevisionBrowse( btree, rev3, 1L, 3L, 5L );
-    }
-
-
-    /**
-     * Test the creation of a RecordManager with a BTree containing data, where we keep the revision, and
-     * we browse from a key
-     */
-    @Test
-    public void testRecordManagerBrowseFromWithRevision() throws IOException, BTreeAlreadyManagedException,
-        KeyNotFoundException
-    {
-        recordManager.setKeepRevisions( true );
-
-        // Now, add some elements in the BTree
-        btree.insert( 3L, "V3" );
-        long rev1 = btree.getRevision();
-
-        btree.insert( 1L, "V1" );
-        long rev2 = btree.getRevision();
-
-        btree.insert( 5L, "V5" );
-        long rev3 = btree.getRevision();
-
-        // Check that we can browse each revision
-        // revision 1
-        checkBTreeRevisionBrowseFrom( btree, rev1, 3L, 3L );
-
-        // Revision 2
-        checkBTreeRevisionBrowseFrom( btree, rev2, 3L, 3L );
-
-        // Revision 3
-        checkBTreeRevisionBrowseFrom( btree, rev3, 3L, 3L, 5L );
-
-        // Now, try to reload the file back
-        openRecordManagerAndBtree();
-
-        assertEquals( 1, recordManager.getNbManagedTrees() );
-
-        Set<String> managedBTrees = recordManager.getManagedTrees();
-
-        assertEquals( 1, managedBTrees.size() );
-        assertTrue( managedBTrees.contains( "test" ) );
-
-        BTree<Long, String> btree1 = recordManager.getBtree( "test" );
-
-        assertNotNull( btree1 );
-        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
-        assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
-        assertEquals( btree.getName(), btree1.getName() );
-        assertEquals( btree.getNbElems(), btree1.getNbElems() );
-        assertEquals( btree.getPageSize(), btree1.getPageSize() );
-        assertEquals( btree.getRevision(), btree1.getRevision() );
-        assertEquals( btree.getValueSerializer().getClass().getName(), btree1.getValueSerializer().getClass().getName() );
-
-        // Check the stored element
-        assertTrue( btree1.hasKey( 1L ) );
-        assertTrue( btree1.hasKey( 3L ) );
-        assertTrue( btree1.hasKey( 5L ) );
-        assertEquals( "V1", btree1.get( 1L ) );
-        assertEquals( "V3", btree1.get( 3L ) );
-        assertEquals( "V5", btree1.get( 5L ) );
-
-        // Check that we can read the revision again
-        // revision 1
-        checkBTreeRevisionBrowseFrom( btree, rev1, 3L );
-
-        // Revision 2
-        checkBTreeRevisionBrowseFrom( btree, rev2, 3L );
-
-        // Revision 3
-        checkBTreeRevisionBrowseFrom( btree, rev3, 3L, 3L, 5L );
-    }
-
-
-    /**
-     * Test a get() from a given revision
-     */
-    @Test
-    public void testGetWithRevision() throws IOException, BTreeAlreadyManagedException,
-        KeyNotFoundException
-    {
-        recordManager.setKeepRevisions( true );
-
-        // Now, add some elements in the BTree
-        btree.insert( 3L, "V3" );
-        long rev1 = btree.getRevision();
-
-        btree.insert( 1L, "V1" );
-        long rev2 = btree.getRevision();
-
-        btree.insert( 5L, "V5" );
-        long rev3 = btree.getRevision();
-
-        // Delete one element
-        btree.delete( 3L );
-        long rev4 = btree.getRevision();
-
-        // Check that we can get a value from each revision
-        // revision 1
-        assertEquals( "V3", btree.get( rev1, 3L ) );
-
-        // revision 2
-        assertEquals( "V1", btree.get( rev2, 1L ) );
-        assertEquals( "V3", btree.get( rev2, 3L ) );
-
-        // revision 3
-        assertEquals( "V1", btree.get( rev3, 1L ) );
-        assertEquals( "V3", btree.get( rev3, 3L ) );
-        assertEquals( "V5", btree.get( rev3, 5L ) );
-
-        // revision 4
-        assertEquals( "V1", btree.get( rev4, 1L ) );
-        assertEquals( "V5", btree.get( rev4, 5L ) );
-
-        try
-        {
-            btree.get( rev4, 3L );
-            fail();
-        }
-        catch ( KeyNotFoundException knfe )
-        {
-            // expected
-        }
-
-        // Now, try to reload the file back
-        openRecordManagerAndBtree();
-
-        assertEquals( 1, recordManager.getNbManagedTrees() );
-
-        Set<String> managedBTrees = recordManager.getManagedTrees();
-
-        assertEquals( 1, managedBTrees.size() );
-        assertTrue( managedBTrees.contains( "test" ) );
-
-        BTree<Long, String> btree1 = recordManager.getBtree( "test" );
-
-        assertNotNull( btree1 );
-        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
-        assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
-        assertEquals( btree.getName(), btree1.getName() );
-        assertEquals( btree.getNbElems(), btree1.getNbElems() );
-        assertEquals( btree.getPageSize(), btree1.getPageSize() );
-        assertEquals( btree.getRevision(), btree1.getRevision() );
-        assertEquals( btree.getValueSerializer().getClass().getName(), btree1.getValueSerializer().getClass().getName() );
-
-        // Check the stored element
-        assertTrue( btree1.hasKey( 1L ) );
-        assertFalse( btree1.hasKey( 3L ) );
-        assertTrue( btree1.hasKey( 5L ) );
-        assertEquals( "V1", btree1.get( 1L ) );
-        assertEquals( "V5", btree1.get( 5L ) );
-
-        // Check that we can get a value from each revision
-        // revision 1
-        checkBTreeRevisionBrowse( btree, rev1 );
-
-        // revision 2
-        checkBTreeRevisionBrowse( btree, rev2 );
-
-        // revision 3
-        checkBTreeRevisionBrowse( btree, rev3 );
-
-        // revision 4
-        checkBTreeRevisionBrowse( btree, rev4, 1L, 5L );
-
-        try
-        {
-            btree.get( rev4, 3L );
-            fail();
-        }
-        catch ( KeyNotFoundException knfe )
-        {
-            // expected
-        }
-    }
-
-
-    /**
-     * Test a contain() from a given revision
-     */
-    @Test
-    public void testContainWithRevision() throws IOException, BTreeAlreadyManagedException,
-        KeyNotFoundException
-    {
-        recordManager.setKeepRevisions( true );
-
-        // Now, add some elements in the BTree
-        btree.insert( 3L, "V3" );
-        long rev1 = btree.getRevision();
-
-        btree.insert( 1L, "V1" );
-        long rev2 = btree.getRevision();
-
-        btree.insert( 5L, "V5" );
-        long rev3 = btree.getRevision();
-
-        // Delete one element
-        btree.delete( 3L );
-        long rev4 = btree.getRevision();
-
-        // Check that we can get a value from each revision
-        // revision 1
-        assertFalse( btree.contains( rev1, 1L, "V1" ) );
-        assertTrue( btree.contains( rev1, 3L, "V3" ) );
-        assertFalse( btree.contains( rev1, 5L, "V5" ) );
-
-        // revision 2
-        assertTrue( btree.contains( rev2, 1L, "V1" ) );
-        assertTrue( btree.contains( rev2, 3L, "V3" ) );
-        assertFalse( btree.contains( rev2, 5L, "V5" ) );
-
-        // revision 3
-        assertTrue( btree.contains( rev3, 1L, "V1" ) );
-        assertTrue( btree.contains( rev3, 3L, "V3" ) );
-        assertTrue( btree.contains( rev3, 5L, "V5" ) );
-
-        // revision 4
-        assertTrue( btree.contains( rev4, 1L, "V1" ) );
-        assertFalse( btree.contains( rev4, 3L, "V3" ) );
-        assertTrue( btree.contains( rev4, 5L, "V5" ) );
-
-        // Now, try to reload the file back
-        openRecordManagerAndBtree();
-
-        assertEquals( 1, recordManager.getNbManagedTrees() );
-
-        Set<String> managedBTrees = recordManager.getManagedTrees();
-
-        assertEquals( 1, managedBTrees.size() );
-        assertTrue( managedBTrees.contains( "test" ) );
-
-        BTree<Long, String> btree1 = recordManager.getBtree( "test" );
-
-        assertNotNull( btree1 );
-        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
-        assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
-        assertEquals( btree.getName(), btree1.getName() );
-        assertEquals( btree.getNbElems(), btree1.getNbElems() );
-        assertEquals( btree.getPageSize(), btree1.getPageSize() );
-        assertEquals( btree.getRevision(), btree1.getRevision() );
-        assertEquals( btree.getValueSerializer().getClass().getName(), btree1.getValueSerializer().getClass().getName() );
-
-        // Check the stored element
-        assertTrue( btree1.hasKey( 1L ) );
-        assertFalse( btree1.hasKey( 3L ) );
-        assertTrue( btree1.hasKey( 5L ) );
-        assertEquals( "V1", btree1.get( 1L ) );
-        assertEquals( "V5", btree1.get( 5L ) );
-
-        // Check that we can get a value from each revision
-        // revision 1
-        assertFalse( btree.contains( rev1, 1L, "V1" ) );
-        assertFalse( btree.contains( rev1, 3L, "V3" ) );
-        assertFalse( btree.contains( rev1, 5L, "V5" ) );
-
-        // revision 2
-        assertFalse( btree.contains( rev2, 1L, "V1" ) );
-        assertFalse( btree.contains( rev2, 3L, "V3" ) );
-        assertFalse( btree.contains( rev2, 5L, "V5" ) );
-
-        // revision 3
-        assertFalse( btree.contains( rev3, 1L, "V1" ) );
-        assertFalse( btree.contains( rev3, 3L, "V3" ) );
-        assertFalse( btree.contains( rev3, 5L, "V5" ) );
-
-        // revision 4
-        assertTrue( btree.contains( rev4, 1L, "V1" ) );
-        assertFalse( btree.contains( rev4, 3L, "V3" ) );
-        assertTrue( btree.contains( rev4, 5L, "V5" ) );
-    }
-
-
-    /**
-     * Test a hasKey() from a given revision
-     */
-    @Test
-    public void testHasKeyWithRevision() throws IOException, BTreeAlreadyManagedException,
-        KeyNotFoundException
-    {
-        recordManager.setKeepRevisions( true );
-
-        // Now, add some elements in the BTree
-        btree.insert( 3L, "V3" );
-        long rev1 = btree.getRevision();
-
-        btree.insert( 1L, "V1" );
-        long rev2 = btree.getRevision();
-
-        btree.insert( 5L, "V5" );
-        long rev3 = btree.getRevision();
-
-        // Delete one element
-        btree.delete( 3L );
-        long rev4 = btree.getRevision();
-
-        // Check that we can get a value from each revision
-        // revision 1
-        assertFalse( btree.hasKey( rev1, 1L ) );
-        assertTrue( btree.hasKey( rev1, 3L ) );
-        assertFalse( btree.hasKey( rev1, 5L ) );
-
-        // revision 2
-        assertTrue( btree.hasKey( rev2, 1L ) );
-        assertTrue( btree.hasKey( rev2, 3L ) );
-        assertFalse( btree.hasKey( rev2, 5L ) );
-
-        // revision 3
-        assertTrue( btree.hasKey( rev3, 1L ) );
-        assertTrue( btree.hasKey( rev3, 3L ) );
-        assertTrue( btree.hasKey( rev3, 5L ) );
-
-        // revision 4
-        assertTrue( btree.hasKey( rev4, 1L ) );
-        assertFalse( btree.hasKey( rev4, 3L ) );
-        assertTrue( btree.hasKey( rev4, 5L ) );
-
-        // Now, try to reload the file back
-        openRecordManagerAndBtree();
-
-        assertEquals( 1, recordManager.getNbManagedTrees() );
-
-        Set<String> managedBTrees = recordManager.getManagedTrees();
-
-        assertEquals( 1, managedBTrees.size() );
-        assertTrue( managedBTrees.contains( "test" ) );
-
-        BTree<Long, String> btree1 = recordManager.getBtree( "test" );
-
-        assertNotNull( btree1 );
-        assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
-        assertEquals( btree.getKeySerializer().getClass().getName(), btree1.getKeySerializer().getClass().getName() );
-        assertEquals( btree.getName(), btree1.getName() );
-        assertEquals( btree.getNbElems(), btree1.getNbElems() );
-        assertEquals( btree.getPageSize(), btree1.getPageSize() );
-        assertEquals( btree.getRevision(), btree1.getRevision() );
-        assertEquals( btree.getValueSerializer().getClass().getName(), btree1.getValueSerializer().getClass().getName() );
-
-        // Check the stored element
-        assertTrue( btree1.hasKey( 1L ) );
-        assertFalse( btree1.hasKey( 3L ) );
-        assertTrue( btree1.hasKey( 5L ) );
-        assertEquals( "V1", btree1.get( 1L ) );
-        assertEquals( "V5", btree1.get( 5L ) );
-
-        // Check that we can get a value from each revision
-        // revision 1
-        assertFalse( btree.hasKey( rev1, 1L ) );
-        assertFalse( btree.hasKey( rev1, 3L ) );
-        assertFalse( btree.hasKey( rev1, 5L ) );
-
-        // revision 2
-        assertFalse( btree.hasKey( rev2, 1L ) );
-        assertFalse( btree.hasKey( rev2, 3L ) );
-        assertFalse( btree.hasKey( rev2, 5L ) );
-
-        // revision 3
-        assertFalse( btree.hasKey( rev3, 1L ) );
-        assertFalse( btree.hasKey( rev3, 3L ) );
-        assertFalse( btree.hasKey( rev3, 5L ) );
-
-        // revision 4
-        assertTrue( btree.hasKey( rev4, 1L ) );
-        assertFalse( btree.hasKey( rev4, 3L ) );
-        assertTrue( btree.hasKey( rev4, 5L ) );
     }
 
 
     @Test
     public void testAdds() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
-        btree.insert( 1L, "V1" );
-        btree.insert( 2L, "V2" );
+        try ( WriteTransaction writeTransaction = recordManager.beginWriteTransaction() )
+        {
+            btree.insert( writeTransaction, 1L, "V1" );
+            btree.insert( writeTransaction, 2L, "V2" );
+        }
     }
 
 
@@ -875,41 +464,41 @@ public class RecordManagerTest
 
         System.out.println( "Test start" );
         */
-        recordManager.beginTransaction();
-        /*
-        System.out.println( "Before V1" );
-        for ( Long key : recordManager.writeCounter.keySet() )
+        try ( WriteTransaction writeTransaction = recordManager.beginWriteTransaction() )
         {
-            System.out.println( "Page " + Long.toHexString( key ) + " written " + recordManager.writeCounter.get( key )
-                + " times" );
+            /*
+            System.out.println( "Before V1" );
+            for ( Long key : recordManager.writeCounter.keySet() )
+            {
+                System.out.println( "Page " + Long.toHexString( key ) + " written " + recordManager.writeCounter.get( key )
+                    + " times" );
+            }
+            */
+            btree.insert( writeTransaction, 1L, "V1" );
+            /*
+            for ( Long key : recordManager.writeCounter.keySet() )
+            {
+                System.out.println( "Page " + Long.toHexString( key ) + " written " + recordManager.writeCounter.get( key )
+                    + " times" );
+            }
+            
+            System.out.println( "After V1" );
+            */
+    
+            //System.out.println( "Before V2" );
+            btree.insert( writeTransaction, 2L, "V2" );
+            //System.out.println( "After V2" );
+    
+            //System.out.println( "Before V3" );
+            btree.insert( writeTransaction, 3L, "V3" );
+            /*
+            for ( Long key : recordManager.writeCounter.keySet() )
+            {
+                System.out.println( "Page " + Long.toHexString( key ) + " written " + recordManager.writeCounter.get( key )
+                    + " times" );
+            }
+            */
         }
-        */
-        btree.insert( 1L, "V1" );
-        /*
-        for ( Long key : recordManager.writeCounter.keySet() )
-        {
-            System.out.println( "Page " + Long.toHexString( key ) + " written " + recordManager.writeCounter.get( key )
-                + " times" );
-        }
-        
-        System.out.println( "After V1" );
-        */
-
-        //System.out.println( "Before V2" );
-        btree.insert( 2L, "V2" );
-        //System.out.println( "After V2" );
-
-        //System.out.println( "Before V3" );
-        btree.insert( 3L, "V3" );
-        /*
-        for ( Long key : recordManager.writeCounter.keySet() )
-        {
-            System.out.println( "Page " + Long.toHexString( key ) + " written " + recordManager.writeCounter.get( key )
-                + " times" );
-        }
-        */
-
-        recordManager.commit();
 
         /*
         for ( Long key : recordManager.writeCounter.keySet() )
