@@ -683,6 +683,9 @@ public class BTreeBrowseTest
         long t1 = System.currentTimeMillis();
         
         System.out.println( "Delta for " + nbRound + " : " + ( t1 - t0 ) );
+        
+        MavibotInspector.check( recordManager );
+
         int counter = 0;
 
         try ( Transaction readTxn = recordManager.beginReadTransaction() )
@@ -1687,6 +1690,8 @@ public class BTreeBrowseTest
                 btree.insert( writeTxn, value, Long.toString( value ) );
             }
         }
+
+        MavibotInspector.check( recordManager );
 
         try ( Transaction readTxn = recordManager.beginReadTransaction() )
         {
