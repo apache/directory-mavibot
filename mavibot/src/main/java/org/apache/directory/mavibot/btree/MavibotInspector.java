@@ -40,7 +40,6 @@ import org.apache.directory.mavibot.btree.exception.InvalidBTreeException;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 import org.apache.directory.mavibot.btree.serializer.LongArraySerializer;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
-import org.apache.directory.mavibot.btree.serializer.StringSerializer;
 import org.apache.directory.mavibot.btree.util.Strings;
 
 
@@ -194,7 +193,7 @@ public class MavibotInspector
     /**
      * Check a B-tree
      */
-    public void inspectBTree( RecordManager recordManager, String btree )
+    public void inspectBTree( RecordManager recordManager ) throws IOException
     {
         if ( recordManager == null )
         {
@@ -205,23 +204,26 @@ public class MavibotInspector
         System.out.print( "BTree Name: " );
         String name = readLine();
 
-        BTree<?, ?> pb = ( BTree<?, ?> ) rm.getBtree( recordManagerHeader, name );
-
-        if ( pb == null )
+        try ( Transaction transaction = rm.beginReadTransaction() )
         {
-            System.out.println( "No BTree exists with the name '" + name + "'" );
-            return;
+            BTree<?, ?> pb = ( BTree<?, ?> ) rm.getBtree( transaction, name, Long.MAX_VALUE - 1 );
+    
+            if ( pb == null )
+            {
+                System.out.println( "No BTree exists with the name '" + name + "'" );
+                return;
+            }
+    
+            System.out.println( "\nBTree offset: " + String.format( "0x%1$08x", pb.getBtreeOffset() ) );
+            System.out.println( "BTree _info_ offset: " + String.format( "0x%1$08x", pb.getBtreeInfoOffset() ) );
+            System.out.println( "BTree root page offset: " + String.format( "0x%1$08x", pb.getRootPageOffset() ) );
+            System.out.println( "Number of elements present: " + pb.getNbElems() );
+            System.out.println( "BTree Page size: " + pb.getNbElems() );
+            System.out.println( "BTree revision: " + pb.getBtreeHeader().getRevision() );
+            System.out.println( "Key serializer: " + pb.getKeySerializerFQCN() );
+            System.out.println( "Value serializer: " + pb.getValueSerializerFQCN() );
+            System.out.println();
         }
-
-        System.out.println( "\nBTree offset: " + String.format( "0x%1$08x", pb.getBtreeOffset() ) );
-        System.out.println( "BTree _info_ offset: " + String.format( "0x%1$08x", pb.getBtreeInfoOffset() ) );
-        System.out.println( "BTree root page offset: " + String.format( "0x%1$08x", pb.getRootPageOffset() ) );
-        System.out.println( "Number of elements present: " + pb.getNbElems() );
-        System.out.println( "BTree Page size: " + pb.getNbElems() );
-        System.out.println( "BTree revision: " + pb.getRevision() );
-        System.out.println( "Key serializer: " + pb.getKeySerializerFQCN() );
-        System.out.println( "Value serializer: " + pb.getValueSerializerFQCN() );
-        System.out.println();
     }
 
 
@@ -252,7 +254,7 @@ public class MavibotInspector
 
 
     /**
-     * Check the whole file
+     * Check the whole file.
      */
     /* no qualifier */static void check( RecordManager recordManager )
     {
@@ -362,6 +364,17 @@ public class MavibotInspector
     }
     
     
+    /**
+     * Dump the Mavibot file infos :
+     * <ul>
+     *   <li>The recordManager header</li>
+     *   <li><The copiedPages B-tree/li>
+     *   <li>The B-tree of B-trees</li>
+     * </ul>
+     * @param recordManager The recordMnaager instance
+     * @param recordManagerHeader The current RecordManagerHeader 
+     * @throws Exception
+     */
     public static void dumpInfos( RecordManager recordManager, RecordManagerHeader recordManagerHeader ) throws Exception
     {
         StringBuilder sb = new StringBuilder();
@@ -1988,7 +2001,7 @@ public class MavibotInspector
             switch ( c )
             {
                 case 'n':
-                    printNumberOfBTrees();
+                    printNumberOfBTrees( rm.getCurrentRecordManagerHeader() );
                     break;
 
                 case 'b':
@@ -1996,7 +2009,7 @@ public class MavibotInspector
                     break;
 
                 case 'i':
-                    inspectBTree();
+                    inspectBTree( rm );
                     break;
 
                 case 'c':
@@ -2125,17 +2138,13 @@ public class MavibotInspector
             return;
         }
         
-        PageIO io = rm.fetchPage( recordManagerHeader.pageSize, offset );
+        PageIO io = rm.fetchPageIO( recordManagerHeader.pageSize, offset );
 
         List<Long> ll = new ArrayList<Long>();
         ll.add( offset );
         
         do
         {
-//            System.out.println( "Next Page: " + next );
-//            System.out.println( "Size: " + io.getSize() );
-//            ByteBuffer data = io.getData();
-            
             long next = io.getNextPage();
             ll.add( next );
             if ( next == -1 )
@@ -2143,7 +2152,7 @@ public class MavibotInspector
                 break;
             }
             
-            io = rm.fetchPage( recordManagerHeader.pageSize, next );
+            io = rm.fetchPageIO( recordManagerHeader.pageSize, next );
         }
         while( true );
         

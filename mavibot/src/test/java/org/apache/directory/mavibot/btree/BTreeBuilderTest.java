@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.directory.mavibot.btree.serializer.IntSerializer;
-import org.junit.Ignore;
 import org.junit.Test;
 
 
@@ -60,16 +59,10 @@ public class BTreeBuilderTest
             RecordManager rm = new RecordManager( file.getAbsolutePath() );
 
             IntSerializer ser = IntSerializer.INSTANCE;
-            /*
-            BTreeBuilder<Integer, Integer> bb = new BTreeBuilder<Integer, Integer>( rm, "master", 4,
-                ser,
-                ser );
-                */
-
             System.out.println( "Init" );
             System.out.println( "-----------------------------------------------------------" );
 
-            MavibotInspector.dumpInfos( rm, rm.getRecordManagerHeader() );
+            MavibotInspector.dumpInfos( rm, rm.getCurrentRecordManagerHeader() );
 
             System.out.println( "-----------------------------------------------------------" );
             System.out.println();
@@ -84,7 +77,7 @@ public class BTreeBuilderTest
                 btree = rm.addBTree( writeTxn, "master", IntSerializer.INSTANCE, IntSerializer.INSTANCE, true );
             }
 
-            MavibotInspector.dumpInfos( rm, rm.getRecordManagerHeader() );
+            MavibotInspector.dumpInfos( rm, rm.getCurrentRecordManagerHeader() );
             
             System.out.println( "-----------------------------------------------------------" );
             System.out.println();
@@ -101,14 +94,14 @@ public class BTreeBuilderTest
                 //btree = bb.build( writeTxn, sortedTuple.iterator() );
             }
 
-            MavibotInspector.dumpInfos( rm, rm.getRecordManagerHeader() );
+            MavibotInspector.dumpInfos( rm, rm.getCurrentRecordManagerHeader() );
             
             System.out.println( "-----------------------------------------------------------" );
             rm.close();
 
             rm = new RecordManager( file.getAbsolutePath() );
             
-            MavibotInspector.dumpInfos( rm, rm.getRecordManagerHeader() );
+            MavibotInspector.dumpInfos( rm, rm.getCurrentRecordManagerHeader() );
             
             try ( Transaction txn = rm.beginReadTransaction() )
             {
@@ -116,9 +109,9 @@ public class BTreeBuilderTest
     
                 assertEquals( 7, btree.getRootPage().getPageNbElems() );
     
-                assertEquals( 7, btree.getRootPage().findRightMost().getKey().intValue() );
+                assertEquals( 7, btree.getRootPage().findRightMost( txn ).getKey().intValue() );
     
-                assertEquals( 1, btree.getRootPage().findLeftMost().getKey().intValue() );
+                assertEquals( 1, btree.getRootPage().findLeftMost( txn ).getKey().intValue() );
     
                 TupleCursor<Integer, Integer> cursor = btree.browse( txn );
                 int i = 0;

@@ -19,8 +19,6 @@
  */
 package org.apache.directory.mavibot.btree;
 
-import static org.junit.Assert.assertTrue;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.UUID;
@@ -56,10 +54,10 @@ public class BTreeTransactionTest
 
         openRecordManagerAndBtrees();
 
-        try
+        try ( WriteTransaction writeTransaction = recordManager.beginWriteTransaction() )
         {
             // Create a new BTree with transaction and another one without
-            btree = recordManager.addBTree( "testWithTxn", LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
+            btree = recordManager.addBTree( writeTransaction, "testWithTxn", LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
         }
         catch ( Exception e )
         {
@@ -111,7 +109,6 @@ public class BTreeTransactionTest
 
 
     @Test
-    @Ignore("Fails atm")
     public void testWithTransaction() throws IOException
     {
         long nbIteration = 100_000L;

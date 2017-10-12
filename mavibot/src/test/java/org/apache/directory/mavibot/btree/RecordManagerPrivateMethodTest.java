@@ -65,7 +65,10 @@ public class RecordManagerPrivateMethodTest
         recordManager = new RecordManager( dataDir.getAbsolutePath(), 32 );
 
         // Create a new BTree
-        btree = recordManager.addBTree( "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
+        try ( WriteTransaction writeTransaction = recordManager.beginWriteTransaction() )
+        { 
+            btree = recordManager.addBTree( writeTransaction, "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
+        }
     }
 
 
@@ -83,28 +86,32 @@ public class RecordManagerPrivateMethodTest
     public void testGetFreePageIos() throws IOException, NoSuchMethodException, InvocationTargetException,
         IllegalAccessException
     {
-        Method getFreePageIOsMethod = RecordManager.class.getDeclaredMethod( "getFreePageIOs", int.class );
+        Method getFreePageIOsMethod = RecordManager.class.getDeclaredMethod( "getFreePageIOs", RecordManagerHeader.class, int.class );
         getFreePageIOsMethod.setAccessible( true );
 
-        PageIO[] pages = ( org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, 0 );
+        PageIO[] pages = ( org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, 
+            recordManager.getCurrentRecordManagerHeader(), 0 );
 
         assertEquals( 0, pages.length );
 
         for ( int i = 1; i <= 52; i++ )
         {
-            pages = ( org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
+            pages = ( org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, 
+                recordManager.getCurrentRecordManagerHeader(), i );
             assertEquals( 1, pages.length );
         }
 
         for ( int i = 53; i <= 108; i++ )
         {
-            pages = ( org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
+            pages = ( org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, 
+                recordManager.getCurrentRecordManagerHeader(), i );
             assertEquals( 2, pages.length );
         }
 
         for ( int i = 109; i <= 164; i++ )
         {
-            pages = ( org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, i );
+            pages = ( org.apache.directory.mavibot.btree.PageIO[] ) getFreePageIOsMethod.invoke( recordManager, 
+                recordManager.getCurrentRecordManagerHeader(), i );
             assertEquals( 3, pages.length );
         }
 
@@ -119,24 +126,28 @@ public class RecordManagerPrivateMethodTest
     public void testComputeNbPages() throws IOException, SecurityException, NoSuchMethodException,
         IllegalArgumentException, IllegalAccessException, InvocationTargetException
     {
-        Method computeNbPagesMethod = RecordManager.class.getDeclaredMethod( "computeNbPages", int.class );
+        Method computeNbPagesMethod = RecordManager.class.getDeclaredMethod( "computeNbPages", RecordManagerHeader.class, int.class );
         computeNbPagesMethod.setAccessible( true );
 
-        assertEquals( 0, ( ( Integer ) computeNbPagesMethod.invoke( recordManager, 0 ) ).intValue() );
+        assertEquals( 0, ( ( Integer ) computeNbPagesMethod.invoke( recordManager, 
+            recordManager.getCurrentRecordManagerHeader(), 0 ) ).intValue() );
 
         for ( int i = 1; i < 53; i++ )
         {
-            assertEquals( 1, ( ( Integer ) computeNbPagesMethod.invoke( recordManager, i ) ).intValue() );
+            assertEquals( 1, ( ( Integer ) computeNbPagesMethod.invoke( recordManager, 
+                recordManager.getCurrentRecordManagerHeader(), i ) ).intValue() );
         }
 
         for ( int i = 53; i < 109; i++ )
         {
-            assertEquals( 2, ( ( Integer ) computeNbPagesMethod.invoke( recordManager, i ) ).intValue() );
+            assertEquals( 2, ( ( Integer ) computeNbPagesMethod.invoke( recordManager, 
+                recordManager.getCurrentRecordManagerHeader(), i ) ).intValue() );
         }
 
         for ( int i = 109; i < 164; i++ )
         {
-            assertEquals( 3, ( ( Integer ) computeNbPagesMethod.invoke( recordManager, i ) ).intValue() );
+            assertEquals( 3, ( ( Integer ) computeNbPagesMethod.invoke( recordManager, 
+                recordManager.getCurrentRecordManagerHeader(), i ) ).intValue() );
         }
 
         btree.close();
