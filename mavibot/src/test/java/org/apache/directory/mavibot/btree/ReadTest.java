@@ -72,7 +72,8 @@ public class ReadTest
         storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 0, 0x12345678, pageIos );
 
         // Read it back
-        int readValue = ( Integer ) readIntMethod.invoke( recordManager, recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ), pageIos, 0 );
+        int readValue = ( Integer ) readIntMethod.invoke( recordManager, recordManager.getPageSize( 
+            recordManager.getCurrentRecordManagerHeader() ), pageIos, 0 );
 
         assertEquals( 0x12345678, readValue );
 
@@ -80,7 +81,8 @@ public class ReadTest
         storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 16, 0x12345678, pageIos );
 
         // Read it back
-        readValue = ( Integer ) readIntMethod.invoke( recordManager, recordManager.getPageSize( recordManager.getCurrentRecordManagerHeader() ), pageIos, 16 );
+        readValue = ( Integer ) readIntMethod.invoke( recordManager, recordManager.getPageSize( 
+            recordManager.getCurrentRecordManagerHeader() ), pageIos, 16 );
 
         assertEquals( 0x12345678, readValue );
 

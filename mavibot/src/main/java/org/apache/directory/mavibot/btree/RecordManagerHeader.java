@@ -99,6 +99,7 @@ public class RecordManagerHeader
             copy.copiedPagesBtree = copiedPagesBtree;
             copy.lastOffset = lastOffset;
             copy.idCounter = idCounter;
+            copy.pageSize = pageSize;
             
             // Copy the map
             Map<String, BTree> newBTreeMap = new HashMap<>( btreeMap.size() );

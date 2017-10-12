@@ -209,7 +209,6 @@ public class RecordManager implements TransactionManager
     {
         // Create the RMH
         RecordManagerHeader recordManagerHeader = new RecordManagerHeader();
-        recordManagerHeaderReference.set( recordManagerHeader );
         
         // Create the map of managed b-trees
         managedBtrees = new LinkedHashMap<>();
@@ -223,6 +222,8 @@ public class RecordManager implements TransactionManager
         {
             recordManagerHeader.pageSize = pageSize;
         }
+
+        recordManagerHeaderReference.set( recordManagerHeader );
 
         recordManagerHeaderBuffer = ByteBuffer.allocate( recordManagerHeader.pageSize );
         recordManagerHeaderBytes = new byte[recordManagerHeader.pageSize];
@@ -1812,7 +1813,7 @@ public class RecordManager implements TransactionManager
 
         if ( LOG_CHECK.isDebugEnabled() )
         {
-            MavibotInspector.check( this, recordManagerHeader );
+            MavibotInspector.check( this );
         }
 
         return newBtreeHeaderOffset;
@@ -2960,7 +2961,7 @@ public class RecordManager implements TransactionManager
      */
     public Set<String> getManagedTrees()
     {
-        return new HashSet<>( managedBtrees.keySet() );
+        return new HashSet<>( getCurrentRecordManagerHeader().btreeMap.keySet() );
     }
 
 
@@ -3005,17 +3006,33 @@ public class RecordManager implements TransactionManager
 
         if ( LOG_CHECK.isDebugEnabled() )
         {
-            MavibotInspector.check( this, transaction.getRecordManagerHeader() );
+            MavibotInspector.check( this );
         }
     }
 
 
     /**
-     * Get one managed b-tree, knowing its name. It will return the b-tree version
-     * of the given transaction.
+     * Get one managed B-tree, knowing its name. It will return the B-tree latest version.
      *
-     * @param name The b-tree name we are looking for
+     * @param transaction The {@link Transaction} we are running in
+     * @param name The B-tree name we are looking for
      * @return The managed b-tree
+     * @throws IOException If we can't find the B-tree in the file
+     */
+    public <K, V> BTree<K, V> getBtree( Transaction transaction, String name ) throws IOException
+    {
+        return getBtree( transaction, name, 0L );
+    }
+
+
+    /**
+     * Get one managed B-tree, knowing its name and its version. It will return the B-tree requested version
+     *
+     * @param transaction The {@link Transaction} we are running in
+     * @param name The B-tree name we are looking for
+     * @param revision The B-tree} revision we are looking for (if <=0, the latest one)
+     * @return The managed b-tree
+     * @throws IOException If we can't find the B-tree in the file
      */
     public <K, V> BTree<K, V> getBtree( Transaction transaction, String name, long revision ) throws IOException
     {
@@ -3033,7 +3050,16 @@ public class RecordManager implements TransactionManager
         BTree<NameRevision, Long> btreeOfBtrees = recordManagerHeader.getBtreeOfBtrees();
         
         // Find the next B-tree reference in the BOB (so revision +1, as we will pick the prev revision)
-        NameRevision nameRevision = new NameRevision( name, revision + 1L );
+        if ( ( revision <= 0L ) || ( revision == Long.MAX_VALUE ) )
+        {
+            revision = Long.MAX_VALUE;
+        }
+        else
+        {
+            revision++;
+        }
+        
+        NameRevision nameRevision = new NameRevision( name, revision  );
         
         TupleCursor<NameRevision, Long> cursor = btreeOfBtrees.browseFrom( transaction, nameRevision );
         

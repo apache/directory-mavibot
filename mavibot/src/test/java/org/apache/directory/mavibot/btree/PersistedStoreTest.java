@@ -52,18 +52,20 @@ public class PersistedStoreTest
         String tempFileName = tempFile.getAbsolutePath();
 
         RecordManager recordManager = new RecordManager( tempFileName, 4 * 1024 );
-        Method method = RecordManager.class.getDeclaredMethod( "store", long.class, int.class, PageIO[].class );
+        Method method = RecordManager.class.getDeclaredMethod( "store", RecordManagerHeader.class, long.class, int.class, PageIO[].class );
         method.setAccessible( true );
 
         // Allocate some Pages
         PageIO[] pageIos = new PageIO[2];
         pageIos[0] = new PageIO();
-        pageIos[0].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+        pageIos[0].setData( ByteBuffer.allocate( recordManager.getPageSize( 
+            recordManager.getCurrentRecordManagerHeader() ) ) );
         pageIos[1] = new PageIO();
-        pageIos[1].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+        pageIos[1].setData( ByteBuffer.allocate( recordManager.getPageSize( 
+            recordManager.getCurrentRecordManagerHeader() ) ) );
 
         // Set the int at the beginning
-        long position = ( Long ) method.invoke( recordManager, 0, 0x12345678, pageIos );
+        long position = ( Long ) method.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 0, 0x12345678, pageIos );
 
         assertEquals( 4, position );
         int pos = 12;
@@ -73,7 +75,7 @@ public class PersistedStoreTest
         assertEquals( 0x78, pageIos[0].getData().get( pos++ ) );
 
         // Set the int at the end of the first page
-        position = ( Long ) method.invoke( recordManager, 4080, 0x12345678, pageIos );
+        position = ( Long ) method.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 4080, 0x12345678, pageIos );
 
         assertEquals( 4084, position );
         pos = 4092;
@@ -84,7 +86,7 @@ public class PersistedStoreTest
 
         // Set the int at the end of the first page and overlapping on the second page
         // 1 byte overlapping
-        position = ( Long ) method.invoke( recordManager, 4081, 0x12345678, pageIos );
+        position = ( Long ) method.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 4081, 0x12345678, pageIos );
 
         assertEquals( 4085, position );
         pos = 4093;
@@ -96,7 +98,7 @@ public class PersistedStoreTest
 
         // Set the int at the end of the first page and overlapping on the second page
         // 2 bytes overlapping
-        position = ( Long ) method.invoke( recordManager, 4082, 0x12345678, pageIos );
+        position = ( Long ) method.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 4082, 0x12345678, pageIos );
 
         assertEquals( 4086, position );
         pos = 4094;
@@ -108,7 +110,7 @@ public class PersistedStoreTest
 
         // Set the int at the end of the first page and overlapping on the second page
         // 3 bytes overlapping
-        position = ( Long ) method.invoke( recordManager, 4083, 0x12345678, pageIos );
+        position = ( Long ) method.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 4083, 0x12345678, pageIos );
 
         assertEquals( 4087, position );
         pos = 4095;
@@ -119,7 +121,7 @@ public class PersistedStoreTest
         assertEquals( 0x78, pageIos[1].getData().get( pos++ ) );
 
         // Set the int at the beginning of the second page
-        position = ( Long ) method.invoke( recordManager, 4084, 0x12345678, pageIos );
+        position = ( Long ) method.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 4084, 0x12345678, pageIos );
 
         assertEquals( 4088, position );
         pos = 8;
@@ -142,18 +144,20 @@ public class PersistedStoreTest
         String tempFileName = tempFile.getAbsolutePath();
 
         RecordManager recordManager = new RecordManager( tempFileName, 4 * 1024 );
-        Method method = RecordManager.class.getDeclaredMethod( "store", long.class, long.class, PageIO[].class );
+        Method method = RecordManager.class.getDeclaredMethod( "store", RecordManagerHeader.class, long.class, long.class, PageIO[].class );
         method.setAccessible( true );
 
         // Allocate some Pages
         PageIO[] pageIos = new PageIO[2];
         pageIos[0] = new PageIO();
-        pageIos[0].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+        pageIos[0].setData( ByteBuffer.allocate( recordManager.getPageSize( 
+            recordManager.getCurrentRecordManagerHeader() ) ) );
         pageIos[1] = new PageIO();
-        pageIos[1].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+        pageIos[1].setData( ByteBuffer.allocate( recordManager.getPageSize( 
+            recordManager.getCurrentRecordManagerHeader() ) ) );
 
         // Set the long at the beginning
-        long position = ( Long ) method.invoke( recordManager, 0, 0x0123456789ABCDEFL, pageIos );
+        long position = ( Long ) method.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 0, 0x0123456789ABCDEFL, pageIos );
 
         assertEquals( 8, position );
         int pos = 12;
@@ -167,7 +171,7 @@ public class PersistedStoreTest
         assertEquals( ( byte ) 0xEF, pageIos[0].getData().get( pos++ ) );
 
         // Set the long at the end of the first page
-        position = ( Long ) method.invoke( recordManager, 4076, 0x0123456789ABCDEFL, pageIos );
+        position = ( Long ) method.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 4076, 0x0123456789ABCDEFL, pageIos );
 
         assertEquals( 4084, position );
         pos = 4088;
@@ -182,7 +186,7 @@ public class PersistedStoreTest
 
         // Set the long at the end of the first page and overlapping on the second page
         // 1 byte overlapping
-        position = ( Long ) method.invoke( recordManager, 4077, 0x0123456789ABCDEFL, pageIos );
+        position = ( Long ) method.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 4077, 0x0123456789ABCDEFL, pageIos );
 
         assertEquals( 4085, position );
         pos = 4089;
@@ -198,7 +202,7 @@ public class PersistedStoreTest
 
         // Set the long at the end of the first page and overlapping on the second page
         // 2 bytes overlapping
-        position = ( Long ) method.invoke( recordManager, 4078, 0x0123456789ABCDEFL, pageIos );
+        position = ( Long ) method.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 4078, 0x0123456789ABCDEFL, pageIos );
 
         assertEquals( 4086, position );
         pos = 4090;
@@ -214,7 +218,7 @@ public class PersistedStoreTest
 
         // Set the long at the end of the first page and overlapping on the second page
         // 3 bytes overlapping
-        position = ( Long ) method.invoke( recordManager, 4079, 0x0123456789ABCDEFL, pageIos );
+        position = ( Long ) method.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 4079, 0x0123456789ABCDEFL, pageIos );
 
         assertEquals( 4087, position );
         pos = 4091;
@@ -230,7 +234,7 @@ public class PersistedStoreTest
 
         // Set the long at the end of the first page and overlapping on the second page
         // 4 byte overlapping
-        position = ( Long ) method.invoke( recordManager, 4080, 0x0123456789ABCDEFL, pageIos );
+        position = ( Long ) method.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 4080, 0x0123456789ABCDEFL, pageIos );
 
         assertEquals( 4088, position );
         pos = 4092;
@@ -246,7 +250,7 @@ public class PersistedStoreTest
 
         // Set the long at the end of the first page and overlapping on the second page
         // 5 bytes overlapping
-        position = ( Long ) method.invoke( recordManager, 4081, 0x0123456789ABCDEFL, pageIos );
+        position = ( Long ) method.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 4081, 0x0123456789ABCDEFL, pageIos );
 
         assertEquals( 4089, position );
         pos = 4093;
@@ -262,7 +266,7 @@ public class PersistedStoreTest
 
         // Set the long at the end of the first page and overlapping on the second page
         // 6 bytes overlapping
-        position = ( Long ) method.invoke( recordManager, 4082, 0x0123456789ABCDEFL, pageIos );
+        position = ( Long ) method.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 4082, 0x0123456789ABCDEFL, pageIos );
 
         assertEquals( 4090, position );
         pos = 4094;
@@ -278,7 +282,7 @@ public class PersistedStoreTest
 
         // Set the long at the end of the first page and overlapping on the second page
         // 7 bytes overlapping
-        position = ( Long ) method.invoke( recordManager, 4083, 0x0123456789ABCDEFL, pageIos );
+        position = ( Long ) method.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 4083, 0x0123456789ABCDEFL, pageIos );
 
         assertEquals( 4091, position );
         pos = 4095;
@@ -293,7 +297,7 @@ public class PersistedStoreTest
         assertEquals( ( byte ) 0xEF, pageIos[1].getData().get( pos++ ) );
 
         // Set the long at the beginning of the second page
-        position = ( Long ) method.invoke( recordManager, 4084, 0x0123456789ABCDEFL, pageIos );
+        position = ( Long ) method.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 4084, 0x0123456789ABCDEFL, pageIos );
 
         assertEquals( 4092, position );
         pos = 8;
@@ -321,17 +325,20 @@ public class PersistedStoreTest
 
         // We use smaller pages
         RecordManager recordManager = new RecordManager( tempFileName, 32 );
-        Method storeMethod = RecordManager.class.getDeclaredMethod( "store", long.class, byte[].class, PageIO[].class );
+        Method storeMethod = RecordManager.class.getDeclaredMethod( "store", RecordManagerHeader.class, long.class, byte[].class, PageIO[].class );
         storeMethod.setAccessible( true );
 
         // Allocate some Pages
         PageIO[] pageIos = new PageIO[3];
         pageIos[0] = new PageIO();
-        pageIos[0].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+        pageIos[0].setData( ByteBuffer.allocate( recordManager.getPageSize( 
+            recordManager.getCurrentRecordManagerHeader() ) ) );
         pageIos[1] = new PageIO();
-        pageIos[1].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+        pageIos[1].setData( ByteBuffer.allocate( recordManager.getPageSize( 
+            recordManager.getCurrentRecordManagerHeader() ) ) );
         pageIos[2] = new PageIO();
-        pageIos[2].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
+        pageIos[2].setData( ByteBuffer.allocate( recordManager.getPageSize( 
+            recordManager.getCurrentRecordManagerHeader() ) ) );
 //        pageIos[3] = new PageIO();
 //        pageIos[3].setData( ByteBuffer.allocate( recordManager.getPageSize() ) );
 
@@ -340,7 +347,7 @@ public class PersistedStoreTest
             { 0x01, 0x23, 0x45, 0x67 };
 
         // Set the bytes at the beginning
-        long position = ( Long ) storeMethod.invoke( recordManager, 0L, bytes, pageIos );
+        long position = ( Long ) storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 0L, bytes, pageIos );
 
         assertEquals( 8, position );
         int pos = 12;
@@ -356,7 +363,7 @@ public class PersistedStoreTest
         assertEquals( 0x67, pageIos[0].getData().get( pos++ ) );
 
         // Set the bytes at the end of the first page
-        position = ( Long ) storeMethod.invoke( recordManager, 12L, bytes, pageIos );
+        position = ( Long ) storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 12L, bytes, pageIos );
 
         assertEquals( 20, position );
         pos = 24;
@@ -379,7 +386,7 @@ public class PersistedStoreTest
             bytes[i] = ( byte ) ( i + 1 );
         }
 
-        position = ( Long ) storeMethod.invoke( recordManager, 0L, bytes, pageIos );
+        position = ( Long ) storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 0L, bytes, pageIos );
 
         assertEquals( 20, position );
         pos = 12;
@@ -396,7 +403,7 @@ public class PersistedStoreTest
         }
 
         // Write the bytes over 2 pages
-        position = ( Long ) storeMethod.invoke( recordManager, 47L, bytes, pageIos );
+        position = ( Long ) storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 47L, bytes, pageIos );
 
         assertEquals( 67, position );
         pos = 59;
@@ -425,7 +432,7 @@ public class PersistedStoreTest
             bytes[i] = ( byte ) ( i + 1 );
         }
 
-        position = ( Long ) storeMethod.invoke( recordManager, 2L, bytes, pageIos );
+        position = ( Long ) storeMethod.invoke( recordManager, recordManager.getCurrentRecordManagerHeader(), 2L, bytes, pageIos );
 
         assertEquals( 118, position );
         pos = 14;
