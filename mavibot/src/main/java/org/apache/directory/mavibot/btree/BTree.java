@@ -130,7 +130,7 @@ public class BTree<K, V> implements Closeable
      * @return A cursor on the B-tree
      * @throws IOException
      */
-    public TupleCursor<K, V> browse( Transaction transaction ) throws IOException, KeyNotFoundException, CursorException
+    public TupleCursor<K, V> browse( Transaction transaction ) throws IOException
     {
         if ( transaction == null )
         {
@@ -138,14 +138,22 @@ public class BTree<K, V> implements Closeable
         }
         else
         {
-            ParentPos<K, V>[] stack = ( ParentPos<K, V>[] ) Array.newInstance( ParentPos.class, MAX_STACK_DEPTH );
-
-            TupleCursor<K, V> cursor = getRootPage().browse( transaction, stack, 0 );
-
-            // Set the position before the first element
-            cursor.beforeFirst();
-
-            return cursor;
+            try
+            {
+                ParentPos<K, V>[] stack = ( ParentPos<K, V>[] ) Array.newInstance( ParentPos.class, MAX_STACK_DEPTH );
+    
+                TupleCursor<K, V> cursor = getRootPage().browse( transaction, stack, 0 );
+    
+                // Set the position before the first element
+                cursor.beforeFirst();
+    
+                return cursor;
+            }
+            catch ( Exception e )
+            {
+                transaction.abort();
+                throw e;
+            }
         }
     }
 
@@ -168,7 +176,15 @@ public class BTree<K, V> implements Closeable
 
         ParentPos<K, V>[] stack = ( ParentPos<K, V>[] ) Array.newInstance( ParentPos.class, MAX_STACK_DEPTH );
 
-        return getRootPage().browse( transaction, key, stack, 0 );
+        try
+        {
+            return getRootPage().browse( transaction, key, stack, 0 );
+        }
+        catch ( Exception e )
+        {
+            transaction.abort();
+            throw e;
+        }
     }
 
 
@@ -197,7 +213,15 @@ public class BTree<K, V> implements Closeable
         }
         else
         {
-            return getRootPage().contains( transaction, key, value );
+            try
+            {
+                return getRootPage().contains( transaction, key, value );
+            }
+            catch ( Exception e )
+            {
+                transaction.abort();
+                throw e;
+            }
         }
     }
 
@@ -219,24 +243,33 @@ public class BTree<K, V> implements Closeable
 
         if ( key == null )
         {
+            transaction.abort();
             throw new IllegalArgumentException( "Key must not be null" );
         }
 
-        DeleteResult<K, V> result = processDelete( transaction, key );
-        
-        // Check that we have found the element to delete
-        if ( result instanceof NotPresentResult )
+        try
         {
-            // We haven't found the element in the B-tree, just get out
-            // without updating the recordManager
-
-            return null;
+            DeleteResult<K, V> result = processDelete( transaction, key );
+            
+            // Check that we have found the element to delete
+            if ( result instanceof NotPresentResult )
+            {
+                // We haven't found the element in the B-tree, just get out
+                // without updating the recordManager
+    
+                return null;
+            }
+    
+            // The element was found, and removed
+            AbstractDeleteResult<K, V> deleteResult = ( AbstractDeleteResult<K, V> ) result;
+    
+            return deleteResult.getRemovedElement();
         }
-
-        // The element was found, and removed
-        AbstractDeleteResult<K, V> deleteResult = ( AbstractDeleteResult<K, V> ) result;
-
-        return deleteResult.getRemovedElement();
+        catch ( Exception e )
+        {
+            transaction.abort();
+            throw e;
+        }
     }
 
 
@@ -258,7 +291,15 @@ public class BTree<K, V> implements Closeable
         }
         else
         {
-            return currentBtreeHeader.getRootPage().get( transaction, key );
+            try
+            {
+                return currentBtreeHeader.getRootPage().get( transaction, key );
+            }
+            catch ( Exception e )
+            {
+                transaction.abort();
+                throw e;
+            }
         }
     }
 
@@ -372,7 +413,7 @@ public class BTree<K, V> implements Closeable
      * @throws IOException If we have an error while trying to access the page
      * @throws KeyNotFoundException If the key is not found in the B-tree
      */
-    public boolean hasKey( Transaction transaction, K key ) throws IOException, KeyNotFoundException
+    public boolean hasKey( Transaction transaction, K key ) throws IOException
     {
         if ( key == null )
         {
@@ -385,7 +426,15 @@ public class BTree<K, V> implements Closeable
         }
         else
         {
-            return getRootPage().hasKey( transaction, key );
+            try
+            {
+                return getRootPage().hasKey( transaction, key );
+            }
+            catch ( IOException ioe )
+            {
+                transaction.abort();
+                throw ioe;
+            }
         }
     }
 
@@ -413,6 +462,7 @@ public class BTree<K, V> implements Closeable
 
         if ( key == null )
         {
+            transaction.abort();
             throw new IllegalArgumentException( "Key must not be null" );
         }
 
@@ -530,7 +580,13 @@ public class BTree<K, V> implements Closeable
         }
         catch ( IOException ioe )
         {
+            transaction.aborted = true;
             throw ioe;
+        }
+        catch ( RuntimeException re )
+        {
+            transaction.abort();
+            throw re;
         }
     }
 

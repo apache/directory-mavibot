@@ -72,15 +72,16 @@ public class WriteTransaction extends AbstractTransaction
     @Override
     public void close() throws IOException
     {
-        if ( !isClosed() )
+        if ( aborted || isClosed() )
         {
-            commit();
-        }
-        else
-        {
+            // We have had an exception, or the txn has been closed : rollback the transaction
             newPages.clear();
             copiedPageMap.clear();
             super.close();
+        }
+        else
+        {
+            commit();
         }
     }
     

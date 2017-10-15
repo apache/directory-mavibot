@@ -53,6 +53,9 @@ public abstract class AbstractTransaction implements Transaction
     /** A flag used to tell if a transaction is closed or not */
     private volatile boolean closed;
     
+    /** A flag set to <tt>true</tt> if an exception has been raised */ 
+    protected volatile boolean aborted = false;
+    
     /** The reference to the recordManager */
     protected RecordManager recordManager;
     
@@ -92,7 +95,15 @@ public abstract class AbstractTransaction implements Transaction
     @Override
     public <K, V> Page<K, V> getPage( BTreeInfo<K, V> btreeInfo, long offset ) throws IOException
     {
-        return ( Page<K, V> ) recordManager.getPage( btreeInfo, recordManagerHeader.pageSize, offset );
+        try
+        {
+            return ( Page<K, V> ) recordManager.getPage( btreeInfo, recordManagerHeader.pageSize, offset );
+        }
+        catch ( IOException ioe )
+        {
+            aborted = true;
+            throw ioe;
+        }
     }
     
     
@@ -171,7 +182,7 @@ public abstract class AbstractTransaction implements Transaction
     @Override
     public void abort() throws IOException
     {
-        closed = true;
+        aborted = true;
     }
 
 
@@ -197,6 +208,7 @@ public abstract class AbstractTransaction implements Transaction
         
         if ( btree == null )
         {
+            aborted = true;
             throw new BTreeNotFoundException( "Cannot find btree " + name );
         }
         
