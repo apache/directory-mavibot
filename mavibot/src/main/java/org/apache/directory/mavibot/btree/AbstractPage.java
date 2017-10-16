@@ -41,9 +41,6 @@ import java.lang.reflect.Array;
     /** Keys of children nodes */
     protected KeyHolder<K>[] keys;
 
-    /** Children pages associated with keys. */
-    protected long[] children;
-
     /** The number of current values in the Page */
     protected int pageNbElems;
 

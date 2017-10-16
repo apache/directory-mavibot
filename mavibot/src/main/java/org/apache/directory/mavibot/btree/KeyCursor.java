@@ -107,7 +107,7 @@ public class KeyCursor<K>
                 parentPos.pos = parentPos.page.getPageNbElems();
             }
 
-            child = transaction.getPage( btreeInfo, ( ( AbstractPage )parentPos.page ).children[parentPos.pos] );
+            child = transaction.getPage( btreeInfo, ( ( Node )parentPos.page ).children[parentPos.pos] );
         }
 
         // and leaf
@@ -150,7 +150,7 @@ public class KeyCursor<K>
                 parentPos.page = child;
             }
 
-            child = transaction.getPage( btreeInfo, ( ( AbstractPage )parentPos.page ).children[0] );
+            child = transaction.getPage( btreeInfo, ( ( Node )parentPos.page ).children[0] );
         }
 
         // and leaf
@@ -600,7 +600,7 @@ public class KeyCursor<K>
             {
                 // We can pick the next element at this level
                 parentPos.pos++;
-                child = transaction.getPage( btreeInfo, ( ( AbstractPage )parentPos.page ).children[parentPos.pos] );
+                child = transaction.getPage( btreeInfo, ( ( Node )parentPos.page ).children[parentPos.pos] );
 
                 // and go down the tree through the nodes
                 while ( currentDepth < depth - 1 )
@@ -609,7 +609,7 @@ public class KeyCursor<K>
                     parentPos = stack[currentDepth];
                     parentPos.pos = 0;
                     parentPos.page = child;
-                    child = transaction.getPage( btreeInfo, ( ( AbstractPage )parentPos.page ).children[0] );
+                    child = transaction.getPage( btreeInfo, ( ( Node )parentPos.page ).children[0] );
                 }
 
                 // and the leaf
@@ -659,7 +659,7 @@ public class KeyCursor<K>
             {
                 // We can pick the next element at this level
                 parentPos.pos--;
-                child = transaction.getPage( btreeInfo, ( ( AbstractPage )parentPos.page ).children[parentPos.pos] );
+                child = transaction.getPage( btreeInfo, ( ( Node )parentPos.page ).children[parentPos.pos] );
 
                 // and go down the tree through the nodes
                 while ( currentDepth < depth - 1 )
@@ -668,7 +668,7 @@ public class KeyCursor<K>
                     parentPos = stack[currentDepth];
                     parentPos.pos = child.getPageNbElems();
                     parentPos.page = child;
-                    child = transaction.getPage( btreeInfo, ( ( AbstractPage )parentPos.page ).children[parentPos.page.getPageNbElems()] );
+                    child = transaction.getPage( btreeInfo, ( ( Node )parentPos.page ).children[parentPos.page.getPageNbElems()] );
                 }
 
                 // and the leaf
@@ -717,13 +717,13 @@ public class KeyCursor<K>
             else
             {
                 // We can pick the previous element at this level
-                child = transaction.getPage( btreeInfo, ( ( AbstractPage )parentPos.page ).children[parentPos.pos - 1] );
+                child = transaction.getPage( btreeInfo, ( ( Node )parentPos.page ).children[parentPos.pos - 1] );
 
                 // and go down the tree through the nodes
                 while ( currentDepth < depth - 1 )
                 {
                     currentDepth++;
-                    child = transaction.getPage( btreeInfo, ( ( AbstractPage )child ).children[child.getPageNbElems()] );
+                    child = transaction.getPage( btreeInfo, ( ( Node )child ).children[child.getPageNbElems()] );
                 }
 
                 return true;
