@@ -69,7 +69,7 @@ public class RecordManagerFreePageTest
         try
         {
             // Create a new BTree
-            btree = recordManager1.addBTree( "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
+            btree = recordManager1.addBTree( "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE );
         }
         catch ( Exception e )
         {

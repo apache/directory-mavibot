@@ -74,7 +74,7 @@ public class BTreeBuilderTest
             
             try ( WriteTransaction writeTxn = rm.beginWriteTransaction() )
             {
-                btree = rm.addBTree( writeTxn, "master", IntSerializer.INSTANCE, IntSerializer.INSTANCE, true );
+                btree = rm.addBTree( writeTxn, "master", IntSerializer.INSTANCE, IntSerializer.INSTANCE );
             }
 
             MavibotInspector.dumpInfos( rm, rm.getCurrentRecordManagerHeader() );

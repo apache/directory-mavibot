@@ -78,10 +78,10 @@ public class BTreeBrowseTest
 
         openRecordManagerAndBtree();
 
-        // Create a new BTree which allows duplicate values
+        // Create a new BTree
         try ( WriteTransaction transaction = recordManager.beginWriteTransaction() )
         {
-            btree = recordManager.addBTree( transaction, "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE, true );
+            btree = recordManager.addBTree( transaction, "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE );
         }
         catch ( Exception e )
         {
@@ -652,7 +652,7 @@ public class BTreeBrowseTest
     public void testAddRandom() throws Exception
     {
         // Inject some data
-        long increment = 20L;
+        long increment = 1_000L;
         long nbRound = 100_000L;
         long t0 = System.currentTimeMillis();
 
@@ -684,7 +684,7 @@ public class BTreeBrowseTest
         
         System.out.println( "Delta for " + nbRound + " : " + ( t1 - t0 ) );
         
-        MavibotInspector.check( recordManager );
+        //MavibotInspector.check( recordManager );
 
         int counter = 0;
 
@@ -705,6 +705,8 @@ public class BTreeBrowseTest
         // Now delete the elements
         shuffle( values );
         
+        long tt0 = System.currentTimeMillis();
+
         increment = 1L;
         
         for ( long i = 0; i < nbRound/increment; i++ )
@@ -723,6 +725,10 @@ public class BTreeBrowseTest
                 }
             }
         }
+
+        long tt1 = System.currentTimeMillis();
+        
+        System.out.println( "Delta for " + nbRound + " : " + ( tt1 - tt0 ) );
     }
     
     

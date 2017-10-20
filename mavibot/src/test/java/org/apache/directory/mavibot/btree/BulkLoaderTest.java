@@ -60,19 +60,22 @@ public class BulkLoaderTest
     {
         assertEquals( oldBtree.getNbElems(), newBtree.getNbElems() );
 
-        TupleCursor<Long, String> cursorOld = oldBtree.browse();
-        TupleCursor<Long, String> cursorNew = newBtree.browse();
-
-        while ( cursorOld.hasNext() && cursorNew.hasNext() )
+        try ( Transaction transaction = oldBtree.getRecordManager().beginReadTransaction() )
         {
-            Tuple<Long, String> tupleOld = cursorOld.next();
-            Tuple<Long, String> tupleNew = cursorNew.next();
+            TupleCursor<Long, String> cursorOld = oldBtree.browse( transaction );
+            TupleCursor<Long, String> cursorNew = newBtree.browse( transaction );
 
-            assertEquals( tupleOld.getKey(), tupleNew.getKey() );
-            assertEquals( tupleOld.getValue(), tupleNew.getValue() );
-        }
+            while ( cursorOld.hasNext() && cursorNew.hasNext() )
+            {
+                Tuple<Long, String> tupleOld = cursorOld.next();
+                Tuple<Long, String> tupleNew = cursorNew.next();
+    
+                assertEquals( tupleOld.getKey(), tupleNew.getKey() );
+                assertEquals( tupleOld.getValue(), tupleNew.getValue() );
+            }
 
-        assertEquals( cursorOld.hasNext(), cursorNew.hasNext() );
+            assertEquals( cursorOld.hasNext(), cursorNew.hasNext() );
+        } 
     }
 
 
@@ -81,10 +84,10 @@ public class BulkLoaderTest
      * @throws BTreeAlreadyManagedException 
      */
     @Test
-    public void testPersistedBulkLoad1000Elements() throws IOException, KeyNotFoundException,
+    public void testBulkLoad1000Elements() throws IOException, KeyNotFoundException,
         BTreeAlreadyManagedException, CursorException
     {
-        for ( int i = 1000000; i < 1000001; i++ )
+        for ( int i = 0; i < 1000001; i++ )
         {
             Random random = new Random( System.currentTimeMillis() );
             File file = File.createTempFile( "managedbtreebuilder", ".data" );
@@ -93,103 +96,107 @@ public class BulkLoaderTest
             try
             {
                 RecordManager rm = new RecordManager( file.getAbsolutePath() );
-                BTree<Long, String> btree = ( BTree<Long, String> ) rm.addBTree( "test",
-                    LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
-                btree.setPageSize( 64 );
-
-                int nbElems = i;
-                int addedElems = 0;
-
-                final Tuple<Long, String>[] elems = new Tuple[nbElems];
-                Map<Long, Tuple<Long, Set<String>>> expected = new HashMap<Long, Tuple<Long, Set<String>>>();
-
-                long t00 = System.currentTimeMillis();
-
-                while ( addedElems < nbElems )
+                
+                try ( WriteTransaction writeTransaction = rm.beginWriteTransaction() )
                 {
-                    long key = random.nextLong() % 3333333L;
-
-                    if ( expected.containsKey( key ) )
+                    BTree<Long, String> btree = ( BTree<Long, String> ) rm.addBTree( writeTransaction, "test",
+                        LongSerializer.INSTANCE, StringSerializer.INSTANCE );
+                    btree.setPageNbElem( 64 );
+    
+                    int nbElems = i;
+                    int addedElems = 0;
+    
+                    final Tuple<Long, String>[] elems = new Tuple[nbElems];
+                    Map<Long, Tuple<Long, Set<String>>> expected = new HashMap<>();
+    
+                    long t00 = System.currentTimeMillis();
+    
+                    while ( addedElems < nbElems )
                     {
-                        continue;
+                        long key = random.nextLong() % 3333333L;
+    
+                        if ( expected.containsKey( key ) )
+                        {
+                            continue;
+                        }
+    
+                        long w = random.nextLong() % 3333333L;
+                        String value = "V" + w;
+                        elems[addedElems] = new Tuple<Long, String>( key, value );
+    
+                        Tuple<Long, Set<String>> expectedTuple = expected.get( key );
+    
+                        if ( expectedTuple == null )
+                        {
+                            expectedTuple = new Tuple<Long, Set<String>>( key, new TreeSet<String>() );
+                        }
+    
+                        expectedTuple.value.add( value );
+                        expected.put( key, expectedTuple );
+                        addedElems++;
                     }
-
-                    long w = random.nextLong() % 3333333L;
-                    String value = "V" + w;
-                    elems[addedElems] = new Tuple<Long, String>( key, value );
-
-                    Tuple<Long, Set<String>> expectedTuple = expected.get( key );
-
-                    if ( expectedTuple == null )
+    
+                    long t01 = System.currentTimeMillis();
+    
+                    // System.out.println( "Time to create the " + nbElems + " elements " + ( ( t01 - t00 ) / 1 ) );
+    
+                    Iterator<Tuple<Long, String>> tupleIterator = new Iterator<Tuple<Long, String>>()
                     {
-                        expectedTuple = new Tuple<Long, Set<String>>( key, new TreeSet<String>() );
+                        private int pos = 0;
+    
+    
+                        @Override
+                        public Tuple<Long, String> next()
+                        {
+                            return elems[pos++];
+                        }
+    
+    
+                        @Override
+                        public boolean hasNext()
+                        {
+                            return pos < elems.length;
+                        }
+    
+    
+                        @Override
+                        public void remove()
+                        {
+                        }
+                    };
+    
+                    long t0 = System.currentTimeMillis();
+                    BTree<Long, String> result = BulkLoader.load( btree, tupleIterator, 1024000 );
+                    long t1 = System.currentTimeMillis();
+    
+                    if ( ( i % 100 ) == 0 )
+                    {
+                        System.out.println( "== Btree #" + i + ", Time to bulkoad the " + nbElems + " elements "
+                            + ( t1 - t0 ) + "ms" );
                     }
-
-                    expectedTuple.value.add( value );
-                    expected.put( key, expectedTuple );
-                    addedElems++;
+    
+                    TupleCursor<Long, String> cursor = result.browse( writeTransaction );
+                    int nbFetched = 0;
+    
+                    long t2 = System.currentTimeMillis();
+    
+                    while ( cursor.hasNext() )
+                    {
+                        Tuple<Long, String> elem = cursor.next();
+    
+                        assertTrue( expected.containsKey( elem.key ) );
+                        Tuple<Long, Set<String>> tuple = expected.get( elem.key );
+                        assertNotNull( tuple );
+                        nbFetched++;
+                    }
+    
+                    long t3 = System.currentTimeMillis();
+    
+                    //System.out.println( "Time to read the " + nbElems + " elements " + ( t3 - t2 ) );
+                    assertEquals( nbElems, nbFetched );
+    
+                    checkBtree( btree, result );
                 }
-
-                long t01 = System.currentTimeMillis();
-
-                // System.out.println( "Time to create the " + nbElems + " elements " + ( ( t01 - t00 ) / 1 ) );
-
-                Iterator<Tuple<Long, String>> tupleIterator = new Iterator<Tuple<Long, String>>()
-                {
-                    private int pos = 0;
-
-
-                    @Override
-                    public Tuple<Long, String> next()
-                    {
-                        return elems[pos++];
-                    }
-
-
-                    @Override
-                    public boolean hasNext()
-                    {
-                        return pos < elems.length;
-                    }
-
-
-                    @Override
-                    public void remove()
-                    {
-                    }
-                };
-
-                long t0 = System.currentTimeMillis();
-                BTree<Long, String> result = BulkLoader.load( btree, tupleIterator, 1024000 );
-                long t1 = System.currentTimeMillis();
-
-                if ( ( i % 100 ) == 0 )
-                {
-                    System.out.println( "== Btree #" + i + ", Time to bulkoad the " + nbElems + " elements "
-                        + ( t1 - t0 ) + "ms" );
-                }
-
-                TupleCursor<Long, String> cursor = result.browse();
-                int nbFetched = 0;
-
-                long t2 = System.currentTimeMillis();
-
-                while ( cursor.hasNext() )
-                {
-                    Tuple<Long, String> elem = cursor.next();
-
-                    assertTrue( expected.containsKey( elem.key ) );
-                    Tuple<Long, Set<String>> tuple = expected.get( elem.key );
-                    assertNotNull( tuple );
-                    nbFetched++;
-                }
-
-                long t3 = System.currentTimeMillis();
-
-                //System.out.println( "Time to read the " + nbElems + " elements " + ( t3 - t2 ) );
-                assertEquals( nbElems, nbFetched );
-
-                checkBtree( btree, result );
             }
             finally
             {
@@ -214,7 +221,7 @@ public class BulkLoaderTest
         {
             RecordManager rm = new RecordManager( file.getAbsolutePath() );
             BTree<Long, String> btree = ( BTree<Long, String> ) rm.addBTree( "test",
-                LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
+                LongSerializer.INSTANCE, StringSerializer.INSTANCE );
 
             int[] expectedNbPages = new int[]
                 {
@@ -271,7 +278,7 @@ public class BulkLoaderTest
         {
             RecordManager rm = new RecordManager( file.getAbsolutePath() );
             BTree<Long, String> btree = ( BTree<Long, String> ) rm.addBTree( "test",
-                LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
+                LongSerializer.INSTANCE, StringSerializer.INSTANCE );
 
             int[] expectedNbPages = new int[]
                 {
@@ -326,7 +333,7 @@ public class BulkLoaderTest
         {
             RecordManager rm = new RecordManager( file.getAbsolutePath() );
             BTree<Long, String> btree = ( BTree<Long, String> ) rm.addBTree( "test",
-                LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
+                LongSerializer.INSTANCE, StringSerializer.INSTANCE );
 
             int[] expectedNbPages = new int[]
                 {
@@ -381,7 +388,7 @@ public class BulkLoaderTest
             {
                 RecordManager rm = new RecordManager( file.getAbsolutePath() );
                 BTree<Long, String> btree = ( BTree<Long, String> ) rm.addBTree( "test",
-                    LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
+                    LongSerializer.INSTANCE, StringSerializer.INSTANCE );
 
                 int nbElems = i;
                 int addedElems = 0;
@@ -513,7 +520,7 @@ public class BulkLoaderTest
         {
             RecordManager rm = new RecordManager( file.getAbsolutePath() );
             BTree<Long, String> btree = ( BTree<Long, String> ) rm.addBTree( "test",
-                LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
+                LongSerializer.INSTANCE, StringSerializer.INSTANCE );
 
             int nbElems = 4;
             int addedElems = 0;
@@ -915,7 +922,7 @@ public class BulkLoaderTest
         {
             RecordManager rm = new RecordManager( file.getAbsolutePath() );
             BTree<Long, String> btree = ( BTree<Long, String> ) rm.addBTree( "test",
-                LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
+                LongSerializer.INSTANCE, StringSerializer.INSTANCE );
 
             // btree.valueThresholdUp = 8;
 

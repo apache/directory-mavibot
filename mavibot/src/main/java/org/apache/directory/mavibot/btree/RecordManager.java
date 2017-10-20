@@ -26,7 +26,6 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -1168,19 +1167,6 @@ public class RecordManager implements TransactionManager
         return value;
     }
 
-    
-    private <K, V> BTreeInfo<K, V> createBtreeInfo( BTree<K, V> btree, String name )
-    {
-        BTreeInfo<K,V> btreeInfo = new BTreeInfo<>();
-        
-        btreeInfo.setPageNbElem( btree.getPageNbElem() );
-        btreeInfo.setName( name );
-        btreeInfo.setKeySerializerFQCN( btree.getKeySerializerFQCN() );
-        btreeInfo.setValueSerializerFQCN( btree.getValueSerializerFQCN() );
-        
-        return btreeInfo;
-    }
-
 
     /**
      * Manage a B-tree. The btree will be added and managed by this RecordManager. We will create a
@@ -1612,42 +1598,6 @@ public class RecordManager implements TransactionManager
         return btreeHeaderPageIos;
     }
 
-    
-    /**
-     * Write the RootPage content.
-     * 
-     * @param btree The BTree we are working on
-     * @param btreeHeader The BtreeHeader for this BTree
-     * @return The offset of the rootPage
-     * @throws IOException If we have had an error while accessing to the underlying file
-     */
-    private <K, V> long writeRootPage( BTree<K, V> btree, BTreeHeader<K, V> btreeHeader ) throws IOException
-    {
-        Page<K, V> rootPage = btreeHeader.getRootPage();
-
-        context.addPage( ((AbstractPage)rootPage).getOffset(), rootPage );
-        
-        return ((AbstractPage)rootPage).getOffset();
-
-        /*
-        PageIO[] rootPageIos = serializePage( btree, btreeHeader.getRevision(), rootPage );
-
-        // Get the reference on the first page
-        long rootPageOffset = rootPageIos[0].getOffset();
-
-        // Store the rootPageOffset into the Btree header and into the rootPage
-        btreeHeader.setRootPageOffset( rootPageOffset );
-
-        ( ( AbstractPage<K, V> ) rootPage ).setOffset( rootPageOffset );
-
-        LOG.debug( "Flushing the newly managed '{}' btree rootpage", btree.getName() );
-        
-        // Store the PageIO and the rootPage
-        storePages( rootPageIos );
-        context.addPage( rootPageOffset, rootPage );
-        */
-    }
-
 
     /**
      * Update the B-tree header after a B-tree modification. This will make the latest modification
@@ -1879,29 +1829,6 @@ public class RecordManager implements TransactionManager
     }
 
     
-    private void flushObjects( Transaction transaction, Collection<WALObject> walObjects ) throws IOException
-    {
-        if ( ( walObjects == null ) || walObjects.isEmpty() )
-        {
-            LOG.debug( "No Page to flush" );
-            return;
-        }
-        
-        if ( LOG.isDebugEnabled() )
-        {
-            //for ( Page page : pages )
-            {
-                //dump( page );
-            }
-        }
-
-        for ( WALObject walObject : walObjects )
-        {
-            // We can write pages immediately
-            flushPages( transaction.getRecordManagerHeader(), walObject.getPageIOs() );
-        }
-    }
-
     /**
      * Store  the pages in the context. If the page has no Offset, we will
      * use a virtual offset (ie, a negative one)
@@ -3287,13 +3214,12 @@ public class RecordManager implements TransactionManager
      * @param name the name of the B-tree
      * @param keySerializer key serializer
      * @param valueSerializer value serializer
-     * @param allowDuplicates flag for allowing duplicate keys
      * @return a managed B-tree
      * @throws IOException If we weren't able to update the file on disk
      * @throws BTreeAlreadyManagedException If the B-tree is already managed
      */
     public <K, V> BTree<K, V> addBTree( WriteTransaction transaction, String name, ElementSerializer<K> keySerializer,
-        ElementSerializer<V> valueSerializer, boolean allowDuplicates )
+        ElementSerializer<V> valueSerializer )
         throws IOException, BTreeAlreadyManagedException
     {
         BTreeConfiguration<K, V> config = new BTreeConfiguration<>();
@@ -3362,47 +3288,6 @@ public class RecordManager implements TransactionManager
     public void updateNewBTreeHeaders( BTreeHeader btreeHeader )
     {
         newBTreeHeaders.put( btreeHeader.getName(), btreeHeader );
-    }
-
-
-    /**
-     * Swap the current BtreeHeader map with the new one. This method will only
-     * be called in a single trhead, when the current transaction will be committed.
-     */
-    private void swapCurrentBtreeHeaders()
-    {
-        // Copy the reference to the current BtreeHeader Map
-        Map<String, BTreeHeader<?, ?>> tmp = currentBTreeHeaders;
-
-        // Get a write lock
-        btreeHeadersLock.writeLock().lock();
-
-        // Swap the new BTreeHeader Map
-        currentBTreeHeaders = newBTreeHeaders;
-
-        // And unlock 
-        btreeHeadersLock.writeLock().unlock();
-
-        // Last, not least, clear the Map and reinject the latest revision in it
-        tmp.clear();
-        tmp.putAll( currentBTreeHeaders );
-
-        // And update the new BTreeHeader map
-        newBTreeHeaders = tmp;
-    }
-
-
-    /**
-     * revert the new BTreeHeaders Map to the current BTreeHeader Map. This method
-     * is called when we have to rollback a transaction.
-     */
-    private void revertBtreeHeaders()
-    {
-        // Clean up teh new BTreeHeaders Map
-        newBTreeHeaders.clear();
-
-        // Reinject the latest revision in it
-        newBTreeHeaders.putAll( currentBTreeHeaders );
     }
 
 

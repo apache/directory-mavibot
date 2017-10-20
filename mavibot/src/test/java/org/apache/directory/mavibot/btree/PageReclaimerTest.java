@@ -74,7 +74,7 @@ public class PageReclaimerTest
         rm = new RecordManager( dbFile.getAbsolutePath() );
         rm.setPageReclaimerThreshold( 10 );
         
-        uidTree = ( BTree<Integer, String> ) rm.addBTree( TREE_NAME, IntSerializer.INSTANCE, StringSerializer.INSTANCE, false );
+        uidTree = ( BTree<Integer, String> ) rm.addBTree( TREE_NAME, IntSerializer.INSTANCE, StringSerializer.INSTANCE );
     }
 
 

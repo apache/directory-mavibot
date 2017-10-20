@@ -74,7 +74,7 @@ public class RecordManagerTest
         try ( WriteTransaction writeTransaction = recordManager.beginWriteTransaction() )
         {
             // Create a new BTree
-            btree = recordManager.addBTree( writeTransaction, "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
+            btree = recordManager.addBTree( writeTransaction, "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE );
         }
         catch ( Exception e )
         {

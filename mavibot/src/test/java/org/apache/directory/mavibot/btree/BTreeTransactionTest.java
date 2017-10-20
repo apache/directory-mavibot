@@ -57,7 +57,7 @@ public class BTreeTransactionTest
         try ( WriteTransaction writeTransaction = recordManager.beginWriteTransaction() )
         {
             // Create a new BTree with transaction and another one without
-            btree = recordManager.addBTree( writeTransaction, "testWithTxn", LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
+            btree = recordManager.addBTree( writeTransaction, "testWithTxn", LongSerializer.INSTANCE, StringSerializer.INSTANCE );
         }
         catch ( Exception e )
         {

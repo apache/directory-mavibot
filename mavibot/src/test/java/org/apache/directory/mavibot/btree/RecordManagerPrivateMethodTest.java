@@ -67,7 +67,7 @@ public class RecordManagerPrivateMethodTest
         // Create a new BTree
         try ( WriteTransaction writeTransaction = recordManager.beginWriteTransaction() )
         { 
-            btree = recordManager.addBTree( writeTransaction, "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE, false );
+            btree = recordManager.addBTree( writeTransaction, "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE );
         }
     }
 
