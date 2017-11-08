@@ -192,7 +192,7 @@ public class RecordManager implements TransactionManager
      */
     public RecordManager( String fileName )
     {
-        this( fileName, BTreeConstants.DEFAULT_PAGE_SIZE );
+        this( fileName, BTreeConstants.DEFAULT_PAGE_SIZE, BTreeConstants.DEFAULT_CACHE_SIZE );
     }
 
 
@@ -204,7 +204,7 @@ public class RecordManager implements TransactionManager
      * @param name The file name, or a folder name
      * @param pageSize the size of a page on disk, in bytes
      */
-    public RecordManager( String fileName, int pageSize )
+    public RecordManager( String fileName, int pageSize, int cacheSize )
     {
         // Create the RMH
         RecordManagerHeader recordManagerHeader = new RecordManagerHeader();
@@ -241,7 +241,7 @@ public class RecordManager implements TransactionManager
         CacheManager cacheManager = CacheManagerBuilder.newCacheManagerBuilder()
             .withCache( "pageCache", CacheConfigurationBuilder.
                 newCacheConfigurationBuilder( Long.class, Page.class, 
-                ResourcePoolsBuilder.heap( 10000 ) ) ).build( true );
+                ResourcePoolsBuilder.heap( cacheSize ) ) ).build( true );
 
         pageCache = cacheManager.getCache( "pageCache", Long.class, Page.class ); 
 
