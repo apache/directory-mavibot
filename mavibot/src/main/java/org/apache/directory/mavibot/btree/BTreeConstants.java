@@ -21,6 +21,9 @@ public class BTreeConstants
 
     /** The default page size */
     public static final int DEFAULT_PAGE_SIZE = 512;
+    
+    /** The default number of cache pages : 10K pages, or 5Mb*/
+    public static final int DEFAULT_CACHE_SIZE = 10_000;
 
     /** The minimal page size. Can't be below 64, as we have to store many thing sin the RMHeader */
     /* no qualifier*/ static final int MIN_PAGE_SIZE = 64;
