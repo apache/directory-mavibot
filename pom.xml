@@ -79,10 +79,10 @@
     <!-- Dependencies versions ========================================== -->
     <com.github.ben-manes.caffeine.version>2.6.0</com.github.ben-manes.caffeine.version>
     <commons.collections.version>3.2.2</commons.collections.version>
-    <commons.io.version>2.4</commons.io.version>
+    <commons.io.version>2.6</commons.io.version>
     <junit.version>4.12</junit.version>
-    <slf4j.api.version>1.7.10</slf4j.api.version>
-    <slf4j.log4j12.version>1.7.10</slf4j.log4j12.version>
+    <slf4j.api.version>1.7.25</slf4j.api.version>
+    <slf4j.log4j12.version>1.7.25</slf4j.log4j12.version>
   </properties>
 
   <modules>
