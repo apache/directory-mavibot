@@ -77,9 +77,10 @@
 
   <properties>
     <!-- Dependencies versions ========================================== -->
-    <junit.version>4.12</junit.version>
+    <com.github.ben-manes.caffeine.version>2.6.0</com.github.ben-manes.caffeine.version>
     <commons.collections.version>3.2.2</commons.collections.version>
     <commons.io.version>2.4</commons.io.version>
+    <junit.version>4.12</junit.version>
     <slf4j.api.version>1.7.10</slf4j.api.version>
     <slf4j.log4j12.version>1.7.10</slf4j.log4j12.version>
   </properties>
@@ -91,6 +92,13 @@
 
   <dependencyManagement>
     <dependencies>
+      <!-- Cache -->
+      <dependency>
+        <groupId>com.github.ben-manes.caffeine</groupId>
+        <artifactId>caffeine</artifactId>
+        <version>${com.github.ben-manes.caffeine.version}</version>
+      </dependency>
+
       <!-- Testing -->
       <dependency>
         <groupId>junit</groupId>
@@ -164,22 +172,22 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <configuration>
-          <source>1.6</source>
-          <target>1.6</target>
+          <source>1.8</source>
+          <target>1.8</target>
           <optimize>true</optimize>
-		  <debug>true</debug>
+          <debug>true</debug>
           <showDeprecations>true</showDeprecations>
           <encoding>UTF-8</encoding>
         </configuration>
       </plugin>
-	  
+  
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-source-plugin</artifactId>
         <executions>
           <execution>
             <id>attach-source</id>
-			<phase>verify</phase>
+            <phase>verify</phase>
             <goals>
               <goal>jar-no-fork</goal>
             </goals>
