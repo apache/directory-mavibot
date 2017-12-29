@@ -53,11 +53,10 @@
     </dependency>
 
     <dependency>
-      <groupId>org.ehcache</groupId>
-      <artifactId>ehcache</artifactId>
-      <version>3.4.0</version>
+      <groupId>com.github.ben-manes.caffeine</groupId>
+      <artifactId>caffeine</artifactId>
     </dependency>
-
+    
     <!-- Logging dependencies -->
 
     <dependency>
