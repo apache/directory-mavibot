@@ -59,7 +59,7 @@ public class BulkLoader<K, V>
     {
     }
 
-    static enum LevelEnum
+    enum LevelEnum
     {
         LEAF,
         NODE
@@ -106,7 +106,7 @@ public class BulkLoader<K, V>
         int nbIteration = 0;
         int nbElems = 0;
         boolean inMemory = true;
-        Set<K> keys = new HashSet<K>();
+        Set<K> keys = new HashSet<>();
 
         while ( true )
         {
@@ -189,45 +189,43 @@ public class BulkLoader<K, V>
     {
         File file = File.createTempFile( "sortedUnique", "data" );
         file.deleteOnExit();
-        FileOutputStream fos = new FileOutputStream( file );
-
         // Number of read elements
         int nbReads = 0;
 
-        // Flush the tuples on disk
-        while ( dataIterator.hasNext() )
+        try ( FileOutputStream fos = new FileOutputStream( file ) )
         {
-            nbReads++;
-
-            // grab a tuple
-            Tuple<K, V> tuple = dataIterator.next();
-
-            // Serialize the key
-            byte[] bytesKey = btree.getKeySerializer().serialize( tuple.key );
-            fos.write( IntSerializer.serialize( bytesKey.length ) );
-            fos.write( bytesKey );
-
-            // Serialize the values
-            V value = tuple.getValue();
-
-            byte[] bytesValue = btree.getValueSerializer().serialize( value );
-
-            // Serialize the value
-            fos.write( IntSerializer.serialize( bytesValue.length ) );
-            fos.write( bytesValue );
+    
+            // Flush the tuples on disk
+            while ( dataIterator.hasNext() )
+            {
+                nbReads++;
+    
+                // grab a tuple
+                Tuple<K, V> tuple = dataIterator.next();
+    
+                // Serialize the key
+                byte[] bytesKey = btree.getKeySerializer().serialize( tuple.key );
+                fos.write( IntSerializer.serialize( bytesKey.length ) );
+                fos.write( bytesKey );
+    
+                // Serialize the values
+                V value = tuple.getValue();
+    
+                byte[] bytesValue = btree.getValueSerializer().serialize( value );
+    
+                // Serialize the value
+                fos.write( IntSerializer.serialize( bytesValue.length ) );
+                fos.write( bytesValue );
+            }
+    
+            fos.flush();
         }
-
-        fos.flush();
-        fos.close();
 
         FileInputStream fis = new FileInputStream( file );
         Iterator<Tuple<K, V>> uniqueIterator = createUniqueFileIterator( btree, fis );
         SortedFile sortedFile = new SortedFile( file, nbReads );
 
-        Tuple<Iterator<Tuple<K, V>>, SortedFile> result = new Tuple<Iterator<Tuple<K, V>>, SortedFile>(
-            uniqueIterator, sortedFile );
-
-        return result;
+        return new Tuple<>( uniqueIterator, sortedFile );
     }
 
 
@@ -257,10 +255,10 @@ public class BulkLoader<K, V>
         boolean inMemory = true;
 
         // The list of files we will use to store the sorted chunks
-        List<File> sortedFiles = new ArrayList<File>();
+        List<File> sortedFiles = new ArrayList<>();
 
         // An array of chunkSize tuple max
-        List<Tuple<K, V>> tuples = new ArrayList<Tuple<K, V>>( chunkSize );
+        List<Tuple<K, V>> tuples = new ArrayList<>( chunkSize );
 
         // Now, start to read all the tuples to sort them. We may use intermediate files
         // for that purpose if we hit the threshold.
@@ -269,7 +267,7 @@ public class BulkLoader<K, V>
         // If the tuple list is empty, we have to process the load based on files, not in memory
         if ( nbElems > 0 )
         {
-            inMemory = tuples.size() > 0;
+            inMemory = !tuples.isEmpty();
         }
 
         // Now that we have processed all the data, we can start storing them in the btree
@@ -327,7 +325,8 @@ public class BulkLoader<K, V>
      */
     /* no qualifier*/static <K, V> LevelInfo<K, V> computeLevel( BTree<K, V> btree, int nbElems, LevelEnum levelType )
     {
-        int pageSize = btree.getPageSize();
+        BTreeInfo<K, V> btreeInfo = btree.getBtreeInfo();
+        int pageSize = btree.getPageNbElem();
         int incrementNode = 0;
 
         if ( levelType == LevelEnum.NODE )
@@ -335,7 +334,7 @@ public class BulkLoader<K, V>
             incrementNode = 1;
         }
 
-        LevelInfo<K, V> level = new LevelInfo<K, V>();
+        LevelInfo<K, V> level = new LevelInfo<>();
         level.setType( ( levelType == LevelEnum.NODE ) );
         level.setNbElems( nbElems );
         level.setNbPages( nbElems / ( pageSize + incrementNode ) );
@@ -355,11 +354,11 @@ public class BulkLoader<K, V>
 
             if ( level.isNode() )
             {
-                level.setCurrentPage( BTreeFactory.createNode( btree, 0L, nbElems - 1 ) );
+                level.setCurrentPage( BTreeFactory.createNode( btreeInfo, 0L, nbElems - 1 ) );
             }
             else
             {
-                level.setCurrentPage( BTreeFactory.createLeaf( btree, 0L, nbElems ) );
+                level.setCurrentPage( BTreeFactory.createLeaf( btreeInfo, 0L, nbElems ) );
             }
         }
         else
@@ -372,11 +371,11 @@ public class BulkLoader<K, V>
 
                 if ( level.isNode() )
                 {
-                    level.setCurrentPage( BTreeFactory.createNode( btree, 0L, pageSize ) );
+                    level.setCurrentPage( BTreeFactory.createNode( btreeInfo, 0L, pageSize ) );
                 }
                 else
                 {
-                    level.setCurrentPage( BTreeFactory.createLeaf( btree, 0L, pageSize ) );
+                    level.setCurrentPage( BTreeFactory.createLeaf( btreeInfo, 0L, pageSize ) );
                 }
             }
             else
@@ -391,11 +390,11 @@ public class BulkLoader<K, V>
                     {
                         if ( level.isNode() )
                         {
-                            level.setCurrentPage( BTreeFactory.createNode( btree, 0L, pageSize ) );
+                            level.setCurrentPage( BTreeFactory.createNode( btreeInfo, 0L, pageSize ) );
                         }
                         else
                         {
-                            level.setCurrentPage( BTreeFactory.createLeaf( btree, 0L, pageSize ) );
+                            level.setCurrentPage( BTreeFactory.createLeaf( btreeInfo, 0L, pageSize ) );
                         }
                     }
                     else
@@ -403,11 +402,11 @@ public class BulkLoader<K, V>
                         if ( level.isNode() )
                         {
                             level
-                                .setCurrentPage( BTreeFactory.createNode( btree, 0L, ( pageSize / 2 ) + remaining - 1 ) );
+                                .setCurrentPage( BTreeFactory.createNode( btreeInfo, 0L, ( pageSize / 2 ) + remaining - 1 ) );
                         }
                         else
                         {
-                            level.setCurrentPage( BTreeFactory.createLeaf( btree, 0L, ( pageSize / 2 ) + remaining ) );
+                            level.setCurrentPage( BTreeFactory.createLeaf( btreeInfo, 0L, ( pageSize / 2 ) + remaining ) );
                         }
                     }
                 }
@@ -417,11 +416,11 @@ public class BulkLoader<K, V>
 
                     if ( level.isNode() )
                     {
-                        level.setCurrentPage( BTreeFactory.createNode( btree, 0L, pageSize ) );
+                        level.setCurrentPage( BTreeFactory.createNode( btreeInfo, 0L, pageSize ) );
                     }
                     else
                     {
-                        level.setCurrentPage( BTreeFactory.createLeaf( btree, 0L, pageSize ) );
+                        level.setCurrentPage( BTreeFactory.createLeaf( btreeInfo, 0L, pageSize ) );
                     }
                 }
             }
@@ -475,8 +474,8 @@ public class BulkLoader<K, V>
 
     private static <K, V> int computeNbElemsLeaf( BTree<K, V> btree, LevelInfo<K, V> levelInfo )
     {
-        int pageSize = btree.getPageSize();
-        int remaining = levelInfo.getNbElems() - levelInfo.getNbAddedElems();
+        int pageSize = btree.getPageNbElem();
+        int remaining = levelInfo.getNbElemsLimit() - levelInfo.getNbAddedElems();
 
         if ( remaining < pageSize )
         {
@@ -486,7 +485,7 @@ public class BulkLoader<K, V>
         {
             return pageSize;
         }
-        else if ( remaining > levelInfo.getNbElems() - levelInfo.getNbElemsLimit() )
+        else if ( remaining > levelInfo.getNbElemsLimit() - levelInfo.getNbElemsLimit() )
         {
             return pageSize;
         }
@@ -502,8 +501,8 @@ public class BulkLoader<K, V>
      */
     /* No qualifier */int computeNbElemsNode( BTree<K, V> btree, LevelInfo<K, V> levelInfo )
     {
-        int pageSize = btree.getPageSize();
-        int remaining = levelInfo.getNbElems() - levelInfo.getNbAddedElems();
+        int pageSize = btree.getPageNbElem();
+        int remaining = levelInfo.getNbElemsLimit() - levelInfo.getNbAddedElems();
 
         if ( remaining < pageSize + 1 )
         {
@@ -513,7 +512,7 @@ public class BulkLoader<K, V>
         {
             return pageSize + 1;
         }
-        else if ( remaining > levelInfo.getNbElems() - levelInfo.getNbElemsLimit() )
+        else if ( remaining > levelInfo.getNbElemsLimit() - levelInfo.getNbElemsLimit() )
         {
             return pageSize + 1;
         }
@@ -527,7 +526,7 @@ public class BulkLoader<K, V>
     /**
      * Inject a page reference into the root page.
      */
-    private static <K, V> void injectInRoot( BTree<K, V> btree, Page<K, V> page, PageHolder<K, V> pageHolder,
+    private static <K, V> void injectInRoot( BTree<K, V> btree, Page<K, V> page, long child,
         LevelInfo<K, V> level ) throws IOException
     {
         Node<K, V> node = ( Node<K, V> ) level.getCurrentPage();
@@ -772,7 +771,7 @@ public class BulkLoader<K, V>
     }
 
 
-    private static <K, V> BTree<K, V> bulkLoadSinglePage( BTree<K, V> btree, Iterator<Tuple<K, V>> dataIterator,
+    private static <K, V> BTree<K, V> bulkLoadSinglePage( WriteTransaction writeTransaction, BTree<K, V> btree, Iterator<Tuple<K, V>> dataIterator,
         int nbElems ) throws IOException
     {
         // Use the root page
@@ -821,15 +820,15 @@ public class BulkLoader<K, V>
      * Construct the target BTree from the sorted data. We will use the nb of elements
      * to determinate the structure of the BTree, as it must be balanced
      */
-    private static <K, V> BTree<K, V> bulkLoad( BTree<K, V> btree, Iterator<Tuple<K, V>> dataIterator, int nbElems )
+    private static <K, V> BTree<K, V> bulkLoad( WriteTransaction writeTransaction, BTree<K, V> btree, Iterator<Tuple<K, V>> dataIterator, int nbElems )
         throws IOException
     {
-        int pageSize = btree.getPageSize();
+        int pageSize = btree.getBtreeInfo().getPageNbElem();
 
-        // Special case : we can store all the element sin a single page
+        // Special case : we can store all the elements in a single page
         if ( nbElems <= pageSize )
         {
-            return bulkLoadSinglePage( btree, dataIterator, nbElems );
+            return bulkLoadSinglePage( writeTransaction, btree, dataIterator, nbElems );
         }
 
         // Ok, we will need more than one page to store the elements, which
@@ -1002,7 +1001,7 @@ public class BulkLoader<K, V>
             {} );
 
         // First, eliminate the equals keys. We use a map for that
-        Map<K, V> mapTuples = new HashMap<K, V>();
+        Map<K, V> mapTuples = new HashMap<>();
 
         for ( Tuple<K, V> tuple : tuplesArray )
         {
@@ -1012,13 +1011,13 @@ public class BulkLoader<K, V>
             if ( foundSet != null )
             {
                 // We already have had such a key, add the value to the existing key
-                foundSet.add( tuple.value );
+                foundSet = tuple.value;
             }
             else
             {
                 // No such key present in the map : create a new set to store the values,
                 // and add it in the map associated with the new key
-                V set = new TreeV();
+                V set = new TreeMap<>( );
                 set.add( tuple.value );
                 mapTuples.put( tuple.key, set );
             }

@@ -66,10 +66,10 @@ public class RecordManagerFreePageTest
 
         openRecordManagerAndBtree();
 
-        try
+        try ( WriteTransaction writeTxn = recordManager1.beginWriteTransaction() )
         {
             // Create a new BTree
-            btree = recordManager1.addBTree( "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE );
+            btree = recordManager1.addBTree( writeTxn, "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE );
         }
         catch ( Exception e )
         {
@@ -109,7 +109,10 @@ public class RecordManagerFreePageTest
             // load the last created btree
             if ( btree != null )
             {
-                btree = recordManager1.getBtree( btree.getName() );
+                try ( Transaction transaction = recordManager1.beginReadTransaction() )
+                {
+                    btree = recordManager1.getBtree( transaction, btree.getName() );
+                }
             }
         }
         catch ( Exception e )
@@ -127,7 +130,7 @@ public class RecordManagerFreePageTest
     @Test
     public void testRecordManager() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException, CursorException
     {
-        assertEquals( 1, recordManager1.getNbManagedTrees() );
+        assertEquals( 3, recordManager1.getNbManagedTrees( recordManager1.getCurrentRecordManagerHeader() ) );
 
         Set<String> managedBTrees = recordManager1.getManagedTrees();
 
@@ -146,18 +149,21 @@ public class RecordManagerFreePageTest
             Long key = ( long ) i;
             String value = Long.toString( key );
 
-            btree.insert( key, value );
-
-            if ( i % 10000 == 0 )
+            try ( WriteTransaction writeTransaction = recordManager1.beginWriteTransaction() )
             {
-                if ( n > 0 )
+                btree.insert( writeTransaction, key, value );
+    
+                if ( i % 10000 == 0 )
                 {
-                    long t0 = System.currentTimeMillis();
-                    System.out.println( "Written " + i + " elements in : " + ( t0 - delta ) + "ms" );
-                    delta = t0;
+                    if ( n > 0 )
+                    {
+                        long t0 = System.currentTimeMillis();
+                        System.out.println( "Written " + i + " elements in : " + ( t0 - delta ) + "ms" );
+                        delta = t0;
+                    }
+    
+                    n++;
                 }
-
-                n++;
             }
         }
 
@@ -181,23 +187,24 @@ public class RecordManagerFreePageTest
 
         openRecordManagerAndBtree();
 
-        assertEquals( 1, recordManager1.getNbManagedTrees() );
+        assertEquals( 3, recordManager1.getNbManagedTrees( recordManager1.getCurrentRecordManagerHeader() ) );
 
         assertTrue( nbElems == btree.getNbElems() );
-
-        TupleCursor<Long, String> cursor = btree.browse();
-
         long i = 0;
 
-        while ( cursor.hasNext() )
+        try ( Transaction transaction = recordManager1.beginReadTransaction() )
         {
-            Tuple<Long, String> t = cursor.next();
-            assertEquals( ( Long ) i, t.getKey() );
-            assertEquals( String.valueOf( i ), t.getValue() );
-            i++;
+            try ( TupleCursor<Long, String> cursor = btree.browse( transaction ) )
+            {
+                while ( cursor.hasNext() )
+                {
+                    Tuple<Long, String> t = cursor.next();
+                    assertEquals( ( Long ) i, t.getKey() );
+                    assertEquals( String.valueOf( i ), t.getValue() );
+                    i++;
+                }
+            }
         }
-
-        cursor.close();
 
         assertEquals( nbElems, i );
     }

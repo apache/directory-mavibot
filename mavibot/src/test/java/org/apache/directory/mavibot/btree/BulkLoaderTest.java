@@ -921,10 +921,12 @@ public class BulkLoaderTest
         try
         {
             RecordManager rm = new RecordManager( file.getAbsolutePath() );
-            BTree<Long, String> btree = ( BTree<Long, String> ) rm.addBTree( "test",
-                LongSerializer.INSTANCE, StringSerializer.INSTANCE );
-
-            // btree.valueThresholdUp = 8;
+            
+            try ( WriteTransaction writeTransaction = rm.beginWriteTransaction() )
+            {
+                BTree<Long, String> btree = ( BTree<Long, String> ) rm.addBTree( writeTransaction, "test",
+                    LongSerializer.INSTANCE, StringSerializer.INSTANCE );
+            }
 
             Iterator<Tuple<Long, String>> tupleIterator = new Iterator<Tuple<Long, String>>()
             {
@@ -956,28 +958,32 @@ public class BulkLoaderTest
             long t0 = System.currentTimeMillis();
             BTree<Long, String> result = null;
 
-            result = BulkLoader.load( btree, tupleIterator, 128 );
+            result = BulkLoader.load( result, tupleIterator, 128 );
 
-            TupleCursor<Long, String> cursor = result.browse();
-            int nbFetched = 0;
-            Tuple<Long, String> prev = null;
-            Tuple<Long, String> elem = null;
-
-            long t2 = System.currentTimeMillis();
-
-            try
+            try ( Transaction transaction = rm.beginReadTransaction() )
             {
-                while ( cursor.hasNext() )
+                BTree<Long, String> btree = rm.getBtree( transaction, "test" );
+                TupleCursor<Long, String> cursor = result.browse( transaction );
+                int nbFetched = 0;
+                Tuple<Long, String> prev = null;
+                Tuple<Long, String> elem = null;
+    
+                long t2 = System.currentTimeMillis();
+    
+                try
                 {
-                    prev = elem;
-                    elem = cursor.next();
-                    nbFetched++;
+                    while ( cursor.hasNext() )
+                    {
+                        prev = elem;
+                        elem = cursor.next();
+                        nbFetched++;
+                    }
                 }
-            }
-            catch ( Exception e )
-            {
-                System.out.println( "--->" + prev );
-                e.printStackTrace();
+                catch ( Exception e )
+                {
+                    System.out.println( "--->" + prev );
+                    e.printStackTrace();
+                }
             }
 
             long t3 = System.currentTimeMillis();

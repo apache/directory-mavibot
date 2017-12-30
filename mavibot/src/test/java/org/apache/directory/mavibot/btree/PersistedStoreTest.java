@@ -51,7 +51,7 @@ public class PersistedStoreTest
         File tempFile = tempFolder.newFile( "mavibot.db" );
         String tempFileName = tempFile.getAbsolutePath();
 
-        RecordManager recordManager = new RecordManager( tempFileName, 4 * 1024 );
+        RecordManager recordManager = new RecordManager( tempFileName, 4 * 1024, 1000 );
         Method method = RecordManager.class.getDeclaredMethod( "store", RecordManagerHeader.class, long.class, int.class, PageIO[].class );
         method.setAccessible( true );
 
@@ -143,7 +143,7 @@ public class PersistedStoreTest
         File tempFile = tempFolder.newFile( "mavibot.db" );
         String tempFileName = tempFile.getAbsolutePath();
 
-        RecordManager recordManager = new RecordManager( tempFileName, 4 * 1024 );
+        RecordManager recordManager = new RecordManager( tempFileName, 4 * 1024, 1000 );
         Method method = RecordManager.class.getDeclaredMethod( "store", RecordManagerHeader.class, long.class, long.class, PageIO[].class );
         method.setAccessible( true );
 
@@ -324,7 +324,7 @@ public class PersistedStoreTest
         String tempFileName = tempFile.getAbsolutePath();
 
         // We use smaller pages
-        RecordManager recordManager = new RecordManager( tempFileName, 32 );
+        RecordManager recordManager = new RecordManager( tempFileName, 32, 1000 );
         Method storeMethod = RecordManager.class.getDeclaredMethod( "store", RecordManagerHeader.class, long.class, byte[].class, PageIO[].class );
         storeMethod.setAccessible( true );
 

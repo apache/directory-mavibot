@@ -54,11 +54,9 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.ehcache.Cache;
-import org.ehcache.CacheManager;
-import org.ehcache.config.builders.CacheConfigurationBuilder;
-import org.ehcache.config.builders.CacheManagerBuilder;
-import org.ehcache.config.builders.ResourcePoolsBuilder;
+
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 
 
 /**
@@ -238,12 +236,7 @@ public class RecordManager implements TransactionManager
         }
         
         // Create the cache
-        CacheManager cacheManager = CacheManagerBuilder.newCacheManagerBuilder()
-            .withCache( "pageCache", CacheConfigurationBuilder.
-                newCacheConfigurationBuilder( Long.class, Page.class, 
-                ResourcePoolsBuilder.heap( cacheSize ) ) ).build( true );
-
-        pageCache = cacheManager.getCache( "pageCache", Long.class, Page.class ); 
+        pageCache = Caffeine.newBuilder().maximumSize( cacheSize ).build();
 
         // We have to create a new file, if it does not already exist
         boolean isNewFile = createFile( tmpFile );
@@ -2459,7 +2452,7 @@ public class RecordManager implements TransactionManager
      */
     /* no qualifier */<K, V> Page<K, V> getPage( BTreeInfo btreeInfo, int pageSize, long offset ) throws IOException
     {
-        Page<K, V> page = ( Page<K, V> )pageCache.get( offset );
+        Page<K, V> page = pageCache.getIfPresent( offset );
         
         if ( page == null )
         {

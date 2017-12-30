@@ -62,7 +62,7 @@ public class RecordManagerPrivateMethodTest
         System.out.println( dataDir + "/mavibot.db" );
 
         // Now, try to reload the file back
-        recordManager = new RecordManager( dataDir.getAbsolutePath(), 32 );
+        recordManager = new RecordManager( dataDir.getAbsolutePath(), 32, 1000 );
 
         // Create a new BTree
         try ( WriteTransaction writeTransaction = recordManager.beginWriteTransaction() )

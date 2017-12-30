@@ -41,6 +41,7 @@ import org.apache.directory.mavibot.btree.exception.EndOfFileExceededException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.LongSerializer;
 import org.apache.directory.mavibot.btree.serializer.StringSerializer;
+//import org.ehcache.impl.internal.classes.commonslang.SystemUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -122,8 +123,9 @@ public class BTreeBrowseTest
                 recordManager.close();
             }
 
+            System.out.println( "File : " + dataDir.getAbsolutePath() );
             // Now, try to reload the file back
-            recordManager = new RecordManager( dataDir.getAbsolutePath() );
+            recordManager = new RecordManager( dataDir.getAbsolutePath(), 1024, 1000 );
 
             try ( Transaction transaction = recordManager.beginReadTransaction() )
             {
@@ -652,9 +654,10 @@ public class BTreeBrowseTest
     public void testAddRandom() throws Exception
     {
         // Inject some data
-        long increment = 1_000L;
+        long increment = 100_000L;
         long nbRound = 100_000L;
         long t0 = System.currentTimeMillis();
+        btree.setPageNbElem( 32 );  // Long + String(long) : 8 bytes + [2 - 10] bytes, max, 56 elems/page
 
         long[] values = new long[(int)nbRound];
         
@@ -682,32 +685,79 @@ public class BTreeBrowseTest
 
         long t1 = System.currentTimeMillis();
         
-        System.out.println( "Delta for " + nbRound + " : " + ( t1 - t0 ) );
+        System.out.println( "Delta for " + nbRound + " writes : " + ( t1 - t0 ) );
         
         //MavibotInspector.check( recordManager );
+        long[] counters = new long[12];
+        long smaller = Long.MAX_VALUE;
+        long higher =  0L;
+        long sum = 0L;
+        Random rand = new Random( System.nanoTime() ); 
 
-        int counter = 0;
-
-        try ( Transaction readTxn = recordManager.beginReadTransaction() )
+        for ( int k = 0; k < 12; k++ )
         {
-            BTree<Long, String> btree = readTxn.getBTree( "test" );
-            TupleCursor<Long, String> cursor = btree.browse( readTxn );
+            long tread0 = System.currentTimeMillis();
     
-            while ( cursor.hasNext() )
+            for ( int i = 0; i < 1_00; i++ )
             {
-                cursor.next();
-                counter++;
+                int counter = 0;
+                try ( Transaction readTxn = recordManager.beginReadTransaction() )
+                {
+                    BTree<Long, String> btree = readTxn.getBTree( "test" );
+                    
+                    for ( int j = 0; j < 100_000; j++ )
+                    {
+                        long key = Math.abs( rand.nextLong()%100_000L );
+                        btree.get( readTxn, key );
+                        counter++;
+                    }
+                    
+                    /*
+                    TupleCursor<Long, String> cursor = btree.browse( readTxn );
+            
+                    while ( cursor.hasNext() )
+                    {
+                        cursor.next();
+                        counter++;
+                    }
+                    */
+                }
+            
+                assertEquals( nbRound, counter );
             }
+
+            long tread1 = System.currentTimeMillis();
+
+            System.out.println( "Delta for " + ( nbRound * 1000 ) + " reads[" + k + "] : " + ( tread1 - tread0 ) );
+            counters[k] = ( tread1 - tread0 );
+            
+            if ( counters[k] < smaller )
+            {
+                smaller = counters[k];
+            }
+            
+            if ( counters[k] > higher )
+            {
+                higher = counters[k];
+            }
+            
+            sum += counters[k];
+            
+            System.out.println( "Hits   : " + recordManager.nbCacheHits );
+            System.out.println( "Misses : " + recordManager.nbCacheMisses );
         }
         
-        assertEquals( nbRound, counter );
+        sum -= smaller;
+        sum -= higher;
         
+        System.out.println( "Average : " + ( sum / 10 ) );
+
         // Now delete the elements
         shuffle( values );
         
         long tt0 = System.currentTimeMillis();
 
-        increment = 1L;
+        //increment = 1L;
         
         for ( long i = 0; i < nbRound/increment; i++ )
         {
@@ -728,7 +778,7 @@ public class BTreeBrowseTest
 
         long tt1 = System.currentTimeMillis();
         
-        System.out.println( "Delta for " + nbRound + " : " + ( tt1 - tt0 ) );
+        System.out.println( "Delta for " + nbRound + " deletes : " + ( tt1 - tt0 ) );
     }
     
     

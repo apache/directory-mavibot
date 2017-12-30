@@ -55,7 +55,7 @@ public class ReadTest
         String tempFileName = tempFile.getAbsolutePath();
 
         // Create page size of 32 only
-        RecordManager recordManager = new RecordManager( tempFileName, 32 );
+        RecordManager recordManager = new RecordManager( tempFileName, 32, 1000 );
         Method storeMethod = RecordManager.class.getDeclaredMethod( "store", RecordManagerHeader.class, long.class, int.class, PageIO[].class );
         Method readIntMethod = RecordManager.class.getDeclaredMethod( "readInt", int.class, PageIO[].class, long.class );
         storeMethod.setAccessible( true );
@@ -133,7 +133,7 @@ public class ReadTest
         String tempFileName = tempFile.getAbsolutePath();
 
         // Create page size of 32 only
-        RecordManager recordManager = new RecordManager( tempFileName, 32 );
+        RecordManager recordManager = new RecordManager( tempFileName, 32, 1000 );
         Method storeMethod = RecordManager.class.getDeclaredMethod( "store", RecordManagerHeader.class, long.class, long.class, PageIO[].class );
         Method readLongMethod = RecordManager.class.getDeclaredMethod( "readLong", int.class, PageIO[].class, long.class );
         storeMethod.setAccessible( true );
@@ -245,7 +245,7 @@ public class ReadTest
         String tempFileName = tempFile.getAbsolutePath();
 
         // We use smaller pages
-        RecordManager recordManager = new RecordManager( tempFileName, 32 );
+        RecordManager recordManager = new RecordManager( tempFileName, 32, 1000 );
         Method storeMethod = RecordManager.class.getDeclaredMethod( "store", RecordManagerHeader.class, long.class, byte[].class, 
             PageIO[].class );
         Method readBytesMethod = RecordManager.class.getDeclaredMethod( "readBytes", int.class, PageIO[].class, long.class );
