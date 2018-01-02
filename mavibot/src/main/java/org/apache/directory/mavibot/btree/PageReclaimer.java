@@ -64,6 +64,7 @@ public class PageReclaimer
     /* no qualifier */ void reclaim()
     {
         //System.out.println( "reclaiming pages" );
+        /*
         try
         {
             if ( running )
@@ -181,6 +182,7 @@ public class PageReclaimer
             LOG.warn( "Errors while reclaiming", e );
             throw new RuntimeException( e );
         }
+        */
     }
 
 
@@ -193,6 +195,7 @@ public class PageReclaimer
      */
     private List<RevisionOffsets> getRevisions( String name ) throws Exception
     {
+        /*
         TupleCursor<RevisionName, long[]> cursor = rm.copiedPageBtree.browse();
 
         List<RevisionOffsets> lst = new ArrayList<RevisionOffsets>();
@@ -211,5 +214,8 @@ public class PageReclaimer
         cursor.close();
         
         return lst;
+        */
+        
+        return null;
     }
 }

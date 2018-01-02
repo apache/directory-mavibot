@@ -61,6 +61,7 @@ public class PageReclaimerTest
 
     private File dbFile;
 
+    /*
 
     @Before
     public void setup() throws Exception
@@ -134,6 +135,7 @@ public class PageReclaimerTest
      * 
      * @throws Exception
      */
+    /*
     @Test
     public void testReclaimerWithMagicNum() throws Exception
     {
@@ -158,6 +160,7 @@ public class PageReclaimerTest
         
         assertEquals( count, total );
     }
+    */
 
     
     /**
@@ -165,6 +168,7 @@ public class PageReclaimerTest
      * 
      * @throws Exception
      */
+    /*
     @Test
     public void testReclaimerWithMultiThreads() throws Exception
     {
@@ -303,12 +307,11 @@ public class PageReclaimerTest
             }
         }
         
-        /*
-        System.out.println( "Total number of pages created " + manager.nbCreatedPages );
-        System.out.println( "Total number of pages reused " + manager.nbReusedPages );
-        System.out.println( "Total number of pages freed " + manager.nbFreedPages );
-        System.out.println( "Total file size (bytes) " + file.length() );
-        */
+        
+        //System.out.println( "Total number of pages created " + manager.nbCreatedPages );
+        //System.out.println( "Total number of pages reused " + manager.nbReusedPages );
+        //System.out.println( "Total number of pages freed " + manager.nbFreedPages );
+        //System.out.println( "Total file size (bytes) " + file.length() );
         
         long totalPages = file.length() / RecordManager.DEFAULT_PAGE_SIZE;
         
@@ -359,5 +362,5 @@ public class PageReclaimerTest
         //System.out.println("Unaccounted offsets " + unaccounted);
         assertEquals( 0, unaccounted.size() );
     }
-    
+    */
 }
