@@ -26,6 +26,7 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -33,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -178,6 +180,9 @@ public class RecordManager implements TransactionManager
     
     /** The page cache */
     private Cache<Long, Page> pageCache;
+    
+    /** The active transactions list */
+    Deque<RecordManagerHeader> transactionsList = new ConcurrentLinkedDeque<>();
 
 
 
@@ -598,7 +603,11 @@ public class RecordManager implements TransactionManager
                 Thread.currentThread().getName() );
         }
 
-        return new ReadTransaction( this, timeout );
+        Transaction transaction = new ReadTransaction( this, timeout );
+        
+        transaction.getRecordManagerHeader().txnCounter.getAndIncrement();
+        
+        return transaction;
     }
 
 
@@ -625,7 +634,6 @@ public class RecordManager implements TransactionManager
             TXN_LOG.debug( "..o The current thread already holds the lock" );
         }
 
-        // Create the transaction
         return new WriteTransaction( this );
     }
 

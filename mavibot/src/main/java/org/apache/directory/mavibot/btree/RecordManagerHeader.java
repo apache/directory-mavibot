@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -72,6 +73,9 @@ public class RecordManagerHeader
     
     /** The offset of the end of the file */
     /* no qualifier */long lastOffset = BTreeConstants.NO_PAGE;
+    
+    /** The transaction counter */
+    /* no qualifier */ AtomicInteger txnCounter = new AtomicInteger( 0 );
     
     
     /** The lock used to protect the recordManagerHeader while accessing it */

@@ -177,6 +177,24 @@ public class WriteTransaction extends AbstractTransaction
             newPages.clear();
             copiedPageMap.clear();
             super.close();
+
+            // Finally add the new RecordManagerHeader in the transaction list
+            RecordManagerHeader previousRMH = recordManager.transactionsList.peek();
+            
+            recordManager.transactionsList.offerFirst( recordManagerHeader );
+
+            // Corner case : it might be null, if this is the first revision
+            if ( previousRMH != null )
+            {
+                // We may also have to cleanup the previous RMH
+                if ( previousRMH.txnCounter.get() == 0 )
+                {
+                    // Ok, we can get read of it
+                    recordManager.transactionsList.remove( previousRMH );
+                    
+                    // And we can clean it up
+                }
+            }
         }
     }
     

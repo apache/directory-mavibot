@@ -21,6 +21,7 @@ package org.apache.directory.mavibot.btree;
 
 
 import java.io.Closeable;
+import java.io.IOException;
 import java.util.Date;
 
 
@@ -67,6 +68,17 @@ public class ReadTransaction extends AbstractTransaction implements Closeable
         
         // Don't get a copy of the RMH
         recordManagerHeader = recordManager.getCurrentRecordManagerHeader();
+    }
+
+
+    /**
+     * {@inheritDoc}
+     * @throws IOException
+     */
+    @Override
+    public void close() throws IOException
+    {
+        commit();
     }
 
 

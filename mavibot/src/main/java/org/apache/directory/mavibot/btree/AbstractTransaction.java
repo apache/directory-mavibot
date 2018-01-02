@@ -183,6 +183,14 @@ public abstract class AbstractTransaction implements Transaction
     public void abort() throws IOException
     {
         aborted = true;
+
+        // Decrement the counter
+        int txnNumber = recordManagerHeader.txnCounter.getAndDecrement();
+
+        if ( ( txnNumber == 0 ) && ( recordManager.transactionsList.peek().revision != recordManagerHeader.revision ) )
+        {
+            // We can cleanup 
+        }
     }
 
 
@@ -193,6 +201,14 @@ public abstract class AbstractTransaction implements Transaction
     public void commit() throws IOException
     {
         closed = true;
+        
+        // Decrement the counter
+        int txnNumber = recordManagerHeader.txnCounter.getAndDecrement();
+        
+        if ( ( txnNumber == 0 ) && ( recordManager.transactionsList.peek().revision != recordManagerHeader.revision ) )
+        {
+            // We can cleanup 
+        }
     }
     
     
