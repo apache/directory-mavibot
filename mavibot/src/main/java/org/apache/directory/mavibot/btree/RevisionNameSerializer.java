@@ -35,7 +35,15 @@ import org.apache.directory.mavibot.btree.util.Strings;
 
 /**
  * A serializer for the RevisionName object. The RevisionName will be serialized
- * as a long (the revision), followed by the String.
+ * as a long (the revision), followed by the String :
+ * <pre>
+ *  +---+---+---+---+---+---+---+---+
+ *  | Revision, 8 bytes             |
+ *  +---+---+---+---+---+---+---+---+
+ *  | String length | 4 bytes. 0xFFFFFFFF if null
+ *  +---+---+---+---+
+ *  | String value...
+ *  +----------------
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
@@ -152,7 +160,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
             else
             {
                 // The empty name
-                IntSerializer.serialize( result, 4,  0 );
+                IntSerializer.serialize( result, 8,  0 );
             }
         }
         else
@@ -164,7 +172,7 @@ import org.apache.directory.mavibot.btree.util.Strings;
             
             
             // The null name
-            IntSerializer.serialize( result, 4, 0xFFFFFFFF );
+            IntSerializer.serialize( result, 8, 0xFFFFFFFF );
         }
 
         return result;
