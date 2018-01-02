@@ -31,6 +31,9 @@ import org.slf4j.LoggerFactory;
  * | current CP offset   | 8 bytes : The offset of the current CopiedPages B-tree
  * +---------------------+
  * </pre>
+ * 
+ * We additionally keep a track of the number of read transaction using an instance.
+ * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
 public class RecordManagerHeader
@@ -291,6 +294,9 @@ public class RecordManagerHeader
                     }
                 }
             }
+            
+            sb.append( "Nb transactions :" ).append( txnCounter.get() );
+            sb.append( '\n' );
 
             LOG_PAGES.debug( "Update RM Header : \n{}", sb.toString() );
         }
@@ -315,7 +321,8 @@ public class RecordManagerHeader
         sb.append( "    BOB current offset :  " ).append( String.format( "%16x", currentBtreeOfBtreesOffset ) ).append( '\n' );
         sb.append( "    CPB current offset :  " ).append( String.format( "%16x", currentCopiedPagesBtreeOffset ) ).append( '\n' );
         sb.append( "    last offset :         " ).append( String.format( "%16x", lastOffset ) ).append( '\n' );
-        
+        sb.append( "    Nb transactions :     " ).append( txnCounter.get() ).append( '\n' );
+
         if ( btreeMap.isEmpty() )
         {
             sb.append( "    No managed B-trees\n" );
