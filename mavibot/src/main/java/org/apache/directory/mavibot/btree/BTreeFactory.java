@@ -434,69 +434,6 @@ public class BTreeFactory<K, V>
     //--------------------------------------------------------------------------------------------
     // Utility method
     //--------------------------------------------------------------------------------------------
-    /**
-     * Includes the intermediate nodes in the path up to and including the right most leaf of the tree
-     *
-     * @param btree the b-tree
-     * @return a LinkedList of all the nodes and the final leaf
-     */
-    /* no qualifier*/static <K, V> LinkedList<ParentPos<K, V>> getPathToRightMostLeaf( BTree<K, V> btree )
-    {
-        LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
-
-        ParentPos<K, V> last = new ParentPos<>( btree.getRootPage(), btree.getRootPage().getPageNbElems() );
-        stack.push( last );
-
-        if ( btree.getRootPage().isLeaf() )
-        {
-            Page<K, V> leaf = btree.getRootPage();
-            //ValueHolder<V> valueHolder = ( ( Leaf<K, V> ) leaf ).getValue( last.pos );
-        }
-        else
-        {
-            Page<K, V> node = btree.getRootPage();
-
-            while ( true )
-            {
-                //Page<K, V> p = transaction.getPage( btreeInfo, ( ( AbstractPage )parentPos.page ).children[parentPos.pos] );
-                Page<K, V> p = ( ( AbstractPage<K, V> ) node ).getPage( node.getPageNbElems() );
-
-                last = new ParentPos<>( p, p.getPageNbElems() );
-                stack.push( last );
-
-                if ( p.isLeaf() )
-                {
-                    Page<K, V> leaf = last.page;
-                    //ValueHolder<V> valueHolder = ( ( Leaf<K, V> ) leaf ).getValue( last.pos );
-                    break;
-                }
-            }
-        }
-
-        return stack;
-    }
-
-
-    //--------------------------------------------------------------------------------------------
-    // Persisted b-tree methods
-    //--------------------------------------------------------------------------------------------
-    /**
-     * Set the rootPage offset of the b-tree
-     *
-     * @param btree The b-tree to update
-     * @param rootPageOffset The rootPageOffset to set
-     */
-    /* no qualifier*/static <K, V> void setRootPageOffset( BTree<K, V> btree, long rootPageOffset )
-    {
-        if ( btree instanceof BTree )
-        {
-            btree.getBtreeHeader().setRootPageOffset( rootPageOffset );
-        }
-        else
-        {
-            throw new IllegalArgumentException( "The b-tree must be a PersistedBTree" );
-        }
-    }
 
 
     /**
@@ -530,44 +467,5 @@ public class BTreeFactory<K, V>
     {
         KeyHolder<K> keyHolder = new KeyHolder<>( btreeInfo.getKeySerializer(), buffer );
         ( ( AbstractPage<K, V> ) page ).setKey( pos, keyHolder );
-    }
-
-
-    /**
-     * Includes the intermediate nodes in the path up to and including the left most leaf of the tree
-     *
-     * @param btree The b-tree to process
-     * @return a LinkedList of all the nodes and the final leaf
-     */
-    /* no qualifier*/static <K, V> LinkedList<ParentPos<K, V>> getPathToLeftMostLeaf( BTree<K, V> btree )
-    {
-        if ( btree instanceof BTree )
-        {
-            LinkedList<ParentPos<K, V>> stack = new LinkedList<ParentPos<K, V>>();
-
-            ParentPos<K, V> first = new ParentPos<K, V>( btree.getRootPage(), 0 );
-            stack.push( first );
-
-            Page<K, V> node = btree.getRootPage();
-
-            while ( true )
-            {
-                Page<K, V> page = ( ( AbstractPage<K, V> ) node ).getPage( 0 );
-
-                first = new ParentPos<K, V>( page, 0 );
-                stack.push( first );
-
-                if ( page.isLeaf() )
-                {
-                    break;
-                }
-            }
-
-            return stack;
-        }
-        else
-        {
-            throw new IllegalArgumentException( "The b-tree must be a PersistedBTree" );
-        }
     }
 }
