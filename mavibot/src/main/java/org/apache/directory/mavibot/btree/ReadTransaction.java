@@ -56,6 +56,7 @@ public class ReadTransaction extends AbstractTransaction implements Closeable
         recordManagerHeader = recordManager.getCurrentRecordManagerHeader();
     }
     
+    
     /**
      * Creates a new read transaction, with a specific tiemout.
      *

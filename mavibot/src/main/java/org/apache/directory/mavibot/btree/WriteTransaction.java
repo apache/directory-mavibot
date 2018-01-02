@@ -58,8 +58,6 @@ public class WriteTransaction extends AbstractTransaction
         // Get a copy of the RMH
         recordManagerHeader = recordManager.getRecordManagerHeaderCopy();
         
-        //System.out.println( "---> Write transaction started, " + this );
-        
         // We have to increment the revision
         recordManagerHeader.revision++;
     }
@@ -93,7 +91,7 @@ public class WriteTransaction extends AbstractTransaction
             if ( node.children[i] < 0L )
             {
                 // This is a Page ID, replace it with the page offset
-                WALObject child = newPages.get( -node.children[i] );
+                WALObject<?, ?> child = newPages.get( -node.children[i] );
                 node.children[i] = child.getOffset();
             }
         }
@@ -111,10 +109,8 @@ public class WriteTransaction extends AbstractTransaction
             // First, find the modified users B-trees, and flush the user's pages 
             Set<BTreeInfo<?, ?>> btreeInfos = new HashSet<>();
             
-            //System.out.println( "-----User BTree----" );
             for ( WALObject<?, ?> walObject : newPages.values() )
             {
-                //System.out.println( "WALObject" + walObject );
                 BTreeInfo<?, ?> btreeInfo = walObject.getBtreeInfo();
                 
                 // Flush the page
@@ -152,7 +148,6 @@ public class WriteTransaction extends AbstractTransaction
             }
             
             // Flush the newly updated pages 
-            //System.out.println( "-----BOB----" );
             flushNewPages();
 
             // BOB done, clear the list
@@ -162,11 +157,10 @@ public class WriteTransaction extends AbstractTransaction
             recordManager.insertInCopiedPagesBtree( this );
             
             // Last not least, Flush the CPB pages
-            //System.out.println( "-----CPB BTree----" );
             flushNewPages();
             
-            long newBtreeOfBtreesOffet = ((BTree<NameRevision, Long>)recordManagerHeader.btreeOfBtrees).getBtreeHeader().offset;
-            long newCopiedPagesBtreeOffset = ((BTree<RevisionName, long[]>)recordManagerHeader.copiedPagesBtree).getBtreeHeader().offset;
+            long newBtreeOfBtreesOffet = recordManagerHeader.btreeOfBtrees.getBtreeHeader().offset;
+            long newCopiedPagesBtreeOffset = recordManagerHeader.copiedPagesBtree.getBtreeHeader().offset;
 
             // And update the RecordManagerHeader
             recordManager.updateRecordManagerHeader( recordManagerHeader, newBtreeOfBtreesOffet, newCopiedPagesBtreeOffset );
@@ -184,16 +178,12 @@ public class WriteTransaction extends AbstractTransaction
             recordManager.transactionsList.offerFirst( recordManagerHeader );
 
             // Corner case : it might be null, if this is the first revision
-            if ( previousRMH != null )
+            if ( ( previousRMH != null ) && ( previousRMH.txnCounter.get() == 0 ) )
             {
-                // We may also have to cleanup the previous RMH
-                if ( previousRMH.txnCounter.get() == 0 )
-                {
-                    // Ok, we can get read of it
-                    recordManager.transactionsList.remove( previousRMH );
-                    
-                    // And we can clean it up
-                }
+                // Ok, we can get read of it
+                recordManager.transactionsList.remove( previousRMH );
+                
+                // And we can clean it up
             }
         }
     }
@@ -203,7 +193,6 @@ public class WriteTransaction extends AbstractTransaction
     {
         for ( WALObject<?, ?> walObject : newPages.values() )
         {
-            //System.out.println( "WALObject" + walObject );
             if ( walObject instanceof Node )
             {
                 updateRefs( ( Node ) walObject );
@@ -281,7 +270,7 @@ public class WriteTransaction extends AbstractTransaction
         // Only add the page if it's not already there
         if ( walObject != null )
         {
-            WALObject oldPage = newPages.put( walObject.getId(), walObject );
+            WALObject<?, ?> oldPage = newPages.put( walObject.getId(), walObject );
             recordManager.putPage( walObject );
         }
     }
