@@ -111,7 +111,7 @@ public class BTreeTransactionTest
     @Test
     public void testWithTransaction() throws IOException
     {
-        long nbIteration = 100_000L;
+        long nbIteration = 10_000L;
         long t0 = System.currentTimeMillis();
 
         for ( long i = 0L; i < nbIteration; i++ )

@@ -123,7 +123,6 @@ public class BTreeBrowseTest
                 recordManager.close();
             }
 
-            System.out.println( "File : " + dataDir.getAbsolutePath() );
             // Now, try to reload the file back
             recordManager = new RecordManager( dataDir.getAbsolutePath(), 1024, 1000 );
 
@@ -572,7 +571,7 @@ public class BTreeBrowseTest
     {
         // Inject some data
         long increment = 100L;
-        long nbRound = 100_000L;
+        long nbRound = 10_000L;
         long t0 = System.currentTimeMillis();
         
         for ( long i = 0; i < nbRound/increment; i++ )
@@ -594,7 +593,6 @@ public class BTreeBrowseTest
         long t1 = System.currentTimeMillis();
         
         System.out.println( "Delta add    : " + ( t1 - t0 ) );
-        System.out.println( "File name    : " + dataDir );
         System.out.println( "Nb cache hits : " + recordManager.nbCacheHits.get() );
         System.out.println( "Nb cache misses : " + recordManager.nbCacheMisses.get() );
         
@@ -654,8 +652,8 @@ public class BTreeBrowseTest
     public void testAddRandom() throws Exception
     {
         // Inject some data
-        long increment = 100_000L;
-        long nbRound = 100_000L;
+        long increment = 10_000L;
+        long nbRound = 10_000L;
         long t0 = System.currentTimeMillis();
         btree.setPageNbElem( 32 );  // Long + String(long) : 8 bytes + [2 - 10] bytes, max, 56 elems/page
 
@@ -705,9 +703,9 @@ public class BTreeBrowseTest
                 {
                     BTree<Long, String> btree = readTxn.getBTree( "test" );
                     
-                    for ( int j = 0; j < 100_000; j++ )
+                    for ( int j = 0; j < nbRound; j++ )
                     {
-                        long key = Math.abs( rand.nextLong()%100_000L );
+                        long key = Math.abs( rand.nextLong()%nbRound );
                         btree.get( readTxn, key );
                         counter++;
                     }
@@ -819,7 +817,6 @@ public class BTreeBrowseTest
                     int pos = ( int )( i * increment + j );
                     long val = values[pos];
                     //MavibotInspector.check( recordManager, recordManager.getRecordManagerHeader() );
-                    System.out.println( "Adding value " + pos );
                     btree.insert( writeTxn, val, Long.toString( val ) );
                 }
             }
@@ -874,7 +871,6 @@ public class BTreeBrowseTest
                     int elemNb = ( int )( i * increment + j );
                     long val = values[elemNb];
                     //MavibotInspector.check( recordManager, recordManager.getRecordManagerHeader() );
-                    System.out.println( "Removing value " + val );
                     btree.delete( writeTxn, val );
                 }
             }
@@ -1099,7 +1095,6 @@ public class BTreeBrowseTest
                 {
                     int elemNb = ( int )( i * increment + j );
                     long val = values[elemNb];
-                    System.out.println( "deleting " + elemNb );
                     //MavibotInspector.check( recordManager, recordManager.getRecordManagerHeader() );
                     btree.delete( writeTxn, val );
                 }
@@ -1115,7 +1110,7 @@ public class BTreeBrowseTest
 
         // Inject some data
         long increment = 1_000L;
-        long nbRound = 100_000L;
+        long nbRound = 10_000L;
         long t0 = System.currentTimeMillis();
 
         long[] values = new long[(int)nbRound];
@@ -1645,7 +1640,6 @@ public class BTreeBrowseTest
             
             for ( long i = 1; i < 1000L; i++ )
             {
-                System.out.println( "Insert " + i );
                 try
                 {
                     btree.insert( writeTxn, i, Long.toString( i ) );
