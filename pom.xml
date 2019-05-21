@@ -29,7 +29,7 @@
 
   <organization>
     <name>Apache Mavibot Project Parent</name>
-    <url>http://directory.apache.org/mavibot/</url>
+    <url>https://directory.apache.org/mavibot/</url>
   </organization>
 
   <groupId>org.apache.directory.mavibot</groupId>
@@ -42,18 +42,18 @@
     <maven>3.0.0</maven>
   </prerequisites>
 
-  <url>http://directory.apache.org/mavibot</url>
+  <url>https://directory.apache.org/mavibot</url>
   <inceptionYear>2012</inceptionYear>
 
   <issueManagement>
     <system>jira</system>
-    <url>http://issues.apache.org/jira/browse/MAVIBOT</url>
+    <url>https://issues.apache.org/jira/browse/MAVIBOT</url>
   </issueManagement>
 
   <scm>
-    <connection>scm:svn:http://svn.apache.org/repos/asf/directory/mavibot/trunk</connection>
+    <connection>scm:svn:https://svn.apache.org/repos/asf/directory/mavibot/trunk</connection>
     <developerConnection>scm:svn:https://svn.apache.org/repos/asf/directory/mavibot/trunk</developerConnection>
-    <url>http://svn.apache.org/viewvc/directory/mavibot/trunk</url>
+    <url>https://svn.apache.org/viewvc/directory/mavibot/trunk</url>
   </scm>
 
   <ciManagement>
@@ -70,7 +70,7 @@
   <licenses>
     <license>
       <name>Apache 2.0 License</name>
-      <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+      <url>https://www.apache.org/licenses/LICENSE-2.0</url>
       <distribution>repo</distribution>
     </license>
   </licenses>
