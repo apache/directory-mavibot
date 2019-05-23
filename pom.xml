@@ -51,9 +51,10 @@
   </issueManagement>
 
   <scm>
-    <connection>scm:svn:https://svn.apache.org/repos/asf/directory/mavibot/trunk</connection>
-    <developerConnection>scm:svn:https://svn.apache.org/repos/asf/directory/mavibot/trunk</developerConnection>
-    <url>https://svn.apache.org/viewvc/directory/mavibot/trunk</url>
+    <connection>scm:git:https://gitbox.apache.org/repos/asf/directory-mavibot.git</connection>
+    <developerConnection>scm:git:https://gitbox.apache.org/repos/asf/directory-mavibot</developerConnection>
+    <url>https://github.com/apache/directory-mavibot/tree/${project.scm.tag}</url>
+    <tag>master</tag>
   </scm>
 
   <ciManagement>
