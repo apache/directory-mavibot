@@ -339,14 +339,14 @@ public class MavibotInspector
             long currentBtreeOfBtreesOffset = recordManagerHeaderBuffer.getLong();
             long currentCopiedPagesBtreeOffset = recordManagerHeaderBuffer.getLong();
 
-            // Check that the current BOB offset is valid
+            // Check that the current LOB offset is valid
             checkOffset( recordManager, recordManagerHeader, currentBtreeOfBtreesOffset );
 
             // Check that the current CPB offset is valid
             checkOffset( recordManager, recordManagerHeader, currentCopiedPagesBtreeOffset );
 
             // Now, check the BTree of Btrees
-            checkBtreeOfBtrees( recordManager, recordManagerHeader, checkedPages );
+            checkListOfBtrees( recordManager, recordManagerHeader, checkedPages );
 
             // And the Copied Pages BTree
             checkBtree( recordManager, recordManagerHeader, currentCopiedPagesBtreeOffset, checkedPages );
@@ -383,7 +383,7 @@ public class MavibotInspector
         
         // RMH
         sb.append( String.format( "0x%04X", 0L ) ).append( " RMH : " );
-        sb.append( "<BOB h[" ).append( recordManagerHeader.getRevision() ).append( "] : " ).append( String.format( "0x%04X",recordManagerHeader.currentBtreeOfBtreesOffset ) );
+        sb.append( "<LOB h[" ).append( recordManagerHeader.getRevision() ).append( "] : " ).append( String.format( "0x%04X",recordManagerHeader.currentListOfBtreesOffset ) );
         sb.append( ">, " );
         sb.append( "<CPB h[" ).append( recordManagerHeader.getRevision() ).append( "] : " ).append( String.format( "0x%04X",recordManagerHeader.currentCopiedPagesBtreeOffset ) );
         sb.append( '>' );
@@ -393,8 +393,8 @@ public class MavibotInspector
         // The CPB
         dumpCopiedPagesBtree( recordManager, recordManagerHeader, pages );
 
-        // The BOB
-        dumpBtreeOfBtrees( recordManager, recordManagerHeader, pages );
+        // The LOB
+        dumpListOfBtrees( recordManager, recordManagerHeader, pages );
 
         boolean previousEmpty = false;
         
@@ -423,15 +423,15 @@ public class MavibotInspector
 
 
     /**
-     * Check the Btree of Btrees
+     * Check the List of Btrees
      */
-    private static void checkBtreeOfBtrees( RecordManager recordManager, RecordManagerHeader recordManagerHeader, Map<String, int[]> checkedPages )
+    private static void checkListOfBtrees( RecordManager recordManager, RecordManagerHeader recordManagerHeader, Map<String, int[]> checkedPages )
         throws Exception
     {
             
-        // Read the BOB header
+        // Read the LOB header
         PageIO[] bobHeaderPageIos = recordManager
-            .readPageIOs( recordManagerHeader.pageSize, recordManagerHeader.currentBtreeOfBtreesOffset, Long.MAX_VALUE );
+            .readPageIOs( recordManagerHeader.pageSize, recordManagerHeader.currentListOfBtreesOffset, Long.MAX_VALUE );
 
         // update the checkedPages
         updateCheckedPages( recordManagerHeader, checkedPages.get( BTreeConstants.BTREE_OF_BTREES_NAME ), recordManager.getPageSize( recordManagerHeader ),
@@ -439,91 +439,139 @@ public class MavibotInspector
         updateCheckedPages( recordManagerHeader, checkedPages.get( GLOBAL_PAGES_NAME ), recordManager.getPageSize( recordManagerHeader ), bobHeaderPageIos );
 
         long dataPos = 0L;
-
+        
         // The B-tree header page ID
         recordManager.readLong( recordManagerHeader.pageSize, bobHeaderPageIos, dataPos );
         dataPos += BTreeConstants.LONG_SIZE;
 
-        // The B-tree current revision
+        // The number of transactions
+        int nbTransactions = recordManager.readInt( recordManagerHeader.pageSize, bobHeaderPageIos, dataPos );
+        dataPos += BTreeConstants.INT_SIZE;
+
+        // The current RMH
+        // The number of managed B-trees
+        int nbBtrees = recordManager.readInt( recordManagerHeader.pageSize, bobHeaderPageIos, dataPos );
+        dataPos += BTreeConstants.INT_SIZE;
+
+        // The current revision
         recordManager.readLong( recordManagerHeader.pageSize, bobHeaderPageIos, dataPos );
         dataPos += BTreeConstants.LONG_SIZE;
 
-        // The nb elems in the tree
-        recordManager.readLong( recordManagerHeader.pageSize, bobHeaderPageIos, dataPos );
-        dataPos += BTreeConstants.LONG_SIZE;
+        for ( int i = 0; i < nbBtrees; i++ )
+        {
+            // The b-tree offset
+            long offset = recordManager.readLong( recordManagerHeader.pageSize, bobHeaderPageIos, dataPos );
+            dataPos += BTreeConstants.LONG_SIZE;
 
-        // The B-tree rootPage offset
-        long rootPageOffset = recordManager.readLong( recordManagerHeader.pageSize, bobHeaderPageIos, dataPos );
+            checkOffset( recordManager, recordManagerHeader, offset );
+            checkBtree( recordManager, recordManagerHeader, offset, checkedPages );
+        }
+        
+        // The pending transactions
+        
+        for ( int i = 0; i < nbTransactions; i++ )
+        {
+            // The number of managed B-trees
+            nbBtrees = recordManager.readInt( recordManagerHeader.pageSize, bobHeaderPageIos, dataPos );
+            dataPos += BTreeConstants.INT_SIZE;
 
-        checkOffset( recordManager, recordManagerHeader, rootPageOffset );
+            // The current revision
+            recordManager.readLong( recordManagerHeader.pageSize, bobHeaderPageIos, dataPos );
+            dataPos += BTreeConstants.LONG_SIZE;
 
-        dataPos += BTreeConstants.LONG_SIZE;
+            for ( int j = 0; j < nbBtrees; j++ )
+            {
+                // The b-tree offset
+                long offset = recordManager.readLong( recordManagerHeader.pageSize, bobHeaderPageIos, dataPos );
+                dataPos += BTreeConstants.LONG_SIZE;
 
-        // The B-tree info offset
-        long btreeInfoOffset = recordManager.readLong( recordManagerHeader.pageSize, bobHeaderPageIos, dataPos );
-
-        checkOffset( recordManager, recordManagerHeader, btreeInfoOffset );
-
-        checkBtreeInfo( recordManager, recordManagerHeader, checkedPages, btreeInfoOffset, -1L );
+                checkOffset( recordManager, recordManagerHeader, offset );
+                checkBtree( recordManager, recordManagerHeader, offset, checkedPages );
+            }
+        }
 
         // Check the elements in the btree itself
         // We will read every single page
-        checkBtreeOfBtreesPage( recordManager, recordManagerHeader, checkedPages, rootPageOffset );
+        //checkBtreeOfBtreesPage( recordManager, recordManagerHeader, checkedPages, rootPageOffset );
     }
 
 
     /**
-     * Dump the Btree of Btrees
+     * Dump the List of Btrees
      */
-    private static void dumpBtreeOfBtrees( RecordManager recordManager, RecordManagerHeader recordManagerHeader, String[] pages ) throws Exception
+    private static void dumpListOfBtrees( RecordManager recordManager, RecordManagerHeader recordManagerHeader, String[] pages ) throws Exception
     {
         StringBuilder sb = new StringBuilder();
         
-        // Read the BOB header
+        // Read the LOB header
         PageIO[] bobHeaderPageIos = recordManager
-            .readPageIOs( recordManagerHeader.pageSize, recordManagerHeader.currentBtreeOfBtreesOffset, Long.MAX_VALUE );
+            .readPageIOs( recordManagerHeader.pageSize, recordManagerHeader.currentListOfBtreesOffset, Long.MAX_VALUE );
 
         // Get the offset
         long bobHeaderOffset = bobHeaderPageIos[0].getOffset();
 
         long dataPos = 0L;
-
+        
         // The B-tree header page ID
-        long id = recordManager.readLong( recordManagerHeader.pageSize, bobHeaderPageIos, dataPos );
+        long pageId = recordManager.readLong( recordManagerHeader.pageSize, bobHeaderPageIos, dataPos );
         dataPos += BTreeConstants.LONG_SIZE;
 
-        // The B-tree current revision
+        // The number of transactions
+        int nbTransactions = recordManager.readInt( recordManagerHeader.pageSize, bobHeaderPageIos, dataPos );
+        dataPos += BTreeConstants.INT_SIZE;
+
+        // The current RMH
+        // The number of B-trees
+        int nbBtrees = recordManager.readInt( recordManagerHeader.pageSize, bobHeaderPageIos, dataPos );
+        dataPos += BTreeConstants.INT_SIZE;
+
+        // The revision
         long revision = recordManager.readLong( recordManagerHeader.pageSize, bobHeaderPageIos, dataPos );
         dataPos += BTreeConstants.LONG_SIZE;
 
-        // The nb elems in the tree
-        recordManager.readLong( recordManagerHeader.pageSize, bobHeaderPageIos, dataPos );
-        dataPos += BTreeConstants.LONG_SIZE;
-
-        // The B-tree rootPage offset
-        long rootPageOffset = recordManager.readLong( recordManagerHeader.pageSize, bobHeaderPageIos, dataPos );
-
-        dataPos += BTreeConstants.LONG_SIZE;
-
-        // The B-tree info offset
-        long infoOffset = recordManager.readLong( recordManagerHeader.pageSize, bobHeaderPageIos, dataPos );
-        
         // Dump the header
-        sb.append( String.format( "0x%04X", bobHeaderOffset ) ).append( " BOB H[" ).append( revision ).append( "] : " );
-        sb.append( "<RP[" ).append( revision ).append( "] : " ).append( String.format( "0x%04X", rootPageOffset ) ).append( ">, " );
-        sb.append( "<Info:" ).append( String.format( "0x%04X", infoOffset ) ).append( '>' );
-        pages[(int)bobHeaderOffset/recordManagerHeader.pageSize] = sb.toString();
+        sb.append( String.format( "0x%04X", bobHeaderOffset ) ).append( " LOB H[" ).append( revision ).append( "] : " );
+
+        for ( int i = 0; i < nbBtrees; i++ )
+        { 
+            // The B-tree offset
+            long offset = recordManager.readLong( recordManagerHeader.pageSize, bobHeaderPageIos, dataPos );
+            dataPos += BTreeConstants.LONG_SIZE;
+
+            sb.append( "<BH[" ).append( revision ).append( "] : " ).append( String.format( "0x%04X", offset ) ).append( ">, " );
+            
+            dumpUserBtree( recordManager, recordManagerHeader, "aaa", offset, pages );
+        }
         
-        // Dump the info
-        sb = new StringBuilder();
-        sb.append( String.format( "0x%04X", infoOffset ) ).append( " BOB Info" );
-        pages[(int)infoOffset/recordManagerHeader.pageSize] = sb.toString();
+        sb.append( '\n' );
+        nbTransactions --;
+
+        // The pending transactions
+        for ( int i = 0; i < nbTransactions; i++ )
+        {
+            // The current RMH
+            // The number of B-trees
+            nbBtrees = recordManager.readInt( recordManagerHeader.pageSize, bobHeaderPageIos, dataPos );
+            dataPos += BTreeConstants.INT_SIZE;
+
+            revision = recordManager.readLong( recordManagerHeader.pageSize, bobHeaderPageIos, dataPos );
+            dataPos += BTreeConstants.LONG_SIZE;
+            
+            sb.append( String.format( "0x%04X", bobHeaderOffset ) ).append( " LOB H[" ).append( revision ).append( "] : " );
+
+            for ( int j = 0; j < nbBtrees; j++ )
+            { 
+                // The B-tree offset
+                long offset = recordManager.readLong( recordManagerHeader.pageSize, bobHeaderPageIos, dataPos );
+                dataPos += BTreeConstants.LONG_SIZE;
+
+                sb.append( "<BH[" ).append( revision ).append( "] : " ).append( String.format( "0x%04X", offset ) ).append( ">, " );
+            }
+
+            sb.append( '\n' );
+        }
         
-        // Dump the info
-        dumpBtreeInfo( recordManager, recordManagerHeader, infoOffset, "BOB", pages );
-        
-        // Dump the BOB content
-        dumpBtreeOfBtreesContent( recordManager, recordManagerHeader, rootPageOffset, NameRevisionSerializer.INSTANCE, LongSerializer.INSTANCE, pages );
+        System.out.println( sb.toString() );
     }
 
 
@@ -734,7 +782,7 @@ public class MavibotInspector
 
     
     /**
-     * Dump a BOB content
+     * Dump a LOB content
      */
     private static void dumpBtreeOfBtreesContent( RecordManager recordManager, RecordManagerHeader recordManagerHeader, long rootPageOffset, NameRevisionSerializer keySerializer, 
         LongSerializer valueSerializer, String[] pages ) throws IOException
@@ -762,7 +810,7 @@ public class MavibotInspector
             // No elems, we are done
             StringBuilder sb = new StringBuilder();
             
-            sb.append( String.format( "0x%04X", rootPageOffset ) ).append( " BOB RP[" ).append( revision ).append( "] : {}" );
+            sb.append( String.format( "0x%04X", rootPageOffset ) ).append( " LOB RP[" ).append( revision ).append( "] : {}" );
             pages[(int)(rootPageOffset/recordManagerHeader.pageSize)] = sb.toString();
             
             return;
@@ -790,7 +838,7 @@ public class MavibotInspector
                     PageIO pageIo = pageIos[i];
                     StringBuilder sb = new StringBuilder();
                     
-                    sb.append( String.format( "0x%04X", pageIo.getOffset() ) ).append( " BOB RP[" ).append( revision ).append( "]-" ).append( i );
+                    sb.append( String.format( "0x%04X", pageIo.getOffset() ) ).append( " LOB RP[" ).append( revision ).append( "]-" ).append( i );
                     int pos = (int)(pageIo.getOffset()/recordManagerHeader.pageSize);
                     
                     if ( pages[pos] != null )
@@ -817,7 +865,7 @@ public class MavibotInspector
                     PageIO pageIo = pageIos[i];
                     StringBuilder sb = new StringBuilder();
                     
-                    sb.append( String.format( "0x%04X", pageIo.getOffset() ) ).append( " BOB RP[" ).append( revision ).append( "]-" ).append( i );
+                    sb.append( String.format( "0x%04X", pageIo.getOffset() ) ).append( " LOB RP[" ).append( revision ).append( "]-" ).append( i );
                     pages[(int)(pageIo.getOffset()/recordManagerHeader.pageSize)] = sb.toString();
                 }
             }
@@ -826,14 +874,14 @@ public class MavibotInspector
 
     
     /**
-     * Dump a BOB Btree leaf.
+     * Dump a LOB Btree leaf.
      */
     private static void dumpBtreeOfBtreesLeaf( RecordManager recordManager, RecordManagerHeader recordManagerHeader, NameRevisionSerializer keySerializer,
         LongSerializer valueSerializer, int nbElems, long revision, ByteBuffer byteBuffer, long cpbOffset, String[] pages ) throws IOException
     {
         StringBuilder sb = new StringBuilder();
 
-        sb.append( String.format( "0x%04X", cpbOffset ) ).append( " BOB RP[" ).append( revision ).append( "](l) : " );
+        sb.append( String.format( "0x%04X", cpbOffset ) ).append( " LOB RP[" ).append( revision ).append( "](l) : " );
         
         // Read each key and value
         for ( int i = 0; i < nbElems; i++ )
@@ -860,7 +908,7 @@ public class MavibotInspector
             }
             catch ( BufferUnderflowException bue )
             {
-                throw new InvalidBTreeException( "The BOB leaf byte buffer is too short : " + bue.getMessage() );
+                throw new InvalidBTreeException( "The LOB leaf byte buffer is too short : " + bue.getMessage() );
             }
         }
 
@@ -869,14 +917,14 @@ public class MavibotInspector
     
     
     /**
-     * Dump a BOB Btree Node.
+     * Dump a LOB Btree Node.
      */
     private static void dumpBtreeOfBtreesNode( RecordManager recordManager, RecordManagerHeader recordManagerHeader, NameRevisionSerializer keySerializer,
         LongSerializer valueSerializer, int nbElems, long revision, ByteBuffer byteBuffer, long cpbOffset, String[] pages ) throws IOException
     {
         StringBuilder sb = new StringBuilder();
 
-        sb.append( String.format( "0x%04X", cpbOffset ) ).append( " BOB RP[" ).append( revision ).append( "](n) : " );
+        sb.append( String.format( "0x%04X", cpbOffset ) ).append( " LOB RP[" ).append( revision ).append( "](n) : " );
         
         long[] children = new long[nbElems + 1];
         int i = 0;
@@ -901,7 +949,7 @@ public class MavibotInspector
             }
             catch ( BufferUnderflowException bue )
             {
-                throw new InvalidBTreeException( "The BOB leaf byte buffer is too short : " + bue.getMessage() );
+                throw new InvalidBTreeException( "The LOB leaf byte buffer is too short : " + bue.getMessage() );
             }
         }
 
@@ -1157,6 +1205,8 @@ public class MavibotInspector
         {
             dumpUserBtreeContent( recordManager, recordManagerHeader, btreeInfo, child, pages );
         }
+        
+        System.out.println( sb.toString() );
     }
 
     
@@ -1216,7 +1266,7 @@ public class MavibotInspector
             }
             catch ( BufferUnderflowException bue )
             {
-                throw new InvalidBTreeException( "The BOB leaf byte buffer is too short : " + bue.getMessage() );
+                throw new InvalidBTreeException( "The LOB leaf byte buffer is too short : " + bue.getMessage() );
             }
         }
 
@@ -1573,7 +1623,7 @@ public class MavibotInspector
             }
             catch ( BufferUnderflowException bue )
             {
-                throw new InvalidBTreeException( "The BOB leaf byte buffer is too short : " + bue.getMessage() );
+                throw new InvalidBTreeException( "The LOB leaf byte buffer is too short : " + bue.getMessage() );
             }
         }
     }
@@ -1601,7 +1651,7 @@ public class MavibotInspector
             catch ( BufferUnderflowException bue )
             {
                 bue.printStackTrace();
-                throw new InvalidBTreeException( "The BOB leaf byte buffer is too short : " + bue.getMessage() );
+                throw new InvalidBTreeException( "The LOB leaf byte buffer is too short : " + bue.getMessage() );
             }
         }
     }
@@ -1676,7 +1726,7 @@ public class MavibotInspector
             }
             catch ( BufferUnderflowException bue )
             {
-                throw new InvalidBTreeException( "The BOB leaf byte buffer is too short : " + bue.getMessage() );
+                throw new InvalidBTreeException( "The LOB leaf byte buffer is too short : " + bue.getMessage() );
             }
         }
 

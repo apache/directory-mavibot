@@ -27,9 +27,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Comparator;
 
-import org.apache.commons.collections.map.LRUMap;
 import org.apache.directory.mavibot.btree.exception.BTreeCreationException;
-import org.apache.directory.mavibot.btree.exception.CursorException;
 import org.apache.directory.mavibot.btree.exception.KeyNotFoundException;
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 import org.slf4j.Logger;
@@ -67,7 +65,7 @@ public class BTree<K, V> implements Closeable
     private BTreeInfo<K, V> btreeInfo = null;
     
     /** The B-tree Header */
-    private BTreeHeader<K, V> currentBtreeHeader;
+    private BTreeHeader<K, V> btreeHeader;
     
     /** The RecordManager */
     private RecordManager recordManager;
@@ -82,7 +80,7 @@ public class BTree<K, V> implements Closeable
 
 
     /**
-     * Creates a new persisted B-tree using the BTreeConfiguration to initialize the
+     * Creates a new persisted B-tree using the BTreeConfiguration to initialise the
      * BTree
      *
      * @param configuration The configuration to use
@@ -116,7 +114,7 @@ public class BTree<K, V> implements Closeable
         BTree<K, V> copy = new BTree<>();
         
         copy.btreeInfo = btreeInfo;
-        copy.currentBtreeHeader = currentBtreeHeader;
+        copy.btreeHeader = btreeHeader.copy();
         copy.recordManager = recordManager;
         
         return copy;
@@ -293,7 +291,7 @@ public class BTree<K, V> implements Closeable
         {
             try
             {
-                return currentBtreeHeader.getRootPage().get( transaction, key );
+                return btreeHeader.getRootPage().get( transaction, key );
             }
             catch ( Exception e )
             {
@@ -309,7 +307,7 @@ public class BTree<K, V> implements Closeable
      */
     /* No qualifier*/long getBtreeOffset()
     {
-        return currentBtreeHeader.getOffset();
+        return btreeHeader.getOffset();
     }
 
 
@@ -318,7 +316,7 @@ public class BTree<K, V> implements Closeable
      */
     /* No qualifier*/void setBtreeHeaderOffset( long btreeHeaderOffset )
     {
-        currentBtreeHeader.setOffset( btreeHeaderOffset );
+        btreeHeader.setOffset( btreeHeaderOffset );
     }
 
 
@@ -327,7 +325,7 @@ public class BTree<K, V> implements Closeable
      */
     /* No qualifier*/long getRootPageOffset()
     {
-        return currentBtreeHeader.getRootPageOffset();
+        return btreeHeader.getRootPageOffset();
     }
 
 
@@ -336,9 +334,6 @@ public class BTree<K, V> implements Closeable
      */
     private DeleteResult<K, V> processDelete( WriteTransaction transaction, K key ) throws IOException
     {
-        // Get the current B-tree header, check if it's in the transaction's pages
-        BTreeHeader<K, V> btreeHeader = currentBtreeHeader;
-
         // Get the rootPage
         Page<K, V> rootPage = btreeHeader.getRootPage();
 
@@ -388,7 +383,7 @@ public class BTree<K, V> implements Closeable
         transaction.addWALObject( newBtreeHeader );
 
         // Store the new B-tree header into the btreeMap
-        currentBtreeHeader = newBtreeHeader;
+        btreeHeader = newBtreeHeader;
         
         // And move the old B-tree header into the CopiedPages B-tree,
         // if we are not processing the CopiedPages B-tree itself
@@ -473,8 +468,6 @@ public class BTree<K, V> implements Closeable
             // a Node or a Leaf.
             
             // Get the current B-tree header, check if it's in the transaction's pages
-            BTreeHeader<K, V> btreeHeader = currentBtreeHeader;
-            BTreeHeader<K, V> newBtreeHeader;
             long revision = transaction.getRevision();
             
             // Get the rootPage
@@ -500,10 +493,13 @@ public class BTree<K, V> implements Closeable
             
             WALObject<?, ?> walObject = transaction.getWALObject( btreeHeaderId );
             
+            BTreeHeader<K, V> newBtreeHeader;
+
             if ( walObject == null )
             {
                 // Create a new BTreeHeader
-                newBtreeHeader = btreeHeader.copy( transaction.getRecordManagerHeader() );
+                newBtreeHeader = btreeHeader.copy();
+                newBtreeHeader.initId( transaction.getRecordManagerHeader() );
             }
             else
             {
@@ -573,7 +569,7 @@ public class BTree<K, V> implements Closeable
             transaction.updateWAL( btreeHeaderId, btreeHeader, newBtreeHeader );
 
             // Store the new B-tree header into the btreeMap
-            currentBtreeHeader = newBtreeHeader;
+            btreeHeader = newBtreeHeader;
             
             // Return the value we have found if it was modified
             return result;
@@ -649,16 +645,16 @@ public class BTree<K, V> implements Closeable
      */
     /* no qualifier */ BTreeHeader<K, V> getBtreeHeader()
     {
-        return currentBtreeHeader;
+        return btreeHeader;
     }
 
 
     /**
      * @return The current BtreeHeader
      */
-    /* no qualifier */ void setBtreeHeader( BTreeHeader<K, V> btreeHeader )
+    /* no qualifier */ void setBtreeHeader( BTreeHeader<K, V> currentBtreeHeader )
     {
-        currentBtreeHeader = btreeHeader;
+        this.btreeHeader = currentBtreeHeader;
     }
 
 
@@ -749,7 +745,7 @@ public class BTree<K, V> implements Closeable
      */
     public long getNbElems()
     {
-        return currentBtreeHeader.getNbElems();
+        return btreeHeader.getNbElems();
     }
 
 
@@ -758,7 +754,7 @@ public class BTree<K, V> implements Closeable
      */
     /* no qualifier */void setNbElems( long nbElems )
     {
-        currentBtreeHeader.setNbElems( nbElems );
+        btreeHeader.setNbElems( nbElems );
     }
 
 
@@ -816,7 +812,7 @@ public class BTree<K, V> implements Closeable
      */
     /* no qualifier */void setRevision( long revision )
     {
-        currentBtreeHeader.setRevision( revision );
+        btreeHeader.setRevision( revision );
     }
 
     
@@ -860,7 +856,7 @@ public class BTree<K, V> implements Closeable
      */
     public Page<K, V> getRootPage()
     {
-        return currentBtreeHeader.getRootPage();
+        return btreeHeader.getRootPage();
     }
 
 
@@ -871,7 +867,7 @@ public class BTree<K, V> implements Closeable
      */
     /* no qualifier */void setRootPage( Page<K, V> rootPage )
     {
-        currentBtreeHeader.setRootPage( rootPage );
+        btreeHeader.setRootPage( rootPage );
     }
 
 
@@ -955,9 +951,9 @@ public class BTree<K, V> implements Closeable
         
         long nbElems = 0L;
         
-        if ( currentBtreeHeader != null )
+        if ( btreeHeader != null )
         {
-            nbElems = currentBtreeHeader.getNbElems();
+            nbElems = btreeHeader.getNbElems();
         }
 
         sb.append( ", nbElements:" ).append( nbElems );

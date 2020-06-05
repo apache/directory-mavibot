@@ -108,4 +108,13 @@ public interface ElementSerializer<T>
      * @return the type being serialized
      */
     Class<?> getType();
+    
+    
+    /**
+     * Returns a String representation of the value
+     * 
+     * @param value The value to convert
+     * @return A String representing the value
+     */
+    String toString( T value );
 }

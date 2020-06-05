@@ -143,7 +143,11 @@ public class TupleCursor<K, V> implements Iterator<Tuple<K,V>>, Closeable
         for ( int i = 0; i < depth; i++ )
         {
             stack[i].pos = 0;
-            stack[i+1].page = ( ( Node<K, V> ) stack[i].page ).getPage( transaction, 0 );
+            
+            if ( stack[i+1].page.getOffset() != ( ( Node<K, V> ) stack[i].page ).children[0] )
+            {
+                stack[i+1].page = ( ( Node<K, V> ) stack[i].page ).getPage( transaction, 0 );
+            }
         }
 
         stack[depth].pos = BEFORE_FIRST;
@@ -284,7 +288,9 @@ public class TupleCursor<K, V> implements Iterator<Tuple<K,V>>, Closeable
         Leaf<K, V> leaf = ( Leaf<K, V> ) parentPos.page;
 
         // Get the value
-        V value = leaf.getValue( parentPos.pos ).get();
+        ValueHolder<V> valueHolder = leaf.getValue( parentPos.pos );
+
+        V value = valueHolder.get();
 
         // Get the key
         K key = leaf.getKey( parentPos.pos );

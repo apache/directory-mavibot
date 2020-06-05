@@ -27,7 +27,7 @@ import java.util.Map;
  * The TransactionContext class holds all the modified pages in memory, up to the
  * moment we have to flush them on disk, when a commit is applied, or discard them,
  * if a rollback is called.
- * We also store the BOB Header and the CPB Header, as we will copy them to create a 
+ * We also store the LOB Header and the CPB Header, as we will copy them to create a 
  * new version, and we don't want any read to be impacted by such change.
  * 
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
@@ -49,7 +49,7 @@ public class TransactionContext
     /** The RecordManager header for the transaction */
     private RecordManagerHeader recordManagerHeader;
     
-    /** The BOB header */
+    /** The LOB header */
     private BTreeHeader<NameRevision, Long> btreeOfBtreeHeader;
     
     /** The CPB header */
@@ -73,7 +73,7 @@ public class TransactionContext
      * BTreeHeader, nor the last offset.
      * 
      * @param revision The current revision used for this transaction
-     * @param btreeOfBtreeHeader The BOB header
+     * @param btreeOfBtreeHeader The LOB header
      */
     public TransactionContext( long revision, BTreeHeader btreeOfBtreeHeader )
     {

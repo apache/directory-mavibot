@@ -130,7 +130,7 @@ public class RecordManagerFreePageTest
     @Test
     public void testRecordManager() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException, CursorException
     {
-        assertEquals( 3, recordManager1.getNbManagedTrees( recordManager1.getCurrentRecordManagerHeader() ) );
+        assertEquals( 2, recordManager1.getNbManagedTrees( recordManager1.getCurrentRecordManagerHeader() ) );
 
         Set<String> managedBTrees = recordManager1.getManagedTrees();
 
@@ -170,7 +170,7 @@ public class RecordManagerFreePageTest
         long l2 = System.currentTimeMillis();
 
         System.out.println( "Delta : " + ( l2 - l1 ) + ", nbError = " + nbError
-            + ", Nb insertion per second : " + ( ( nbElems ) / ( l2 - l1 ) ) * 1000 );
+            + ", Nb insertion per second : " + ( ( nbElems * 1000L ) / ( l2 - l1 ) ) );
 
         long length = new File( dataDir, "mavibot.db" ).length();
         String units = "MB";
@@ -185,9 +185,15 @@ public class RecordManagerFreePageTest
 
         // System.out.println( size + units );
 
+        btree.close();
+
+        recordManager1.close();
+        
+        recordManager1 = null;
+
         openRecordManagerAndBtree();
 
-        assertEquals( 3, recordManager1.getNbManagedTrees( recordManager1.getCurrentRecordManagerHeader() ) );
+        assertEquals( 2, recordManager1.getNbManagedTrees( recordManager1.getCurrentRecordManagerHeader() ) );
 
         assertTrue( nbElems == btree.getNbElems() );
         long i = 0;

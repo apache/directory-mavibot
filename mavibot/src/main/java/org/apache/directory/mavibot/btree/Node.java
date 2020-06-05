@@ -112,10 +112,6 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
         Page<K, V> child = transaction.getPage( btreeInfo, children[pos] );
 
         // and insert the <K, V> into this child
-        if ( child == null )
-        {
-            System.out.println( "error" );
-        }
         InsertResult<K, V> result = child.insert( transaction, key, value );
 
         // Ok, now, we have injected the <K, V> tuple down the tree. Let's check
@@ -933,9 +929,8 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
             
             keys = newKeys;
             children = newChildren;
+            pageNbElems++;
         }
-        
-        pageNbElems++;
 
         // Create the result
         ModifyResult<K, V> result = new ModifyResult<>( newNode, pivot, null );

@@ -18,17 +18,17 @@ import org.slf4j.LoggerFactory;
  * +---------------------+
  * | PageSize            | 4 bytes : The size of a physical page (default to 4096)
  * +---------------------+
- * | NbTree              | 4 bytes : The number of managed B-trees (at least 1)
- * +---------------------+
- * | idCounter           | 8 bytes : The page ID counter (an incremental counter)
+ * | NbTrees             | 4 bytes : The number of managed B-trees (at least 1)
  * +---------------------+
  * | Revision            | 8 bytes : The current revision
  * +---------------------+
  * | FirstFree           | 8 bytes : The offset of the first free page
  * +---------------------+
- * | current BoB offset  | 8 bytes : The offset of the current B-tree of B-trees
+ * | B-tree list         | 8 bytes : The offset of the current list of B-trees
  * +---------------------+
  * | current CP offset   | 8 bytes : The offset of the current CopiedPages B-tree
+ * +---------------------+
+ * | idCounter           | 8 bytes : The page ID counter (an incremental counter)
  * +---------------------+
  * </pre>
  * 
@@ -59,27 +59,23 @@ public class RecordManagerHeader
     /** A map of the current managed B-trees */
     /* no qualifier */Map<String, BTree> btreeMap = new HashMap<>(); 
 
-    /** The b-tree of b-trees, where we store user's b-trees. */
-    /* no qualifier */BTree<NameRevision, Long> btreeOfBtrees;
-
     /** The b-tree of copied pages, where we store the page that have been modified. */
     /* no qualifier */BTree<RevisionName, long[]> copiedPagesBtree;
 
-    /** The current B-tree of B-trees header offset */
-    /* no qualifier */long currentBtreeOfBtreesOffset;
+    /** The current list of B-trees header offset */
+    /* no qualifier */long currentListOfBtreesOffset;
 
     /** The offset on the current copied pages B-tree */
     /* no qualifier */long currentCopiedPagesBtreeOffset = BTreeConstants.NO_PAGE;
     
-    /** The page ID incremental counter */
-    /* no qualifier */long idCounter = 0;
+    /** The page ID incremental counter. Starts at 2, to avoid a 1 to be confused with NO_PAGE */
+    /* no qualifier */long idCounter = 2;
     
     /** The offset of the end of the file */
     /* no qualifier */long lastOffset = BTreeConstants.NO_PAGE;
     
     /** The transaction counter */
-    /* no qualifier */ AtomicInteger txnCounter = new AtomicInteger( 0 );
-    
+    /* no qualifier */AtomicInteger txnCounter = new AtomicInteger( 0 );
     
     /** The lock used to protect the recordManagerHeader while accessing it */
     private ReadWriteLock lock = new ReentrantReadWriteLock();
@@ -98,17 +94,11 @@ public class RecordManagerHeader
         {
             RecordManagerHeader copy = new RecordManagerHeader();
             copy.revision = revision;
-            copy.nbBtree = nbBtree;
-            copy.currentBtreeOfBtreesOffset = currentBtreeOfBtreesOffset;
-            copy.currentCopiedPagesBtreeOffset = currentCopiedPagesBtreeOffset;
-            copy.firstFreePage = firstFreePage;
-            copy.btreeOfBtrees = btreeOfBtrees;
-            copy.copiedPagesBtree = copiedPagesBtree;
-            copy.lastOffset = lastOffset;
-            copy.idCounter = idCounter;
             copy.pageSize = pageSize;
-            
-            // Copy the map
+            copy.nbBtree = nbBtree;
+            copy.firstFreePage = firstFreePage;
+
+            // Copy the B-tree map
             Map<String, BTree> newBTreeMap = new HashMap<>( btreeMap.size() );
             
             for ( Map.Entry<String, BTree> entry : btreeMap.entrySet() )
@@ -118,6 +108,12 @@ public class RecordManagerHeader
             }
             
             copy.btreeMap = newBTreeMap;
+
+            copy.copiedPagesBtree = copiedPagesBtree;
+            copy.currentListOfBtreesOffset = currentListOfBtreesOffset;
+            copy.currentCopiedPagesBtreeOffset = currentCopiedPagesBtreeOffset;
+            copy.idCounter = idCounter;
+            copy.lastOffset = lastOffset;
             
             return copy;
         }
@@ -129,44 +125,12 @@ public class RecordManagerHeader
     
     
     /**
-     * Update the current revision
-     * 
-     * @param update The new revision
-     */
-    public void update( RecordManagerHeader update )
-    {
-        lock.writeLock().lock();
-        
-        try
-        {
-            revision = update.revision;
-            nbBtree = update.nbBtree;
-            currentBtreeOfBtreesOffset = update.currentBtreeOfBtreesOffset;
-            currentCopiedPagesBtreeOffset = update.currentCopiedPagesBtreeOffset;
-            firstFreePage = update.firstFreePage;
-            lastOffset = update.lastOffset;
-            idCounter = update.idCounter;
-        }
-        finally
-        {
-            lock.writeLock().unlock();
-        }
-    }
-    
-    
-    /**
      * {@inheritDoc}
      * @return
      */
     /* No Qualifier */ long getRevision()
     {
         return revision;
-    }
-    
-    
-    /* No qualifier */ BTree<NameRevision, Long> getBtreeOfBtrees()
-    {
-        return btreeOfBtrees;
     }
     
     
@@ -198,21 +162,21 @@ public class RecordManagerHeader
      * Update the RecordManager header, injecting the following data :
      *
      * <pre>
-     * +---------------------+
-     * | PageSize            | 4 bytes : The size of a physical page (default to 4096)
-     * +---------------------+
-     * | NbTree              | 4 bytes : The number of managed B-trees (at least 1)
-     * +---------------------+
-     * | Revision            | 8 bytes : The current revision
-     * +---------------------+
-     * | FirstFree           | 8 bytes : The offset of the first free page
-     * +---------------------+
-     * | current BoB offset  | 8 bytes : The offset of the current B-tree of B-trees
-     * +---------------------+
-     * | current CP offset   | 8 bytes : The offset of the current CopiedPages B-tree
-     * +---------------------+
-     * | ID                  | 8 bytes : The page ID
-     * +---------------------+
+     * +-------------------------+
+     * | PageSize                | 4 bytes : The size of a physical page (default to 4096)
+     * +-------------------------+
+     * | NbTree                  | 4 bytes : The number of managed B-trees (at least 1)
+     * +-------------------------+
+     * | Revision                | 8 bytes : The current revision
+     * +-------------------------+
+     * | FirstFreePage offset    | 8 bytes : The offset of the first free page
+     * +-------------------------+
+     * | list of B-trees offset  | 8 bytes : The offset of the current list of B-trees
+     * +-------------------------+
+     * | current CP offset       | 8 bytes : The offset of the current CopiedPages B-tree
+     * +-------------------------+
+     * | idCounter               | 8 bytes : The page ID counter (an incremental counter)
+     * +-------------------------+
      * </pre>
      */
     /* No qualifier */ ByteBuffer serialize( RecordManager recordManager )
@@ -231,8 +195,8 @@ public class RecordManagerHeader
         // The first free page
         position = recordManager.writeData( recordManagerHeaderBytes, position, firstFreePage );
 
-        // The offset of the current B-tree of B-trees
-        position = recordManager.writeData( recordManagerHeaderBytes, position, currentBtreeOfBtreesOffset );
+        // The offset of the current list of B-trees
+        position = recordManager.writeData( recordManagerHeaderBytes, position, currentListOfBtreesOffset );
 
         // The offset of the current B-tree of B-trees
         position = recordManager.writeData( recordManagerHeaderBytes, position, currentCopiedPagesBtreeOffset );
@@ -255,8 +219,8 @@ public class RecordManagerHeader
             sb.append( "First free page     : 0x" );
             sb.append( String.format( "%16x", firstFreePage ) );
             sb.append( "\n" );
-            sb.append( "Current BOB header  : 0x" );
-            sb.append( String.format( "%16x", currentBtreeOfBtreesOffset ) );
+            sb.append( "Current List of B-trees header  : 0x" );
+            sb.append( String.format( "%16x", currentListOfBtreesOffset ) );
             sb.append( "\n" );
             sb.append( "Current CPB header  : 0x" );
             sb.append( String.format( "%16x", currentCopiedPagesBtreeOffset ) );
@@ -314,22 +278,22 @@ public class RecordManagerHeader
         StringBuilder sb = new StringBuilder();
         
         sb.append( "RecordManagerHeader :\n" );
-        sb.append( "    ID counter :           " ).append( idCounter ).append( '\n' );
-        sb.append( "    revision :            " ).append( revision ).append( '\n' );
-        sb.append( "    nbTrees :             " ).append( nbBtree ).append( '\n' );
-        sb.append( "    pageSize :            " ).append( pageSize ).append( '\n' );
-        sb.append( "    BOB current offset :  " ).append( String.format( "%16x", currentBtreeOfBtreesOffset ) ).append( '\n' );
-        sb.append( "    CPB current offset :  " ).append( String.format( "%16x", currentCopiedPagesBtreeOffset ) ).append( '\n' );
-        sb.append( "    last offset :         " ).append( String.format( "%16x", lastOffset ) ).append( '\n' );
-        sb.append( "    Nb transactions :     " ).append( txnCounter.get() ).append( '\n' );
+        sb.append( "    ID counter          : " ).append( idCounter ).append( '\n' );
+        sb.append( "    revision            : " ).append( revision ).append( '\n' );
+        sb.append( "    nbTrees             : " ).append( nbBtree ).append( '\n' );
+        sb.append( "    pageSize            : " ).append( pageSize ).append( '\n' );
+        sb.append( "    LoB current offset  : " ).append( String.format( "%16x", currentListOfBtreesOffset ) ).append( '\n' );
+        sb.append( "    CPB current offset  : " ).append( String.format( "%16x", currentCopiedPagesBtreeOffset ) ).append( '\n' );
+        sb.append( "    last offset         : " ).append( String.format( "%16x", lastOffset ) ).append( '\n' );
+        sb.append( "    Nb transactions     : " ).append( txnCounter.get() ).append( '\n' );
 
         if ( btreeMap.isEmpty() )
         {
-            sb.append( "    No managed B-trees\n" );
+            sb.append( "    (No managed B-trees)\n" );
         }
         else
         {
-            sb.append( "    Managed B-trees :\n" );
+            sb.append( "    (Managed B-trees    :\n" );
             sb.append( "        {" );
             boolean isFirst = true;
             

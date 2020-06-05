@@ -20,7 +20,6 @@
 package org.apache.directory.mavibot.btree;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import org.apache.directory.mavibot.btree.serializer.ElementSerializer;
 import org.apache.directory.mavibot.btree.util.Strings;
@@ -67,6 +66,7 @@ public class BTreeInfo<K, V> extends AbstractWALObject<K, V>
         btreeInfo = this;
     }
     
+    
     /**
      * Serialize the BTreeInfo structure :
      * 
@@ -84,7 +84,7 @@ public class BTreeInfo<K, V> extends AbstractWALObject<K, V>
      * +------------+
      * | valSerSize | The Value serializer FQCN size
      * +------------+
-     * | valSerKQCN | The valueSerializer FQCN
+     * | valSerFQCN | The valueSerializer FQCN
      * +------------+
      * </pre>
      * 

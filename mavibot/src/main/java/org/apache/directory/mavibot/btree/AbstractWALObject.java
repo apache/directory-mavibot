@@ -5,7 +5,7 @@ package org.apache.directory.mavibot.btree;
  *
  * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  */
-public abstract class AbstractWALObject<K, V> implements WALObject<K, V>
+public abstract class AbstractWALObject<K, V> implements WALObject<K, V>, Cloneable
 {
     /** The current revision */
     protected long revision = 0L;
@@ -37,7 +37,27 @@ public abstract class AbstractWALObject<K, V> implements WALObject<K, V>
     {
         this.btreeInfo = btreeInfo;
     }
-    
+
+
+    /**
+     * Clone the BTreeHeader
+     * 
+     * @return The cloned BTreeHeader
+     */
+    public AbstractWALObject<K, V> clone()
+    {
+        try
+        {
+            AbstractWALObject<K, V> copy = ( AbstractWALObject<K, V> ) super.clone();
+
+            return copy;
+        }
+        catch ( CloneNotSupportedException cnse )
+        {
+            return null;
+        }
+    }
+
 
     /**
      * {@inheritDoc}
@@ -138,7 +158,7 @@ public abstract class AbstractWALObject<K, V> implements WALObject<K, V>
 
 
     /**
-     * Initialize the Page ID, using teh RecordManagerHeader counter
+     * Initialize the Page ID, using the RecordManagerHeader counter
      * 
      * @param recordManagerHeader the RecordManagerHeader which contains the page ID counter
      */

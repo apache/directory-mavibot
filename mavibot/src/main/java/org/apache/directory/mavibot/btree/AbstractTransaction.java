@@ -104,6 +104,11 @@ public abstract class AbstractTransaction implements Transaction
             aborted = true;
             throw ioe;
         }
+        catch ( Exception e )
+        {
+            System.out.println( Long.toHexString( offset ) );
+            throw e;
+        }
     }
     
     
@@ -187,9 +192,11 @@ public abstract class AbstractTransaction implements Transaction
         // Decrement the counter
         int txnNumber = recordManagerHeader.txnCounter.getAndDecrement();
 
-        if ( ( txnNumber == 0 ) && ( recordManager.transactionsList.peek().revision != recordManagerHeader.revision ) )
+        if ( ( txnNumber == 0 ) && ( recordManager.activeTransactionsList.peek().revision != recordManagerHeader.revision ) )
         {
             // We can cleanup 
+            recordManager.activeTransactionsList.remove( recordManagerHeader );
+            recordManager.deadTransactionsList.add( recordManagerHeader );
         }
     }
 
@@ -201,14 +208,6 @@ public abstract class AbstractTransaction implements Transaction
     public void commit() throws IOException
     {
         closed = true;
-        
-        // Decrement the counter
-        int txnNumber = recordManagerHeader.txnCounter.getAndDecrement();
-        
-        if ( ( txnNumber == 0 ) && ( recordManager.transactionsList.peek().revision != recordManagerHeader.revision ) )
-        {
-            // We can cleanup 
-        }
     }
     
     

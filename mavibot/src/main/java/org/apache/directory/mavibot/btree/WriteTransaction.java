@@ -54,7 +54,6 @@ public class WriteTransaction extends AbstractTransaction
     {
         super( recordManager );
         
-        
         // Get a copy of the RMH
         recordManagerHeader = recordManager.getRecordManagerHeaderCopy();
         
@@ -130,10 +129,9 @@ public class WriteTransaction extends AbstractTransaction
                     // Also update the recordManagerHeader B-tree map
                     if ( walObject instanceof BTreeHeader )
                     {
-                        BTree btree = recordManagerHeader.btreeMap.get( btreeInfo.getName() );
-                        BTree newBtree = btree.copy();
-                        newBtree.setBtreeHeader( ( BTreeHeader ) walObject );
-                        recordManagerHeader.btreeMap.put( btreeInfo.getName(), newBtree );
+                        BTree btree = recordManagerHeader.getBTree( btreeInfo.getName() );
+                        btree.setBtreeHeader( ( BTreeHeader ) walObject );
+                        recordManagerHeader.addBTree( btree );
                     }
                 }
             }
@@ -141,16 +139,19 @@ public class WriteTransaction extends AbstractTransaction
             // We can clean the user's list
             newPages.clear();
 
-            // Update the BOB, if we aren't already processing the BOB
+            // Update the LOB, if we aren't already processing the LOB
             for ( BTreeInfo<?, ?> btreeInfo : btreeInfos )
             {
-                recordManager.insertInBtreeOfBtrees( this, recordManagerHeader.btreeMap.get( btreeInfo.getName() ) );
+                recordManager.insertInListOfBtrees( recordManagerHeader, this, recordManagerHeader.btreeMap.get( btreeInfo.getName() ) );
             }
             
+            // Write the list on disk. 
+            recordManager.serializeListOfBtrees( recordManagerHeader, this );
+
             // Flush the newly updated pages 
             flushNewPages();
 
-            // BOB done, clear the list
+            // LOB done, clear the list
             newPages.clear();
             
             // Add the copied pages in the CPB
@@ -159,33 +160,45 @@ public class WriteTransaction extends AbstractTransaction
             // Last not least, Flush the CPB pages
             flushNewPages();
             
-            long newBtreeOfBtreesOffet = recordManagerHeader.btreeOfBtrees.getBtreeHeader().offset;
+            long newListOfBtreesOffet = recordManagerHeader.currentListOfBtreesOffset;
             long newCopiedPagesBtreeOffset = recordManagerHeader.copiedPagesBtree.getBtreeHeader().offset;
 
             // And update the RecordManagerHeader
-            recordManager.updateRecordManagerHeader( recordManagerHeader, newBtreeOfBtreesOffet, newCopiedPagesBtreeOffset );
+            recordManager.updateRecordManagerHeader( recordManagerHeader, newListOfBtreesOffet, newCopiedPagesBtreeOffset );
             recordManager.writeRecordManagerHeader( recordManagerHeader );
             
-            // Finally, close the transaction
+            // close the transaction
             //newAdminPages.clear();
             newPages.clear();
             copiedPageMap.clear();
-            super.close();
+            super.commit();
 
             // Finally add the new RecordManagerHeader in the transaction list
-            RecordManagerHeader previousRMH = recordManager.transactionsList.peek();
-            
-            recordManager.transactionsList.offerFirst( recordManagerHeader );
+            RecordManagerHeader previousRMH = recordManager.activeTransactionsList.peek();
 
             // Corner case : it might be null, if this is the first revision
             if ( ( previousRMH != null ) && ( previousRMH.txnCounter.get() == 0 ) )
             {
-                // Ok, we can get read of it
-                recordManager.transactionsList.remove( previousRMH );
+                // Ok, we can get rid of it
+                RecordManagerHeader deadRmh = recordManager.activeTransactionsList.poll();
+                recordManager.activeTransactionsList.offerFirst( recordManagerHeader );
                 
                 // And we can clean it up
+                recordManager.deadTransactionsList.add( deadRmh );
             }
+            else
+            {
+                recordManager.activeTransactionsList.offerFirst( recordManagerHeader );
+            }
+            
+            cleanup();
         }
+    }
+    
+    
+    private void cleanup()
+    {
+        // We need to get rid of unused RMHs, and the associated B-trees pages.
     }
     
     
@@ -267,12 +280,8 @@ public class WriteTransaction extends AbstractTransaction
      */
     /* No qualifier */void addWALObject( WALObject walObject )
     {
-        // Only add the page if it's not already there
-        if ( walObject != null )
-        {
-            WALObject<?, ?> oldPage = newPages.put( walObject.getId(), walObject );
-            recordManager.putPage( walObject );
-        }
+        newPages.put( walObject.getId(), walObject );
+        recordManager.putPage( walObject );
     }
     
     
@@ -282,6 +291,7 @@ public class WriteTransaction extends AbstractTransaction
     @Override
     public <K, V> Page<K, V> getPage( BTreeInfo<K, V> btreeInfo, long offset ) throws IOException
     {
+        // Offset will be > 0 of it's a real page offset, and < 0 if it's an ID
         if ( offset >= 0 )
         {
             return ( Page<K, V> ) recordManager.getPage( btreeInfo, recordManagerHeader.pageSize, offset );

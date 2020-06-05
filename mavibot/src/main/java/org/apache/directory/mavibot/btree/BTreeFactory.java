@@ -107,7 +107,6 @@ public class BTreeFactory<K, V>
         configuration.setKeySerializer( keySerializer );
         configuration.setValueSerializer( valueSerializer );
         configuration.setPageNbElem( BTree.DEFAULT_PAGE_NBELEM );
-        configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
 
         return new BTree<>( transaction, configuration );
     }
@@ -132,8 +131,6 @@ public class BTreeFactory<K, V>
         configuration.setKeySerializer( keySerializer );
         configuration.setValueSerializer( valueSerializer );
         configuration.setPageNbElem( BTree.DEFAULT_PAGE_NBELEM );
-        configuration.setCacheSize( cacheSize );
-        configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
 
         return new BTree<>( transaction, configuration );
     }
@@ -157,7 +154,6 @@ public class BTreeFactory<K, V>
         configuration.setKeySerializer( keySerializer );
         configuration.setValueSerializer( valueSerializer );
         configuration.setPageNbElem( pageNbElem );
-        configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
 
         return new BTree<>( transaction, configuration );
     }
@@ -182,8 +178,6 @@ public class BTreeFactory<K, V>
         configuration.setKeySerializer( keySerializer );
         configuration.setValueSerializer( valueSerializer );
         configuration.setPageNbElem( pageNbElem );
-        configuration.setCacheSize( cacheSize );
-        configuration.setWriteBufferSize( BTree.DEFAULT_WRITE_BUFFER_SIZE );
 
         return new BTree<>( transaction, configuration );
     }

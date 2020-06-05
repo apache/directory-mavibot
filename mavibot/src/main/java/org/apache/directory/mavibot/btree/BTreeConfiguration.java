@@ -37,9 +37,6 @@ public class BTreeConfiguration<K, V>
     /** Number of entries in each Page. */
     private int pageNbElem = BTree.DEFAULT_PAGE_NBELEM;
 
-    /** The size of the buffer used to write data in disk */
-    private int writeBufferSize = BTree.DEFAULT_WRITE_BUFFER_SIZE;
-
     /** The Key and Value serializer used for this tree. If none is provided,
      * the B-tree will deduce the serializer to use from the generic type, and
      * use the default Java serialization  */
@@ -49,19 +46,8 @@ public class BTreeConfiguration<K, V>
     /** The B-tree name */
     private String name;
 
-    /** The path where the B-tree file will be stored. Default to the local
-     * temporary directory.
-     */
-    private String filePath;
-
     /** The B-tree type */
     private BTreeTypeEnum btreeType = BTreeTypeEnum.PERSISTED;
-
-    /** The cache size, if it's <= 0, we don't have cache */
-    private int cacheSize;
-
-    /** The inherited B-tree if we create a sub B-tree */
-    private BTree<?, V> parentBTree;
 
 
     /**
@@ -130,42 +116,6 @@ public class BTreeConfiguration<K, V>
 
 
     /**
-     * @return the filePath
-     */
-    public String getFilePath()
-    {
-        return filePath;
-    }
-
-
-    /**
-     * @param filePath the filePath to set
-     */
-    public void setFilePath( String filePath )
-    {
-        this.filePath = filePath;
-    }
-
-
-    /**
-     * @return the writeBufferSize
-     */
-    public int getWriteBufferSize()
-    {
-        return writeBufferSize;
-    }
-
-
-    /**
-     * @param writeBufferSize the writeBufferSize to set
-     */
-    public void setWriteBufferSize( int writeBufferSize )
-    {
-        this.writeBufferSize = writeBufferSize;
-    }
-
-
-    /**
      * @return the name
      */
     public String getName()
@@ -180,42 +130,6 @@ public class BTreeConfiguration<K, V>
     public void setName( String name )
     {
         this.name = name.trim();
-    }
-
-
-    /**
-     * @return the cacheSize
-     */
-    public int getCacheSize()
-    {
-        return cacheSize;
-    }
-
-
-    /**
-     * @param cacheSize the cacheSize to set.
-     */
-    public void setCacheSize( int cacheSize )
-    {
-        this.cacheSize = cacheSize;
-    }
-
-
-    /**
-     * @return the cache
-     */
-    public BTree<?, V> getParentBTree()
-    {
-        return parentBTree;
-    }
-
-
-    /**
-     * @param cache the cache to set.
-     */
-    public void setParentBTree( BTree<?, V> parentBTree )
-    {
-        this.parentBTree = parentBTree;
     }
 
 

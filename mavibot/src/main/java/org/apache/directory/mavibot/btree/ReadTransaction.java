@@ -54,6 +54,7 @@ public class ReadTransaction extends AbstractTransaction implements Closeable
         
         // Don't get a copy of the RMH
         recordManagerHeader = recordManager.getCurrentRecordManagerHeader();
+        recordManagerHeader.txnCounter.incrementAndGet();
     }
     
     
@@ -69,6 +70,7 @@ public class ReadTransaction extends AbstractTransaction implements Closeable
         
         // Don't get a copy of the RMH
         recordManagerHeader = recordManager.getCurrentRecordManagerHeader();
+        recordManagerHeader.txnCounter.incrementAndGet();
     }
 
 
@@ -80,6 +82,26 @@ public class ReadTransaction extends AbstractTransaction implements Closeable
     public void close() throws IOException
     {
         commit();
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void commit() throws IOException
+    {
+        // Decrement the counter
+        int txnNumber = recordManagerHeader.txnCounter.decrementAndGet();
+        
+        if ( ( txnNumber == 0 ) && ( recordManager.activeTransactionsList.peek().revision != recordManagerHeader.revision ) )
+        {
+            // We can cleanup 
+            recordManager.activeTransactionsList.remove( recordManagerHeader );
+            recordManager.deadTransactionsList.add( recordManagerHeader );
+        }
+        
+        super.commit();
     }
 
 
@@ -104,6 +126,7 @@ public class ReadTransaction extends AbstractTransaction implements Closeable
         }
         
         sb.append( "]" );
+        sb.append( ':' ).append( recordManagerHeader.txnCounter.get() );
         
         return sb.toString();
     }

@@ -131,7 +131,7 @@ public class RecordManagerTest
     @Test
     public void testRecordManager() throws IOException, BTreeAlreadyManagedException
     {
-        assertEquals( 3, recordManager.getNbManagedTrees( recordManager.getCurrentRecordManagerHeader() ) );
+        assertEquals( 2, recordManager.getNbManagedTrees( recordManager.getCurrentRecordManagerHeader() ) );
 
         Set<String> managedBTrees = recordManager.getManagedTrees();
 
@@ -168,10 +168,16 @@ public class RecordManagerTest
             btree.insert( writeTransaction, 5L, "V5" );
         }
 
+        try ( WriteTransaction writeTransaction = recordManager.beginWriteTransaction() )
+        {
+            btree.insert( writeTransaction, 4L, "V4" );
+            btree.insert( writeTransaction, 2L, "V2" );
+        }
+
         // Now, try to reload the file back
         openRecordManagerAndBtree();
 
-        assertEquals( 3, recordManager.getNbManagedTrees( recordManager.getCurrentRecordManagerHeader() ) );
+        assertEquals( 2, recordManager.getNbManagedTrees( recordManager.getCurrentRecordManagerHeader() ) );
 
         Set<String> managedBTrees = recordManager.getManagedTrees();
 
@@ -192,12 +198,11 @@ public class RecordManagerTest
             assertEquals( btree.getValueSerializer().getClass().getName(), btree1.getValueSerializer().getClass().getName() );
     
             // Check the stored element
-            assertTrue( btree1.hasKey( transaction, 1L ) );
-            assertTrue( btree1.hasKey( transaction, 3L ) );
-            assertTrue( btree1.hasKey( transaction, 5L ) );
-            assertEquals( "V1", btree1.get( transaction, 1L ) );
-            assertEquals( "V3", btree1.get( transaction, 3L ) );
-            assertEquals( "V5", btree1.get( transaction, 5L ) );
+            for ( long i = 1L; i < 6L; i++ )
+            {
+                assertTrue( btree1.hasKey( transaction, i ) );
+                assertEquals( "V" + i, btree1.get( transaction, i ) );
+            }
         }
     }
 
@@ -234,7 +239,7 @@ public class RecordManagerTest
         // Now, try to reload the file back
         openRecordManagerAndBtree();
 
-        assertEquals( 3, recordManager.getNbManagedTrees( recordManager.getCurrentRecordManagerHeader() ) );
+        assertEquals( 2, recordManager.getNbManagedTrees( recordManager.getCurrentRecordManagerHeader() ) );
 
         Set<String> managedBTrees = recordManager.getManagedTrees();
 
@@ -272,7 +277,7 @@ public class RecordManagerTest
      * Test the creation of a RecordManager with a BTree containing 100 000 elements
      */
     @Test
-    @Ignore("This is a performance test")
+    //@Ignore("This is a performance test")
     public void testRecordManagerWithBTreeLeafNode100K() throws IOException, BTreeAlreadyManagedException,
         KeyNotFoundException
     {
@@ -327,7 +332,7 @@ public class RecordManagerTest
         // Now, try to reload the file back
         openRecordManagerAndBtree();
 
-        assertEquals( 1, recordManager.getNbManagedTrees( recordManager.getCurrentRecordManagerHeader() ) );
+        assertEquals( 2, recordManager.getNbManagedTrees( recordManager.getCurrentRecordManagerHeader() ) );
 
         Set<String> managedBTrees = recordManager.getManagedTrees();
 

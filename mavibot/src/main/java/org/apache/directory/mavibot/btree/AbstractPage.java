@@ -23,6 +23,8 @@ package org.apache.directory.mavibot.btree;
 import java.io.IOException;
 import java.lang.reflect.Array;
 
+import org.omg.CORBA.NO_PERMISSION;
+
 /**
  * A MVCC abstract Page. It stores the keys/children and the methods shared by the {@link Node} and {@link Leaf}
  * classes (the keys and values/children). It also hold the number of elements the page contains, and its current revision.
@@ -118,11 +120,17 @@ import java.lang.reflect.Array;
      */
     protected void setChild( Node<K, V> parent, int pos, Page<K, V> child )
     {
-        parent.children[pos] = child.getOffset();
+        long childOffset = child.getOffset();
         
-        if ( parent.children[pos] == BTreeConstants.NO_PAGE )
+        if ( childOffset == BTreeConstants.NO_PAGE )
         {
+            // If the reference is -1, then it's a new page. Use its ID as a reference, with a 
+            // negative value.
             parent.children[pos] = -child.getId();
+        }
+        else
+        {
+            parent.children[pos] = childOffset;
         }
     }
     

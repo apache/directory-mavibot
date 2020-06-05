@@ -90,16 +90,9 @@ import java.util.concurrent.atomic.AtomicInteger;
      */
     public BTreeHeader<K, V> clone()
     {
-        try
-        {
-            BTreeHeader<K, V> copy = ( BTreeHeader<K, V> ) super.clone();
-
-            return copy;
-        }
-        catch ( CloneNotSupportedException cnse )
-        {
-            return null;
-        }
+        BTreeHeader<K, V> copy = ( BTreeHeader<K, V> ) super.clone();
+        
+        return copy;
     }
 
 
@@ -117,6 +110,23 @@ import java.util.concurrent.atomic.AtomicInteger;
         copy.nbUsers.set( 0 );
         copy.pageIOs = null;
         copy.id = recordManagerHeader.idCounter++;
+
+        return copy;
+    }
+
+
+    /**
+     * Copy the current B-tree header and return the copy
+     * @return The copied B-tree header
+     */
+    /* no qualifier */BTreeHeader<K, V> copy()
+    {
+        BTreeHeader<K, V> copy = clone();
+
+        // Clear the fields that should not be copied
+        copy.offset = -1L;
+        copy.nbUsers.set( 0 );
+        copy.pageIOs = null;
 
         return copy;
     }

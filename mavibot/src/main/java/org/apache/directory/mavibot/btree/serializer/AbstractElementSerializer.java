@@ -106,4 +106,14 @@ public abstract class AbstractElementSerializer<T> implements ElementSerializer<
     {
         return type;
     }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString( T value )
+    {
+        return value.toString();
+    }
 }

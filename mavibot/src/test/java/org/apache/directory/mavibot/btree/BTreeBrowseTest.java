@@ -652,8 +652,8 @@ public class BTreeBrowseTest
     public void testAddRandom() throws Exception
     {
         // Inject some data
-        long increment = 10_000L;
-        long nbRound = 10_000L;
+        long increment = 100L;
+        long nbRound = 100_000L;
         long t0 = System.currentTimeMillis();
         btree.setPageNbElem( 32 );  // Long + String(long) : 8 bytes + [2 - 10] bytes, max, 56 elems/page
 
@@ -696,7 +696,7 @@ public class BTreeBrowseTest
         {
             long tread0 = System.currentTimeMillis();
     
-            for ( int i = 0; i < 1_00; i++ )
+            for ( int i = 0; i < 10; i++ )
             {
                 int counter = 0;
                 try ( Transaction readTxn = recordManager.beginReadTransaction() )

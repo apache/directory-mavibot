@@ -331,4 +331,35 @@ public class LongArraySerializer extends AbstractElementSerializer<long[]>
                 return longs;
         }
     }
+    
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString( long[] values )
+    {
+        StringBuilder sb = new StringBuilder();
+        
+        boolean isFirst = true;
+        sb.append( '[' );
+        
+        for ( long value : values )
+        {
+            if ( isFirst )
+            {
+                isFirst = false;
+            }
+            else
+            {
+                sb.append( ',' );
+            }
+            
+            sb.append( String.format( "%016x", value ) );
+        }
+        
+        sb.append( ']' );
+        
+        return sb.toString();
+    }
 }

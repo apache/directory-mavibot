@@ -841,23 +841,23 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      */
     private InsertResult<K, V> addElement( WriteTransaction transaction, K key, V value, int pos )
     {
-        Leaf<K, V> newLeaf = this;
+        Leaf<K, V> modifiedLeaf = this;
         
         // If the page was created in a previous revision, copy it
         if ( revision != transaction.getRevision() )
         {
-            newLeaf = ( Leaf<K, V> ) copy( transaction, pageNbElems );
+            modifiedLeaf = ( Leaf<K, V> ) copy( transaction, pageNbElems );
         }
 
         // Inject the <K, V> into the new leaf
-        Page<K, V> modifiedPage = newLeaf.addElement( key, value, pos );
+        modifiedLeaf.addElement( key, value, pos );
 
         // And return a modified result
-        InsertResult<K, V> result = new ModifyResult<>( modifiedPage, key, null );
+        InsertResult<K, V> result = new ModifyResult<>( modifiedLeaf, key, null );
         
         // Add the new leaf in the transaction pages map, and add
         // the old leaf into the CopiedPages B-tree, if needed
-        transaction.updateWAL( revision, this, newLeaf );
+        transaction.updateWAL( revision, this, modifiedLeaf );
 
         return result;
     }
@@ -933,7 +933,6 @@ import org.apache.directory.mavibot.btree.serializer.LongSerializer;
      */
     private SplitResult<K, V> addAndSplit( WriteTransaction transaction, K key, V value, int pos ) throws IOException
     {
-        RecordManagerHeader recordManagerHeader = transaction.getRecordManagerHeader();
         int middle = btreeInfo.getPageNbElem() >> 1;
         Leaf<K, V> leftLeaf;
         Leaf<K, V> rightLeaf;
