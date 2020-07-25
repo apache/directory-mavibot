@@ -102,6 +102,7 @@ pipeline {
             docker {
               label 'ubuntu && !H28 && !H36 && !H40'
               image 'apachedirectory/maven-build:jdk-14'
+              alwaysPull true
               args '-v $HOME/.m2:/home/hnelson/.m2'
             }
           }
