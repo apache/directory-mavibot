@@ -34,7 +34,7 @@ pipeline {
       }
       agent {
         docker {
-          label 'ubuntu && !H28 && !H36 && !H40'
+          label 'ubuntu'
           image 'apachedirectory/maven-build:jdk-8'
           args '-v $HOME/.m2:/home/hnelson/.m2'
         }
@@ -57,7 +57,7 @@ pipeline {
           }
           agent {
             docker {
-              label 'ubuntu && !H28 && !H36 && !H40'
+              label 'ubuntu'
               image 'apachedirectory/maven-build:jdk-8'
               args '-v $HOME/.m2:/home/hnelson/.m2'
             }
@@ -79,7 +79,7 @@ pipeline {
           }
           agent {
             docker {
-              label 'ubuntu && !H28 && !H36 && !H40'
+              label 'ubuntu'
               image 'apachedirectory/maven-build:jdk-11'
               args '-v $HOME/.m2:/home/hnelson/.m2'
             }
@@ -93,15 +93,15 @@ pipeline {
             }
           }
         }
-        stage ('Linux Java 14') {
+        stage ('Linux Java 17') {
           options {
             timeout(time: 4, unit: 'HOURS')
             retry(2)
           }
           agent {
             docker {
-              label 'ubuntu && !H28 && !H36 && !H40'
-              image 'apachedirectory/maven-build:jdk-14'
+              label 'ubuntu'
+              image 'apachedirectory/maven-build:jdk-17'
               alwaysPull true
               args '-v $HOME/.m2:/home/hnelson/.m2'
             }
