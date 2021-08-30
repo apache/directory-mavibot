@@ -203,9 +203,12 @@ public class MavibotInspector
 
         System.out.print( "BTree Name: " );
         String name = readLine();
+        
+        Transaction transaction = null;
 
-        try ( Transaction transaction = rm.beginReadTransaction() )
+        try
         {
+            transaction = rm.beginReadTransaction();
             BTree<?, ?> pb = ( BTree<?, ?> ) rm.getBtree( transaction, name, Long.MAX_VALUE - 1 );
     
             if ( pb == null )
@@ -223,6 +226,15 @@ public class MavibotInspector
             System.out.println( "Key serializer: " + pb.getKeySerializerFQCN() );
             System.out.println( "Value serializer: " + pb.getValueSerializerFQCN() );
             System.out.println();
+            
+            transaction.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( transaction != null )
+            {
+                transaction.abort();
+            }
         }
     }
 

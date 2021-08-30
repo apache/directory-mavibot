@@ -71,14 +71,23 @@ public class RecordManagerTest
 
         openRecordManagerAndBtree();
 
-        try ( WriteTransaction writeTransaction = recordManager.beginWriteTransaction() )
+        WriteTransaction writeTxn = null; 
+        
+        try
         {
+            writeTxn = recordManager.beginWriteTransaction();
+            
             // Create a new BTree
-            btree = recordManager.addBTree( writeTransaction, "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE );
+            btree = recordManager.addBTree( writeTxn, "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE );
+
+            writeTxn.commit();
         }
-        catch ( Exception e )
+        catch ( Exception ioe )
         {
-            throw new RuntimeException( e );
+            if ( writeTxn != null )
+            {
+                writeTxn.abort();
+            }
         }
     }
 
@@ -112,9 +121,22 @@ public class RecordManagerTest
             // load the last created btree
             if ( btree != null )
             {
-                try ( Transaction readTransaction = recordManager.beginReadTransaction() )
+                Transaction readTxn = null;
+                
+                try
                 {
-                    btree = recordManager.getBtree( readTransaction, btree.getName() );
+                    readTxn = recordManager.beginReadTransaction();
+                    
+                    btree = recordManager.getBtree( readTxn, btree.getName() );
+                    
+                    readTxn.commit();
+                }
+                catch ( IOException ioe )
+                {
+                    if ( readTxn != null )
+                    {
+                        readTxn.abort();
+                    }
                 }
             }
         }
@@ -138,9 +160,13 @@ public class RecordManagerTest
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        try ( Transaction readTransaction = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
-            BTree<Long, String> btree1 = recordManager.getBtree( readTransaction, "test" );
+            readTxn = recordManager.beginReadTransaction();
+            
+            BTree<Long, String> btree1 = recordManager.getBtree( readTxn, "test" );
     
             assertNotNull( btree1 );
             assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
@@ -150,6 +176,15 @@ public class RecordManagerTest
             assertEquals( btree.getBtreeInfo().getPageNbElem(), btree1.getBtreeInfo().getPageNbElem() );
             assertEquals( btree.getBtreeHeader().getRevision(), btree1.getBtreeHeader().getRevision() );
             assertEquals( btree.getValueSerializer().getClass().getName(), btree1.getValueSerializer().getClass().getName() );
+            
+            readTxn.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
         }
     }
 
@@ -161,17 +196,43 @@ public class RecordManagerTest
     public void testRecordManagerWithBTree() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
         // Now, add some elements in the BTree
-        try ( WriteTransaction writeTransaction = recordManager.beginWriteTransaction() )
+        WriteTransaction writeTxn = null; 
+        
+        try
         {
-            btree.insert( writeTransaction, 3L, "V3" );
-            btree.insert( writeTransaction, 1L, "V1" );
-            btree.insert( writeTransaction, 5L, "V5" );
+            writeTxn = recordManager.beginWriteTransaction();
+            
+            btree.insert( writeTxn, 3L, "V3" );
+            btree.insert( writeTxn, 1L, "V1" );
+            btree.insert( writeTxn, 5L, "V5" );
+
+            writeTxn.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( writeTxn != null )
+            {
+                writeTxn.abort();
+            }
         }
 
-        try ( WriteTransaction writeTransaction = recordManager.beginWriteTransaction() )
+        writeTxn = null; 
+        
+        try
         {
-            btree.insert( writeTransaction, 4L, "V4" );
-            btree.insert( writeTransaction, 2L, "V2" );
+            writeTxn = recordManager.beginWriteTransaction();
+            
+            btree.insert( writeTxn, 4L, "V4" );
+            btree.insert( writeTxn, 2L, "V2" );
+
+            writeTxn.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( writeTxn != null )
+            {
+                writeTxn.abort();
+            }
         }
 
         // Now, try to reload the file back
@@ -184,9 +245,13 @@ public class RecordManagerTest
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
         
-        try ( Transaction transaction = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
-            BTree<Long, String> btree1 = recordManager.getBtree( transaction,  "test" );
+            readTxn = recordManager.beginReadTransaction();
+            
+            BTree<Long, String> btree1 = recordManager.getBtree( readTxn,  "test" );
     
             assertNotNull( btree1 );
             assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
@@ -200,8 +265,17 @@ public class RecordManagerTest
             // Check the stored element
             for ( long i = 1L; i < 6L; i++ )
             {
-                assertTrue( btree1.hasKey( transaction, i ) );
-                assertEquals( "V" + i, btree1.get( transaction, i ) );
+                assertTrue( btree1.hasKey( readTxn, i ) );
+                assertEquals( "V" + i, btree1.get( readTxn, i ) );
+            }
+            
+            readTxn.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
             }
         }
     }
@@ -217,22 +291,48 @@ public class RecordManagerTest
         // Now, add some elements in the BTree
         for ( long i = 1L; i < 32L; i++ )
         {
-            try ( WriteTransaction writeTransaction = recordManager.beginWriteTransaction() )
+            WriteTransaction writeTxn = null; 
+            
+            try
             {
-                btree.insert( writeTransaction, i, "V" + i );
+                writeTxn = recordManager.beginWriteTransaction();
+                
+                btree.insert( writeTxn, i, "V" + i );
+
+                writeTxn.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( writeTxn != null )
+                {
+                    writeTxn.abort();
+                }
             }
         }
 
         for ( long i = 1L; i < 32L; i++ )
         {
-            try ( Transaction transaction = recordManager.beginReadTransaction() )
+            Transaction readTxn = null;
+            
+            try
             {
-                if ( !btree.hasKey( transaction, i ) )
+                readTxn = recordManager.beginReadTransaction();
+                
+                if ( !btree.hasKey( readTxn, i ) )
                 {
                     System.out.println( "Not found !!! " + i );
                 }
-                assertTrue( btree.hasKey( transaction, i ) );
-                assertEquals( "V" + i, btree.get( transaction, i ) );
+                assertTrue( btree.hasKey( readTxn, i ) );
+                assertEquals( "V" + i, btree.get( readTxn, i ) );
+                
+                readTxn.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( readTxn != null )
+                {
+                    readTxn.abort();
+                }
             }
         }
 
@@ -246,9 +346,13 @@ public class RecordManagerTest
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        try ( Transaction transaction = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
-            BTree<Long, String> btree1 = recordManager.getBtree( transaction, "test" );
+            readTxn = recordManager.beginReadTransaction();
+            
+            BTree<Long, String> btree1 = recordManager.getBtree( readTxn, "test" );
 
             assertNotNull( btree1 );
             assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
@@ -262,12 +366,21 @@ public class RecordManagerTest
             // Check the stored element
             for ( long i = 1L; i < 32L; i++ )
             {
-                if ( !btree1.hasKey( transaction, i ) )
+                if ( !btree1.hasKey( readTxn, i ) )
                 {
                     System.out.println( "Not found " + i );
                 }
-                assertTrue( btree1.hasKey( transaction, i ) );
-                assertEquals( "V" + i, btree1.get( transaction, i ) );
+                assertTrue( btree1.hasKey( readTxn, i ) );
+                assertEquals( "V" + i, btree1.get( readTxn, i ) );
+            }
+            
+            readTxn.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
             }
         }
     }
@@ -297,9 +410,22 @@ public class RecordManagerTest
         {
             String value = "V" + i;
             
-            try ( WriteTransaction writeTransaction = recordManager.beginWriteTransaction() )
+            WriteTransaction writeTxn = null; 
+            
+            try
             {
-                btree.insert( writeTransaction, i, value );
+                writeTxn = recordManager.beginWriteTransaction();
+                
+                btree.insert( writeTxn, i, value );
+
+                writeTxn.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( writeTxn != null )
+                {
+                    writeTxn.abort();
+                }
             }
 
             /*
@@ -339,9 +465,13 @@ public class RecordManagerTest
         assertEquals( 1, managedBTrees.size() );
         assertTrue( managedBTrees.contains( "test" ) );
 
-        try ( Transaction transaction = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
-            BTree<Long, String> btree1 = recordManager.getBtree( transaction, "test" );
+            readTxn = recordManager.beginReadTransaction();
+            
+            BTree<Long, String> btree1 = recordManager.getBtree( readTxn, "test" );
     
             assertNotNull( btree1 );
             assertEquals( btree.getKeyComparator().getClass().getName(), btree1.getKeyComparator().getClass().getName() );
@@ -357,7 +487,7 @@ public class RecordManagerTest
             for ( long i = 0L; i < nbElems; i++ )
             {
                 //assertTrue( btree1.exist( i ) );
-                assertEquals( "V" + i, btree1.get( transaction, i ) );
+                assertEquals( "V" + i, btree1.get( readTxn, i ) );
             }
             long t3 = System.currentTimeMillis();
             System.out.println( "Time taken to verify 100 000 elements : " + ( t3 - t2 ) );
@@ -367,21 +497,33 @@ public class RecordManagerTest
             for ( long i = 0L; i < nbElems; i++ )
             {
                 //assertTrue( btree1.exist( i ) );
-                assertEquals( "V" + i, btree1.get( transaction, i ) );
+                assertEquals( "V" + i, btree1.get( readTxn, i ) );
             }
             long t5 = System.currentTimeMillis();
             System.out.println( "Time taken to verify 100 000 elements : " + ( t5 - t4 ) );
+            
+            readTxn.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
         }
     }
 
 
     private void checkBTreeRevisionBrowse( BTree<Long, String> btree, long revision, long... values )
-        throws IOException,
-        KeyNotFoundException, CursorException
+        throws IOException, KeyNotFoundException, CursorException
     {
-        try ( Transaction transaction = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
-            TupleCursor<Long, String> cursor = btree.browse( transaction );
+            readTxn = recordManager.beginReadTransaction();
+            
+            TupleCursor<Long, String> cursor = btree.browse( readTxn );
             List<Long> expected = new ArrayList<Long>( values.length );
             Set<Long> found = new HashSet<Long>( values.length );
     
@@ -406,17 +548,29 @@ public class RecordManagerTest
     
             assertEquals( values.length, nb );
             cursor.close();
+            
+            readTxn.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
         }
     }
 
 
     private void checkBTreeRevisionBrowseFrom( BTree<Long, String> btree, long revision, long from, long... values )
-        throws IOException,
-        KeyNotFoundException
+        throws IOException, KeyNotFoundException
     {
-        try ( Transaction transaction = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
-            TupleCursor<Long, String> cursor = btree.browseFrom( transaction, from );
+            readTxn = recordManager.beginReadTransaction();
+            
+            TupleCursor<Long, String> cursor = btree.browseFrom( readTxn, from );
             List<Long> expected = new ArrayList<Long>( values.length );
             Set<Long> found = new HashSet<Long>( values.length );
     
@@ -441,6 +595,15 @@ public class RecordManagerTest
     
             assertEquals( values.length, nb );
             cursor.close();
+            
+            readTxn.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
         }
     }
 
@@ -448,10 +611,23 @@ public class RecordManagerTest
     @Test
     public void testAdds() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException
     {
-        try ( WriteTransaction writeTransaction = recordManager.beginWriteTransaction() )
+        WriteTransaction writeTxn = null; 
+        
+        try
         {
-            btree.insert( writeTransaction, 1L, "V1" );
-            btree.insert( writeTransaction, 2L, "V2" );
+            writeTxn = recordManager.beginWriteTransaction();
+            
+            btree.insert( writeTxn, 1L, "V1" );
+            btree.insert( writeTxn, 2L, "V2" );
+
+            writeTxn.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( writeTxn != null )
+            {
+                writeTxn.abort();
+            }
         }
     }
 
@@ -469,8 +645,12 @@ public class RecordManagerTest
 
         System.out.println( "Test start" );
         */
-        try ( WriteTransaction writeTransaction = recordManager.beginWriteTransaction() )
+        WriteTransaction writeTxn = null; 
+            
+        try
         {
+            writeTxn = recordManager.beginWriteTransaction();
+            
             /*
             System.out.println( "Before V1" );
             for ( Long key : recordManager.writeCounter.keySet() )
@@ -479,7 +659,7 @@ public class RecordManagerTest
                     + " times" );
             }
             */
-            btree.insert( writeTransaction, 1L, "V1" );
+            btree.insert( writeTxn, 1L, "V1" );
             /*
             for ( Long key : recordManager.writeCounter.keySet() )
             {
@@ -491,11 +671,11 @@ public class RecordManagerTest
             */
     
             //System.out.println( "Before V2" );
-            btree.insert( writeTransaction, 2L, "V2" );
+            btree.insert( writeTxn, 2L, "V2" );
             //System.out.println( "After V2" );
     
             //System.out.println( "Before V3" );
-            btree.insert( writeTransaction, 3L, "V3" );
+            btree.insert( writeTxn, 3L, "V3" );
             /*
             for ( Long key : recordManager.writeCounter.keySet() )
             {
@@ -503,6 +683,15 @@ public class RecordManagerTest
                     + " times" );
             }
             */
+            
+            writeTxn.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( writeTxn != null )
+            {
+                writeTxn.abort();
+            }
         }
 
         /*

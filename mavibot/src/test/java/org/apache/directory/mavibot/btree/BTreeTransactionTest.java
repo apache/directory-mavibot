@@ -54,22 +54,28 @@ public class BTreeTransactionTest
         dataDir = tempFolder.newFolder( UUID.randomUUID().toString() );
 
         openRecordManagerAndBtrees();
+        WriteTransaction writeTransaction = null;
         
         //recordManager.dump();
 
-        try ( WriteTransaction writeTransaction = recordManager.beginWriteTransaction() )
+        try
         {
+            writeTransaction = recordManager.beginWriteTransaction();
             // Create a new BTree with transaction and another one without
             btree = recordManager.addBTree( writeTransaction, "testWithTxn", LongSerializer.INSTANCE, StringSerializer.INSTANCE );
 
             //recordManager.dump();
+            writeTransaction.commit();
         }
         catch ( Exception e )
         {
-            throw new RuntimeException( e );
+            if ( writeTransaction != null ) 
+            {
+                writeTransaction.abort();
+            }
         }
 
-        recordManager.dump();
+        //recordManager.dump();
     }
 
 
@@ -100,13 +106,29 @@ public class BTreeTransactionTest
             recordManager = new RecordManager( dataDir.getAbsolutePath(), 512, 1024 );
             
             System.out.println( "File : " + dataDir.getAbsolutePath() );
+            
+            recordManager.dump();
 
             // load the last created btree
             if ( btree != null )
             {
-                try ( Transaction readTransaction = recordManager.beginReadTransaction() )
+                
+                Transaction readTxn = null;
+                
+                try
                 {
-                    btree = recordManager.getBtree( readTransaction, btree.getName(), 0L );
+                    readTxn = recordManager.beginReadTransaction();
+                    
+                    btree = recordManager.getBtree( readTxn, btree.getName(), 0L );
+
+                    readTxn.commit();
+                }
+                catch ( IOException ioe )
+                {
+                    if ( readTxn != null )
+                    {
+                        readTxn.abort();
+                    }
                 }
             }
         }
@@ -120,22 +142,64 @@ public class BTreeTransactionTest
     @Test
     public void testWithTransaction() throws IOException
     {
-        long nbPerLoop = 100L;
+        long nbPerLoop = 8L;
         long nbIteration = 10_000L / nbPerLoop;
         long t0 = System.currentTimeMillis();
 
         for ( long i = 0L; i < nbIteration; i++ )
         {
-            try ( WriteTransaction writeTransaction = recordManager.beginWriteTransaction() )
+            WriteTransaction writeTxn = null;
+            
+            try 
             {
+                writeTxn = recordManager.beginWriteTransaction();
+                
                 for ( int j = 0; j < nbPerLoop; j++ )
                 {
                     long key = i * nbPerLoop + j;
-                    btree.insert( writeTransaction, key , Long.toString( key ) );
+                    btree.insert( writeTxn, key , Long.toString( key ) );
+                }
+
+                writeTxn.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( writeTxn != null )
+                {
+                    writeTxn.abort();
                 }
             }
+
+            Transaction readTxn = null;
             
-            recordManager.dump();
+            try
+            {
+                readTxn = recordManager.beginReadTransaction();
+                
+                TupleCursor<Long, String> cursor = btree.browse( readTxn );
+                
+                int nbElems = 0;
+                
+                while ( cursor.hasNext() )
+                {
+                    cursor.next();
+                    nbElems++;
+                    //System.out.print( nbElems + "/" );
+                }
+                
+                //System.out.println();
+
+                readTxn.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( readTxn != null )
+                {
+                    readTxn.abort();
+                }
+            }
+
+            //recordManager.dump();
         }
 
         System.out.println( "File size : " + recordManager.fileChannel.size() );
@@ -171,13 +235,17 @@ public class BTreeTransactionTest
                     e.printStackTrace();
                 }
                 
-                try ( Transaction readTransaction = recordManager.beginReadTransaction() )
+                Transaction readTxn = null;
+                
+                try
                 {
+                    readTxn = recordManager.beginReadTransaction();
+                    
                     //recordManager.dump( Thread.currentThread(), readTransaction.getRecordManagerHeader() );
-                    BTree<Long, String> btree = readTransaction.getBTree( "testWithTxn" );
+                    BTree<Long, String> btree = readTxn.getBTree( "testWithTxn" );
                     //System.out.println( btree.getBtreeHeader() );
 
-                    TupleCursor cursor = btree.browse( readTransaction );
+                    TupleCursor cursor = btree.browse( readTxn );
                     //System.out.println( "Nb elements to read (" + btree.getNbElems() + ")\n" );
                     
                     long nbElems = 0;
@@ -191,7 +259,7 @@ public class BTreeTransactionTest
                     }
                     catch ( NullPointerException npe )
                     {
-                        cursor = btree.browse( readTransaction );
+                        cursor = btree.browse( readTxn );
                         nbElems = 0;
                         while ( cursor.hasNext() )
                         {
@@ -205,9 +273,21 @@ public class BTreeTransactionTest
                     //System.out.println( "Thread[" + Thread.currentThread() + "], nRead " + nbElems + " nb elements (" + btree.getNbElems() + ")" );
                     cursor.close();
                 }
-                catch ( IOException e )
+                catch ( IOException ioe )
                 {
-                    e.printStackTrace();
+                    if ( readTxn != null )
+                    {
+                        try
+                        {
+                            readTxn.abort();
+                        }
+                        catch ( IOException ioe2 )
+                        {
+                            ioe2.printStackTrace();
+                        }
+                    }
+                    
+                    ioe.printStackTrace();
                 }
             }
         }
@@ -241,17 +321,30 @@ public class BTreeTransactionTest
         
         for ( long i = 0L; i < nbIteration; i++ )
         {
-            try ( WriteTransaction writeTransaction = recordManager.beginWriteTransaction() )
+            WriteTransaction writeTxn = null;
+            
+            try
             {
+                writeTxn = recordManager.beginWriteTransaction();
+                
                 for ( int j = 0; j < nbPerLoop; j++ )
                 {
                     long key = i * nbPerLoop + j;
-                    BTree<Long, String> btree = writeTransaction.getBTree( "testWithTxn" );
+                    BTree<Long, String> btree = writeTxn.getBTree( "testWithTxn" );
 
-                    btree.insert( writeTransaction, key , Long.toString( key ) );
+                    btree.insert( writeTxn, key , Long.toString( key ) );
+                }
+
+                writeTxn.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( writeTxn != null )
+                {
+                    writeTxn.abort();
                 }
             }
-            
+
             Thread.sleep(10);
             //recordManager.dump();
         }
@@ -261,13 +354,17 @@ public class BTreeTransactionTest
 
         System.out.println( "Delta with transaction for " + nbElements  + " elements = " + ( t1 - t0 ) );
         
-        try ( Transaction readTransaction = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
+            readTxn = recordManager.beginReadTransaction();
+            
             //recordManager.dump( Thread.currentThread(), readTransaction.getRecordManagerHeader() );
-            BTree<Long, String> btree = readTransaction.getBTree( "testWithTxn" );
+            BTree<Long, String> btree = readTxn.getBTree( "testWithTxn" );
             System.out.println( btree.getBtreeHeader() );
 
-            TupleCursor cursor = btree.browse( readTransaction );
+            TupleCursor cursor = btree.browse( readTxn );
             
             long nbElems = 0;
             while ( cursor.hasNext() )
@@ -280,10 +377,17 @@ public class BTreeTransactionTest
             
             System.out.println( "Read " + nbElems + " nb elements (" + btree.getNbElems() + ")" );
             cursor.close();
+
+            readTxn.commit();
         }
-        catch ( IOException e )
+        catch ( IOException ioe )
         {
-            e.printStackTrace();
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
+            
+            ioe.printStackTrace();
         }
 
         //Thread.sleep( 1000000L );

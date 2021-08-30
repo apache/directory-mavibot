@@ -66,14 +66,23 @@ public class RecordManagerFreePageTest
 
         openRecordManagerAndBtree();
 
-        try ( WriteTransaction writeTxn = recordManager1.beginWriteTransaction() )
+        WriteTransaction writeTxn = null;
+        
+        try
         {
+            writeTxn = recordManager1.beginWriteTransaction();
+            
             // Create a new BTree
             btree = recordManager1.addBTree( writeTxn, "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE );
+
+            writeTxn.commit();
         }
-        catch ( Exception e )
+        catch ( Exception ioe )
         {
-            throw new RuntimeException( e );
+            if ( writeTxn != null )
+            {
+                writeTxn.abort();
+            }
         }
     }
 
@@ -109,9 +118,22 @@ public class RecordManagerFreePageTest
             // load the last created btree
             if ( btree != null )
             {
-                try ( Transaction transaction = recordManager1.beginReadTransaction() )
+                Transaction readTxn = null;
+                
+                try
                 {
-                    btree = recordManager1.getBtree( transaction, btree.getName() );
+                    readTxn = recordManager1.beginReadTransaction();
+                    
+                    btree = recordManager1.getBtree( readTxn, btree.getName() );
+
+                    readTxn.commit();
+                }
+                catch ( IOException ioe )
+                {
+                    if ( readTxn != null )
+                    {
+                        readTxn.abort();
+                    }
                 }
             }
         }
@@ -149,9 +171,13 @@ public class RecordManagerFreePageTest
             Long key = ( long ) i;
             String value = Long.toString( key );
 
-            try ( WriteTransaction writeTransaction = recordManager1.beginWriteTransaction() )
+            WriteTransaction writeTxn = null;
+            
+            try
             {
-                btree.insert( writeTransaction, key, value );
+                writeTxn = recordManager1.beginWriteTransaction();
+                
+                btree.insert( writeTxn, key, value );
     
                 if ( i % 10000 == 0 )
                 {
@@ -163,6 +189,15 @@ public class RecordManagerFreePageTest
                     }
     
                     n++;
+                }
+
+                writeTxn.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( writeTxn != null )
+                {
+                    writeTxn.abort();
                 }
             }
         }
@@ -198,9 +233,13 @@ public class RecordManagerFreePageTest
         assertTrue( nbElems == btree.getNbElems() );
         long i = 0;
 
-        try ( Transaction transaction = recordManager1.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
-            try ( TupleCursor<Long, String> cursor = btree.browse( transaction ) )
+            readTxn = recordManager1.beginReadTransaction();
+            
+            try ( TupleCursor<Long, String> cursor = btree.browse( readTxn ) )
             {
                 while ( cursor.hasNext() )
                 {
@@ -209,6 +248,15 @@ public class RecordManagerFreePageTest
                     assertEquals( String.valueOf( i ), t.getValue() );
                     i++;
                 }
+            }
+
+            readTxn.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
             }
         }
 

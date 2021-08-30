@@ -103,7 +103,7 @@ public class WriteTransaction extends AbstractTransaction
     @Override
     public void commit() throws IOException
     {
-        if ( !isClosed() )
+        if ( !isClosed() && !aborted )
         {
             // First, find the modified users B-trees, and flush the user's pages 
             Set<BTreeInfo<?, ?>> btreeInfos = new HashSet<>();
@@ -226,6 +226,7 @@ public class WriteTransaction extends AbstractTransaction
         // We just have to empty the maps
         newPages.clear();
         copiedPageMap.clear();
+        aborted = true;
         super.close();
     }
 

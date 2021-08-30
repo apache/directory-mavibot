@@ -91,14 +91,17 @@ public class ReadTransaction extends AbstractTransaction implements Closeable
     @Override
     public void commit() throws IOException
     {
-        // Decrement the counter
-        int txnNumber = recordManagerHeader.txnCounter.decrementAndGet();
-        
-        if ( ( txnNumber == 0 ) && ( recordManager.activeTransactionsList.peek().revision != recordManagerHeader.revision ) )
+        if ( !aborted )
         {
-            // We can cleanup 
-            recordManager.activeTransactionsList.remove( recordManagerHeader );
-            recordManager.deadTransactionsList.add( recordManagerHeader );
+            // Decrement the counter
+            int txnNumber = recordManagerHeader.txnCounter.decrementAndGet();
+            
+            if ( ( txnNumber == 0 ) && ( recordManager.activeTransactionsList.peek().revision != recordManagerHeader.revision ) )
+            {
+                // We can cleanup 
+                recordManager.activeTransactionsList.remove( recordManagerHeader );
+                recordManager.deadTransactionsList.add( recordManagerHeader );
+            }
         }
         
         super.commit();

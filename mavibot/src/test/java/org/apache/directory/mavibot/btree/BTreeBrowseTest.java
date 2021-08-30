@@ -61,8 +61,6 @@ public class BTreeBrowseTest
 
     private RecordManager recordManager = null;
     
-    private Transaction transaction;
-
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
@@ -80,19 +78,33 @@ public class BTreeBrowseTest
         openRecordManagerAndBtree();
 
         // Create a new BTree
-        try ( WriteTransaction transaction = recordManager.beginWriteTransaction() )
+        WriteTransaction writeTxn = null;
+        try
         {
-            btree = recordManager.addBTree( transaction, "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE );
+            writeTxn = recordManager.beginWriteTransaction();
+            btree = recordManager.addBTree( writeTxn, "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE );
+            writeTxn.commit();
         }
         catch ( Exception e )
         {
-            transaction.abort();
+            writeTxn.abort();
             throw new RuntimeException( e );
         }
 
-        try ( Transaction transaction = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
-            //MavibotInspector.dumpInfos( recordManager, transaction.getRecordManagerHeader() );
+            readTxn = recordManager.beginReadTransaction();
+            //MavibotInspector.dumpInfos( recordManager, readTxn.getRecordManagerHeader() );
+            readTxn.commit();
+        }
+        catch ( Exception e )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
         }
     }
 
@@ -125,24 +137,44 @@ public class BTreeBrowseTest
 
             // Now, try to reload the file back
             recordManager = new RecordManager( dataDir.getAbsolutePath(), 1024, 1000 );
-
-            try ( Transaction transaction = recordManager.beginReadTransaction() )
+            Transaction readTxn = null;
+            
+            try
             {
-                //MavibotInspector.dumpInfos( recordManager, transaction.getRecordManagerHeader() );
-            }
-
-            // load the last created btree
-            try ( Transaction transaction = recordManager.beginReadTransaction() )
-            {
-                if ( btree != null )
-                {
-                    btree = transaction.getBTree( btree.getName() );
-                }
+                readTxn = recordManager.beginReadTransaction();
+                
+                //MavibotInspector.dumpInfos( recordManager, readTxn.getRecordManagerHeader() );
+                
+                readTxn.commit();
             }
             catch ( Exception e )
             {
-                transaction.abort();
-                throw e;
+                if ( readTxn != null )
+                {
+                    readTxn.abort();
+                }
+            }
+
+            // load the last created btree
+            readTxn = null;
+            
+            try
+            {
+                readTxn = recordManager.beginReadTransaction();
+                
+                if ( btree != null )
+                {
+                    btree = readTxn.getBTree( btree.getName() );
+                }
+                
+                readTxn.commit();
+            }
+            catch ( Exception e )
+            {
+                if ( readTxn != null )
+                {
+                    readTxn.abort();
+                }
             }
         }
         catch ( Exception e )
@@ -228,10 +260,14 @@ public class BTreeBrowseTest
     @Test
     public void testBrowseEmptyBTree() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException, CursorException
     {
-        try ( Transaction transaction  = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
-            btree = transaction.getBTree( "test" );
-            TupleCursor<Long, String> cursor = btree.browse( transaction );
+            readTxn = recordManager.beginReadTransaction();
+
+            btree = readTxn.getBTree( "test" );
+            TupleCursor<Long, String> cursor = btree.browse( readTxn );
     
             assertFalse( cursor.hasNext() );
             assertFalse( cursor.hasPrev() );
@@ -257,6 +293,15 @@ public class BTreeBrowseTest
             }
     
             assertEquals( 2L, cursor.getRevision() );
+            
+            readTxn.commit();
+        }
+        catch ( Exception e )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
         }
     }
 
@@ -268,19 +313,36 @@ public class BTreeBrowseTest
     public void testBrowseBTreeLeafNext() throws Exception
     {
         // Inject some data
-        try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+        WriteTransaction writeTxn = null;
+        
+        try
         {
+            writeTxn = recordManager.beginWriteTransaction();
+
             BTree<Long, String> btree = writeTxn.getBTree( "test" );
             btree.insert( writeTxn, 1L, "1" );
             btree.insert( writeTxn, 4L, "4" );
             btree.insert( writeTxn, 2L, "2" );
             btree.insert( writeTxn, 3L, "3" );
             btree.insert( writeTxn, 5L, "5" );
+            
+            writeTxn.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( writeTxn != null )
+            {
+                writeTxn.abort();
+            }
         }
 
         // Create the cursor
-        try ( Transaction readTxn = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
+            readTxn = recordManager.beginReadTransaction();
+            
             BTree<Long, String> btree = readTxn.getBTree( "test" );
             TupleCursor<Long, String> cursor = btree.browse( readTxn );
     
@@ -295,6 +357,15 @@ public class BTreeBrowseTest
             checkNext( cursor, 3L, "3", true, true );
             checkNext( cursor, 4L, "4", true, true );
             checkNext( cursor, 5L, "5", false, true );
+            
+            readTxn.commit();
+        }
+        catch ( Exception e )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
         }
     }
 
@@ -306,19 +377,36 @@ public class BTreeBrowseTest
     public void testBrowseBTreeLeafPrev() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException, CursorException
     {
         // Inject some data
-        try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+        WriteTransaction writeTxn = null;
+        
+        try
         {
+            writeTxn = recordManager.beginWriteTransaction();
+            
             BTree<Long, String> btree = writeTxn.getBTree( "test" );
             btree.insert( writeTxn, 1L, "1" );
             btree.insert( writeTxn, 4L, "4" );
             btree.insert( writeTxn, 2L, "2" );
             btree.insert( writeTxn, 3L, "3" );
             btree.insert( writeTxn, 5L, "5" );
+            
+            writeTxn.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( writeTxn != null )
+            {
+                writeTxn.abort();
+            }
         }
 
         // Create the cursor
-        try ( Transaction readTxn = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
+            readTxn = recordManager.beginReadTransaction();
+
             BTree<Long, String> btree = readTxn.getBTree( "test" );
             TupleCursor<Long, String> cursor = btree.browse( readTxn );
     
@@ -330,6 +418,15 @@ public class BTreeBrowseTest
             checkPrev( cursor, 3L, "3", true, true );
             checkPrev( cursor, 2L, "2", true, true );
             checkPrev( cursor, 1L, "1", true, false );
+            
+            readTxn.commit();
+        }
+        catch ( Exception e )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
         }
     }
 
@@ -342,19 +439,36 @@ public class BTreeBrowseTest
     public void testBrowseBTreeLeafFirstLast() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException, CursorException
     {
         // Inject some data
-        try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+        WriteTransaction writeTxn = null;
+        
+        try
         {
+            writeTxn = recordManager.beginWriteTransaction();
+            
             BTree<Long, String> btree = writeTxn.getBTree( "test" );
             btree.insert( writeTxn, 1L, "1" );
             btree.insert( writeTxn, 4L, "4" );
             btree.insert( writeTxn, 2L, "2" );
             btree.insert( writeTxn, 3L, "3" );
             btree.insert( writeTxn, 5L, "5" );
+            
+            writeTxn.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( writeTxn != null )
+            {
+                writeTxn.abort();
+            }
         }
 
         // Create the cursor
-        try ( Transaction readTxn = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
+            readTxn = recordManager.beginReadTransaction();
+
             BTree<Long, String> btree = readTxn.getBTree( "test" );
             TupleCursor<Long, String> cursor = btree.browse( readTxn );
     
@@ -420,6 +534,15 @@ public class BTreeBrowseTest
     
             assertFalse( cursor.hasPrev() );
             assertTrue( cursor.hasNext() );
+            
+            readTxn.commit();
+        }
+        catch ( Exception e )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
         }
     }
 
@@ -432,19 +555,36 @@ public class BTreeBrowseTest
     public void testBrowseBTreeLeafNextPrev() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException, CursorException
     {
         // Inject some data
-        try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+        WriteTransaction writeTxn = null;
+        
+        try
         {
+            writeTxn = recordManager.beginWriteTransaction();
+            
             BTree<Long, String> btree = writeTxn.getBTree( "test" );
             btree.insert( writeTxn, 1L, "1" );
             btree.insert( writeTxn, 4L, "4" );
             btree.insert( writeTxn, 2L, "2" );
             btree.insert( writeTxn, 3L, "3" );
             btree.insert( writeTxn, 5L, "5" );
+            
+            writeTxn.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( writeTxn != null )
+            {
+                writeTxn.abort();
+            }
         }
 
         // Create the cursor
-        try ( Transaction readTxn = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
+            readTxn = recordManager.beginReadTransaction();
+
             BTree<Long, String> btree = readTxn.getBTree( "test" );
             TupleCursor<Long, String> cursor = btree.browse( readTxn );
     
@@ -481,6 +621,15 @@ public class BTreeBrowseTest
             tuple = cursor.next();
             assertEquals( 3L, ( long ) tuple.getKey() );
             assertEquals( "3", tuple.getValue() );
+            
+            readTxn.commit();
+        }
+        catch ( Exception e )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
         }
     }
     
@@ -577,8 +726,12 @@ public class BTreeBrowseTest
         for ( long i = 0; i < nbRound/increment; i++ )
         {
             //System.out.println( "\nInserting " + i + " in the tree ---->" );
-            try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+            WriteTransaction writeTxn = null;
+            
+            try
             {
+                writeTxn = recordManager.beginWriteTransaction();
+                
                 BTree<Long, String> btree = writeTxn.getBTree( "test" );
                 
                 for ( long j = 0; j < increment; j++ )
@@ -587,6 +740,15 @@ public class BTreeBrowseTest
                     //System.out.println( "Injecting " + val );
                     //MavibotInspector.check( recordManager, recordManager.getRecordManagerHeader() );
                     btree.insert( writeTxn, val, Long.toString( val ) );
+                }
+                
+                writeTxn.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( writeTxn != null )
+                {
+                    writeTxn.abort();
                 }
             }
         }
@@ -599,8 +761,12 @@ public class BTreeBrowseTest
         //MavibotInspector.check( recordManager, recordManager.getRecordManagerHeader() );
 
         // Create the cursor
-        try ( Transaction readTxn = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
+            readTxn = recordManager.beginReadTransaction();
+
             BTree<Long, String> btree = readTxn.getBTree( "test" );
             TupleCursor<Long, String> cursor = btree.browse( readTxn );
 
@@ -644,6 +810,15 @@ public class BTreeBrowseTest
             System.out.println( "Delta browse : " + ( t1 - t0 ) );
             System.out.println( "Nb cache hits : " + recordManager.nbCacheHits.get() );
             System.out.println( "Nb cache misses : " + recordManager.nbCacheMisses.get() );
+            
+            readTxn.commit();
+        }
+        catch ( Exception e )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
         }
     }
     
@@ -668,8 +843,12 @@ public class BTreeBrowseTest
 
         for ( long i = 0; i < nbRound/increment; i++ )
         {
-            try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+            WriteTransaction writeTxn = null;
+            
+            try
             {
+                writeTxn = recordManager.beginWriteTransaction();
+                
                 BTree<Long, String> btree = writeTxn.getBTree( "test" );
 
                 for ( long j = 0; j < increment; j++ )
@@ -677,6 +856,15 @@ public class BTreeBrowseTest
                     long val = values[( int )( i * increment + j )];
                     //MavibotInspector.check( recordManager, recordManager.getRecordManagerHeader() );
                     btree.insert( writeTxn, val, Long.toString( val ) );
+                }
+                
+                writeTxn.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( writeTxn != null )
+                {
+                    writeTxn.abort();
                 }
             }
         }
@@ -699,8 +887,12 @@ public class BTreeBrowseTest
             for ( int i = 0; i < 10; i++ )
             {
                 int counter = 0;
-                try ( Transaction readTxn = recordManager.beginReadTransaction() )
+                Transaction readTxn = null;
+                
+                try
                 {
+                    readTxn = recordManager.beginReadTransaction();
+
                     BTree<Long, String> btree = readTxn.getBTree( "test" );
                     
                     for ( int j = 0; j < nbRound; j++ )
@@ -719,8 +911,17 @@ public class BTreeBrowseTest
                         counter++;
                     }
                     */
+                    
+                    readTxn.commit();
                 }
-            
+                catch ( Exception e )
+                {
+                    if ( readTxn != null )
+                    {
+                        readTxn.abort();
+                    }
+                }
+
                 assertEquals( nbRound, counter );
             }
 
@@ -760,8 +961,12 @@ public class BTreeBrowseTest
         for ( long i = 0; i < nbRound/increment; i++ )
         {
             //System.out.println( "\nInserting " + i + " in the tree ---->" );
-            try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+            WriteTransaction writeTxn = null;
+            
+            try
             {
+                writeTxn = recordManager.beginWriteTransaction();
+                
                 BTree<Long, String> btree = writeTxn.getBTree( "test" );
 
                 for ( long j = 0; j < increment; j++ )
@@ -770,6 +975,15 @@ public class BTreeBrowseTest
                     long val = values[elemNb];
                     //MavibotInspector.check( recordManager, recordManager.getRecordManagerHeader() );
                     btree.delete( writeTxn, val );
+                }
+                
+                writeTxn.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( writeTxn != null )
+                {
+                    writeTxn.abort();
                 }
             }
         }
@@ -808,8 +1022,12 @@ public class BTreeBrowseTest
 
         for ( long i = 0; i < nbRound/increment; i++ )
         {
-            try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+            WriteTransaction writeTxn = null;
+            
+            try
             {
+                writeTxn = recordManager.beginWriteTransaction();
+                
                 BTree<Long, String> btree = writeTxn.getBTree( "test" );
 
                 for ( long j = 0; j < increment; j++ )
@@ -818,6 +1036,15 @@ public class BTreeBrowseTest
                     long val = values[pos];
                     //MavibotInspector.check( recordManager, recordManager.getRecordManagerHeader() );
                     btree.insert( writeTxn, val, Long.toString( val ) );
+                }
+                
+                writeTxn.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( writeTxn != null )
+                {
+                    writeTxn.abort();
                 }
             }
         }
@@ -831,8 +1058,12 @@ public class BTreeBrowseTest
         
         int counter = 0;
 
-        try ( Transaction readTxn = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
+            readTxn = recordManager.beginReadTransaction();
+
             BTree<Long, String> btree = readTxn.getBTree( "test" );
             TupleCursor<Long, String> cursor = btree.browse( readTxn );
     
@@ -841,8 +1072,17 @@ public class BTreeBrowseTest
                 cursor.next();
                 counter++;
             }
+            
+            readTxn.commit();
         }
-        
+        catch ( Exception e )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
+        }
+
         assertEquals( nbRound, counter );
         
         // Now delete the elements
@@ -862,8 +1102,12 @@ public class BTreeBrowseTest
         for ( long i = 0; i < nbRound/increment; i++ )
         {
             //System.out.println( "\nInserting " + i + " in the tree ---->" );
-            try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+            WriteTransaction writeTxn = null;
+            
+            try
             {
+                writeTxn = recordManager.beginWriteTransaction();
+                
                 BTree<Long, String> btree = writeTxn.getBTree( "test" );
 
                 for ( long j = 0; j < increment; j++ )
@@ -872,6 +1116,15 @@ public class BTreeBrowseTest
                     long val = values[elemNb];
                     //MavibotInspector.check( recordManager, recordManager.getRecordManagerHeader() );
                     btree.delete( writeTxn, val );
+                }
+                
+                writeTxn.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( writeTxn != null )
+                {
+                    writeTxn.abort();
                 }
             }
         }
@@ -989,8 +1242,12 @@ public class BTreeBrowseTest
         for ( long i = 0; i < nbRound/increment; i++ )
         {
             //System.out.println( "\nInserting " + i + " in the tree ---->" );
-            try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+            WriteTransaction writeTxn = null;
+            
+            try
             {
+                writeTxn = recordManager.beginWriteTransaction();
+                
                 BTree<Long, String> btree = writeTxn.getBTree( "test" );
 
                 for ( long j = 0; j < increment; j++ )
@@ -998,6 +1255,15 @@ public class BTreeBrowseTest
                     long val = values[( int )( i * increment + j )];
                     //MavibotInspector.check( recordManager, recordManager.getRecordManagerHeader() );
                     btree.insert( writeTxn, val, Long.toString( val ) );
+                }
+                
+                writeTxn.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( writeTxn != null )
+                {
+                    writeTxn.abort();
                 }
             }
         }
@@ -1007,8 +1273,12 @@ public class BTreeBrowseTest
         System.out.println( "Delta for " + nbRound + " : " + ( t1 - t0 ) );
         int counter = 0;
 
-        try ( Transaction readTxn = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
+            readTxn = recordManager.beginReadTransaction();
+
             BTree<Long, String> btree = readTxn.getBTree( "test" );
             TupleCursor<Long, String> cursor = btree.browse( readTxn );
     
@@ -1017,13 +1287,35 @@ public class BTreeBrowseTest
                 cursor.next();
                 counter++;
             }
+            
+            readTxn.commit();
         }
-        
+        catch ( Exception e )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
+        }
+
         assertEquals( nbRound, counter );
 
-        try ( Transaction readTxn = recordManager.beginReadTransaction() )
+        readTxn = null;
+        
+        try
         {
+            readTxn = recordManager.beginReadTransaction();
+
             BTree<Long, String> btree = readTxn.getBTree( "test" );
+            
+            readTxn.commit();
+        }
+        catch ( Exception e )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
         }
 
         // Now delete the elements
@@ -1087,8 +1379,12 @@ public class BTreeBrowseTest
         for ( long i = 0; i < nbRound/increment; i++ )
         {
             //System.out.println( "\nInserting " + i + " in the tree ---->" );
-            try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+            WriteTransaction writeTxn = null;
+            
+            try
             {
+                writeTxn = recordManager.beginWriteTransaction();
+                
                 BTree<Long, String> btree = writeTxn.getBTree( "test" );
 
                 for ( long j = 0; j < increment; j++ )
@@ -1097,6 +1393,15 @@ public class BTreeBrowseTest
                     long val = values[elemNb];
                     //MavibotInspector.check( recordManager, recordManager.getRecordManagerHeader() );
                     btree.delete( writeTxn, val );
+                }
+                
+                writeTxn.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( writeTxn != null )
+                {
+                    writeTxn.abort();
                 }
             }
         }
@@ -1136,8 +1441,12 @@ public class BTreeBrowseTest
         for ( long i = 0; i < nbRound/increment; i++ )
         {
             //System.out.println( "\nInserting " + i + " in the tree ---->" );
-            try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+            WriteTransaction writeTxn = null;
+            
+            try
             {
+                writeTxn = recordManager.beginWriteTransaction();
+                
                 BTree<Long, String> btree = writeTxn.getBTree( "test" );
 
                 for ( long j = 0; j < increment; j++ )
@@ -1147,6 +1456,15 @@ public class BTreeBrowseTest
                     //MavibotInspector.check( recordManager, recordManager.getRecordManagerHeader() );
                     btree.insert( writeTxn, val, Long.toString( val ) );
                 }
+                
+                writeTxn.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( writeTxn != null )
+                {
+                    writeTxn.abort();
+                }
             }
         }
 
@@ -1155,8 +1473,12 @@ public class BTreeBrowseTest
         System.out.println( "Delta for " + nbRound + " : " + ( t1 - t0 ) );
         int counter = 0;
 
-        try ( Transaction readTxn = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
+            readTxn = recordManager.beginReadTransaction();
+
             BTree<Long, String> btree = readTxn.getBTree( "test" );
             TupleCursor<Long, String> cursor = btree.browse( readTxn );
     
@@ -1165,8 +1487,17 @@ public class BTreeBrowseTest
                 cursor.next();
                 counter++;
             }
+            
+            readTxn.commit();
         }
-        
+        catch ( Exception e )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
+        }
+
         assertEquals( nbRound, counter );
         
         // Now delete the elements
@@ -1190,8 +1521,12 @@ public class BTreeBrowseTest
         for ( long i = 0; i < nbRound/increment; i++ )
         {
             //System.out.println( "\nInserting " + i + " in the tree ---->" );
-            try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+            WriteTransaction writeTxn = null;
+            
+            try
             {
+                writeTxn = recordManager.beginWriteTransaction();
+                
                 BTree<Long, String> btree = writeTxn.getBTree( "test" );
 
                 for ( long j = 0; j < increment; j++ )
@@ -1201,6 +1536,15 @@ public class BTreeBrowseTest
                     //System.out.println( "Deleting " + elemNb + "th element : " + val );
                     //MavibotInspector.check( recordManager, recordManager.getRecordManagerHeader() );
                     btree.delete( writeTxn, val );
+                }
+                
+                writeTxn.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( writeTxn != null )
+                {
+                    writeTxn.abort();
                 }
             }
         }
@@ -1240,8 +1584,12 @@ public class BTreeBrowseTest
         for ( long i = 0; i < nbRound/increment; i++ )
         {
             //System.out.println( "\nInserting " + i + " in the tree ---->" );
-            try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+            WriteTransaction writeTxn = null;
+            
+            try
             {
+                writeTxn = recordManager.beginWriteTransaction();
+                
                 BTree<Long, String> btree = writeTxn.getBTree( "test" );
 
                 for ( long j = 0; j < increment; j++ )
@@ -1253,6 +1601,15 @@ public class BTreeBrowseTest
                 }
                 
                 System.out.println( btree );
+                
+                writeTxn.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( writeTxn != null )
+                {
+                    writeTxn.abort();
+                }
             }
         }
 
@@ -1268,8 +1625,12 @@ public class BTreeBrowseTest
 
         for ( long i = 0; i < nbRound/increment; i++ )
         {
-            try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+            WriteTransaction writeTxn = null;
+            
+            try
             {
+                writeTxn = recordManager.beginWriteTransaction();
+                
                 BTree<Long, String> btree = writeTxn.getBTree( "test" );
                 
                 for ( long j = 0; j < increment; j++ )
@@ -1279,6 +1640,15 @@ public class BTreeBrowseTest
                     System.out.println( "Deleting " + val );
                     btree.delete( writeTxn, val );
                     System.out.println( btree );
+                }
+                
+                writeTxn.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( writeTxn != null )
+                {
+                    writeTxn.abort();
                 }
             }
         }
@@ -1298,8 +1668,12 @@ public class BTreeBrowseTest
         
         for ( long i = 0; i < nbRound/increment; i++ )
         {
-            try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+            WriteTransaction writeTxn = null;
+            
+            try
             {
+                writeTxn = recordManager.beginWriteTransaction();
+                
                 BTree<Long, String> btree = writeTxn.getBTree( "test" );
 
                 for ( long j = 0; j < increment; j++ )
@@ -1307,6 +1681,15 @@ public class BTreeBrowseTest
                     long val = i*increment + j;
                     //MavibotInspector.check( recordManager, recordManager.getRecordManagerHeader() );
                     btree.insert( writeTxn, val, Long.toString( val ) );
+                }
+                
+                writeTxn.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( writeTxn != null )
+                {
+                    writeTxn.abort();
                 }
             }
         }
@@ -1330,8 +1713,12 @@ public class BTreeBrowseTest
         
         for ( int i = 0; i < nbRound/increment; i++ )
         {
-            try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+            WriteTransaction writeTxn = null;
+            
+            try
             {
+                writeTxn = recordManager.beginWriteTransaction();
+                
                 BTree<Long, String> btree = writeTxn.getBTree( "test" );
 
                 for ( int j = 0; j < increment; j++ )
@@ -1340,11 +1727,24 @@ public class BTreeBrowseTest
                     //MavibotInspector.check( recordManager, recordManager.getRecordManagerHeader() );
                     btree.delete( writeTxn, values[index] );
                 }
+                
+                writeTxn.commit();
             }
-            
-            // Check that we can still browse the tree
-            try ( Transaction readTxn = recordManager.beginReadTransaction() )
+            catch ( IOException ioe )
             {
+                if ( writeTxn != null )
+                {
+                    writeTxn.abort();
+                }
+            }
+
+            // Check that we can still browse the tree
+            Transaction readTxn = null;
+            
+            try
+            {
+                readTxn = recordManager.beginReadTransaction();
+
                 BTree<Long, String> readBtree = readTxn.getBTree( "test" );
                 TupleCursor<Long, String> cursor = readBtree.browse( readTxn );
                 
@@ -1358,6 +1758,15 @@ public class BTreeBrowseTest
                 }
                 
                 assertEquals( nbElems, nbRound - increment * ( i + 1 ) );
+                
+                readTxn.commit();
+            }
+            catch ( Exception e )
+            {
+                if ( readTxn != null )
+                {
+                    readTxn.abort();
+                }
             }
         }
 
@@ -1366,8 +1775,12 @@ public class BTreeBrowseTest
         System.out.println( "Delta delete    : " + ( t11 - t10 ) );
 
         // Create the cursor
-        try ( Transaction readTxn = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
+            readTxn = recordManager.beginReadTransaction();
+
             BTree<Long, String> btree = readTxn.getBTree( "test" );
             TupleCursor<Long, String> cursor = btree.browse( readTxn );
 
@@ -1377,6 +1790,15 @@ public class BTreeBrowseTest
     
             assertFalse( cursor.hasPrev() );
             assertFalse( cursor.hasNext() );
+            
+            readTxn.commit();
+        }
+        catch ( Exception e )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
         }
     }
 
@@ -1388,20 +1810,37 @@ public class BTreeBrowseTest
     public void testBrowseBTreeNodesPrev() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException, CursorException
     {
         // Inject some data
-        try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+        WriteTransaction writeTxn = null;
+        
+        try
         {
+            writeTxn = recordManager.beginWriteTransaction();
+            
             BTree<Long, String> btree = writeTxn.getBTree( "test" );
             for ( long i = 1; i < 1_000L; i++ )
             {
                 btree.insert( writeTxn, i, Long.toString( i ) );
+            }
+            
+            writeTxn.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( writeTxn != null )
+            {
+                writeTxn.abort();
             }
         }
 
         //MavibotInspector.check( recordManager, recordManager.getCurrentRecordManagerHeader() );
 
         // Create the cursor
-        try ( Transaction readTxn = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
+            readTxn = recordManager.beginReadTransaction();
+
             BTree<Long, String> btree = readTxn.getBTree( "test" );
             TupleCursor<Long, String> cursor = btree.browse( readTxn );
 
@@ -1421,6 +1860,15 @@ public class BTreeBrowseTest
             assertTrue( cursor.hasPrev() );
 
             checkPrev( cursor, 1L, "1", true, false );
+            
+            readTxn.commit();
+        }
+        catch ( Exception e )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
         }
     }
 
@@ -1432,8 +1880,12 @@ public class BTreeBrowseTest
     public void testBrowseBTreeLeafNextDupsN() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException, CursorException
     {
         // Inject some duplicate data
-        try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+        WriteTransaction writeTxn = null;
+        
+        try
         {
+            writeTxn = recordManager.beginWriteTransaction();
+            
             BTree<Long, String> btree = writeTxn.getBTree( "test" );
             btree.insert( writeTxn, 1L, "1" );
             btree.insert( writeTxn, 1L, "4" );
@@ -1442,11 +1894,24 @@ public class BTreeBrowseTest
             btree.insert( writeTxn, 3L, "5" );
             btree.insert( writeTxn, 3L, "7" );
             btree.insert( writeTxn, 3L, "6" );
+            
+            writeTxn.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( writeTxn != null )
+            {
+                writeTxn.abort();
+            }
         }
 
         // Create the cursor
-        try ( Transaction readTxn = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
+            readTxn = recordManager.beginReadTransaction();
+
             BTree<Long, String> btree = readTxn.getBTree( "test" );
             TupleCursor<Long, String> cursor = btree.browse( readTxn );
     
@@ -1459,6 +1924,15 @@ public class BTreeBrowseTest
             checkNext( cursor, 1L, "2", true, false );
             checkNext( cursor, 2L, "3", true, true );
             checkNext( cursor, 3L, "6", false, true );
+            
+            readTxn.commit();
+        }
+        catch ( Exception e )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
         }
     }
 
@@ -1472,8 +1946,12 @@ public class BTreeBrowseTest
     @Test
     public void testBrowseFromEmptyBTree() throws IOException, BTreeAlreadyManagedException
     {
-        try ( Transaction readTxn = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
+            readTxn = recordManager.beginReadTransaction();
+
             BTree<Long, String> btree = readTxn.getBTree( "test" );
             TupleCursor<Long, String> cursor = btree.browseFrom( readTxn, 1L );
     
@@ -1501,6 +1979,15 @@ public class BTreeBrowseTest
             }
     
             assertEquals( -1L, cursor.getRevision() );
+            
+            readTxn.commit();
+        }
+        catch ( Exception e )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
         }
     }
 
@@ -1512,19 +1999,36 @@ public class BTreeBrowseTest
     public void testBrowseFromBTreeLeaf() throws IOException, BTreeAlreadyManagedException
     {
         // Inject some data
-        try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+        WriteTransaction writeTxn = null;
+        
+        try
         {
+            writeTxn = recordManager.beginWriteTransaction();
+            
             BTree<Long, String> btree = writeTxn.getBTree( "test" );
             btree.insert( writeTxn, 1L, "1" );
             btree.insert( writeTxn, 7L, "7" );
             btree.insert( writeTxn, 3L, "3" );
             btree.insert( writeTxn, 5L, "5" );
             btree.insert( writeTxn, 9L, "9" );
+            
+            writeTxn.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( writeTxn != null )
+            {
+                writeTxn.abort();
+            }
         }
 
         // Create the cursor, starting at 5
-        try ( Transaction readTxn = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
+            readTxn = recordManager.beginReadTransaction();
+
             BTree<Long, String> btree = readTxn.getBTree( "test" );
             TupleCursor<Long, String> cursor = btree.browseFrom( readTxn, 5L );
     
@@ -1591,6 +2095,15 @@ public class BTreeBrowseTest
             cursor = btree.browseFrom( readTxn, 4L );
     
             checkPrev( cursor, 3L, "3", true, true );
+            
+            readTxn.commit();
+        }
+        catch ( Exception e )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
         }
     }
 
@@ -1602,25 +2115,51 @@ public class BTreeBrowseTest
     public void testBrowseFromBTreeNodesNotExistingKey() throws IOException, BTreeAlreadyManagedException
     {
         // Inject some data
-        try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+        WriteTransaction writeTxn = null;
+        
+        try
         {
+            writeTxn = recordManager.beginWriteTransaction();
+            
             BTree<Long, String> btree = writeTxn.getBTree( "test" );
 
             for ( long i = 0; i <= 1000L; i += 2 )
             {
                 btree.insert( writeTxn, i, Long.toString( i ) );
             }
+            
+            writeTxn.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( writeTxn != null )
+            {
+                writeTxn.abort();
+            }
         }
 
         // Create the cursor
-        try ( Transaction readTxn = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
+            readTxn = recordManager.beginReadTransaction();
+
             BTree<Long, String> btree = readTxn.getBTree( "test" );
             TupleCursor<Long, String> cursor = btree.browseFrom( readTxn, 1500L );
     
             assertFalse( cursor.hasNext() );
             assertTrue( cursor.hasPrev() );
             assertEquals( 1000L, cursor.prev().getKey().longValue() );
+            
+            readTxn.commit();
+        }
+        catch ( Exception e )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
         }
     }
 
@@ -1634,8 +2173,12 @@ public class BTreeBrowseTest
     public void testPrevKey() throws IOException, BTreeAlreadyManagedException, KeyNotFoundException, CursorException
     {
         // Inject some data
-        try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+        WriteTransaction writeTxn = null;
+        
+        try
         {
+            writeTxn = recordManager.beginWriteTransaction();
+            
             BTree<Long, String> btree = writeTxn.getBTree( "test" );
             
             for ( long i = 1; i < 1000L; i++ )
@@ -1649,11 +2192,24 @@ public class BTreeBrowseTest
                     e.printStackTrace();
                 }
             }
+            
+            writeTxn.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( writeTxn != null )
+            {
+                writeTxn.abort();
+            }
         }
 
         // Create the cursor
-        try ( Transaction readTxn = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
+            readTxn = recordManager.beginReadTransaction();
+
             BTree<Long, String> btree = readTxn.getBTree( "test" );
             TupleCursor<Long, String> cursor = btree.browse( readTxn );
     
@@ -1683,6 +2239,15 @@ public class BTreeBrowseTest
                     next = true;
                 }
             }
+            
+            readTxn.commit();
+        }
+        catch ( Exception e )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
         }
     }
 
@@ -1693,26 +2258,65 @@ public class BTreeBrowseTest
     @Test
     public void testOverwrite() throws Exception
     {
-        try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+        WriteTransaction writeTxn = null;
+        
+        try
         {
+            writeTxn = recordManager.beginWriteTransaction();
+            
             BTree<Long, String> btree = writeTxn.getBTree( "test" );
             btree.insert( writeTxn, 1L, "1" );
+            
+            writeTxn.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( writeTxn != null )
+            {
+                writeTxn.abort();
+            }
         }
 
-        try ( Transaction readTxn = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
+            readTxn = recordManager.beginReadTransaction();
+
             BTree<Long, String> btree = readTxn.getBTree( "test" );
             assertTrue( btree.hasKey( readTxn, 1L ) );
     
             assertEquals( "1", btree.get( readTxn, 1L ) );
     
-            try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+            writeTxn = null;
+            
+            try
             {
+                writeTxn = recordManager.beginWriteTransaction();
+                
                 btree.insert( writeTxn, 1L, "10" );
+                
+                writeTxn.commit();
             }
-    
+            catch ( IOException ioe )
+            {
+                if ( writeTxn != null )
+                {
+                    writeTxn.abort();
+                }
+            }
+
             assertTrue( btree.hasKey( readTxn, 1L ) );
             assertEquals( "10", btree.get( readTxn, 1L ) );
+            
+            readTxn.commit();
+        }
+        catch ( Exception e )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
+            }
         }
     
         btree.close();
@@ -1732,25 +2336,53 @@ public class BTreeBrowseTest
         btree.setPageNbElem( 4 );
 
         // Inject some data
-        try ( WriteTransaction writeTxn = recordManager.beginWriteTransaction() )
+        WriteTransaction writeTxn = null;
+        
+        try
         {
+            writeTxn = recordManager.beginWriteTransaction();
+            
             for ( long value : values )
             {
                 BTree<Long, String> btree = writeTxn.getBTree( "test" );
                 btree.insert( writeTxn, value, Long.toString( value ) );
             }
+            
+            writeTxn.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( writeTxn != null )
+            {
+                writeTxn.abort();
+            }
         }
 
         MavibotInspector.check( recordManager );
 
-        try ( Transaction readTxn = recordManager.beginReadTransaction() )
+        Transaction readTxn = null;
+        
+        try
         {
+            readTxn = recordManager.beginReadTransaction();
+
             BTree<Long, String> btree = readTxn.getBTree( "test" );
             TupleCursor<Long, String> cursor = btree.browse( readTxn );
     
             while ( cursor.hasNext() )
             {
                 cursor.next();
+            }
+            
+            readTxn.commit();
+            
+            readTxn.commit();
+        }
+        catch ( Exception e )
+        {
+            if ( readTxn != null )
+            {
+                readTxn.abort();
             }
         }
     }

@@ -65,9 +65,22 @@ public class RecordManagerPrivateMethodTest
         recordManager = new RecordManager( dataDir.getAbsolutePath(), 32, 1000 );
 
         // Create a new BTree
-        try ( WriteTransaction writeTransaction = recordManager.beginWriteTransaction() )
-        { 
-            btree = recordManager.addBTree( writeTransaction, "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE );
+        WriteTransaction writeTxn = null;
+        
+        try
+        {
+            writeTxn = recordManager.beginWriteTransaction();
+            
+            btree = recordManager.addBTree( writeTxn, "test", LongSerializer.INSTANCE, StringSerializer.INSTANCE );
+
+            writeTxn.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( writeTxn != null )
+            {
+                writeTxn.abort();
+            }
         }
     }
 

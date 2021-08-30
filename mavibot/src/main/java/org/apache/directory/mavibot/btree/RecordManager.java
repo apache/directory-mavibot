@@ -356,8 +356,11 @@ public class RecordManager implements TransactionManager
         // First, create the list of btrees <RevisionName, Long>
         listOfBtrees = new ArrayList<>();
         
-        try ( WriteTransaction transaction = beginWriteTransaction() )
+        WriteTransaction transaction = null;
+        
+        try
         {
+            transaction = beginWriteTransaction();
             // Now, create the Copied Page B-tree
             BTree<RevisionName, long[]> copiedPagesBtree = createCopiedPagesBtree( transaction );
     
@@ -366,6 +369,15 @@ public class RecordManager implements TransactionManager
             transaction.recordManagerHeader.copiedPagesBtree = copiedPagesBtree;
             transaction.recordManagerHeader.nbBtree++;
             recordManagerHeader.copiedPagesBtree = copiedPagesBtree;
+            
+            transaction.commit();
+        }
+        catch ( IOException ioe )
+        {
+            if ( transaction != null )
+            {
+                transaction.abort();
+            }
         }
     }
 
@@ -424,10 +436,20 @@ public class RecordManager implements TransactionManager
                     PageIO[] btreePageIos = readPageIOs( recordManagerHeader.pageSize, btreeOffset, Long.MAX_VALUE );
                     
                     BTree<?, ?> btree = new BTree<>();
+                    Transaction readTxn = null;
                     
-                    try ( Transaction readTxn = new ReadTransaction( this ) )
+                    try
                     {
+                        readTxn = new ReadTransaction( this );
                         loadBtree( readTxn, btreePageIos, btree );
+                        readTxn.commit();
+                    }
+                    catch ( IOException ioe )
+                    {
+                        if ( readTxn != null )
+                        {
+                            readTxn.abort();
+                        }
                     }
 
                     // Add the btree into the map of managed B-trees
@@ -506,8 +528,12 @@ public class RecordManager implements TransactionManager
             recordManagerHeader.lastOffset = fileChannel.size();
 
             // read the list of B-trees
-            try ( Transaction transaction = beginReadTransaction() )
+            Transaction transaction = null;
+            
+            try
             {
+                transaction = beginReadTransaction();
+                
                 // read the copied page B-tree
                 PageIO[] copiedPagesPageIos = readPageIOs( recordManagerHeader.pageSize, recordManagerHeader.currentCopiedPagesBtreeOffset, Long.MAX_VALUE );
     
@@ -515,18 +541,29 @@ public class RecordManager implements TransactionManager
                 //( ( BTree<RevisionName, long[]> ) recordManagerHeader.copiedPagesBtree ).setRecordManagerHeader( transaction.getRecordManagerHeader() );
     
                 loadBtree( transaction, copiedPagesPageIos, recordManagerHeader.copiedPagesBtree );
+                
+                transaction.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( transaction != null )
+                {
+                    transaction.abort();
+                }
             }
 
             Map<String, Long> loadedBtrees = new HashMap<>();
 
             // Now, read all the B-trees from the btree of btrees
             loadListOfBtrees( recordManagerHeader, loadedBtrees );
-            
+
             /*
-            try ( Transaction transaction = beginReadTransaction() )
-            {
+            Transaction readTxn = null;
             
-                TupleCursor<NameRevision, Long> btreeCursor = null; //transaction.getRecordManagerHeader().listOfBtrees.browse( transaction );
+            try
+            {
+                readTxn = beginReadTransaction();
+                TupleCursor<NameRevision, Long> btreeCursor = null; //readTxn.getRecordManagerHeader().listOfBtrees.browse( transaction );
     
                 // loop on all the btrees we have, and keep only the latest revision
                 long currentRevision = -1L;
@@ -569,10 +606,19 @@ public class RecordManager implements TransactionManager
                     PageIO[] btreePageIos = readPageIOs( recordManagerHeader.pageSize, btreeOffset, Long.MAX_VALUE );
                 
                     BTree<?, ?> btree = new BTree<>();
-                    loadBtree( transaction, btreePageIos, btree );
+                    loadBtree( readTxn, btreePageIos, btree );
 
                     // Add the btree into the map of managed B-trees
                     recordManagerHeader.btreeMap.put( loadedBtree.getKey(), ( BTree<Object, Object> ) btree );
+                }
+                
+                readTxn.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( readTxn != null )
+                {
+                    readTxn.abort();
                 }
             }
             */
@@ -1551,7 +1597,7 @@ public class RecordManager implements TransactionManager
      * +--+--+--+--+
      * |  |  |  |  |                pageID
      * +--+--+--+--+
-     * |  |  |  |  |                number of transactions
+     * |  |  |  |  |                number of transaction lists
      * +--+--+--+--+
      *                              The current RMH :
      * +--+--+--+--+

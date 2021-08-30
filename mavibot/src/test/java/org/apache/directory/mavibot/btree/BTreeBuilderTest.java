@@ -24,6 +24,7 @@ package org.apache.directory.mavibot.btree;
 import static org.junit.Assert.assertEquals;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -56,13 +57,13 @@ public class BTreeBuilderTest
 
         try
         {
-            RecordManager rm = new RecordManager( file.getAbsolutePath() );
+            RecordManager recordManager = new RecordManager( file.getAbsolutePath() );
 
             IntSerializer ser = IntSerializer.INSTANCE;
             System.out.println( "Init" );
             System.out.println( "-----------------------------------------------------------" );
 
-            MavibotInspector.dumpInfos( rm, rm.getCurrentRecordManagerHeader() );
+            MavibotInspector.dumpInfos( recordManager, recordManager.getCurrentRecordManagerHeader() );
 
             System.out.println( "-----------------------------------------------------------" );
             System.out.println();
@@ -72,48 +73,78 @@ public class BTreeBuilderTest
             // contains 1, 2, 3, 4, 5, 6, 7
             BTree<Integer, Integer> btree = null;
             
-            try ( WriteTransaction writeTxn = rm.beginWriteTransaction() )
+            WriteTransaction writeTxn = null;
+            
+            try
             {
-                btree = rm.addBTree( writeTxn, "master", IntSerializer.INSTANCE, IntSerializer.INSTANCE );
+                writeTxn = recordManager.beginWriteTransaction();
+                
+                btree = recordManager.addBTree( writeTxn, "master", IntSerializer.INSTANCE, IntSerializer.INSTANCE );
+
+                writeTxn.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( writeTxn != null )
+                {
+                    writeTxn.abort();
+                }
             }
 
-            MavibotInspector.dumpInfos( rm, rm.getCurrentRecordManagerHeader() );
+            MavibotInspector.dumpInfos( recordManager, recordManager.getCurrentRecordManagerHeader() );
             
             System.out.println( "-----------------------------------------------------------" );
             System.out.println();
             System.out.println( "Inserting 7 values in master" );
             System.out.println( "-----------------------------------------------------------" );
             
-            try ( WriteTransaction writeTxn = rm.beginWriteTransaction() )
+            writeTxn = null;
+            
+            try
             {
+                writeTxn = recordManager.beginWriteTransaction();
+                
                 for ( Tuple<Integer, Integer> tuple : sortedTuple )
                 {
                     btree.insert( writeTxn, tuple.key, tuple.value );
                 }
                 
                 //btree = bb.build( writeTxn, sortedTuple.iterator() );
+
+                writeTxn.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( writeTxn != null )
+                {
+                    writeTxn.abort();
+                }
             }
 
-            MavibotInspector.dumpInfos( rm, rm.getCurrentRecordManagerHeader() );
+            MavibotInspector.dumpInfos( recordManager, recordManager.getCurrentRecordManagerHeader() );
             
             System.out.println( "-----------------------------------------------------------" );
-            rm.close();
+            recordManager.close();
 
-            rm = new RecordManager( file.getAbsolutePath() );
+            recordManager = new RecordManager( file.getAbsolutePath() );
             
-            MavibotInspector.dumpInfos( rm, rm.getCurrentRecordManagerHeader() );
+            MavibotInspector.dumpInfos( recordManager, recordManager.getCurrentRecordManagerHeader() );
             
-            try ( Transaction txn = rm.beginReadTransaction() )
+            Transaction readTxn = null;
+            
+            try
             {
-                btree = rm.getBtree( txn, "master" );
+                readTxn = recordManager.beginReadTransaction();
+                
+                btree = recordManager.getBtree( readTxn, "master" );
     
                 assertEquals( 7, btree.getRootPage().getPageNbElems() );
     
-                assertEquals( 7, btree.getRootPage().findRightMost( txn ).getKey().intValue() );
+                assertEquals( 7, btree.getRootPage().findRightMost( readTxn ).getKey().intValue() );
     
-                assertEquals( 1, btree.getRootPage().findLeftMost( txn ).getKey().intValue() );
+                assertEquals( 1, btree.getRootPage().findLeftMost( readTxn ).getKey().intValue() );
     
-                TupleCursor<Integer, Integer> cursor = btree.browse( txn );
+                TupleCursor<Integer, Integer> cursor = btree.browse( readTxn );
                 int i = 0;
     
                 while ( cursor.hasNext() )
@@ -125,6 +156,15 @@ public class BTreeBuilderTest
                 }
     
                 cursor.close();
+
+                readTxn.commit();
+            }
+            catch ( IOException ioe )
+            {
+                if ( readTxn != null )
+                {
+                    readTxn.abort();
+                }
             }
             
             btree.close();
