@@ -26,6 +26,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -243,7 +244,7 @@ public class PageReclaimerTest
     @SuppressWarnings("all")
     public void testInspectTreeState() throws Exception
     {
-        File file = File.createTempFile( "freepagedump", ".db" );
+        File file = Files.createTempFile( "freepagedump", ".db" ).toFile();
         
         if ( file.exists() )
         {

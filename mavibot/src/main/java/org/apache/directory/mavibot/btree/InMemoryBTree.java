@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.apache.directory.mavibot.btree.exception.InitializationException;
@@ -511,7 +512,7 @@ import org.slf4j.LoggerFactory;
         }
 
         // Create a temporary file in the same directory to flush the current btree
-        File tmpFileFD = File.createTempFile( "mavibot", null, baseDirectory );
+        File tmpFileFD = Files.createTempFile( baseDirectory.toPath(), "mavibot", null ).toFile();
         FileOutputStream stream = new FileOutputStream( tmpFileFD );
         FileChannel ch = stream.getChannel();
 
@@ -566,7 +567,7 @@ import org.slf4j.LoggerFactory;
         }
 
         // Rename the current file to save a backup
-        File backupFile = File.createTempFile( "mavibot", null, baseDirectory );
+        File backupFile = Files.createTempFile( baseDirectory.toPath(), "mavibot", null ).toFile();
         file.renameTo( backupFile );
 
         // Rename the temporary file to the initial file

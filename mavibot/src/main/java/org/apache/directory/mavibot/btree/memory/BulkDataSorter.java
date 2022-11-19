@@ -27,6 +27,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Array;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -112,7 +113,7 @@ public class BulkDataSorter<K, V>
 
     private void storeSortedData( Tuple<K, V>[] arr ) throws IOException
     {
-        File tempFile = File.createTempFile( UUID.randomUUID().toString(), ".batch", workDir );
+        File tempFile = Files.createTempFile( workDir.toPath(), UUID.randomUUID().toString(), ".batch" ).toFile();
         DataOutputStream out = new DataOutputStream( new FileOutputStream( tempFile ) );
 
         for ( Tuple<K, V> t : arr )
