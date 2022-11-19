@@ -26,6 +26,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -187,7 +188,7 @@ public class BulkLoader<K, V>
     private static <K, V> Tuple<Iterator<Tuple<K, Set<V>>>, SortedFile> processFiles( BTree<K, V> btree,
         Iterator<Tuple<K, Set<V>>> dataIterator ) throws IOException
     {
-        File file = File.createTempFile( "sortedUnique", "data" );
+        File file = Files.createTempFile( "sortedUnique", "data" ).toFile();
         file.deleteOnExit();
         FileOutputStream fos = new FileOutputStream( file );
 
@@ -986,7 +987,7 @@ public class BulkLoader<K, V>
         // Sort the tuples. 
         Tuple<K, Set<V>>[] sortedTuples = sort( btree, tuples );
 
-        File file = File.createTempFile( "sorted", Integer.toString( fileNb ) );
+        File file = Files.createTempFile( "sorted", Integer.toString( fileNb ) ).toFile();
         file.deleteOnExit();
         FileOutputStream fos = new FileOutputStream( file );
 
