@@ -17,127 +17,155 @@
  * under the License.
  */
 pipeline {
-  agent none
-  options {
-    buildDiscarder(logRotator(numToKeepStr: '10'))
-    timeout(time: 8, unit: 'HOURS')
+  agent any
+
+  tools {
+    maven 'maven_3_latest'
+    jdk params.jdkVersion
   }
+
+  options {
+      // Configure an overall timeout for the build of ten hours.
+      timeout(time: 20, unit: 'HOURS')
+      // When we have test-fails e.g. we don't need to run the remaining steps
+      buildDiscarder(logRotator(numToKeepStr: '5', artifactNumToKeepStr: '5'))
+      disableConcurrentBuilds()
+  }
+
+  parameters {
+      choice(name: 'nodeLabel', choices: ['ubuntu', 'arm', 'Windows'])
+      choice(name: 'jdkVersion', choices: ['jdk_11_latest', 'jdk_17_latest', 'jdk_21_latest', 'jdk_25_latest', 'jdk_11_latest_windows', 'jdk_17_latest_windows', 'jdk_21_latest_windows', 'jdk_25_latest_windows'])
+      booleanParam(name: 'deployEnabled', defaultValue: true)
+      booleanParam(name: 'sonarEnabled', defaultValue: true)
+      booleanParam(name: 'testsEnabled', defaultValue: true)
+  }
+
   triggers {
     cron('@weekly')
     pollSCM('@daily')
   }
+
   stages {
-    stage ('Debug') {
-      options {
-        timeout(time: 1, unit: 'HOURS')
-        retry(2)
+    stage('Initialization') {
+      steps {
+        echo "running on ${env.NODE_NAME}"
+        echo 'Building branch ' + env.BRANCH_NAME
+        echo 'Using PATH ' + env.PATH
+        echo 'Using JVM ' + jdkVersion
       }
-      agent {
-        docker {
-          label 'ubuntu'
-          image 'apachedirectory/maven-build:jdk-8'
-          args '-v $HOME/.m2:/home/hnelson/.m2'
-        }
+    }
+
+    stage('Cleanup') {
+      steps {
+        echo 'Cleaning up the workspace'
+        deleteDir()
+      }
+    }
+
+    stage('Checkout') {
+      steps {
+        echo 'Checking out branch ' + env.BRANCH_NAME
+        checkout scm
+      }
+    }
+
+    stage('Build JDK 11 Linux') {
+      tools {
+        jdk "jdk_11_latest"
       }
       steps {
-        sh 'env'
-      }
-      post {
-        always {
-          deleteDir()
-        }
+        echo 'Building JDK 11 Linux'
+        sh 'java -version'
+        sh 'mvn -version'
+        sh 'mvn clean install'
       }
     }
-    stage ('Build and Test') {
-      parallel {
-        stage ('Linux Java 8') {
-          options {
-            timeout(time: 4, unit: 'HOURS')
-            retry(2)
-          }
-          agent {
-            docker {
-              label 'ubuntu'
-              image 'apachedirectory/maven-build:jdk-8'
-              args '-v $HOME/.m2:/home/hnelson/.m2'
-            }
-          }
-          steps {
-            sh 'mvn -V clean verify'
-          }
-          post {
-            always {
-              junit '**/target/surefire-reports/*.xml'
-              deleteDir()
-            }
-          }
-        }
-        stage ('Linux Java 11') {
-          options {
-            timeout(time: 4, unit: 'HOURS')
-            retry(2)
-          }
-          agent {
-            docker {
-              label 'ubuntu'
-              image 'apachedirectory/maven-build:jdk-11'
-              args '-v $HOME/.m2:/home/hnelson/.m2'
-            }
-          }
-          steps {
-            sh 'mvn -V clean verify'
-          }
-          post {
-            always {
-              deleteDir()
-            }
-          }
-        }
-        stage ('Linux Java 17') {
-          options {
-            timeout(time: 4, unit: 'HOURS')
-            retry(2)
-          }
-          agent {
-            docker {
-              label 'ubuntu'
-              image 'apachedirectory/maven-build:jdk-17'
-              alwaysPull true
-              args '-v $HOME/.m2:/home/hnelson/.m2'
-            }
-          }
-          steps {
-            sh 'mvn -V clean verify'
-          }
-          post {
-            always {
-              deleteDir()
-            }
-          }
-        }
-        stage ('Windows Java 8') {
-          options {
-            timeout(time: 4, unit: 'HOURS')
-            retry(2)
-          }
-          agent {
-            label 'Windows'
-          }
-          steps {
-            bat '''
-            set JAVA_HOME=F:\\jenkins\\tools\\java\\latest1.8
-            set MAVEN_OPTS="-Xmx512m"
-            F:\\jenkins\\tools\\maven\\latest3\\bin\\mvn -V clean verify
-            '''
-          }
-          post {
-            always {
-              deleteDir()
-            }
-          }
-        }
+
+    stage('Build JDK 11 Windows') {
+      tools {
+        jdk "jdk_11_latest_windows"
+      }
+      steps {
+        echo 'Building JDK 11 Windows'
+        sh 'java -version'
+        sh 'mvn -version'
+        sh 'mvn clean install'
       }
     }
+
+    stage('Build JDK 17 Linux') {
+      tools {
+        jdk "jdk_17_latest"
+      }
+      steps {
+        echo 'Building JDK 17 Linux'
+        sh 'java -version'
+        sh 'mvn -version'
+        sh 'mvn clean install'
+      }
+    }
+
+    stage('Build JDK 17 Windows') {
+      tools {
+        jdk "jdk_17_latest_windows"
+      }
+      steps {
+        echo 'Building JDK 17 Windows'
+        sh 'java -version'
+        sh 'mvn -version'
+        sh 'mvn clean install'
+      }
+    }
+
+    stage('Build JDK 21 Linux') {
+      tools {
+        jdk "jdk_21_latest"
+      }
+      steps {
+        echo 'Building JDK 21 Linux'
+        sh 'java -version'
+        sh 'mvn -version'
+        sh 'mvn clean install'
+      }
+    }
+
+    stage('Build JDK 21 Windows') {
+      tools {
+        jdk "jdk_21_latest_windows"
+      }
+      steps {
+        echo 'Building JDK 21 Windows'
+        sh 'java -version'
+        sh 'mvn -version'
+        sh 'mvn clean install'
+      }
+    }
+
+    stage('Build JDK 25 Linux') {
+      tools {
+        jdk "jdk_25_latest"
+      }
+      steps {
+        echo 'Building JDK 25 Linux'
+        sh 'java -version'
+        sh 'mvn -version'
+        sh 'mvn clean install'
+      }
+    }
+
+    stage('Build JDK 25 Windows') {
+      tools {
+        jdk "jdk_25_latest_windows"
+      }
+      steps {
+        echo 'Building JDK 25 Windows'
+        sh 'java -version'
+        sh 'mvn -version'
+        sh 'mvn clean install'
+      }
+    }
+
+
     stage ('Deploy') {
       options {
         timeout(time: 2, unit: 'HOURS')
