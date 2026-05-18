@@ -51,7 +51,6 @@ pipeline {
         echo "running on ${env.NODE_NAME}"
         echo 'Building branch ' + env.BRANCH_NAME
         echo 'Using PATH ' + env.PATH
-        echo 'Using JVM ' + jdkVersion
       }
     }
 
