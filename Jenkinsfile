@@ -202,11 +202,6 @@ pipeline {
       subject: "Jenkins pipeline failed: ${currentBuild.fullDisplayName}",
       body: "Jenkins build URL: ${env.BUILD_URL}"
     }
-/bin/bash: line 1: q: command not found
-      mail to: 'notifications@directory.apache.org',
-      subject: "Jenkins pipeline fixed: ${currentBuild.fullDisplayName}",
-      body: "Jenkins build URL: ${env.BUILD_URL}"
-    }
   }
 }
 
