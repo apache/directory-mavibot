@@ -80,6 +80,7 @@ pipeline {
       }
     }
 
+    /** Desactivating Windows builds for the moment 
     stage('Build JDK 11 Windows') {
       tools {
         jdk "jdk_11_latest_windows"
@@ -91,6 +92,7 @@ pipeline {
         sh 'mvn clean install'
       }
     }
+    */
 
     stage('Build JDK 17 Linux') {
       tools {
@@ -104,6 +106,7 @@ pipeline {
       }
     }
 
+    /** Desactivating Windows builds for the moment 
     stage('Build JDK 17 Windows') {
       tools {
         jdk "jdk_17_latest_windows"
@@ -115,6 +118,7 @@ pipeline {
         sh 'mvn clean install'
       }
     }
+    */
 
     stage('Build JDK 21 Linux') {
       tools {
@@ -128,6 +132,7 @@ pipeline {
       }
     }
 
+    /** Desactivating Windows builds for the moment 
     stage('Build JDK 21 Windows') {
       tools {
         jdk "jdk_21_latest_windows"
@@ -139,6 +144,7 @@ pipeline {
         sh 'mvn clean install'
       }
     }
+    */
 
     stage('Build JDK 25 Linux') {
       tools {
@@ -152,6 +158,7 @@ pipeline {
       }
     }
 
+    /** Desactivating Windows builds for the moment 
     stage('Build JDK 25 Windows') {
       tools {
         jdk "jdk_25_latest_windows"
@@ -163,7 +170,7 @@ pipeline {
         sh 'mvn clean install'
       }
     }
-
+    */
 
     stage ('Deploy') {
       options {
@@ -195,7 +202,7 @@ pipeline {
       subject: "Jenkins pipeline failed: ${currentBuild.fullDisplayName}",
       body: "Jenkins build URL: ${env.BUILD_URL}"
     }
-    fixed {
+/bin/bash: line 1: q: command not found
       mail to: 'notifications@directory.apache.org',
       subject: "Jenkins pipeline fixed: ${currentBuild.fullDisplayName}",
       body: "Jenkins build URL: ${env.BUILD_URL}"
