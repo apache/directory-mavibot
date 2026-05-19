@@ -28,6 +28,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -153,7 +154,7 @@ public class BulkLoaderTest
         for ( int i = 1000000; i < 1000001; i++ )
         {
             Random random = new Random( System.currentTimeMillis() );
-            File file = File.createTempFile( "managedbtreebuilder", ".data" );
+            File file = Files.createTempFile( "managedbtreebuilder", ".data" ).toFile();
             file.deleteOnExit();
 
             try
@@ -413,7 +414,7 @@ public class BulkLoaderTest
         BTreeAlreadyManagedException
     {
         Random random = new Random( System.currentTimeMillis() );
-        File file = File.createTempFile( "managedbtreebuilder", ".data" );
+        File file = Files.createTempFile( "managedbtreebuilder", ".data" ).toFile();
         file.deleteOnExit();
 
         try
@@ -470,7 +471,7 @@ public class BulkLoaderTest
         BTreeAlreadyManagedException
     {
         Random random = new Random( System.currentTimeMillis() );
-        File file = File.createTempFile( "managedbtreebuilder", ".data" );
+        File file = Files.createTempFile( "managedbtreebuilder", ".data" ).toFile();
         file.deleteOnExit();
 
         try
@@ -525,7 +526,7 @@ public class BulkLoaderTest
         BTreeAlreadyManagedException
     {
         Random random = new Random( System.currentTimeMillis() );
-        File file = File.createTempFile( "managedbtreebuilder", ".data" );
+        File file = Files.createTempFile( "managedbtreebuilder", ".data" ).toFile();
         file.deleteOnExit();
 
         try
@@ -580,7 +581,7 @@ public class BulkLoaderTest
         for ( int i = 1; i < 1001; i++ )
         {
             Random random = new Random( System.currentTimeMillis() );
-            File file = File.createTempFile( "managedbtreebuilder", ".data" );
+            File file = Files.createTempFile( "managedbtreebuilder", ".data" ).toFile();
             file.deleteOnExit();
 
             try
@@ -712,7 +713,7 @@ public class BulkLoaderTest
         BTreeAlreadyManagedException
     {
         Random random = new Random( System.currentTimeMillis() );
-        File file = File.createTempFile( "managedbtreebuilder", ".data" );
+        File file = Files.createTempFile( "managedbtreebuilder", ".data" ).toFile();
         file.deleteOnExit();
 
         try
@@ -1114,7 +1115,7 @@ public class BulkLoaderTest
         listTuples.add( new Tuple<Long, String>( 19L, "V317" ) );
         listTuples.add( new Tuple<Long, String>( -31L, "V318" ) );
 
-        File file = File.createTempFile( "managedbtreebuilder", ".data" );
+        File file = Files.createTempFile( "managedbtreebuilder", ".data" ).toFile();
         file.deleteOnExit();
 
         try

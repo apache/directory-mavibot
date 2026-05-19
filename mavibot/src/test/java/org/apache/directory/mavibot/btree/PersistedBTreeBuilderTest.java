@@ -24,6 +24,7 @@ package org.apache.directory.mavibot.btree;
 import static org.junit.Assert.assertEquals;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -52,7 +53,7 @@ public class PersistedBTreeBuilderTest
             sortedTuple.add( t );
         }
 
-        File file = File.createTempFile( "managedbtreebuilder", ".data" );
+        File file = Files.createTempFile( "managedbtreebuilder", ".data" ).toFile();
         file.deleteOnExit();
 
         try
